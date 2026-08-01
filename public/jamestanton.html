@@ -1,0 +1,959 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<title>JamesTanton - Ask</title>
+
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --accent: #3468e8;
+  --accent-light: rgba(52,104,232,0.08);
+  --text: #1a1a1a;
+  --muted: #888;
+  --border: rgba(0,0,0,0.08);
+  --bubble-ai: #f7f8fc;
+  --bubble-user-bg: #3468e8;
+  --bubble-user-text: #fff;
+}
+
+body {
+  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+  background: #fff;
+  color: var(--text);
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── Main layout ── */
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+
+/* ── Welcome screen ── */
+.welcome {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 24px 80px;
+  gap: 12px;
+  transition: opacity 0.35s ease, transform 0.35s ease;
+  pointer-events: none;
+}
+
+.welcome.hidden {
+  opacity: 0;
+  transform: translateY(-16px);
+  height: 0;
+  flex: 0;
+  overflow: hidden;
+  padding: 0;
+}
+
+.welcome-logo {
+  height: 110px;
+  width: auto;
+  margin-bottom: 18px;
+  mix-blend-mode: multiply;
+}
+
+.welcome h2 {
+  font-size: clamp(26px, 4vw, 38px);
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  color: var(--text);
+  text-align: center;
+  line-height: 1.15;
+}
+
+.welcome p {
+  font-size: 15px;
+  color: #a0a0a8;
+  text-align: center;
+  max-width: 340px;
+  line-height: 1.6;
+  font-weight: 400;
+}
+
+/* ── Message list ── */
+.msgs {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px 0 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  scroll-behavior: smooth;
+}
+
+.msgs::-webkit-scrollbar { width: 4px; }
+.msgs::-webkit-scrollbar-thumb { background: rgba(0,0,0,.12); border-radius: 4px; }
+
+/* ── Message rows ── */
+.row {
+  display: flex;
+  padding: 6px 0;
+  animation: fadeUp 0.2s ease both;
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.row.ai  { justify-content: flex-start; }
+.row.me  { justify-content: flex-end; }
+
+.row-inner {
+  width: 100%;
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 0 24px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.row.me .row-inner { justify-content: flex-end; }
+
+.avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  overflow: hidden;
+  border: 1px solid rgba(52,104,232,0.28);
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 2px;
+}
+
+.avatar img {
+  width: 90%;
+  height: 90%;
+  object-fit: contain;
+}
+
+.bubble-col {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  max-width: min(80%, 100%);
+  min-width: 0;
+}
+
+.row.ai .bubble-col { align-items: flex-start; }
+.row.me .bubble-col { align-items: flex-end; }
+
+.bubble {
+  padding: 11px 16px;
+  border-radius: 18px;
+  line-height: 1.6;
+  font-size: 14.5px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.row.ai .bubble {
+  background: var(--bubble-ai);
+  border: 1px solid var(--border);
+  border-top-left-radius: 4px;
+  color: var(--text);
+}
+
+.row.me .bubble {
+  background: var(--bubble-user-bg);
+  color: var(--bubble-user-text);
+  border-bottom-right-radius: 4px;
+}
+
+.msg-time {
+  font-size: 11px;
+  color: rgba(0,0,0,0.3);
+  padding: 0 4px;
+  align-self: flex-end;
+}
+
+.meta {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(0,0,0,0.07);
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.meta a { color: var(--accent); text-decoration: none; }
+.meta a:hover { text-decoration: underline; }
+
+.pending {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 40px;
+}
+
+.pending-logo {
+  width: 32px;
+  height: 32px;
+  position: relative;
+}
+
+.pending-logo img {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  top: 0;
+  left: 0;
+  opacity: 0;
+  animation: logoFlip 1.6s infinite;
+}
+
+.pending-logo img:nth-child(2) {
+  animation-delay: 0.8s;
+}
+
+@keyframes logoFlip {
+  0%   { opacity: 0; transform: scale(0.9) rotateY(0deg); }
+  20%  { opacity: 1; transform: scale(1) rotateY(0deg); }
+  50%  { opacity: 1; transform: scale(1) rotateY(180deg); }
+  70%  { opacity: 0; transform: scale(0.95) rotateY(180deg); }
+  100% { opacity: 0; }
+}
+
+/* ── Composer ── */
+.composer-wrap {
+  padding: 10px 24px 24px;
+  flex-shrink: 0;
+}
+
+.composer-inner {
+  max-width: 680px;
+  margin: 0 auto;
+  position: relative;
+}
+
+.composer-row {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+}
+
+/* ── Domain picker button ── */
+.domain-picker {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.domain-toggle {
+  width: 58px;
+  min-width: 58px;
+  height: 58px;
+  border: 1.5px solid rgba(0,0,0,0.11);
+  border-radius: 18px;
+  background: #fff;
+  color: #7f8795;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.07);
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s, color 0.2s;
+}
+
+.domain-toggle:hover {
+  background: #fafbff;
+  color: var(--accent);
+}
+
+.domain-toggle:focus,
+.domain-toggle.open {
+  outline: none;
+  border-color: rgba(52,104,232,0.45);
+  box-shadow: 0 4px 24px rgba(52,104,232,0.1);
+  color: var(--accent);
+}
+
+.domain-toggle:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.domain-menu {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 0;
+  min-width: 240px;
+  max-width: 280px;
+  background: #fff;
+  border: 1px solid rgba(0,0,0,0.08);
+  border-radius: 16px;
+  box-shadow: 0 14px 34px rgba(0,0,0,0.12);
+  padding: 8px;
+  z-index: 50;
+}
+
+.domain-menu.hidden {
+  display: none;
+}
+
+.domain-option {
+  width: 100%;
+  border: none;
+  background: transparent;
+  text-align: left;
+  padding: 11px 12px;
+  border-radius: 12px;
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--text);
+  cursor: pointer;
+  word-break: break-word;
+}
+
+.domain-option:hover {
+  background: rgba(52,104,232,0.08);
+}
+
+.domain-option.active {
+  background: rgba(52,104,232,0.12);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* ── Main composer ── */
+.composer {
+  flex: 1;
+  display: flex;
+  align-items: flex-end;
+  gap: 0;
+  background: #fff;
+  border: 1.5px solid rgba(0,0,0,0.11);
+  border-radius: 18px;
+  padding: 6px 6px 6px 18px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.07);
+}
+
+.composer:focus-within {
+  border-color: rgba(52,104,232,0.45);
+  box-shadow: 0 4px 24px rgba(52,104,232,0.1);
+}
+
+textarea {
+  flex: 1;
+  resize: none;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 15px;
+  line-height: 1.55;
+  min-height: 46px;
+  max-height: 160px;
+  padding: 11px 0;
+  color: var(--text);
+}
+
+textarea::placeholder { color: #9ca3af; }
+
+.send-btn {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: opacity 0.15s, background 0.15s, transform 0.1s;
+  line-height: 1;
+}
+
+.send-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.send-btn:not(:disabled):hover {
+  background: #2554cc;
+  transform: scale(1.04);
+}
+
+.disclaimer {
+  text-align: center;
+  font-size: 11px;
+  color: #d0d0d8;
+  margin-top: 9px;
+  letter-spacing: 0.01em;
+}
+
+@media (max-width: 600px) {
+  .welcome {
+    padding: 28px 16px 64px;
+  }
+
+  .welcome-logo {
+    height: 80px;
+    margin-bottom: 14px;
+  }
+
+  .msgs {
+    padding: 16px 0 6px;
+  }
+
+  .composer-wrap {
+    padding: 10px 10px calc(10px + env(safe-area-inset-bottom));
+  }
+
+  .row-inner {
+    padding: 0 10px;
+    gap: 8px;
+  }
+
+  .avatar {
+    width: 42px;
+    height: 42px;
+    min-width: 42px;
+  }
+
+  .avatar img {
+    width: 82%;
+    height: 82%;
+  }
+
+  .bubble-col {
+    max-width: calc(100% - 50px);
+    min-width: 0;
+  }
+
+  .bubble {
+    font-size: 14px;
+    line-height: 1.5;
+    padding: 10px 12px;
+    border-radius: 16px;
+  }
+
+  .msg-time {
+    font-size: 10px;
+  }
+
+  .composer-row {
+    gap: 8px;
+    align-items: flex-end;
+  }
+
+  .domain-toggle {
+    width: 48px;
+    min-width: 48px;
+    height: 48px;
+    border-radius: 14px;
+    font-size: 12px;
+  }
+
+  .domain-menu {
+    min-width: 180px;
+    max-width: min(240px, calc(100vw - 20px));
+    left: 0;
+  }
+
+  .composer {
+    border-radius: 16px;
+    padding: 4px 4px 4px 12px;
+  }
+
+  textarea {
+    font-size: 16px;
+    min-height: 42px;
+    max-height: 120px;
+    padding: 10px 0;
+  }
+
+  .send-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+  }
+
+  .disclaimer {
+    font-size: 10px;
+    margin-top: 7px;
+    padding: 0 4px;
+  }
+
+  .meta {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  .meta a {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+}
+
+@media (max-width: 380px) {
+  .row-inner {
+    padding: 0 8px;
+    gap: 6px;
+  }
+
+  .avatar {
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+  }
+
+  .bubble-col {
+    max-width: calc(100% - 42px);
+  }
+
+  .bubble {
+    font-size: 13.5px;
+    padding: 9px 11px;
+  }
+
+  .domain-toggle {
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<div class="main">
+
+  <div id="welcome" class="welcome">
+    <img class="welcome-logo"
+      src="https://i.ibb.co/7xXVv1Xz/Picture2.png"
+      alt="Viseon Crawl Test" />
+    <h2>How can we help?</h2>
+    <p>Ask anything about your selected domain.</p>
+  </div>
+
+  <div id="msgs" class="msgs" style="display:none"></div>
+
+  <div class="composer-wrap">
+    <div class="composer-inner">
+      <div class="composer-row">
+        <div class="domain-picker">
+          <button type="button" id="domainToggle" class="domain-toggle" aria-label="Select domain" title="Select domain">
+			  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+				<path d="M12 2a10 10 0 100 20 10 10 0 000-20zm7.93 9h-3.18a15.7 15.7 0 00-1.38-5.03A8.03 8.03 0 0119.93 11zM12 4c.96 1.37 1.7 3.48 1.92 6H10.08c.22-2.52.96-4.63 1.92-6zM4.07 13h3.18c.23 1.9.8 3.63 1.64 5.03A8.03 8.03 0 014.07 13zm3.18-2H4.07a8.03 8.03 0 014.82-5.03A15.7 15.7 0 007.25 11zM12 20c-.96-1.37-1.7-3.48-1.92-6h3.84c-.22 2.52-.96 4.63-1.92 6zm3.11-1.97c.84-1.4 1.41-3.13 1.64-5.03h3.18a8.03 8.03 0 01-4.82 5.03z"/>
+			  </svg>
+			</button>
+
+          <div id="domainMenu" class="domain-menu hidden"></div>
+          <select id="domainSelect" hidden></select>
+        </div>
+
+        <div class="composer">
+          <textarea id="q" placeholder="Ask anything" rows="1"></textarea>
+          <button class="send-btn" id="send">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M8 13V3M8 3L3.5 7.5M8 3L12.5 7.5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+      <div class="disclaimer">Responses are AI-generated and may not always be accurate.</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const ASK_ENDPOINT = "/api/jamestanton/ask";
+const LOGO_URL = "https://i.ibb.co/7xXVv1Xz/Picture2.png";
+const ALL_DOMAINS_VALUE = "__all__";
+
+const DOMAINS = [
+  "jamestantonmath.com",
+  "gdaymath.com",
+  "globalmathproject.org"
+];
+
+const DOMAIN_OPTIONS = [
+  { value: ALL_DOMAINS_VALUE, label: "All domains" },
+  ...DOMAINS.map(d => ({ value: d, label: d }))
+];
+
+const SEND_ICON = `
+  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+    <path d="M8 13V3M8 3L3.5 7.5M8 3L12.5 7.5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>
+`;
+
+const STOP_ICON = `
+  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+    <rect x="4" y="4" width="8" height="8" rx="1.5" fill="white"/>
+  </svg>
+`;
+
+const elMsgs         = document.getElementById("msgs");
+const elQ            = document.getElementById("q");
+const elSend         = document.getElementById("send");
+const elDomain       = document.getElementById("domainSelect");
+const elDomainToggle = document.getElementById("domainToggle");
+const elDomainMenu   = document.getElementById("domainMenu");
+const elWelcome      = document.getElementById("welcome");
+
+let history = [];
+let pendingEl = null;
+let hasStarted = false;
+let activeController = null;
+let isBusy = false;
+
+for (const item of DOMAIN_OPTIONS) {
+  const opt = document.createElement("option");
+  opt.value = item.value;
+  opt.textContent = item.label;
+  elDomain.appendChild(opt);
+}
+
+elDomain.value = ALL_DOMAINS_VALUE;
+
+function selectedDomain() {
+  return String(elDomain.value || ALL_DOMAINS_VALUE).trim();
+}
+
+function resetConversation() {
+  history = [];
+  pendingEl = null;
+  hasStarted = false;
+  elMsgs.innerHTML = "";
+  elMsgs.style.display = "none";
+  elWelcome.classList.remove("hidden");
+  elQ.value = "";
+  autosize();
+  closeDomainMenu();
+}
+
+function updateDomainMenu() {
+  elDomainMenu.innerHTML = "";
+
+  for (const item of DOMAIN_OPTIONS) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "domain-option" + (item.value === selectedDomain() ? " active" : "");
+    btn.textContent = item.label;
+
+    btn.addEventListener("click", () => {
+      const previous = selectedDomain();
+      elDomain.value = item.value;
+      closeDomainMenu();
+      updateDomainMenu();
+
+      if (item.value !== previous) {
+        resetConversation();
+      }
+    });
+
+    elDomainMenu.appendChild(btn);
+  }
+}
+
+function openDomainMenu() {
+  updateDomainMenu();
+  elDomainMenu.classList.remove("hidden");
+  elDomainToggle.classList.add("open");
+}
+
+function closeDomainMenu() {
+  elDomainMenu.classList.add("hidden");
+  elDomainToggle.classList.remove("open");
+}
+
+function toggleDomainMenu() {
+  if (elDomainMenu.classList.contains("hidden")) {
+    openDomainMenu();
+  } else {
+    closeDomainMenu();
+  }
+}
+
+elDomainToggle.addEventListener("click", (e) => {
+  e.stopPropagation();
+  toggleDomainMenu();
+});
+
+document.addEventListener("click", (e) => {
+  if (!e.target.closest(".domain-picker")) {
+    closeDomainMenu();
+  }
+});
+
+function formatTime() {
+  return new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
+function scrollToBottom() {
+  elMsgs.scrollTop = elMsgs.scrollHeight;
+}
+
+function hideWelcome() {
+  if (hasStarted) return;
+  hasStarted = true;
+  elWelcome.classList.add("hidden");
+  elMsgs.style.display = "flex";
+}
+
+function makeRow(role) {
+  const row = document.createElement("div");
+  row.className = "row " + (role === "assistant" ? "ai" : "me");
+
+  const inner = document.createElement("div");
+  inner.className = "row-inner";
+
+  if (role === "assistant") {
+    const avatar = document.createElement("div");
+    avatar.className = "avatar";
+
+    const img = document.createElement("img");
+    img.src = LOGO_URL;
+
+    avatar.appendChild(img);
+    inner.appendChild(avatar);
+  }
+
+  const col = document.createElement("div");
+  col.className = "bubble-col";
+  inner.appendChild(col);
+  row.appendChild(inner);
+
+  return { row, col };
+}
+
+function addMessage(role, text, sources) {
+  const { row, col } = makeRow(role);
+
+  const bubble = document.createElement("div");
+  bubble.className = "bubble";
+  bubble.textContent = text || "";
+
+  if (
+	  role === "assistant" &&
+	  Array.isArray(sources) &&
+	  sources.length &&
+	  !text.startsWith("I don't have that information to hand")
+	) {
+    const meta = document.createElement("div");
+    meta.className = "meta";
+    meta.innerHTML = "Sources: " + sources.map(u => {
+      const safe = String(u || "").trim();
+      if (!safe) return "";
+      const href = safe.startsWith("http") ? safe : (location.origin + safe);
+      return `<a href="${href}" target="_blank" rel="noopener noreferrer">${safe}</a>`;
+    }).filter(Boolean).join(" ");
+    bubble.appendChild(meta);
+  }
+
+  const time = document.createElement("div");
+  time.className = "msg-time";
+  time.textContent = formatTime();
+
+  col.appendChild(bubble);
+  col.appendChild(time);
+  elMsgs.appendChild(row);
+  scrollToBottom();
+}
+
+function addPendingAssistant() {
+  const { row, col } = makeRow("assistant");
+
+  const bubble = document.createElement("div");
+  bubble.className = "bubble";
+
+  const pending = document.createElement("div");
+  pending.className = "pending";
+
+  const logoWrap = document.createElement("div");
+  logoWrap.className = "pending-logo";
+
+  const logo1 = document.createElement("img");
+  logo1.src = "https://viseon.io/wp-content/uploads/2025/10/ask_.avif";
+
+  const logo2 = document.createElement("img");
+  logo2.src = "https://gdaymath.com/wp-content/themes/gdaymath/images/logo.png";
+
+  logoWrap.appendChild(logo1);
+  logoWrap.appendChild(logo2);
+  pending.appendChild(logoWrap);
+
+  bubble.appendChild(pending);
+  col.appendChild(bubble);
+  elMsgs.appendChild(row);
+
+  pendingEl = { row, col, bubble };
+  scrollToBottom();
+}
+
+function replacePendingAssistant(text, sources) {
+  if (!pendingEl) {
+    addMessage("assistant", text, sources);
+    return;
+  }
+
+  pendingEl.bubble.textContent = text || "";
+
+  if (
+	  Array.isArray(sources) &&
+	  sources.length &&
+	  !text.startsWith("I don't have that information to hand")
+	) {
+    const meta = document.createElement("div");
+    meta.className = "meta";
+    meta.innerHTML = "Sources: " + sources.map(u => {
+      const safe = String(u || "").trim();
+      if (!safe) return "";
+      const href = safe.startsWith("http") ? safe : (location.origin + safe);
+      return `<a href="${href}" target="_blank" rel="noopener noreferrer">${safe}</a>`;
+    }).filter(Boolean).join(" ");
+    pendingEl.bubble.appendChild(meta);
+  }
+
+  const time = document.createElement("div");
+  time.className = "msg-time";
+  time.textContent = formatTime();
+  pendingEl.col.appendChild(time);
+
+  pendingEl = null;
+  scrollToBottom();
+}
+
+function setBusy(b) {
+  isBusy = b;
+
+  elQ.disabled = b;
+  elDomainToggle.disabled = b;
+
+  elSend.disabled = false;
+  elSend.innerHTML = b ? STOP_ICON : SEND_ICON;
+  elSend.setAttribute("aria-label", b ? "Stop response" : "Send message");
+  elSend.setAttribute("title", b ? "Stop response" : "Send message");
+}
+
+function cancelActiveRequest() {
+  if (!activeController) return;
+
+  activeController.abort();
+  activeController = null;
+
+  if (pendingEl?.row?.parentNode) {
+    pendingEl.row.remove();
+  }
+  pendingEl = null;
+
+  history.push({ role: "assistant", content: "(Response stopped)" });
+  setBusy(false);
+  elQ.focus();
+}
+
+function autosize() {
+  elQ.style.height = "auto";
+  elQ.style.height = Math.min(elQ.scrollHeight, 160) + "px";
+}
+
+elQ.addEventListener("input", autosize);
+
+async function ask() {
+  if (isBusy) {
+    cancelActiveRequest();
+    return;
+  }
+
+  const question = (elQ.value || "").trim();
+  if (!question) return;
+
+  hideWelcome();
+  closeDomainMenu();
+
+  const domain = selectedDomain();
+  addMessage("user", question);
+  history.push({ role: "user", content: question });
+
+  elQ.value = "";
+  autosize();
+  addPendingAssistant();
+  setBusy(true);
+
+  const controller = new AbortController();
+  activeController = controller;
+
+  try {
+    const res = await fetch(ASK_ENDPOINT, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      signal: controller.signal,
+      body: JSON.stringify({
+        domain,
+        question,
+        history: history.slice(-6)
+      })
+    });
+
+    const data = await res.json();
+    const answer = String(data.answer || "").trim() || "(No answer returned)";
+    const used = Array.isArray(data.used_docs) ? data.used_docs : [];
+    const urls = [...new Set(
+      used.map(d => d && d.url).filter(Boolean).map(u => u.split("#")[0])
+    )].slice(0, 3);
+
+    replacePendingAssistant(answer, urls);
+    history.push({ role: "assistant", content: answer });
+  } catch (e) {
+    if (e.name === "AbortError") {
+      return;
+    }
+
+    replacePendingAssistant("Network error. Please try again.");
+    history.push({ role: "assistant", content: "Network error." });
+  } finally {
+    if (activeController === controller) {
+      activeController = null;
+      setBusy(false);
+      elQ.focus();
+    }
+  }
+}
+
+elSend.addEventListener("click", ask);
+elQ.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey) {
+    e.preventDefault();
+    ask();
+  }
+});
+
+elSend.innerHTML = SEND_ICON;
+updateDomainMenu();
+autosize();
+</script>
+
+</body>
+</html>
