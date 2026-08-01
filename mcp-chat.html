@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Differentia Schema — Chat</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#F7F8F6;
+    --panel:#FFFFFF;
+    --ink:#14213D;
+    --ink-soft:#4A5470;
+    --mute:#8A91A5;
+    --line:#E3E6EC;
+    --cobalt:#2547F4;
+    --cobalt-soft:#EAEEFE;
+    --amber:#E8A33D;
+    --amber-soft:#FBF3E4;
+    --ok:#1F9D63;
+    --err:#C8401F;
+    --err-soft:#FBEBE6;
+    --radius:10px;
+    --col:760px;
+    --display:'Space Grotesk',sans-serif;
+    --body:'IBM Plex Sans',sans-serif;
+    --mono:'IBM Plex Mono',monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    font-family:var(--body);color:var(--ink);background:var(--paper);
+    font-size:15px;line-height:1.55;display:flex;flex-direction:column;
+    height:100vh;height:100dvh;
+  }
+  button{font-family:inherit;cursor:pointer}
+  textarea{font-family:inherit;color:var(--ink)}
+  :focus-visible{outline:2px solid var(--cobalt);outline-offset:2px}
+
+  /* ---------- header ---------- */
+  .header{
+    flex:none;border-bottom:1px solid var(--line);background:var(--panel);
+    position:relative;z-index:10;
+  }
+  .header-inner{
+    max-width:var(--col);margin:0 auto;padding:12px 20px;
+    display:flex;align-items:center;gap:14px;
+  }
+  .header h1{font-family:var(--display);font-weight:700;font-size:17px;letter-spacing:-.01em}
+  .header h1 span{color:var(--cobalt)}
+  .header .tag{
+    font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;
+    color:var(--mute);border:1px solid var(--line);border-radius:99px;padding:2px 9px;
+  }
+  .header .right{margin-left:auto;display:flex;align-items:center;gap:10px}
+  .status{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--ink-soft)}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--mute);flex:none}
+  .dot.ok{background:var(--ok)}
+  .dot.err{background:var(--err)}
+  .dot.wait{animation:blink 1s ease-in-out infinite}
+  @keyframes blink{50%{opacity:.3}}
+  .tools-btn{
+    background:transparent;border:1px solid var(--line);border-radius:99px;
+    padding:5px 13px;font-size:12.5px;color:var(--ink-soft);
+  }
+  .tools-btn:hover{border-color:var(--cobalt);color:var(--cobalt)}
+  .tools-pop{
+    position:absolute;right:max(20px,calc((100% - var(--col))/2 + 20px));top:54px;
+    width:320px;max-width:calc(100vw - 32px);
+    background:var(--panel);border:1px solid var(--line);border-radius:12px;
+    box-shadow:0 10px 36px rgba(20,33,61,.14);padding:12px;display:none;
+  }
+  .tools-pop.show{display:block}
+  .tools-pop h2{
+    font-family:var(--mono);font-size:10px;font-weight:500;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--mute);margin:2px 4px 9px;
+  }
+  .tool-card{
+    border:1px solid var(--line);border-radius:8px;padding:8px 11px;background:var(--paper);
+    text-align:left;width:100%;margin-bottom:7px;transition:border-color .15s;
+  }
+  .tool-card:last-child{margin-bottom:0}
+  .tool-card:hover{border-color:var(--cobalt)}
+  .tool-card .tname{font-family:var(--mono);font-size:12px;font-weight:500;color:var(--cobalt)}
+  .tool-card .tdesc{font-size:11.5px;color:var(--mute);margin-top:1px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+
+  /* ---------- chat scroll ---------- */
+  .chat{flex:1;overflow-y:auto;scroll-behavior:smooth}
+  .chat-inner{
+    max-width:var(--col);margin:0 auto;padding:28px 20px 140px;
+    display:flex;flex-direction:column;gap:22px;
+  }
+
+  .welcome{margin:6vh auto 0;text-align:center;max-width:540px}
+  .welcome .mark{
+    font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--amber);margin-bottom:10px;
+  }
+  .welcome h3{font-family:var(--display);font-size:24px;font-weight:700;letter-spacing:-.01em;margin-bottom:8px}
+  .welcome p{font-size:14px;color:var(--ink-soft);margin-bottom:18px}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+  .chip{
+    border:1px solid var(--line);background:var(--panel);border-radius:99px;
+    padding:7px 15px;font-size:13px;color:var(--ink-soft);
+  }
+  .chip:hover{border-color:var(--cobalt);color:var(--cobalt)}
+
+  .turn{display:flex;flex-direction:column;gap:6px}
+  .who{
+    font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--mute);
+  }
+  .turn.user{align-items:flex-end}
+  .turn.user .who{color:var(--cobalt)}
+  .bubble{font-size:14.5px;max-width:100%}
+  .turn.user .bubble{
+    background:var(--cobalt-soft);border:1px solid #D6DEFC;border-radius:var(--radius);
+    padding:11px 15px;max-width:85%;white-space:pre-wrap;
+  }
+  .bubble p{margin:0 0 .65em}
+  .bubble p:last-child{margin-bottom:0}
+  .bubble ul,.bubble ol{margin:0 0 .65em 1.3em}
+  .bubble code{font-family:var(--mono);font-size:12.5px;background:#EFF1F0;border:1px solid var(--line);border-radius:4px;padding:1px 5px}
+  .bubble pre{background:#10182E;color:#E7EBF6;border-radius:8px;padding:12px 14px;overflow-x:auto;margin:0 0 .65em}
+  .bubble pre code{background:none;border:none;color:inherit;padding:0;font-size:12px}
+  .bubble a{color:var(--cobalt)}
+
+  /* ---- trace rail ---- */
+  .trace{border-left:2px solid var(--amber);margin:4px 0 4px 5px;padding-left:16px;display:flex;flex-direction:column;gap:8px}
+  .trace-node{position:relative}
+  .trace-node::before{
+    content:"";position:absolute;left:-21.5px;top:11px;width:9px;height:9px;border-radius:50%;
+    background:var(--amber);border:2px solid var(--paper);
+  }
+  .trace-head{
+    display:flex;align-items:center;gap:8px;width:100%;text-align:left;
+    background:var(--amber-soft);border:1px solid #F0DDBA;border-radius:8px;
+    padding:7px 11px;font-family:var(--mono);font-size:12px;color:var(--ink);
+  }
+  .trace-head .verb{color:#A06B12;font-weight:500}
+  .trace-head .spin{width:11px;height:11px;border:2px solid #E3C685;border-top-color:#A06B12;border-radius:50%;animation:spin .7s linear infinite;flex:none}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .trace-head .state{margin-left:auto;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--mute)}
+  .trace-head .state.ok{color:var(--ok)}
+  .trace-head .state.err{color:var(--err)}
+  .trace-body{display:none;margin-top:6px}
+  .trace-node.open .trace-body{display:block}
+  .trace-body h5{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--mute);margin:8px 0 3px}
+  .trace-body pre{
+    background:#10182E;color:#CBD4EC;font-family:var(--mono);font-size:11.5px;
+    border-radius:7px;padding:10px 12px;overflow:auto;max-height:260px;white-space:pre-wrap;word-break:break-word;
+  }
+
+  .note{
+    align-self:center;font-size:12.5px;color:var(--ink-soft);background:var(--panel);
+    border:1px solid var(--line);border-radius:99px;padding:5px 14px;text-align:center;
+  }
+  .note.error{color:var(--err);background:var(--err-soft);border-color:#F0C9BD}
+  .note .retry{
+    background:none;border:none;color:var(--cobalt);font-size:12.5px;font-weight:600;
+    text-decoration:underline;padding:0;margin-left:6px;
+  }
+
+  .thinking{display:flex;gap:5px;padding:6px 2px}
+  .thinking i{width:6px;height:6px;border-radius:50%;background:var(--mute);animation:pulse 1.2s ease-in-out infinite}
+  .thinking i:nth-child(2){animation-delay:.15s}
+  .thinking i:nth-child(3){animation-delay:.3s}
+  @keyframes pulse{0%,100%{opacity:.25;transform:translateY(0)}50%{opacity:1;transform:translateY(-3px)}}
+
+  /* ---------- floating composer ---------- */
+  .composer{
+    position:fixed;left:0;right:0;bottom:0;z-index:20;
+    padding:0 16px calc(16px + env(safe-area-inset-bottom));
+    background:linear-gradient(to top, var(--paper) 62%, rgba(247,248,246,0));
+    pointer-events:none;
+  }
+  .composer-inner{max-width:var(--col);margin:0 auto;pointer-events:auto}
+  .composer-box{
+    display:flex;align-items:flex-end;gap:8px;
+    background:var(--panel);border:1px solid var(--line);border-radius:18px;
+    padding:10px 10px 10px 18px;
+    box-shadow:0 6px 28px rgba(20,33,61,.10);
+    transition:border-color .15s, box-shadow .15s;
+  }
+  .composer-box:focus-within{border-color:var(--cobalt);box-shadow:0 6px 28px rgba(37,71,244,.14)}
+  .composer textarea{
+    flex:1;resize:none;border:none;background:transparent;outline:none;
+    font-size:15px;line-height:1.45;max-height:170px;padding:4px 0;
+  }
+  .composer textarea::placeholder{color:var(--mute)}
+  .composer .send{
+    flex:none;width:38px;height:38px;border:none;border-radius:12px;
+    background:var(--cobalt);color:#fff;display:flex;align-items:center;justify-content:center;
+    transition:background .15s;
+  }
+  .composer .send:hover{background:#1d3ad0}
+  .composer .send:disabled{background:#C4CADB;cursor:not-allowed}
+  .composer .send svg{width:18px;height:18px}
+  .composer .meta{
+    text-align:center;font-size:11px;color:var(--mute);margin-top:8px;font-family:var(--mono);
+  }
+
+  @media (max-width:640px){
+    .header .tag{display:none}
+    .welcome h3{font-size:20px}
+    .chat-inner{padding-bottom:150px}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *{animation:none!important;transition:none!important}
+    .chat{scroll-behavior:auto}
+  }
+</style>
+</head>
+<body>
+
+  <header class="header">
+    <div class="header-inner">
+      <h1>Differentia <span>Schema</span></h1>
+      <span class="tag">Internal &middot; draft tool</span>
+      <div class="right">
+        <span class="status"><span class="dot wait" id="connDot"></span><span id="connText">Connecting&hellip;</span></span>
+        <button class="tools-btn" id="toolsBtn" aria-expanded="false" aria-controls="toolsPop" hidden>Tools</button>
+      </div>
+    </div>
+    <div class="tools-pop" id="toolsPop" role="menu">
+      <h2>Discovered tools</h2>
+      <div id="toolList"></div>
+    </div>
+  </header>
+
+  <main class="chat" id="chat">
+    <div class="chat-inner" id="chatInner">
+      <div class="welcome" id="welcome">
+        <div class="mark">Differentia content &amp; schema graph</div>
+        <h3>What would you like to know?</h3>
+        <p>Answers come from the site's own content and Schema.org data, fetched live through the MCP worker — every lookup is shown on the amber trace.</p>
+        <div class="chips">
+          <button class="chip" data-q="What content and schema types are available to query?">What can I query?</button>
+          <button class="chip" data-q="List the most recent news items and summarise the themes.">Recent news themes</button>
+          <button class="chip" data-q="What services does Differentia Consulting offer, according to the schema data?">Services in the schema</button>
+          <button class="chip" data-q="Find articles about Qlik and give me the full text of the most recent one.">Latest Qlik article</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <div class="composer">
+    <div class="composer-inner">
+      <form id="composerForm">
+        <div class="composer-box">
+          <textarea id="input" rows="1" placeholder="Ask about Differentia content…" aria-label="Message" disabled></textarea>
+          <button class="send" id="sendBtn" type="submit" disabled aria-label="Send message">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M12 19V5"/><path d="M5 12l7-7 7 7"/>
+            </svg>
+          </button>
+        </div>
+      </form>
+      <div class="meta" id="metaLine">Connecting to the worker&hellip;</div>
+    </div>
+  </div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ---------------- config ---------------- */
+  var CONFIG = {
+    MCP_URL: "https://schema-mcp.viseoncrawltest.uk/mcp",
+    CHAT_URL: "https://schema-mcp.viseoncrawltest.uk/chat",
+    BEARER_TOKEN: "" // fill in only if MCP_AUTH_TOKEN is set on the worker
+  };
+
+  /* ---------------- state ---------------- */
+  var state = {
+    connected: false,
+    tools: [],
+    serverInfo: null,
+    modelName: "",
+    messages: [],   // [{role:"user"|"assistant", content:string}]
+    busy: false,
+    rpcId: 0
+  };
+
+  function $(id){ return document.getElementById(id); }
+  var el = {
+    connDot: $("connDot"), connText: $("connText"),
+    toolsBtn: $("toolsBtn"), toolsPop: $("toolsPop"), toolList: $("toolList"),
+    chat: $("chat"), chatInner: $("chatInner"), welcome: $("welcome"),
+    form: $("composerForm"), input: $("input"), sendBtn: $("sendBtn"), meta: $("metaLine")
+  };
+
+  /* ---------------- helpers ---------------- */
+  function esc(s){
+    return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;")
+      .replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+  }
+  function md(text){
+    var t = esc(text);
+    var pres = [];
+    t = t.replace(/```([\s\S]*?)```/g, function(_, code){
+      pres.push("<pre><code>" + code.replace(/^\w*\n/, "") + "</code></pre>");
+      return "\u0000PRE" + (pres.length - 1) + "\u0000";
+    });
+    t = t.replace(/`([^`\n]+)`/g, "<code>$1</code>");
+    t = t.replace(/\*\*([^*\n]+)\*\*/g, "<strong>$1</strong>");
+    t = t.replace(/(^|\s)\*([^*\n]+)\*(?=\s|[.,;:!?]|$)/g, "$1<em>$2</em>");
+    t = t.replace(/(https?:\/\/[^\s<)"']+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>');
+    var blocks = t.split(/\n{2,}/).map(function(b){
+      var lines = b.split("\n");
+      var isList = lines.length > 0 && lines.every(function(l){ return /^\s*([-*]|\d+[.)])\s+/.test(l) || l.trim()===""; });
+      if (isList && lines.some(function(l){return l.trim()!=="";})) {
+        var ordered = /^\s*\d+[.)]/.test(lines[0]);
+        var items = lines.filter(function(l){return l.trim()!=="";}).map(function(l){
+          return "<li>" + l.replace(/^\s*([-*]|\d+[.)])\s+/, "") + "</li>";
+        }).join("");
+        return (ordered?"<ol>":"<ul>") + items + (ordered?"</ol>":"</ul>");
+      }
+      if (/^\u0000PRE\d+\u0000$/.test(b.trim())) return b.trim();
+      return "<p>" + b.replace(/\n/g,"<br>") + "</p>";
+    });
+    return blocks.join("").replace(/\u0000PRE(\d+)\u0000/g, function(_, i){ return pres[+i]; });
+  }
+  function scrollDown(){ el.chat.scrollTop = el.chat.scrollHeight; }
+  function setConn(stateName, text){
+    el.connDot.className = "dot" + (stateName==="ok" ? " ok" : stateName==="err" ? " err" : " wait");
+    el.connText.textContent = text;
+  }
+  function note(text, isError, retry){
+    var n = document.createElement("div");
+    n.className = "note" + (isError ? " error" : "");
+    n.textContent = text;
+    if (retry) {
+      var b = document.createElement("button");
+      b.type = "button"; b.className = "retry"; b.textContent = "Retry";
+      b.addEventListener("click", function(){ n.remove(); connect(); });
+      n.appendChild(b);
+    }
+    el.chatInner.appendChild(n);
+    scrollDown();
+  }
+  function updateComposer(){
+    var ready = state.connected && !state.busy;
+    el.input.disabled = !state.connected;
+    el.sendBtn.disabled = !ready || !el.input.value.trim();
+    el.meta.textContent = !state.connected
+      ? "Connecting to the worker\u2026"
+      : (state.serverInfo ? state.serverInfo.name + " v" + state.serverInfo.version + " \u00B7 " : "")
+        + state.tools.length + " tools \u00B7 Workers AI"
+        + (state.modelName ? " \u00B7 " + state.modelName : "")
+        + " \u00B7 verify outputs before use";
+  }
+
+  /* ---------------- MCP JSON-RPC ---------------- */
+  function headers(){
+    var h = { "Content-Type": "application/json", "MCP-Protocol-Version": "2025-06-18" };
+    if (CONFIG.BEARER_TOKEN) h["Authorization"] = "Bearer " + CONFIG.BEARER_TOKEN;
+    return h;
+  }
+  function mcpFetch(payload){
+    return fetch(CONFIG.MCP_URL, {
+      method: "POST", headers: headers(), body: JSON.stringify(payload)
+    }).then(function(res){
+      if (res.status === 202) return null;
+      if (res.status === 401) throw new Error("Worker returned 401 Unauthorized \u2014 a bearer token is required (set it in CONFIG inside this file).");
+      if (!res.ok) throw new Error("Worker returned HTTP " + res.status + ".");
+      return res.json();
+    });
+  }
+  function mcpRpc(method, params){
+    var id = ++state.rpcId;
+    return mcpFetch({ jsonrpc:"2.0", id:id, method:method, params:params||{} })
+      .then(function(msg){
+        if (!msg) throw new Error("Empty response from worker for " + method + ".");
+        if (msg.error) throw new Error("MCP error " + msg.error.code + ": " + msg.error.message);
+        return msg.result;
+      });
+  }
+  function mcpNotify(method){
+    return mcpFetch({ jsonrpc:"2.0", method:method }).catch(function(){ /* non-fatal */ });
+  }
+  function callMcpTool(name, args){
+    return mcpRpc("tools/call", { name:name, arguments:args || {} }).then(function(result){
+      var text = (result && result.content || [])
+        .filter(function(c){ return c.type === "text"; })
+        .map(function(c){ return c.text; })
+        .join("\n") || JSON.stringify(result);
+      return { text:text, isError: !!(result && result.isError) };
+    });
+  }
+
+  /* ---------------- auto-connect ---------------- */
+  function connect(){
+    setConn("wait", "Connecting\u2026");
+    state.connected = false;
+    mcpRpc("initialize", {
+      protocolVersion: "2025-06-18",
+      capabilities: {},
+      clientInfo: { name: "differentia-schema-chat", version: "2.0.0" }
+    }).then(function(init){
+      state.serverInfo = init.serverInfo || null;
+      return mcpNotify("notifications/initialized");
+    }).then(function(){
+      return mcpRpc("tools/list");
+    }).then(function(res){
+      state.tools = res.tools || [];
+      state.connected = true;
+      setConn("ok", "Connected");
+      renderTools();
+      updateComposer();
+      el.input.focus();
+    }).catch(function(err){
+      setConn("err", "Offline");
+      updateComposer();
+      note("Couldn't reach the worker: " + (err.message || err), true, true);
+    });
+  }
+
+  /* ---------------- tools popover ---------------- */
+  function renderTools(){
+    el.toolList.innerHTML = "";
+    if (!state.tools.length) { el.toolsBtn.hidden = true; return; }
+    el.toolsBtn.hidden = false;
+    el.toolsBtn.textContent = "Tools \u00B7 " + state.tools.length;
+    state.tools.forEach(function(t){
+      var b = document.createElement("button");
+      b.className = "tool-card"; b.type = "button";
+      b.innerHTML = '<div class="tname">' + esc(t.name) + '</div><div class="tdesc">' + esc(t.description || "") + '</div>';
+      b.title = "Insert a /tool command for " + t.name;
+      b.addEventListener("click", function(){
+        var sample = {};
+        var props = t.inputSchema && t.inputSchema.properties || {};
+        (t.inputSchema && t.inputSchema.required || []).forEach(function(k){
+          var p = props[k] || {};
+          sample[k] = p.enum ? p.enum[0] : (p.type === "integer" ? 1 : "");
+        });
+        el.input.value = "/tool " + t.name + " " + JSON.stringify(sample);
+        toggleTools(false);
+        autosize(); updateComposer(); el.input.focus();
+      });
+      el.toolList.appendChild(b);
+    });
+  }
+  function toggleTools(force){
+    var show = force !== undefined ? force : !el.toolsPop.classList.contains("show");
+    el.toolsPop.classList.toggle("show", show);
+    el.toolsBtn.setAttribute("aria-expanded", String(show));
+  }
+  el.toolsBtn.addEventListener("click", function(e){ e.stopPropagation(); toggleTools(); });
+  document.addEventListener("click", function(e){
+    if (!el.toolsPop.contains(e.target)) toggleTools(false);
+  });
+
+  /* ---------------- chat rendering ---------------- */
+  function clearWelcome(){ if (el.welcome) { el.welcome.remove(); el.welcome = null; } }
+  function addUserTurn(text){
+    clearWelcome();
+    var t = document.createElement("div");
+    t.className = "turn user";
+    t.innerHTML = '<div class="who">You</div><div class="bubble"></div>';
+    t.querySelector(".bubble").textContent = text;
+    el.chatInner.appendChild(t);
+    scrollDown();
+  }
+  function newAssistantTurn(){
+    clearWelcome();
+    var t = document.createElement("div");
+    t.className = "turn assistant";
+    t.innerHTML = '<div class="who">Assistant</div>';
+    el.chatInner.appendChild(t);
+    return t;
+  }
+  function addTextBlock(turn, text){
+    var b = document.createElement("div");
+    b.className = "bubble";
+    b.innerHTML = md(text);
+    turn.appendChild(b);
+    scrollDown();
+  }
+  function getTrace(turn){
+    var last = turn.lastElementChild;
+    if (last && last.classList.contains("trace")) return last;
+    var tr = document.createElement("div");
+    tr.className = "trace";
+    turn.appendChild(tr);
+    return tr;
+  }
+  function addTraceNode(turn, name, args){
+    var node = document.createElement("div");
+    node.className = "trace-node";
+    node.innerHTML =
+      '<button type="button" class="trace-head">' +
+        '<span class="spin"></span>' +
+        '<span class="verb">tools/call</span>' +
+        '<span class="tname">' + esc(name) + '</span>' +
+        '<span class="state">running</span>' +
+      '</button>' +
+      '<div class="trace-body">' +
+        '<h5>Arguments</h5><pre>' + esc(JSON.stringify(args || {}, null, 2)) + '</pre>' +
+        '<h5>Result</h5><pre class="result">\u2026</pre>' +
+      '</div>';
+    node.querySelector(".trace-head").addEventListener("click", function(){
+      node.classList.toggle("open");
+    });
+    getTrace(turn).appendChild(node);
+    scrollDown();
+    return node;
+  }
+  function finishTraceNode(node, text, isError){
+    var head = node.querySelector(".trace-head");
+    var spin = head.querySelector(".spin");
+    if (spin) spin.remove();
+    var stateEl = head.querySelector(".state");
+    stateEl.textContent = isError ? "error" : "done";
+    stateEl.className = "state " + (isError ? "err" : "ok");
+    var pre = node.querySelector(".result");
+    var shown = text.length > 6000 ? text.slice(0,6000) + "\n\u2026[truncated in view]" : text;
+    pre.textContent = shown;
+    if (isError) node.classList.add("open");
+  }
+  function thinking(on, turn){
+    var existing = document.getElementById("thinkingDots");
+    if (existing) existing.remove();
+    if (on) {
+      var d = document.createElement("div");
+      d.className = "thinking"; d.id = "thinkingDots";
+      d.innerHTML = "<i></i><i></i><i></i>";
+      (turn || el.chatInner).appendChild(d);
+      scrollDown();
+    }
+  }
+
+  /* ---------------- chat via /chat ---------------- */
+  function callChat(){
+    return fetch(CONFIG.CHAT_URL, {
+      method: "POST", headers: headers(),
+      body: JSON.stringify({ messages: state.messages })
+    }).then(function(res){
+      return res.json().catch(function(){ return {}; }).then(function(data){
+        if (!res.ok || data.error) {
+          var err = new Error(data.error || ("Worker /chat returned HTTP " + res.status));
+          err.trace = data.trace;
+          throw err;
+        }
+        return data;
+      });
+    });
+  }
+  function renderTrace(turn, trace){
+    (trace || []).forEach(function(t){
+      var node = addTraceNode(turn, t.tool, t.args);
+      finishTraceNode(node, t.result || "", !!t.isError);
+    });
+  }
+  function runAgent(turn){
+    thinking(true, turn);
+    return callChat().then(function(resp){
+      thinking(false);
+      renderTrace(turn, resp.trace);
+      var reply = resp.reply || "(empty reply)";
+      addTextBlock(turn, reply);
+      state.messages.push({ role:"assistant", content: reply });
+      if (resp.model) { state.modelName = resp.model; }
+    }).catch(function(err){
+      thinking(false);
+      if (err.trace) renderTrace(turn, err.trace);
+      throw err;
+    });
+  }
+
+  /* ---------------- direct /tool command ---------------- */
+  function runDirectTool(raw){
+    var m = raw.match(/^\/tool\s+([\w-]+)\s*(\{[\s\S]*\})?\s*$/);
+    if (!m) { note("Usage: /tool <name> {\"arg\":\"value\"}", true); return Promise.resolve(); }
+    var args = {};
+    if (m[2]) {
+      try { args = JSON.parse(m[2]); }
+      catch(e){ note("Couldn't parse the JSON arguments: " + e.message, true); return Promise.resolve(); }
+    }
+    var turn = newAssistantTurn();
+    var node = addTraceNode(turn, m[1], args);
+    node.classList.add("open");
+    return callMcpTool(m[1], args).then(function(r){
+      finishTraceNode(node, r.text, r.isError);
+    }).catch(function(err){
+      finishTraceNode(node, String(err.message || err), true);
+    });
+  }
+
+  /* ---------------- submit ---------------- */
+  function submit(){
+    var text = el.input.value.trim();
+    if (!text || state.busy || !state.connected) return;
+
+    state.busy = true; updateComposer();
+    el.input.value = ""; autosize();
+
+    var done;
+    if (text.indexOf("/tool") === 0) {
+      addUserTurn(text);
+      done = runDirectTool(text);
+    } else {
+      addUserTurn(text);
+      state.messages.push({ role:"user", content:text });
+      var turn = newAssistantTurn();
+      done = runAgent(turn).catch(function(err){
+        note("Chat error: " + (err.message || err), true);
+        var last = state.messages[state.messages.length - 1];
+        if (last && last.role === "user") state.messages.pop();
+      });
+    }
+    done.finally(function(){
+      state.busy = false; updateComposer(); el.input.focus();
+    });
+  }
+  el.form.addEventListener("submit", function(e){ e.preventDefault(); submit(); });
+  el.input.addEventListener("keydown", function(e){
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submit(); }
+  });
+  function autosize(){
+    el.input.style.height = "auto";
+    el.input.style.height = Math.min(el.input.scrollHeight, 170) + "px";
+  }
+  el.input.addEventListener("input", function(){ autosize(); updateComposer(); });
+
+  document.querySelectorAll(".chip").forEach(function(c){
+    c.addEventListener("click", function(){
+      if (!state.connected) return;
+      el.input.value = c.getAttribute("data-q");
+      autosize(); updateComposer();
+      submit();
+    });
+  });
+
+  updateComposer();
+  connect();
+})();
+</script>
+</body>
+</html>
