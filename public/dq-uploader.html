@@ -73,6 +73,9 @@
   .tab { background: none; color: var(--muted); border: 0; border-bottom: 2px solid transparent;
     border-radius: 0; padding: 10px 14px; font-weight: 600; cursor: pointer; }
   .tab.active { color: var(--text); border-bottom-color: var(--accent); }
+  .tab-badge { min-width: 16px; padding: 0 5px; height: 16px; line-height: 16px; border-radius: 8px;
+    background: var(--err); color: #fff; font-size: 10px; font-weight: 700; text-align: center;
+    display: inline-block; vertical-align: middle; }
   .steps { display: flex; flex-direction: column; gap: 8px; }
   .step { display: flex; align-items: center; gap: 10px; font-size: 14px; }
   .pill {
@@ -369,6 +372,7 @@
 
   <div class="tabs">
     <button class="tab active" data-tab="dashboard">Dashboard</button>
+    <button class="tab" data-tab="incidents">Incidents <span class="tab-badge" id="incBadge" style="display:none;"></span></button>
     <button class="tab" data-tab="upload">Upload</button>
     <button class="tab" data-tab="appdata">App data</button>
     <button class="tab" data-tab="model">App Data Model</button>
@@ -445,6 +449,17 @@
       <h2><a href="#" id="historyBack">← Back to history</a></h2>
       <div id="historyDetailBody"></div>
     </div>
+  </div>
+
+  <!-- ============ INCIDENTS ============ -->
+  <div id="incidentsPanel" style="display:none;">
+    <div class="card">
+      <h2>Incidents <button class="linkbtn" id="incRefresh">Refresh</button></h2>
+      <p class="dash-muted" id="incCtx"></p>
+      <p class="dash-muted" style="margin:-4px 0 12px;font-size:12px;">A recurring alert on a dataset is grouped into one incident — opened when it first breaches, recovered when it returns to normal. Open issues first, then recently recovered.</p>
+      <div id="incList"><p class="dash-muted">Loading…</p></div>
+    </div>
+    <div id="incDetail" style="display:none;"></div>
   </div>
 
   <!-- ============ DASHBOARD ============ -->
@@ -699,8 +714,11 @@ const TERMINAL = ['SUCCEEDED', 'GATE_FAILED', 'FAILED'];
 const fmtScore = n => (n == null ? '—' : Number(Number(n).toFixed(2)));
 function tagClass(s) { return ({ green: 'green', amber: 'amber', red: 'red' })[s] || ''; }
 function fmtWhen(runId) {
-  const iso = String(runId).replace(/T(\d{2})-(\d{2})-(\d{2})Z$/, 'T$1:$2:$3Z');
-  const d = new Date(iso);
+  // run_id is a timestamp, optionally with a "-<token>" collision suffix; match the
+  // timestamp prefix and ignore anything after the trailing Z.
+  const m = /^(\d{4}-\d{2}-\d{2})T(\d{2})-(\d{2})-(\d{2})Z/.exec(String(runId));
+  if (!m) return runId;
+  const d = new Date(`${m[1]}T${m[2]}:${m[3]}:${m[4]}Z`);
   return isNaN(d.getTime()) ? runId : d.toLocaleString();
 }
 
@@ -1212,6 +1230,11 @@ function lineChart(points, opts) {
   const ys = numeric.map(p => p.y);
   let lo = opts.ymin != null ? opts.ymin : Math.min(...ys);
   let hi = opts.ymax != null ? opts.ymax : Math.max(...ys);
+  // Widen an auto axis to keep the expected-range band fully visible.
+  if (opts.band) {
+    if (opts.ymin == null && typeof opts.band.lo === 'number') lo = Math.min(lo, opts.band.lo);
+    if (opts.ymax == null && typeof opts.band.hi === 'number') hi = Math.max(hi, opts.band.hi);
+  }
   if (lo === hi) { const pad = Math.abs(lo) * 0.06 + 1; lo -= pad; hi += pad; }
   const pw = W - PL - PR, ph = H - PT - PB, n = points.length, baseY = PT + ph;
   const xOf = i => PL + (n <= 1 ? pw / 2 : (i / (n - 1)) * pw);
@@ -1223,6 +1246,21 @@ function lineChart(points, opts) {
       `height="${(yOf(a) - yOf(b)).toFixed(1)}" fill="${c}" opacity="0.07"/>`;
     bands = band(0, 75, 'var(--err)') + band(75, 90, 'var(--run)') + band(90, 100, 'var(--ok)');
   }
+  // Adaptive "expected range" band (median ± normal variation), shaded behind the line.
+  let bandSvg = '';
+  if (opts.band && typeof opts.band.lo === 'number' && typeof opts.band.hi === 'number') {
+    const yA = yOf(opts.band.hi), yB = yOf(opts.band.lo);
+    const top = Math.min(yA, yB), bh = Math.abs(yB - yA);
+    const edge = y => `<line x1="${PL}" y1="${y.toFixed(1)}" x2="${W - PR}" y2="${y.toFixed(1)}" ` +
+      `stroke="var(--accent)" stroke-width="1" stroke-dasharray="3 3" opacity="0.45"/>`;
+    bandSvg = `<rect x="${PL}" y="${top.toFixed(1)}" width="${pw}" height="${bh.toFixed(1)}" ` +
+      `fill="var(--accent)" opacity="0.10"/>` + edge(yA) + edge(yB);
+    if (typeof opts.band.median === 'number') {
+      const yM = yOf(opts.band.median);
+      bandSvg += `<line x1="${PL}" y1="${yM.toFixed(1)}" x2="${W - PR}" y2="${yM.toFixed(1)}" ` +
+        `stroke="var(--accent)" stroke-width="1" stroke-dasharray="1 3" opacity="0.65"/>`;
+    }
+  }
   const ticks = opts.ragBands ? [0, 50, 75, 90, 100] : [lo, (lo + hi) / 2, hi];
   const grid = ticks.map(t => `<line x1="${PL}" y1="${yOf(t).toFixed(1)}" x2="${W - PR}" y2="${yOf(t).toFixed(1)}" ` +
     `stroke="var(--border)" stroke-width="1" opacity="0.7"/><text x="${PL - 6}" y="${(yOf(t) + 3).toFixed(1)}" ` +
@@ -1231,10 +1269,19 @@ function lineChart(points, opts) {
   const linePts = numeric.map(p => `${xOf(p.i).toFixed(1)},${yOf(p.y).toFixed(1)}`).join(' ');
   const area = `${xOf(numeric[0].i).toFixed(1)},${baseY.toFixed(1)} ${linePts} ` +
     `${xOf(numeric[numeric.length - 1].i).toFixed(1)},${baseY.toFixed(1)}`;
-  const dots = numeric.map(p =>
-    `<circle cx="${xOf(p.i).toFixed(1)}" cy="${yOf(p.y).toFixed(1)}" r="9" fill="transparent" ` +
-    `data-tip="${esc(dateShort(p.t))} — ${esc(fmt(p.y))}${esc(opts.unit || '')}"></circle>` +
-    `<circle cx="${xOf(p.i).toFixed(1)}" cy="${yOf(p.y).toFixed(1)}" r="2.8" fill="${color}"/>`).join('');
+  const dots = numeric.map((p, j) => {
+    const prev = j > 0 ? numeric[j - 1] : null;   // per-point change vs the previous run
+    let dtxt = '';
+    if (prev) {
+      const dv = p.y - prev.y, arrow = dv > 0 ? '▲' : (dv < 0 ? '▼' : '·');
+      dtxt = (opts.pct && prev.y !== 0)
+        ? `  (${arrow} ${dv > 0 ? '+' : ''}${(dv / Math.abs(prev.y) * 100).toFixed(1)}%)`
+        : `  (${arrow} ${dv > 0 ? '+' : ''}${fmt(dv)})`;
+    }
+    return `<circle cx="${xOf(p.i).toFixed(1)}" cy="${yOf(p.y).toFixed(1)}" r="9" fill="transparent" ` +
+      `data-tip="${esc(dateShort(p.t))} — ${esc(fmt(p.y))}${esc(opts.unit || '')}${esc(dtxt)}"></circle>` +
+      `<circle cx="${xOf(p.i).toFixed(1)}" cy="${yOf(p.y).toFixed(1)}" r="2.8" fill="${color}"/>`;
+  }).join('');
   // Label only the latest point (hover shows the rest) — anchored so it stays
   // on-canvas and flips below the point when it's near the top gridline.
   const lp = numeric[numeric.length - 1];
@@ -1246,7 +1293,7 @@ function lineChart(points, opts) {
     `fill="var(--text)">${esc(fmt(lp.y))}</text>`;
 
   return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;max-width:900px;display:block" role="img">
-    ${bands}${grid}
+    ${bands}${bandSvg}${grid}
     <polygon points="${area}" fill="${color}" opacity="0.10"/>
     <polyline fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" points="${linePts}"/>
     ${dots}${labels}
@@ -1598,6 +1645,11 @@ function renderTrends(d) {
   }
   const scorePts = runs.map(r => ({ t: r.t, y: r.score }));
   const volPts = runs.map(r => ({ t: r.t, y: r.rows }));
+  const base = d.baseline || {};
+  const bandNote = (base.overall || base.volume)
+    ? `<p class="dash-muted" style="margin:8px 0 0;font-size:12px;">Shaded band = this dataset's expected range ` +
+      `(median ± normal variation over recent runs); points outside it are unusual. Hover a point for its change vs the previous run.</p>`
+    : '';
   const gate = `<div class="gate-strip">` + runs.map(r =>
     `<span class="gate-cell ${r.gate === false ? 'fail' : 'pass'}" ` +
     `data-tip="${esc(dateShort(r.t))}: gate ${r.gate === false ? 'FAIL' : 'pass'}"></span>`).join('') + `</div>` +
@@ -1618,9 +1670,9 @@ function renderTrends(d) {
     `</div>` +
     whatChanged(runs) +
     `<div class="trend-cols">` +
-      `<div><div class="chart-title">Overall score</div>${lineChart(scorePts, { ymin: 0, ymax: 100, ragBands: true })}</div>` +
-      `<div><div class="chart-title">Row volume</div>${lineChart(volPts, { fmt: numInt })}</div>` +
-    `</div>` +
+      `<div><div class="chart-title">Overall score</div>${lineChart(scorePts, { ymin: 0, ymax: 100, ragBands: true, band: base.overall })}</div>` +
+      `<div><div class="chart-title">Row volume</div>${lineChart(volPts, { fmt: numInt, pct: true, band: base.volume })}</div>` +
+    `</div>` + bandNote +
     `<div class="chart-title" style="margin-top:16px;">Quality gate (each run)</div>${gate}` +
     `<div class="chart-title" style="margin-top:16px;">Per-dimension score (30d)</div><div class="small-mults">${mults}</div>`;
   const back = $('#dashBack');
@@ -1636,6 +1688,108 @@ function renderTrends(d) {
 
 $('#dashRefresh').addEventListener('click', loadDashboard);
 
+// --------------------------------------------------------------------------- //
+// incidents
+// --------------------------------------------------------------------------- //
+const _INCSEV = { blocker: ['crit', 'Blocker'], major: ['warn', 'Major'], warning: ['warn', 'Warning'] };
+function incSevChip(s) {
+  const [cls, label] = _INCSEV[(s || '').toLowerCase()] || ['na', s || '—'];
+  return `<span class="chip ${cls}"><span class="dot"></span>${esc(label)}</span>`;
+}
+const _RULE_LABEL = {
+  QUALITY_GATE: 'Quality gate failed', QUALITY_OVERALL: 'Overall score below minimum',
+  VOLUME: 'Row volume drop', SCHEMA: 'Schema changed', QUALITY_DRIFT: 'Dimension drift',
+  FRESHNESS: 'Stale — no recent run', BASELINE_VOLUME: 'Volume outside expected range',
+  BASELINE_SCORE: 'Score below expected range', BASELINE_DIMENSION: 'Dimension below expected range',
+};
+function ruleLabel(r) { return _RULE_LABEL[r] || r; }
+function incidentDuration(it) {
+  const start = Date.parse(it.openedAt);
+  const end = it.resolvedAt ? Date.parse(it.resolvedAt) : Date.now();
+  if (isNaN(start)) return '';
+  const ms = Math.max(0, end - start), h = ms / 3600000;
+  if (h < 1) return `${Math.max(1, Math.round(ms / 60000))}m`;
+  if (h < 24) return `${Math.round(h)}h`;
+  return `${Math.round(h / 24)}d`;
+}
+function updateIncBadge(n) {
+  const b = $('#incBadge'); if (!b) return;
+  if (n > 0) { b.textContent = n; b.style.display = 'inline-block'; }
+  else { b.style.display = 'none'; }
+}
+async function refreshIncBadge() {
+  if (!APP_ID) return;
+  try {
+    const r = await postJSON(`${API_BASE}/data-quality/incidents/list`, HEADERS,
+      { app_id: APP_ID, status: 'open', limit: 1 });
+    updateIncBadge(r.openCount || 0);
+  } catch (e) { /* badge is best-effort */ }
+}
+async function loadIncidents() {
+  if (!configOK) return;
+  const list = $('#incList');
+  $('#incDetail').style.display = 'none'; $('#incDetail').innerHTML = '';
+  if (!APP_ID) {
+    $('#incCtx').textContent = '';
+    list.innerHTML = '<p class="dash-muted">Open this from inside a Qlik app to see that app\'s incidents.</p>';
+    return;
+  }
+  $('#incCtx').textContent = 'App: ' + APP_ID;
+  list.innerHTML = '<p class="dash-muted"><span class="spin"></span> Loading…</p>';
+  try {
+    const r = await postJSON(`${API_BASE}/data-quality/incidents/list`, HEADERS,
+      { app_id: APP_ID, window_days: 30 });
+    renderIncidents(r);
+    updateIncBadge(r.openCount || 0);
+  } catch (e) {
+    list.innerHTML = `<p class="dash-muted" style="color:var(--err)">${esc(e.message)}</p>`;
+  }
+}
+function renderIncidents(r) {
+  const list = r.incidents || [];
+  if (!list.length) {
+    $('#incList').innerHTML = '<p class="dash-muted">No incidents — every dataset is within its expected range. 🎉</p>';
+    return;
+  }
+  const rows = list.map(it => {
+    const open = it.status === 'OPEN';
+    const statusChip = open
+      ? `<span class="chip crit"><span class="dot"></span>Open</span>`
+      : `<span class="chip good"><span class="dot"></span>Recovered</span>`;
+    const when = open ? `opened ${esc(fmtWhen(it.openedRun))}` : `recovered ${esc(fmtWhen(it.resolvedRun))}`;
+    const sub = `${esc(incidentDuration(it))} · ${esc(String(it.occurrences || 1))} run(s)`;
+    return `<tr>
+        <td>${statusChip}</td>
+        <td>${incSevChip(it.severity)}</td>
+        <td><strong>${esc(it.dataset)}</strong><div class="hint">${esc(ruleLabel(it.rule))}</div></td>
+        <td class="hint">${esc(it.message || '')}</td>
+        <td class="hint">${when}<div class="hint">${sub}</div></td>
+        <td><button class="btn-sm" data-prefix="${esc(it.resultPrefix)}" data-name="${esc(it.dataset)}">View run</button></td>
+      </tr>`;
+  }).join('');
+  $('#incList').innerHTML = `<div style="overflow-x:auto;"><table class="dash-table">` +
+    `<tr><th>Status</th><th>Severity</th><th>Dataset / rule</th><th>Detail</th><th>When</th><th></th></tr>${rows}</table></div>`;
+  $('#incList').querySelectorAll('button[data-prefix]').forEach(b =>
+    b.addEventListener('click', () => openIncidentRun(b.dataset.prefix, b.dataset.name)));
+}
+async function openIncidentRun(prefix, name) {
+  const box = $('#incDetail');
+  box.style.display = 'block';
+  box.innerHTML = `<div class="card" style="margin-top:14px;">` +
+    `<h3 style="margin:0 0 10px;">Run detail — ${esc(name)} ` +
+    `<button class="linkbtn" id="incDetailClose">Close</button></h3>` +
+    `<div id="incDetailBody"><p><span class="spin"></span> Loading run…</p></div></div>`;
+  box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  $('#incDetailClose').addEventListener('click', () => { box.style.display = 'none'; box.innerHTML = ''; });
+  try {
+    const rr = await postJSON(`${API_BASE}/data-quality/result`, HEADERS, { result_prefix: prefix });
+    renderAssessment(rr, $('#incDetailBody'), { context: 'app' });
+  } catch (e) {
+    $('#incDetailBody').innerHTML = `<p class="dash-muted" style="color:var(--err)">${esc(e.message)}</p>`;
+  }
+}
+$('#incRefresh').addEventListener('click', e => { e.preventDefault(); loadIncidents(); });
+
 function switchTab(name) {
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
   $('#uploadPanel').style.display = name === 'upload' ? 'block' : 'none';
@@ -1644,17 +1798,19 @@ function switchTab(name) {
   $('#schedulePanel').style.display = name === 'schedules' ? 'block' : 'none';
   $('#modelPanel').style.display = name === 'model' ? 'block' : 'none';
   $('#dashboardPanel').style.display = name === 'dashboard' ? 'block' : 'none';
+  $('#incidentsPanel').style.display = name === 'incidents' ? 'block' : 'none';
   // Wide, full-width tabs vs the narrow centered form column.
   const wrapEl = document.querySelector('.wrap');
   if (wrapEl) wrapEl.classList.toggle('wide',
-    name === 'dashboard' || name === 'schedules' || name === 'model');
+    name === 'dashboard' || name === 'schedules' || name === 'model' || name === 'incidents');
+  if (name === 'incidents') loadIncidents();
   if (name === 'model') loadModel();
   if (name === 'history') {
     $('#historyDetail').style.display = 'none';
     $('#historyListCard').style.display = 'block';
     loadHistory();
   }
-  if (name === 'dashboard') loadDashboard();
+  if (name === 'dashboard') { loadDashboard(); refreshIncBadge(); }
   if (name === 'schedules') {
     $('#schCtx').textContent = APP_ID
       ? ('App: ' + APP_ID) : 'Open from inside a Qlik app to schedule its checks.';
