@@ -1756,21 +1756,61 @@ function renderIncidents(r) {
     const statusChip = open
       ? `<span class="chip crit"><span class="dot"></span>Open</span>`
       : `<span class="chip good"><span class="dot"></span>Recovered</span>`;
+    const state = [
+      it.ackBy ? `<div class="hint" title="${esc(it.ackBy)}">✓ acknowledged</div>` : '',
+      it.owner ? `<div class="hint">👤 ${esc(it.owner)}</div>` : '',
+      it.muted ? `<div class="hint" style="color:var(--muted)">🔇 muted</div>` : '',
+      it.snoozeUntil ? `<div class="hint" style="color:var(--muted)">💤 snoozed until ${esc(fmtWhen(it.snoozeUntil))}</div>` : '',
+    ].join('');
     const when = open ? `opened ${esc(fmtWhen(it.openedRun))}` : `recovered ${esc(fmtWhen(it.resolvedRun))}`;
     const sub = `${esc(incidentDuration(it))} · ${esc(String(it.occurrences || 1))} run(s)`;
+    const dka = esc(it.datasetKey), ka = esc(it.key);
+    const actions = open ? `
+        <button class="btn-sm" data-act="${it.ackBy ? 'unack' : 'acknowledge'}" data-dk="${dka}" data-key="${ka}">${it.ackBy ? 'Un-ack' : 'Ack'}</button>
+        <button class="btn-sm" data-act="assign" data-dk="${dka}" data-key="${ka}" data-owner="${esc(it.owner || '')}">Assign</button>
+        <select class="btn-sm inc-snooze" data-dk="${dka}" data-key="${ka}" aria-label="Snooze">
+          <option value="">Snooze…</option><option value="1">1h</option><option value="4">4h</option><option value="24">1 day</option>
+        </select>
+        ${it.snoozeUntil ? `<button class="btn-sm" data-act="unsnooze" data-dk="${dka}" data-key="${ka}">Wake</button>` : ''}
+        <button class="btn-sm" data-act="${it.muted ? 'unmute' : 'mute'}" data-dk="${dka}" data-key="${ka}">${it.muted ? 'Unmute' : 'Mute'}</button>` : '';
     return `<tr>
-        <td>${statusChip}</td>
+        <td>${statusChip}${state}</td>
         <td>${incSevChip(it.severity)}</td>
         <td><strong>${esc(it.dataset)}</strong><div class="hint">${esc(ruleLabel(it.rule))}</div></td>
         <td class="hint">${esc(it.message || '')}</td>
         <td class="hint">${when}<div class="hint">${sub}</div></td>
-        <td><button class="btn-sm" data-prefix="${esc(it.resultPrefix)}" data-name="${esc(it.dataset)}">View run</button></td>
+        <td><div class="actions" style="gap:6px;flex-wrap:wrap;">
+          <button class="btn-sm" data-prefix="${esc(it.resultPrefix)}" data-name="${esc(it.dataset)}">View run</button>${actions}
+        </div></td>
       </tr>`;
   }).join('');
   $('#incList').innerHTML = `<div style="overflow-x:auto;"><table class="dash-table">` +
     `<tr><th>Status</th><th>Severity</th><th>Dataset / rule</th><th>Detail</th><th>When</th><th></th></tr>${rows}</table></div>`;
   $('#incList').querySelectorAll('button[data-prefix]').forEach(b =>
     b.addEventListener('click', () => openIncidentRun(b.dataset.prefix, b.dataset.name)));
+  $('#incList').querySelectorAll('button[data-act]').forEach(b => b.addEventListener('click', () => {
+    const { dk, key, act, owner } = b.dataset;
+    if (act === 'assign') {
+      const val = prompt('Assign owner (email or name; leave blank to clear):', owner || '');
+      if (val === null) return;                       // cancelled
+      incidentAction(dk, key, 'assign', { owner: val.trim() });
+    } else {
+      incidentAction(dk, key, act, {});
+    }
+  }));
+  $('#incList').querySelectorAll('select.inc-snooze').forEach(s => s.addEventListener('change', () => {
+    if (!s.value) return;
+    incidentAction(s.dataset.dk, s.dataset.key, 'snooze', { snooze_hours: Number(s.value) });
+  }));
+}
+async function incidentAction(datasetKey, key, action, extra) {
+  try {
+    await postJSON(`${API_BASE}/data-quality/incidents/action`, HEADERS,
+      Object.assign({ dataset_key: datasetKey, incident_key: key, action, actor: EMAIL || undefined }, extra || {}));
+    loadIncidents();
+  } catch (e) {
+    alert('Action failed: ' + e.message);
+  }
 }
 async function openIncidentRun(prefix, name) {
   const box = $('#incDetail');
