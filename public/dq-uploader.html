@@ -283,6 +283,12 @@
     background-image: radial-gradient(var(--border) 1px, transparent 1px); background-size: 22px 22px; }
   #modelCanvasWrap.panning { cursor: grabbing; }
   #modelCanvasOuter { position: relative; }
+  /* Full-screen: fill the viewport (works inside the Qlik iframe; pairs with the Fullscreen API when allowed) */
+  #modelCanvasOuter.model-fs { position: fixed; inset: 0; z-index: 2000; background: var(--bg); padding: 10px; }
+  #modelCanvasOuter.model-fs #modelCanvasWrap { height: 100%; border-radius: 8px; }
+  #modelFsExit { display: none; position: absolute; top: 14px; right: 14px; z-index: 50;
+    box-shadow: 0 2px 10px rgba(0,0,0,.18); }
+  #modelCanvasOuter.model-fs #modelFsExit { display: inline-flex; }
   #modelSizer { position: relative; width: 2600px; height: 1600px; }
   #modelStage { position: absolute; top: 0; left: 0; width: 2600px; height: 1600px; transform-origin: 0 0; }
   #modelLines { position: absolute; top: 0; left: 0; pointer-events: none; overflow: visible; }
@@ -525,11 +531,13 @@
       <div class="model-toolbar">
         <h2 style="margin:0;flex:1;">App Data Model</h2>
         <span class="dash-muted" id="modelCtx"></span>
+        <button class="btn-sm" id="modelFullscreen">⛶ Full screen</button>
         <button class="btn-sm" id="modelReset">Reset layout</button>
         <button class="btn-sm" id="modelRefresh">Refresh</button>
       </div>
       <p class="dash-muted" style="margin:0 0 10px;">Drag tables to arrange (layout is saved). Click a field to trace it across tables; click a table header to preview its data.</p>
       <div id="modelCanvasOuter">
+        <button class="btn-sm" id="modelFsExit">⛶ Exit full screen</button>
         <div id="modelCanvasWrap">
           <div id="modelSizer">
             <div id="modelStage">
@@ -2878,6 +2886,32 @@ async function openTableRun(name) {
 
 $('#modelRefresh').addEventListener('click', loadModel);
 $('#modelReset').addEventListener('click', () => { try { localStorage.removeItem(modelKey()); } catch (e) {} loadModel(); });
+
+// Full-screen the data-model canvas. The CSS overlay fills the iframe viewport
+// (always works); the Fullscreen API also goes true full-monitor when the embedding
+// iframe permits it (needs allowfullscreen — see the extension), otherwise it's a no-op.
+function modelIsFs() { return $('#modelCanvasOuter').classList.contains('model-fs'); }
+function modelEnterFs() {
+  const outer = $('#modelCanvasOuter');
+  outer.classList.add('model-fs');
+  $('#modelFullscreen').textContent = '⛶ Exit full screen';
+  if (outer.requestFullscreen) { try { outer.requestFullscreen().catch(() => {}); } catch (e) {} }
+  drawModelLines();                         // re-anchor association lines to the new size
+}
+function modelExitFs() {
+  const outer = $('#modelCanvasOuter');
+  outer.classList.remove('model-fs');
+  $('#modelFullscreen').textContent = '⛶ Full screen';
+  if (document.fullscreenElement && document.exitFullscreen) { try { document.exitFullscreen().catch(() => {}); } catch (e) {} }
+  drawModelLines();
+}
+function modelToggleFs() { modelIsFs() ? modelExitFs() : modelEnterFs(); }
+$('#modelFullscreen').addEventListener('click', modelToggleFs);
+$('#modelFsExit').addEventListener('click', modelExitFs);
+document.addEventListener('fullscreenchange', () => {   // browser Esc left OS-fullscreen → drop our overlay too
+  if (!document.fullscreenElement && modelIsFs()) modelExitFs();
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && modelIsFs()) modelExitFs(); });
 $('#modelZoomIn').addEventListener('click', () => setModelZoom(modelZoom + 0.15));
 $('#modelZoomOut').addEventListener('click', () => setModelZoom(modelZoom - 0.15));
 $('#modelCanvasWrap').addEventListener('mousedown', modelStartPan);
