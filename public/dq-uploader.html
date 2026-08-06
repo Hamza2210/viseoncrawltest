@@ -328,6 +328,17 @@
   .mprev-summary { display: flex; gap: 18px; flex-wrap: wrap; margin: 6px 0 10px; }
   .mprev-summary .s { font-size: 12px; } .mprev-summary .s b { display: block; font-size: 16px; }
 
+  /* Data lineage view */
+  .lin-flow { display: grid; grid-template-columns: 1fr auto auto auto 1fr; gap: 16px; align-items: start; }
+  @media (max-width: 900px) { .lin-flow { grid-template-columns: 1fr; } .lin-arrow { display: none; } }
+  .lin-arrow { align-self: center; color: var(--muted); font-size: 22px; }
+  .lin-app { align-self: center; }
+  .lin-node { display: flex; gap: 10px; align-items: center; border: 1px solid var(--border);
+    border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; background: var(--card); }
+  .lin-appnode { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+  .lin-ico { font-size: 20px; flex: none; }
+  .lin-label { font-weight: 600; font-size: 13px; word-break: break-word; }
+
   /* Micro-interactions: a gentle grow/lift on hover for clickable things */
   .tab, button, .btn-sm, .linkbtn, .apptab, .sched-caret, .x-close {
     transition: transform .13s ease, box-shadow .16s ease,
@@ -376,6 +387,7 @@
     <button class="tab" data-tab="upload">Upload</button>
     <button class="tab" data-tab="appdata">App data</button>
     <button class="tab" data-tab="model">App Data Model</button>
+    <button class="tab" data-tab="lineage">Lineage</button>
     <button class="tab" data-tab="schedules">Schedules</button>
     <button class="tab" data-tab="history">History</button>
   </div>
@@ -460,6 +472,16 @@
       <div id="incList"><p class="dash-muted">Loading…</p></div>
     </div>
     <div id="incDetail" style="display:none;"></div>
+  </div>
+
+  <!-- ============ LINEAGE ============ -->
+  <div id="lineagePanel" style="display:none;">
+    <div class="card">
+      <h2>Data Lineage <button class="linkbtn" id="lineageRefresh">Refresh</button></h2>
+      <p class="dash-muted" id="lineageCtx"></p>
+      <p class="dash-muted" style="margin:-4px 0 12px;font-size:12px;">Where this app's data comes from (upstream sources) and what depends on it (downstream). Cached for 24h; use Refresh to re-pull from Qlik.</p>
+      <div id="lineageBody"><p class="dash-muted">Loading…</p></div>
+    </div>
   </div>
 
   <!-- ============ DASHBOARD ============ -->
@@ -1877,6 +1899,62 @@ async function openIncidentRun(prefix, name) {
 }
 $('#incRefresh').addEventListener('click', e => { e.preventDefault(); loadIncidents(); });
 
+// --------------------------------------------------------------------------- //
+// data lineage
+// --------------------------------------------------------------------------- //
+function _linIcon(s) {
+  const st = String(s.subtype || s.type || '').toUpperCase();
+  if (st.includes('FILE')) return '📄';
+  if (st.includes('DATABASE') || st.includes('DB') || st.includes('SQL')) return '🗄️';
+  if (st.includes('APP')) return '📊';
+  if (st.includes('CONNECT')) return '🔌';
+  return '📦';
+}
+function _linItem(s) {
+  const meta = [];
+  if (s.subtype) meta.push(esc(s.subtype));
+  if (typeof s.tables === 'number') meta.push(esc(String(s.tables)) + ' table(s)');
+  if (typeof s.fields === 'number') meta.push(esc(String(s.fields)) + ' field(s)');
+  return `<div class="lin-node"><span class="lin-ico">${_linIcon(s)}</span>` +
+    `<div><div class="lin-label">${esc(s.label || s.qri || '—')}</div>` +
+    `<div class="hint">${meta.join(' · ')}</div></div></div>`;
+}
+async function loadLineage(refresh) {
+  if (!configOK) return;
+  const body = $('#lineageBody');
+  if (!APP_ID) { $('#lineageCtx').textContent = ''; body.innerHTML = '<p class="dash-muted">Open this from inside a Qlik app to see its lineage.</p>'; return; }
+  if (!BEARER) { $('#lineageCtx').textContent = ''; body.innerHTML = '<p class="dash-muted">No Qlik API key configured — set it in the extension settings.</p>'; return; }
+  $('#lineageCtx').textContent = 'App: ' + APP_ID;
+  body.innerHTML = `<p class="dash-muted"><span class="spin"></span> ${refresh ? 'Re-pulling from Qlik…' : 'Loading lineage…'}</p>`;
+  try {
+    const hdr = { ...HEADERS, 'X-Qlik-Bearer': BEARER };
+    const r = await postJSON(`${API_BASE}/data-quality/lineage`, hdr, { app_id: APP_ID, refresh: !!refresh });
+    renderLineage(r);
+  } catch (e) {
+    body.innerHTML = `<p class="dash-muted" style="color:var(--err)">${esc(e.message)}</p>`;
+  }
+}
+function renderLineage(r) {
+  const up = r.upstream || [], down = r.downstream || [];
+  const upHtml = up.length ? up.map(_linItem).join('') : '<p class="dash-muted">No upstream sources found for this app.</p>';
+  const downHtml = down.length ? down.map(_linItem).join('')
+    : '<p class="dash-muted">No downstream consumers — this app is a leaf (nothing else depends on it).</p>';
+  const stamp = (r.fetchedAt ? `Last refreshed ${esc(fmtWhen(r.fetchedAt))}` : '') +
+    (r.stale ? ' · <span style="color:var(--run)">stale — Qlik unreachable, showing cache</span>'
+      : (r.cached ? ' · <span class="hint">cached</span>' : ''));
+  $('#lineageBody').innerHTML =
+    `<div class="lin-flow">` +
+      `<div class="lin-col"><div class="chart-title">Upstream sources (${up.length})</div>${upHtml}</div>` +
+      `<div class="lin-arrow">→</div>` +
+      `<div class="lin-app"><div class="lin-node lin-appnode"><span class="lin-ico">📊</span>` +
+        `<div><div class="lin-label">This app</div><div class="hint">${esc(r.appId || '')}</div></div></div></div>` +
+      `<div class="lin-arrow">→</div>` +
+      `<div class="lin-col"><div class="chart-title">Downstream consumers (${down.length})</div>${downHtml}</div>` +
+    `</div>` +
+    (stamp ? `<p class="hint" style="margin-top:14px;">${stamp}</p>` : '');
+}
+$('#lineageRefresh').addEventListener('click', e => { e.preventDefault(); loadLineage(true); });
+
 function switchTab(name) {
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
   $('#uploadPanel').style.display = name === 'upload' ? 'block' : 'none';
@@ -1886,11 +1964,13 @@ function switchTab(name) {
   $('#modelPanel').style.display = name === 'model' ? 'block' : 'none';
   $('#dashboardPanel').style.display = name === 'dashboard' ? 'block' : 'none';
   $('#incidentsPanel').style.display = name === 'incidents' ? 'block' : 'none';
+  $('#lineagePanel').style.display = name === 'lineage' ? 'block' : 'none';
   // Wide, full-width tabs vs the narrow centered form column.
   const wrapEl = document.querySelector('.wrap');
   if (wrapEl) wrapEl.classList.toggle('wide',
-    name === 'dashboard' || name === 'schedules' || name === 'model' || name === 'incidents');
+    name === 'dashboard' || name === 'schedules' || name === 'model' || name === 'incidents' || name === 'lineage');
   if (name === 'incidents') loadIncidents();
+  if (name === 'lineage') loadLineage();
   if (name === 'model') loadModel();
   if (name === 'history') {
     $('#historyDetail').style.display = 'none';
