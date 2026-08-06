@@ -1755,15 +1755,20 @@ function renderIncidents(r) {
     const open = it.status === 'OPEN';
     const statusChip = open
       ? `<span class="chip crit"><span class="dot"></span>Open</span>`
-      : `<span class="chip good"><span class="dot"></span>Recovered</span>`;
+      : it.dismissed
+        ? `<span class="chip na"><span class="dot"></span>Dismissed</span>`
+        : `<span class="chip good"><span class="dot"></span>Recovered</span>`;
     const state = [
       it.ackBy ? `<div class="hint" title="${esc(it.ackBy)}">✓ acknowledged</div>` : '',
       it.owner ? `<div class="hint">👤 ${esc(it.owner)}</div>` : '',
+      it.dismissed ? `<div class="hint" style="color:var(--muted)">🗂 intentional${it.dismissReason ? ': ' + esc(it.dismissReason) : ''}${it.dismissedBy ? ' (' + esc(it.dismissedBy) + ')' : ''}</div>` : '',
       it.explainedAt ? `<div class="hint" style="color:var(--accent)">🧠 AI explanation · ${esc(fmtWhen(it.explainedAt))}${it.explainedBy ? ' (' + esc(it.explainedBy) + ')' : ''}</div>` : '',
       it.muted ? `<div class="hint" style="color:var(--muted)">🔇 muted</div>` : '',
       it.snoozeUntil ? `<div class="hint" style="color:var(--muted)">💤 snoozed until ${esc(fmtWhen(it.snoozeUntil))}</div>` : '',
     ].join('');
-    const when = open ? `opened ${esc(fmtWhen(it.openedRun))}` : `recovered ${esc(fmtWhen(it.resolvedRun))}`;
+    const when = open ? `opened ${esc(fmtWhen(it.openedRun))}`
+      : it.dismissed ? `dismissed ${esc(fmtWhen(it.resolvedRun || it.lastRun))}`
+      : `recovered ${esc(fmtWhen(it.resolvedRun))}`;
     const sub = `${esc(incidentDuration(it))} · ${esc(String(it.occurrences || 1))} run(s)`;
     const dka = esc(it.datasetKey), ka = esc(it.key);
     const actions = open ? `
@@ -1773,7 +1778,8 @@ function renderIncidents(r) {
           <option value="">Snooze…</option><option value="1">1h</option><option value="4">4h</option><option value="24">1 day</option>
         </select>
         ${it.snoozeUntil ? `<button class="btn-sm" data-act="unsnooze" data-dk="${dka}" data-key="${ka}">Wake</button>` : ''}
-        <button class="btn-sm" data-act="${it.muted ? 'unmute' : 'mute'}" data-dk="${dka}" data-key="${ka}">${it.muted ? 'Unmute' : 'Mute'}</button>` : '';
+        <button class="btn-sm" data-act="${it.muted ? 'unmute' : 'mute'}" data-dk="${dka}" data-key="${ka}">${it.muted ? 'Unmute' : 'Mute'}</button>
+        <button class="btn-sm btn-danger" data-act="dismiss" data-dk="${dka}" data-key="${ka}">Not an incident</button>` : '';
     return `<tr>
         <td>${statusChip}${state}</td>
         <td>${incSevChip(it.severity)}</td>
@@ -1783,6 +1789,7 @@ function renderIncidents(r) {
         <td><div class="actions" style="gap:6px;flex-wrap:wrap;">
           <button class="btn-sm" data-prefix="${esc(it.resultPrefix)}" data-name="${esc(it.dataset)}">View run</button>
           <button class="btn-sm" data-explain="1" data-dk="${dka}" data-key="${ka}" data-name="${esc(it.dataset)}">${it.explainedAt ? 'AI explanation ✓' : 'Explain (AI)'}</button>${actions}
+          ${it.dismissed ? `<button class="btn-sm" data-act="restore" data-dk="${dka}" data-key="${ka}">Restore alerting</button>` : ''}
         </div></td>
       </tr>`;
   }).join('');
@@ -1798,6 +1805,14 @@ function renderIncidents(r) {
       const val = prompt('Assign owner (email or name; leave blank to clear):', owner || '');
       if (val === null) return;                       // cancelled
       incidentAction(dk, key, 'assign', { owner: val.trim() });
+    } else if (act === 'dismiss') {
+      const reason = prompt('Mark as intentional — reason (e.g. "offloaded old records"):', '');
+      if (reason === null) return;                    // cancelled
+      if (!confirm('Dismiss this as intentional?\n\nIt leaves the open list, this rule stays quiet on this dataset until you Restore it, and an audit email is sent.')) return;
+      incidentAction(dk, key, 'dismiss', { reason: reason.trim() });
+    } else if (act === 'restore') {
+      if (!confirm('Restore alerting for this rule on this dataset? A future breach will raise a new incident.')) return;
+      incidentAction(dk, key, 'restore', {});
     } else {
       incidentAction(dk, key, act, {});
     }
