@@ -1809,6 +1809,7 @@ function renderIncidents(r) {
         </select>
         ${it.snoozeUntil ? `<button class="btn-sm" data-act="unsnooze" data-dk="${dka}" data-key="${ka}">Wake</button>` : ''}
         <button class="btn-sm" data-act="${it.muted ? 'unmute' : 'mute'}" data-dk="${dka}" data-key="${ka}">${it.muted ? 'Unmute' : 'Mute'}</button>
+        ${String(it.rule || '').startsWith('BASELINE_') ? `<button class="btn-sm" data-act="accept_new_normal" data-dk="${dka}" data-key="${ka}">Accept as new normal</button>` : ''}
         <button class="btn-sm btn-danger" data-act="dismiss" data-dk="${dka}" data-key="${ka}">Not an incident</button>` : '';
     return `<tr>
         <td>${statusChip}${state}</td>
@@ -1843,6 +1844,9 @@ function renderIncidents(r) {
     } else if (act === 'restore') {
       if (!confirm('Reopen this incident (set it back to Open)?')) return;
       incidentAction(dk, key, 'restore', {});
+    } else if (act === 'accept_new_normal') {
+      if (!confirm('Accept the current values as this dataset\'s new normal?\n\nIts baseline resets and re-learns from now — deviation alerts pause for a few runs, then resume against the new level. This closes the incident. (Gate / schema / volume-vs-previous checks are unaffected.)')) return;
+      incidentAction(dk, key, 'accept_new_normal', {});
     } else {
       incidentAction(dk, key, act, {});
     }
