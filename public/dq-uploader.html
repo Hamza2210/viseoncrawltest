@@ -1819,7 +1819,7 @@ function renderIncidents(r) {
         <td><div class="actions" style="gap:6px;flex-wrap:wrap;">
           <button class="btn-sm" data-prefix="${esc(it.resultPrefix)}" data-name="${esc(it.dataset)}">View run</button>
           <button class="btn-sm" data-explain="1" data-dk="${dka}" data-key="${ka}" data-name="${esc(it.dataset)}">${it.explainedAt ? 'AI explanation ✓' : 'Explain (AI)'}</button>${actions}
-          ${it.dismissed ? `<button class="btn-sm" data-act="restore" data-dk="${dka}" data-key="${ka}">Restore alerting</button>` : ''}
+          ${it.dismissed ? `<button class="btn-sm" data-act="restore" data-dk="${dka}" data-key="${ka}">Reopen</button>` : ''}
         </div></td>
       </tr>`;
   }).join('');
@@ -1836,12 +1836,12 @@ function renderIncidents(r) {
       if (val === null) return;                       // cancelled
       incidentAction(dk, key, 'assign', { owner: val.trim() });
     } else if (act === 'dismiss') {
-      const reason = prompt('Mark as intentional — reason (e.g. "offloaded old records"):', '');
+      const reason = prompt('Mark this occurrence as intentional — reason (e.g. "offloaded old records"):', '');
       if (reason === null) return;                    // cancelled
-      if (!confirm('Dismiss this as intentional?\n\nIt leaves the open list, this rule stays quiet on this dataset until you Restore it, and an audit email is sent.')) return;
+      if (!confirm('Dismiss this occurrence as intentional?\n\nIt leaves the open list. If the same issue happens again it will reappear as a new incident. An audit email is sent.')) return;
       incidentAction(dk, key, 'dismiss', { reason: reason.trim() });
     } else if (act === 'restore') {
-      if (!confirm('Restore alerting for this rule on this dataset? A future breach will raise a new incident.')) return;
+      if (!confirm('Reopen this incident (set it back to Open)?')) return;
       incidentAction(dk, key, 'restore', {});
     } else {
       incidentAction(dk, key, act, {});
