@@ -252,6 +252,17 @@
   .dim-desc { margin-top: 10px; padding: 10px 12px; border-left: 3px solid var(--accent);
     background: var(--idle-bg); border-radius: 6px; font-size: 12px; line-height: 1.5; }
   .dim-desc strong { display: block; margin-bottom: 2px; }
+  /* AI ruleset reviewer */
+  .rules-review { border-left: 3px solid var(--accent); padding: 6px 0 6px 14px; }
+  .rules-list { display: flex; flex-direction: column; }
+  .rule-sug { display: grid; grid-template-columns: 30px 1fr; gap: 8px; align-items: start;
+    padding: 10px 8px; border-top: 1px solid var(--border); cursor: pointer; border-radius: 6px; }
+  .rule-sug:first-child { border-top: 0; }
+  .rule-sug:hover { background: var(--bg); }
+  .rule-acc-cell { padding-top: 2px; }
+  .rule-acc { width: 16px; height: 16px; cursor: pointer; }
+  .rule-sug-body { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+  .rule-sug-head .tag { margin-right: 6px; vertical-align: middle; }
   /* Full-app history: app-wide average box shown when a run is expanded */
   .apprun-agg { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px;
     margin: 2px 0 12px; background: var(--idle-bg); }
@@ -1138,11 +1149,15 @@ function renderAssessment(r, bodyEl, opts) {
   } else {
     html += `<p class="hint">Assessment finished (${r.state}) but no summary was found.</p>`;
   }
-  // On-demand AI: explain the score + how to improve it (aggregate facts only).
+  // On-demand AI: explain the score, and review the ruleset (aggregate/masked facts only).
   if (crit.length && score != null && r.resultPrefix) {
     html += `<div style="margin-top:14px;">` +
+      `<div class="actions">` +
       `<button class="btn-sm" data-explainscore="1">✨ Explain score &amp; how to improve (AI)</button>` +
-      `<div class="score-ai-out" style="margin-top:10px;"></div></div>`;
+      `<button class="btn-sm" data-reviewrules="1">🔧 Review rules (AI)</button>` +
+      `</div>` +
+      `<div class="score-ai-out" style="margin-top:10px;"></div>` +
+      `<div class="rules-ai-out" style="margin-top:10px;"></div></div>`;
   }
   html += filesHtml(r.files);
   body.innerHTML = html;
@@ -1150,6 +1165,9 @@ function renderAssessment(r, bodyEl, opts) {
   if (esb) esb.addEventListener('click', () =>
     explainScore(r.resultPrefix, (sum.dataset || 'this dataset'),
                  body.querySelector('.score-ai-out'), false));
+  const rrb = body.querySelector('[data-reviewrules]');
+  if (rrb) rrb.addEventListener('click', () =>
+    reviewRuleset(r.resultPrefix, body.querySelector('.rules-ai-out'), false));
 }
 
 // --------------------------------------------------------------------------- //
@@ -2277,6 +2295,111 @@ async function explainScore(prefix, name, outEl, regenerate) {
     outEl.innerHTML = `<p class="dash-muted" style="color:var(--err)">${esc(e.message)}</p>`;
   }
 }
+
+// ---- AI ruleset reviewer -------------------------------------------------
+const RULE_KIND_LABEL = {
+  mandatory: 'Mandatory', type: 'Type', format: 'Format', regex: 'Pattern', range: 'Range',
+  date_range: 'Date range', length: 'Length', unique: 'Unique', primary_key: 'Key',
+  severity: 'Severity', weight: 'Weight', scale: 'Precision', allowed_values: 'Allowed values',
+  accuracy_lookup: 'Accuracy lookup', consistency: 'Consistency',
+};
+function mergeAugments(frags) {
+  const out = {};
+  for (const f of (frags || [])) {
+    if (!f) continue;
+    if (f.columns) {
+      out.columns = out.columns || {};
+      for (const [c, d] of Object.entries(f.columns)) out.columns[c] = Object.assign(out.columns[c] || {}, d);
+    }
+    if (f.keys) out.keys = Object.assign(out.keys || {}, f.keys);
+    if (f.accuracy && f.accuracy.lookups) {
+      out.accuracy = out.accuracy || {};
+      out.accuracy.lookups = Object.assign(out.accuracy.lookups || {}, f.accuracy.lookups);
+    }
+  }
+  return out;
+}
+async function reviewRuleset(prefix, outEl, regenerate) {
+  if (!outEl) return;
+  outEl.innerHTML = `<p><span class="spin"></span> Reviewing the inferred ruleset…</p>`;
+  try {
+    const r = await postJSON(`${API_BASE}/data-quality/review-ruleset`, HEADERS,
+      { result_prefix: prefix, regenerate: !!regenerate, actor: EMAIL || undefined });
+    renderRuleReview(r, outEl, prefix);
+  } catch (e) {
+    outEl.innerHTML = `<p class="dash-muted" style="color:var(--err)">${esc(e.message)}</p>`;
+  }
+}
+function renderRuleReview(r, outEl, prefix) {
+  const sug = r.suggestions || [];
+  const who = (r.generatedBy && r.generatedBy !== 'unknown') ? ` by ${esc(r.generatedBy)}` : '';
+  const whenTxt = r.generatedAt ? ` on ${esc(fmtWhen(r.generatedAt))}` : '';
+  const tag = r.cached ? ' · <span class="hint">saved earlier — no new call</span>' : '';
+  const foot = `<p class="hint" style="margin-top:10px;">Generated${who}${whenTxt} · Claude Haiku 4.5 (Bedrock)${tag} · ` +
+    `<a href="#" class="rules-regen">Regenerate</a></p>`;
+  if (!sug.length) {
+    outEl.innerHTML = `<div class="rules-review"><p class="hint">No rule improvements suggested — the inferred ruleset looks reasonable for this data.</p>${foot}</div>`;
+    outEl.querySelector('.rules-regen').addEventListener('click', e => { e.preventDefault(); reviewRuleset(prefix, outEl, true); });
+    return;
+  }
+  const rows = sug.map((s, i) => {
+    const cols = (s.columns || []).map(esc).join(', ');
+    const acc = s.applyable
+      ? `<input type="checkbox" class="rule-acc" data-i="${i}">`
+      : `<span class="tag" data-tip="Advisory — pin this in your ruleset manually">advisory</span>`;
+    return `<label class="rule-sug">
+        <span class="rule-acc-cell">${acc}</span>
+        <span class="rule-sug-body">
+          <span class="rule-sug-head"><span class="tag">${esc(RULE_KIND_LABEL[s.kind] || s.kind || 'Rule')}</span> <strong>${esc(s.title || '')}</strong>${cols ? ` <span class="hint">· ${cols}</span>` : ''}</span>
+          <span class="hint">${esc(s.rationale || '')}</span>
+        </span>
+      </label>`;
+  }).join('');
+  const rerun = r.rerun || {};
+  const canApply = sug.some(s => s.applyable) && (rerun.path === 'app' ? !!rerun.table : !!rerun.inputUri);
+  const applyBar = canApply
+    ? `<div class="actions" style="margin-top:12px;align-items:center;">
+         <button class="rule-apply" disabled>Apply selected &amp; re-run</button>
+         <span class="hint" id="ruleApplyNote">Tick the suggestions to apply, then re-run.</span>
+       </div>`
+    : (sug.some(s => s.applyable)
+        ? `<p class="hint" style="margin-top:10px;">These can't be auto-applied to this run, but you can pin them in your ruleset.</p>` : '');
+  outEl.innerHTML = `<div class="rules-review"><div class="rules-list">${rows}</div>${applyBar}${foot}</div>`;
+  const applyBtn = outEl.querySelector('.rule-apply');
+  const note = outEl.querySelector('#ruleApplyNote');
+  const update = () => {
+    const n = outEl.querySelectorAll('.rule-acc:checked').length;
+    if (applyBtn) { applyBtn.disabled = !n; applyBtn.textContent = n ? `Apply ${n} selected & re-run` : 'Apply selected & re-run'; }
+    if (note) note.textContent = n ? `${n} selected.` : 'Tick the suggestions to apply, then re-run.';
+  };
+  outEl.querySelectorAll('.rule-acc').forEach(cb => cb.addEventListener('change', update));
+  if (applyBtn) applyBtn.addEventListener('click', () => {
+    const chosen = [...outEl.querySelectorAll('.rule-acc:checked')].map(cb => sug[+cb.dataset.i]).filter(Boolean);
+    applyRulesAndRerun(rerun, mergeAugments(chosen.map(s => s.augment)));
+  });
+  outEl.querySelector('.rules-regen').addEventListener('click', e => { e.preventDefault(); reviewRuleset(prefix, outEl, true); });
+  update();
+}
+async function applyRulesAndRerun(rerun, augment) {
+  if (!rerun || !augment || !Object.keys(augment).length) return;
+  if (rerun.path === 'app') {
+    if (!rerun.table) { alert('Cannot re-run: the source table is unknown.'); return; }
+    switchTab('appdata');
+    if (!APP_ID) { appBanner('err', 'Re-run needs the app context — open from inside the Qlik app.'); return; }
+    if (!BEARER) { appBanner('err', 'No Qlik API key configured — set it in the extension settings.'); return; }
+    try { await launchAppAssessment([rerun.table], augment); }
+    catch (e) { appBanner('err', e.message); }
+  } else {
+    if (!rerun.inputUri) { alert('This run can\'t be re-assessed automatically (original file not resolvable). Pin the suggestions in your ruleset instead.'); return; }
+    switchTab('upload');
+    try {
+      const res = await postJSON(`${API_BASE}/data-quality`, HEADERS,
+        { input_uri: rerun.inputUri, ruleset_augment: augment });
+      if (res.resultPrefix) pollResults(res.resultPrefix);
+      else banner('err', 'Re-run did not start.');
+    } catch (e) { banner('err', e.message); }
+  }
+}
 async function openIncidentRun(prefix, name) {
   const box = $('#incDetail');
   box.style.display = 'block';
@@ -2461,8 +2584,9 @@ function selectedTables() {
 }
 function updateAssessBtn() { $('#assessTablesBtn').disabled = selectedTables().length === 0; }
 
-// Core launcher shared by both flows (assess selected / assess entire app).
-async function launchAppAssessment(tables) {
+// Core launcher shared by all flows (assess selected / entire app / re-run /
+// apply-AI-rules). `augment` is an optional ruleset augment applied to each table.
+async function launchAppAssessment(tables, augment) {
   const bearer = BEARER;
   if (!bearer) { appBanner('err', 'No Qlik API key configured — set it in the extension settings.'); return; }
   if (!tables.length) return;
@@ -2472,6 +2596,7 @@ async function launchAppAssessment(tables) {
                  all_tables: appTables.length > 0 && tables.length === appTables.length };
   if (EMAIL) body.notify_email = EMAIL;
   if (Number.isFinite(sample) && sample > 0) body.sample_rows = sample;
+  if (augment && Object.keys(augment).length) body.ruleset_augment = augment;
   const hdr = { ...HEADERS, 'X-Qlik-Bearer': bearer };
   const res = await postJSON(`${API_BASE}/data-quality/app-assessment`, hdr, body);
   appBanner('ok', 'Extracting & assessing — waiting for results…');
