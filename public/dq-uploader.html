@@ -969,8 +969,18 @@ function renderAssessment(r, bodyEl, opts) {
   } else {
     html += `<p class="hint">Assessment finished (${r.state}) but no summary was found.</p>`;
   }
+  // On-demand AI: explain the score + how to improve it (aggregate facts only).
+  if (crit.length && score != null && r.resultPrefix) {
+    html += `<div style="margin-top:14px;">` +
+      `<button class="btn-sm" data-explainscore="1">✨ Explain score &amp; how to improve (AI)</button>` +
+      `<div class="score-ai-out" style="margin-top:10px;"></div></div>`;
+  }
   html += filesHtml(r.files);
   body.innerHTML = html;
+  const esb = body.querySelector('[data-explainscore]');
+  if (esb) esb.addEventListener('click', () =>
+    explainScore(r.resultPrefix, (sum.dataset || 'this dataset'),
+                 body.querySelector('.score-ai-out'), false));
 }
 
 // --------------------------------------------------------------------------- //
@@ -1891,6 +1901,29 @@ async function explainIncident(dk, key, name, regenerate) {
     $('#incRegen').addEventListener('click', e => { e.preventDefault(); explainIncident(dk, key, name, true); });
   } catch (e) {
     $('#incExplainBody').innerHTML = `<p class="dash-muted" style="color:var(--err)">${esc(e.message)}</p>`;
+  }
+}
+async function explainScore(prefix, name, outEl, regenerate) {
+  if (!outEl) return;
+  outEl.innerHTML = `<p><span class="spin"></span> Analysing the score…</p>`;
+  try {
+    const r = await postJSON(`${API_BASE}/data-quality/explain-assessment`, HEADERS,
+      { result_prefix: prefix, regenerate: !!regenerate, actor: EMAIL || undefined });
+    // model returns 'Summary:' / 'Main score drivers:' / 'How to improve:' headings — bold them
+    const body = esc(r.explanation)
+      .replace(/^(Summary:|Main score drivers:|How to improve:)/gm, '<strong>$1</strong>')
+      .replace(/\n/g, '<br>');
+    const who = (r.generatedBy && r.generatedBy !== 'unknown') ? ` by ${esc(r.generatedBy)}` : '';
+    const whenTxt = r.generatedAt ? ` on ${esc(fmtWhen(r.generatedAt))}` : '';
+    const tag = r.cached ? ' · <span class="hint">saved earlier — no new call</span>' : '';
+    outEl.innerHTML =
+      `<div style="line-height:1.55;padding:12px 14px;border-left:4px solid var(--accent);border-radius:4px;">${body}</div>` +
+      `<p class="hint" style="margin-top:10px;">Generated${who}${whenTxt} · Claude Haiku 4.5 (Bedrock)${tag} · ` +
+      `<a href="#" class="score-regen">Regenerate</a></p>`;
+    const rg = outEl.querySelector('.score-regen');
+    if (rg) rg.addEventListener('click', e => { e.preventDefault(); explainScore(prefix, name, outEl, true); });
+  } catch (e) {
+    outEl.innerHTML = `<p class="dash-muted" style="color:var(--err)">${esc(e.message)}</p>`;
   }
 }
 async function openIncidentRun(prefix, name) {
