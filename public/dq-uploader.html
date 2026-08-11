@@ -261,8 +261,11 @@
   .rule-sug:hover { background: var(--bg); }
   .rule-acc-cell { padding-top: 2px; }
   .rule-acc { width: 16px; height: 16px; cursor: pointer; }
-  .rule-sug-body { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-  .rule-sug-head .tag { margin-right: 6px; vertical-align: middle; }
+  .rule-sug.rule-adv { cursor: default; }
+  .rule-sug-body { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+  .rule-sug-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 7px; }
+  .rule-sug-head strong { font-weight: 600; }
+  .tag-adv { background: var(--idle-bg); color: var(--muted); }
   /* Full-app history: app-wide average box shown when a run is expanded */
   .apprun-agg { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px;
     margin: 2px 0 12px; background: var(--idle-bg); }
@@ -2352,13 +2355,13 @@ function renderRuleReview(r, outEl, prefix) {
   }
   const rows = sug.map((s, i) => {
     const cols = (s.columns || []).map(esc).join(', ');
-    const acc = s.applyable
-      ? `<input type="checkbox" class="rule-acc" data-i="${i}">`
-      : `<span class="tag" data-tip="Advisory — pin this in your ruleset manually">advisory</span>`;
-    return `<label class="rule-sug">
+    const acc = s.applyable ? `<input type="checkbox" class="rule-acc" data-i="${i}">` : '';
+    const advChip = s.applyable ? ''
+      : `<span class="tag tag-adv" data-tip="Advisory — pin this in your ruleset manually">advisory</span>`;
+    return `<label class="rule-sug${s.applyable ? '' : ' rule-adv'}">
         <span class="rule-acc-cell">${acc}</span>
         <span class="rule-sug-body">
-          <span class="rule-sug-head"><span class="tag">${esc(RULE_KIND_LABEL[s.kind] || s.kind || 'Rule')}</span> <strong>${esc(s.title || '')}</strong>${cols ? ` <span class="hint">· ${cols}</span>` : ''}</span>
+          <span class="rule-sug-head"><span class="tag">${esc(RULE_KIND_LABEL[s.kind] || s.kind || 'Rule')}</span>${advChip}<strong>${esc(s.title || '')}</strong>${cols ? `<span class="hint">· ${cols}</span>` : ''}</span>
           <span class="hint">${esc(s.rationale || '')}</span>
         </span>
       </label>`;
