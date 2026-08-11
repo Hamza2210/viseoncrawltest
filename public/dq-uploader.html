@@ -568,7 +568,7 @@
   <div id="historyPanel">
     <div class="tab-intro">
       <h2>History</h2>
-      <p>Every assessment you've run — full-app health checks and individual dataset runs. Open any run to see its full report.</p>
+      <p>Every assessment you've run, full-app health checks and individual dataset runs. Open any run to see its full report.</p>
     </div>
     <div class="subtabs" id="historySubtabs">
       <button class="subtab active" data-hsub="app">Full app assessments</button>
@@ -602,7 +602,7 @@
   <div id="incidentsPanel" style="display:none;">
     <div class="tab-intro">
       <h2>Incidents</h2>
-      <p>Recurring quality alerts, grouped into tracked issues — opened when a dataset first breaches its expected range, recovered when it returns to normal.</p>
+      <p>Recurring quality alerts, grouped into tracked issues, opened when a dataset first breaches its expected range, recovered when it returns to normal.</p>
     </div>
     <div class="card">
       <h2>Open &amp; recent <button class="linkbtn" id="incRefresh">Refresh</button></h2>
@@ -616,7 +616,7 @@
   <div id="lineagePanel" style="display:none;">
     <div class="tab-intro">
       <h2>Data lineage</h2>
-      <p>Where this app's data comes from (upstream sources) and what depends on it (downstream) — traced from Qlik. Cached for 24h; use Refresh to re-pull.</p>
+      <p>Where this app's data comes from (upstream sources) and what depends on it (downstream), traced from Qlik. Cached for 24h; use Refresh to re-pull.</p>
     </div>
     <div class="card">
       <h2>Sources &amp; consumers <button class="linkbtn" id="lineageRefresh">Refresh</button></h2>
@@ -629,7 +629,7 @@
   <div id="dashboardPanel" style="display:none;">
     <div class="tab-intro">
       <h2>Dashboard</h2>
-      <p>Monitor this app's data quality over time — overall scores, per-dimension health and trends across every assessed table.</p>
+      <p>Monitor this app's data quality over time - overall scores, per-dimension health and trends across every assessed table.</p>
     </div>
     <div class="card">
       <h2>Overview <button class="linkbtn" id="dashRefresh">Refresh</button></h2>
@@ -668,7 +668,7 @@
     <div class="banner" id="modelBanner"></div>
     <div class="tab-intro">
       <h2>Data model</h2>
-      <p>The app's tables, fields and how they associate — the same model Qlik loads. Drag tables to explore; click a field to trace where it's shared.</p>
+      <p>The app's tables, fields and how they associate. The same model Qlik loads. Drag tables to explore; click a field to trace where it's shared.</p>
     </div>
     <div class="card">
       <div class="model-toolbar">
@@ -707,7 +707,7 @@
     <div class="banner" id="schBanner"></div>
     <div class="tab-intro">
       <h2>Schedules</h2>
-      <p>Automate this app's quality checks — run an assessment on a recurring schedule so scores, trends and incidents stay up to date without manual runs.</p>
+      <p>Automate this app's quality checks, run an assessment on a recurring schedule so scores, trends and incidents stay up to date without manual runs.</p>
     </div>
 
     <div class="sched-top">
@@ -2332,14 +2332,22 @@ async function reviewRuleset(prefix, outEl, regenerate) {
 }
 function renderRuleReview(r, outEl, prefix) {
   const sug = r.suggestions || [];
+  const rerun0 = r.rerun || {};
+  const canRerun = (rerun0.path === 'app' ? !!rerun0.table : !!rerun0.inputUri);
   const who = (r.generatedBy && r.generatedBy !== 'unknown') ? ` by ${esc(r.generatedBy)}` : '';
   const whenTxt = r.generatedAt ? ` on ${esc(fmtWhen(r.generatedAt))}` : '';
   const tag = r.cached ? ' · <span class="hint">saved earlier — no new call</span>' : '';
+  const reReview = canRerun ? ` · <a href="#" class="rules-rereview">Re-run AI ruleset (data changed)</a>` : '';
   const foot = `<p class="hint" style="margin-top:10px;">Generated${who}${whenTxt} · Claude Haiku 4.5 (Bedrock)${tag} · ` +
-    `<a href="#" class="rules-regen">Regenerate</a></p>`;
+    `<a href="#" class="rules-regen">Regenerate</a>${reReview}</p>`;
+  const wireFoot = () => {
+    outEl.querySelector('.rules-regen').addEventListener('click', e => { e.preventDefault(); reviewRuleset(prefix, outEl, true); });
+    const rr = outEl.querySelector('.rules-rereview');
+    if (rr) rr.addEventListener('click', e => { e.preventDefault(); rerunWithReview(rerun0); });
+  };
   if (!sug.length) {
     outEl.innerHTML = `<div class="rules-review"><p class="hint">No rule improvements suggested — the inferred ruleset looks reasonable for this data.</p>${foot}</div>`;
-    outEl.querySelector('.rules-regen').addEventListener('click', e => { e.preventDefault(); reviewRuleset(prefix, outEl, true); });
+    wireFoot();
     return;
   }
   const rows = sug.map((s, i) => {
@@ -2355,13 +2363,14 @@ function renderRuleReview(r, outEl, prefix) {
         </span>
       </label>`;
   }).join('');
-  const rerun = r.rerun || {};
-  const canApply = sug.some(s => s.applyable) && (rerun.path === 'app' ? !!rerun.table : !!rerun.inputUri);
+  const rerun = rerun0;
+  const canApply = sug.some(s => s.applyable) && canRerun;
   const applyBar = canApply
     ? `<div class="actions" style="margin-top:12px;align-items:center;">
          <button class="rule-apply" disabled>Apply selected &amp; re-run</button>
          <span class="hint" id="ruleApplyNote">Tick the suggestions to apply, then re-run.</span>
-       </div>`
+       </div>
+       <p class="hint" style="margin:8px 0 0;">Applied rules become this dataset's <strong>pinned ruleset</strong> — future runs reuse it automatically (no new AI call).</p>`
     : (sug.some(s => s.applyable)
         ? `<p class="hint" style="margin-top:10px;">These can't be auto-applied to this run, but you can pin them in your ruleset.</p>` : '');
   outEl.innerHTML = `<div class="rules-review"><div class="rules-list">${rows}</div>${applyBar}${foot}</div>`;
@@ -2377,8 +2386,29 @@ function renderRuleReview(r, outEl, prefix) {
     const chosen = [...outEl.querySelectorAll('.rule-acc:checked')].map(cb => sug[+cb.dataset.i]).filter(Boolean);
     applyRulesAndRerun(rerun, mergeAugments(chosen.map(s => s.augment)));
   });
-  outEl.querySelector('.rules-regen').addEventListener('click', e => { e.preventDefault(); reviewRuleset(prefix, outEl, true); });
+  wireFoot();
   update();
+}
+// Force a fresh AI ruleset review + re-pin for a dataset (its shape changed).
+async function rerunWithReview(rerun) {
+  if (!rerun) return;
+  if (rerun.path === 'app') {
+    if (!rerun.table) { alert('Cannot re-run: the source table is unknown.'); return; }
+    switchTab('appdata');
+    if (!APP_ID) { appBanner('err', 'Re-run needs the app context — open from inside the Qlik app.'); return; }
+    if (!BEARER) { appBanner('err', 'No Qlik API key configured — set it in the extension settings.'); return; }
+    try { await launchAppAssessment([rerun.table], null, { reviewRuleset: true }); }
+    catch (e) { appBanner('err', e.message); }
+  } else {
+    if (!rerun.inputUri) { alert('This run can\'t be re-assessed automatically.'); return; }
+    switchTab('upload');
+    try {
+      const res = await postJSON(`${API_BASE}/data-quality`, HEADERS,
+        { input_uri: rerun.inputUri, review_ruleset: true });
+      if (res.resultPrefix) pollResults(res.resultPrefix);
+      else banner('err', 'Re-run did not start.');
+    } catch (e) { banner('err', e.message); }
+  }
 }
 async function applyRulesAndRerun(rerun, augment) {
   if (!rerun || !augment || !Object.keys(augment).length) return;
@@ -2586,7 +2616,7 @@ function updateAssessBtn() { $('#assessTablesBtn').disabled = selectedTables().l
 
 // Core launcher shared by all flows (assess selected / entire app / re-run /
 // apply-AI-rules). `augment` is an optional ruleset augment applied to each table.
-async function launchAppAssessment(tables, augment) {
+async function launchAppAssessment(tables, augment, opts) {
   const bearer = BEARER;
   if (!bearer) { appBanner('err', 'No Qlik API key configured — set it in the extension settings.'); return; }
   if (!tables.length) return;
@@ -2597,6 +2627,7 @@ async function launchAppAssessment(tables, augment) {
   if (EMAIL) body.notify_email = EMAIL;
   if (Number.isFinite(sample) && sample > 0) body.sample_rows = sample;
   if (augment && Object.keys(augment).length) body.ruleset_augment = augment;
+  if (opts && opts.reviewRuleset) body.review_ruleset = true;
   const hdr = { ...HEADERS, 'X-Qlik-Bearer': bearer };
   const res = await postJSON(`${API_BASE}/data-quality/app-assessment`, hdr, body);
   appBanner('ok', 'Extracting & assessing — waiting for results…');
