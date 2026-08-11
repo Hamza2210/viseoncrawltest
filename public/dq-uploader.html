@@ -3,11 +3,13 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Data Quality Uploader</title>
+<title>Data Quality Profiling</title>
 <style>
   :root {
     --bg: #f6f7f9; --card: #ffffff; --border: #e3e6ea; --text: #1c2024;
-    --muted: #6b7280; --accent: #2563eb; --accent-fg: #fff;
+    --muted: #6b7280; --accent: #2563eb; --accent2: #7c3aed; --accent-fg: #fff;
+    --grad: linear-gradient(135deg, var(--accent), var(--accent2));
+    --accent-soft: color-mix(in srgb, var(--accent2) 10%, var(--card));
     --ok: #15803d; --ok-bg: #dcfce7; --run: #b45309; --run-bg: #fef3c7;
     --err: #b91c1c; --err-bg: #fee2e2; --idle: #6b7280; --idle-bg: #eef0f2;
     --code-bg: #0f172a; --code-fg: #e2e8f0;
@@ -18,7 +20,8 @@
   @media (prefers-color-scheme: dark) {
     :root {
       --bg: #0f1115; --card: #171a1f; --border: #2a2f37; --text: #e6e8eb;
-      --muted: #9aa3ad; --accent: #3b82f6; --accent-fg: #fff;
+      --muted: #9aa3ad; --accent: #3b82f6; --accent2: #a78bfa; --accent-fg: #fff;
+      --accent-soft: color-mix(in srgb, var(--accent2) 16%, var(--card));
       --ok: #4ade80; --ok-bg: #052e16; --run: #fbbf24; --run-bg: #422006;
       --err: #f87171; --err-bg: #450a0a; --idle: #9aa3ad; --idle-bg: #23272e;
       --code-bg: #0b0f16; --code-fg: #cbd5e1;
@@ -34,11 +37,13 @@
     padding: 24px 16px;
   }
   .wrap { max-width: 720px; margin: 0 auto; }
-  h1 { font-size: 20px; margin: 0 0 2px; }
-  .sub { color: var(--muted); margin: 0 0 16px; font-size: 13px; }
+  h1 { font-size: 23px; margin: 0 0 2px; font-weight: 800; letter-spacing: -.02em; width: fit-content;
+    background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .tagline { color: var(--muted); font-size: 13px; margin: 0 0 3px; }
+  .sub { color: var(--muted); margin: 0 0 16px; font-size: 12px; }
   .card {
-    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
-    padding: 20px; margin-bottom: 16px;
+    background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+    padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 2px rgba(16,24,40,.04);
   }
   .card h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .04em;
     color: var(--muted); margin: 0 0 14px; display: flex; align-items: center; }
@@ -61,18 +66,23 @@
     border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; font-weight: 700; cursor: pointer; }
   .rule-row .rmv:hover { color: var(--err); border-color: var(--err); }
   button {
-    background: var(--accent); color: var(--accent-fg); border: 0; border-radius: 8px;
+    background: var(--grad); color: #fff; border: 0; border-radius: 10px;
     padding: 11px 18px; font: inherit; font-weight: 600; cursor: pointer;
+    box-shadow: 0 1px 2px rgba(16,24,40,.12);
   }
-  button:disabled { opacity: .5; cursor: not-allowed; }
+  .tab, .subtab, .linkbtn, .dchip, .apptab, .x-close, .banner-x, .mzoom, .sched-caret { box-shadow: none; }
+  button:disabled { opacity: .5; cursor: not-allowed; box-shadow: none; }
   .btn-secondary { background: var(--bg); color: var(--text); border: 1px solid var(--border); }
   .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
   .linkbtn { background: none; border: 0; color: var(--accent); font: inherit; font-size: 12px;
     font-weight: 600; cursor: pointer; padding: 0; margin-left: auto; }
   .tabs { display: flex; gap: 4px; margin-bottom: 18px; border-bottom: 1px solid var(--border); }
   .tab { background: none; color: var(--muted); border: 0; border-bottom: 2px solid transparent;
-    border-radius: 0; padding: 10px 14px; font-weight: 600; cursor: pointer; }
-  .tab.active { color: var(--text); border-bottom-color: var(--accent); }
+    border-radius: 0; padding: 10px 14px; font-weight: 600; cursor: pointer; position: relative; }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--text); }
+  .tab.active::after { content: ''; position: absolute; left: 8px; right: 8px; bottom: -1px; height: 2.5px;
+    border-radius: 3px; background: var(--grad); }
   .tab-badge { min-width: 16px; padding: 0 5px; height: 16px; line-height: 16px; border-radius: 8px;
     background: var(--err); color: #fff; font-size: 10px; font-weight: 700; text-align: center;
     display: inline-block; vertical-align: middle; }
@@ -92,6 +102,12 @@
   .banner.ok { background: var(--ok-bg); color: var(--ok); display: block; }
   .banner.info { background: color-mix(in srgb, var(--accent) 14%, var(--card)); color: var(--accent); display: block; }
   .banner.warn { background: var(--run-bg); color: var(--run); display: block; }
+  /* dismissable layout: message on the left, an × close button on the right */
+  .banner.ok, .banner.err, .banner.info, .banner.warn { display: flex; align-items: center; gap: 12px; }
+  .banner .banner-msg { flex: 1 1 auto; }
+  .banner .banner-x { flex: 0 0 auto; background: none; border: 0; color: inherit; cursor: pointer;
+    font-size: 20px; line-height: 1; padding: 0 2px; opacity: .6; }
+  .banner .banner-x:hover { opacity: 1; }
   table { width: 100%; border-collapse: collapse; font-size: 13px; }
   td { padding: 8px 10px; border-top: 1px solid var(--border); vertical-align: top; }
   td.k { color: var(--muted); white-space: nowrap; font-weight: 600; }
@@ -124,8 +140,8 @@
     background: var(--bg); color: var(--text); font-size: 13px; transition: border-color .15s, color .15s; }
   .file:hover { border-color: var(--accent); color: var(--accent); }
   .file .sz { color: var(--muted); font-size: 11px; }
-  .histrow { display: grid; grid-template-columns: 1fr auto auto auto; gap: 12px; align-items: center;
-    padding: 12px 10px; border-top: 1px solid var(--border); text-decoration: none; color: var(--text); }
+  .histrow { display: grid; grid-template-columns: 1fr auto auto auto auto; gap: 12px; align-items: center;
+    padding: 12px 10px; border-top: 1px solid var(--border); text-decoration: none; color: var(--text); cursor: pointer; }
   .histrow:first-child { border-top: 0; }
   .histrow:hover { background: var(--bg); }
   .h-name { font-weight: 600; word-break: break-all; }
@@ -400,8 +416,9 @@
     transition: transform .13s ease, box-shadow .16s ease,
       background-color .13s, border-color .13s, color .13s;
   }
-  button:not(:disabled):hover, .btn-sm:not(:disabled):hover { transform: translateY(-1px) scale(1.03);
-    box-shadow: 0 3px 12px rgba(0,0,0,.14); }
+  button:not(.tab):not(.subtab):not(.linkbtn):not(.dchip):not(.apptab):not(.x-close):not(.banner-x):not(.mzoom):not(.sched-caret):not(:disabled):hover,
+  .btn-sm:not(:disabled):hover { transform: translateY(-1px) scale(1.03);
+    box-shadow: 0 6px 18px color-mix(in srgb, var(--accent2) 26%, transparent); }
   button:not(:disabled):active, .btn-sm:not(:disabled):active { transform: translateY(0) scale(.98); box-shadow: none; }
   .linkbtn:hover { transform: scale(1.06); }
   .tab:hover { transform: translateY(-1px); }
@@ -434,15 +451,16 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>Data Quality Uploader</h1>
+  <h1>Data Quality Profiling</h1>
+  <p class="tagline">Automated DAMA quality scoring, monitoring and insight for your Qlik data.</p>
   <p class="sub" id="ctx"></p>
 
   <div class="tabs">
     <button class="tab active" data-tab="dashboard">Dashboard</button>
     <button class="tab" data-tab="incidents">Incidents <span class="tab-badge" id="incBadge" style="display:none;"></span></button>
     <button class="tab" data-tab="upload">Upload</button>
-    <button class="tab" data-tab="appdata">App data</button>
-    <button class="tab" data-tab="model">App Data Model</button>
+    <button class="tab" data-tab="appdata">Assess app</button>
+    <button class="tab" data-tab="model">Data Model</button>
     <button class="tab" data-tab="lineage">Lineage</button>
     <button class="tab" data-tab="schedules">Schedules</button>
     <button class="tab" data-tab="history">History</button>
@@ -495,6 +513,7 @@
         <div class="step" data-state="idle" id="s2"><span class="pill">idle</span> 2. Upload file to storage</div>
         <div class="step" data-state="idle" id="s3"><span class="pill">idle</span> 3. Start assessment</div>
           </div>
+          <p class="hint" style="margin:12px 0 0;">These light up once you start an upload.</p>
         </div>
         <div class="card up-check">
           <h2>What we check</h2>
@@ -521,7 +540,10 @@
     </div>
 
     <div class="card" id="resetBar">
-      <button id="resetBtn" class="btn-secondary">Start a new upload</button>
+      <div class="actions" style="align-items:center;">
+        <button id="resetBtn" class="btn-secondary">Start a new upload</button>
+        <a href="#" class="linkbtn" id="uploadViewHistory" style="margin-left:0;">View in History →</a>
+      </div>
     </div>
 
     <div class="card" id="results">
@@ -533,6 +555,10 @@
 
   <!-- ============ HISTORY ============ -->
   <div id="historyPanel">
+    <div class="tab-intro">
+      <h2>History</h2>
+      <p>Every assessment you've run — full-app health checks and individual dataset runs. Open any run to see its full report.</p>
+    </div>
     <div class="subtabs" id="historySubtabs">
       <button class="subtab active" data-hsub="app">Full app assessments</button>
       <button class="subtab" data-hsub="dataset">By dataset</button>
@@ -563,10 +589,13 @@
 
   <!-- ============ INCIDENTS ============ -->
   <div id="incidentsPanel" style="display:none;">
+    <div class="tab-intro">
+      <h2>Incidents</h2>
+      <p>Recurring quality alerts, grouped into tracked issues — opened when a dataset first breaches its expected range, recovered when it returns to normal.</p>
+    </div>
     <div class="card">
-      <h2>Incidents <button class="linkbtn" id="incRefresh">Refresh</button></h2>
+      <h2>Open &amp; recent <button class="linkbtn" id="incRefresh">Refresh</button></h2>
       <p class="dash-muted" id="incCtx"></p>
-      <p class="dash-muted" style="margin:-4px 0 12px;font-size:12px;">A recurring alert on a dataset is grouped into one incident — opened when it first breaches, recovered when it returns to normal. Open issues first, then recently recovered.</p>
       <div id="incList"><p class="dash-muted">Loading…</p></div>
     </div>
     <div id="incDetail" style="display:none;"></div>
@@ -574,18 +603,25 @@
 
   <!-- ============ LINEAGE ============ -->
   <div id="lineagePanel" style="display:none;">
+    <div class="tab-intro">
+      <h2>Data lineage</h2>
+      <p>Where this app's data comes from (upstream sources) and what depends on it (downstream) — traced from Qlik. Cached for 24h; use Refresh to re-pull.</p>
+    </div>
     <div class="card">
-      <h2>Data Lineage <button class="linkbtn" id="lineageRefresh">Refresh</button></h2>
+      <h2>Sources &amp; consumers <button class="linkbtn" id="lineageRefresh">Refresh</button></h2>
       <p class="dash-muted" id="lineageCtx"></p>
-      <p class="dash-muted" style="margin:-4px 0 12px;font-size:12px;">Where this app's data comes from (upstream sources) and what depends on it (downstream). Cached for 24h; use Refresh to re-pull from Qlik.</p>
       <div id="lineageBody"><p class="dash-muted">Loading…</p></div>
     </div>
   </div>
 
   <!-- ============ DASHBOARD ============ -->
   <div id="dashboardPanel" style="display:none;">
+    <div class="tab-intro">
+      <h2>Dashboard</h2>
+      <p>Monitor this app's data quality over time — overall scores, per-dimension health and trends across every assessed table.</p>
+    </div>
     <div class="card">
-      <h2>App Data Dashboard <button class="linkbtn" id="dashRefresh">Refresh</button></h2>
+      <h2>Overview <button class="linkbtn" id="dashRefresh">Refresh</button></h2>
       <p class="dash-muted" id="dashCtx">Loading…</p>
       <div class="dash-tiles" id="dashTiles"></div>
     </div>
@@ -619,9 +655,13 @@
   <!-- ============ APP DATA MODEL ============ -->
   <div id="modelPanel" style="display:none;">
     <div class="banner" id="modelBanner"></div>
+    <div class="tab-intro">
+      <h2>Data model</h2>
+      <p>The app's tables, fields and how they associate — the same model Qlik loads. Drag tables to explore; click a field to trace where it's shared.</p>
+    </div>
     <div class="card">
       <div class="model-toolbar">
-        <h2 style="margin:0;flex:1;">App Data Model</h2>
+        <h2 style="margin:0;flex:1;">Diagram</h2>
         <span class="dash-muted" id="modelCtx"></span>
         <button class="btn-sm" id="modelFullscreen">⛶ Full screen</button>
         <button class="btn-sm" id="modelReset">Reset layout</button>
@@ -654,6 +694,10 @@
   <!-- ============ SCHEDULES ============ -->
   <div id="schedulePanel" style="display:none;">
     <div class="banner" id="schBanner"></div>
+    <div class="tab-intro">
+      <h2>Schedules</h2>
+      <p>Automate this app's quality checks — run an assessment on a recurring schedule so scores, trends and incidents stay up to date without manual runs.</p>
+    </div>
 
     <div class="sched-top">
     <div class="card">
@@ -775,6 +819,8 @@
       </div>
     </div>
 
+    <p class="hint" style="margin:-2px 0 16px;">Want these checks to run automatically? <a href="#" class="linkbtn" id="scheduleThisApp" style="margin-left:0;">Schedule recurring checks →</a></p>
+
     <div class="card" id="tablePickerCard" style="display:none;">
       <h2>Tables
         <button class="linkbtn" id="selectAllTables">Select all</button>
@@ -785,7 +831,7 @@
     </div>
 
     <div class="card" id="appResults" style="display:none;">
-      <h2>Assessment</h2>
+      <h2>Assessment <a href="#" class="linkbtn" id="appViewHistory">View in History →</a></h2>
       <div id="appResultsBody"></div>
     </div>
 
@@ -847,7 +893,21 @@ function humanSize(n) {
 // don't see backend API calls. Kept as a no-op so call sites need no changes.
 function log(msg, obj) { /* no-op */ }
 function setStep(id, state) { $('#' + id).dataset.state = state; $('#' + id).querySelector('.pill').textContent = state; }
-function banner(kind, msg) { const b = $('#banner'); b.className = 'banner ' + kind; b.textContent = msg; }
+// Show a dismissable banner: message text + an × the user can click to close it.
+function showBanner(el, cls, msg) {
+  el.className = 'banner ' + cls;
+  el.innerHTML = '';
+  const span = document.createElement('span');
+  span.className = 'banner-msg';
+  span.textContent = msg;                                   // textContent = no injection
+  const x = document.createElement('button');
+  x.type = 'button'; x.className = 'banner-x'; x.setAttribute('aria-label', 'Dismiss'); x.textContent = '×';
+  x.addEventListener('click', () => { el.className = 'banner'; el.innerHTML = ''; });
+  el.append(span, x);
+}
+function banner(kind, msg) { showBanner($('#banner'), kind, msg); }
+// Plain-English explainer for the quality "gate", reused wherever it's surfaced.
+const GATE_TIP = 'The quality gate is a pass/fail safety check — any blocker-severity issue fails it, regardless of the overall score.';
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const TERMINAL = ['SUCCEEDED', 'GATE_FAILED', 'FAILED'];
 const fmtScore = n => (n == null ? '—' : Number(Number(n).toFixed(2)));
@@ -1025,7 +1085,7 @@ function renderAssessment(r, bodyEl, opts) {
   let html = `<div class="headline">
       <span class="score">${fmtScore(score)}</span>
       ${status ? `<span class="tag ${tagClass(status)}">${status}</span>` : ''}
-      <span class="tag ${gatePass ? 'green' : 'red'}">Gate ${gatePass ? 'pass' : 'fail'}</span>
+      <span class="tag ${gatePass ? 'green' : 'red'}" data-tip="${esc(GATE_TIP)}">Gate ${gatePass ? 'pass' : 'fail'}</span>
     </div>`;
   // Explain a gate failure explicitly: a high score can still fail the gate because
   // the gate is a pass/fail safety check on blocker-severity issues, not an average.
@@ -1212,6 +1272,8 @@ function resetForNewUpload() {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 $('#resetBtn').addEventListener('click', resetForNewUpload);
+$('#uploadViewHistory').addEventListener('click', e => { e.preventDefault(); switchTab('history'); });
+$('#appViewHistory').addEventListener('click', e => { e.preventDefault(); switchTab('history'); });
 
 // "What we check": click a dimension chip to reveal a short description.
 const DIM_DESC = {
@@ -1243,7 +1305,8 @@ const DIM_DESC = {
 // history
 // --------------------------------------------------------------------------- //
 function histTilesHtml(tiles) {
-  return tiles.map(t => `<div class="tile"><div class="n">${t.n}</div><div class="l">${esc(t.l)}</div></div>`).join('');
+  return tiles.map(t => `<div class="tile"${t.tip ? ` data-tip="${esc(t.tip)}"` : ''}>` +
+    `<div class="n">${t.n}</div><div class="l">${esc(t.l)}</div></div>`).join('');
 }
 function rowsDesc(r) {
   if (r.rowsAssessed == null) return '';
@@ -1263,16 +1326,21 @@ function weightsDesc(w) {
 function historyRow(r) {
   const score = r.overallScore != null ? fmtScore(r.overallScore) : '—';
   const badge = r.overallStatus
-    ? `<span class="tag ${tagClass(r.overallStatus)}">${r.overallStatus}</span>`
-    : (r.state ? `<span class="tag">${r.state.toLowerCase()}</span>` : '');
+    ? `<span class="tag ${tagClass(r.overallStatus)}">${esc(r.overallStatus)}</span>`
+    : (r.state ? `<span class="tag">${esc(r.state.toLowerCase())}</span>` : '<span></span>');
   const sub = [rowsDesc(r), hasCustomWeights(r.dimensionWeights) ? 'custom weights' : '']
     .filter(Boolean).join(' · ');
-  return `<a href="#" class="histrow" data-prefix="${r.resultPrefix}">
-      <span class="h-name">${r.dataset}${sub ? `<div class="hint">${sub}</div>` : ''}</span>
-      <span class="h-when">${fmtWhen(r.runId)}</span>
+  // Re-run only for this app's own tables (app-data rows have slug "appId/table") — not uploads / tenant-wide.
+  const rerun = (APP_ID && typeof r.slug === 'string' && r.slug.includes('/'))
+    ? `<button class="btn-sm histrerun" data-rerun="${esc(r.dataset)}" data-tip="Re-assess this table now">↻</button>`
+    : '<span></span>';
+  return `<div class="histrow" data-prefix="${esc(r.resultPrefix)}">
+      <span class="h-name">${esc(r.dataset)}${sub ? `<div class="hint">${esc(sub)}</div>` : ''}</span>
+      <span class="h-when">${esc(fmtWhen(r.runId))}</span>
       <span class="h-score">${score}</span>
       ${badge}
-    </a>`;
+      ${rerun}
+    </div>`;
 }
 
 let historyRuns = [], historyPage = 0;
@@ -1302,10 +1370,13 @@ function renderHistoryPage() {
   $('#historyTiles').innerHTML = historyRuns.length ? histTilesHtml([
     { n: historyRuns.length, l: 'Total runs' },
     { n: scored.length ? fmtScore(scored.reduce((a, c) => a + c, 0) / scored.length) : '—', l: 'Average score' },
-    { n: Math.round(passes / historyRuns.length * 100) + '%', l: 'Passed gate' },
+    { n: Math.round(passes / historyRuns.length * 100) + '%', l: 'Passed gate', tip: GATE_TIP },
   ]) : '';
   if (!historyRuns.length) {
-    list.innerHTML = '<p class="hint">No runs yet for this tenant.</p>'; pager.innerHTML = ''; return;
+    list.innerHTML = '<p class="dash-muted" style="margin:0;">No runs yet — assessments you run will appear here.</p>'
+      + (APP_ID ? ' <button id="histAssessCta" style="margin-top:12px;">Assess this app\'s data →</button>' : '');
+    const c = $('#histAssessCta'); if (c) c.addEventListener('click', () => switchTab('appdata'));
+    pager.innerHTML = ''; return;
   }
   const pages = Math.ceil(historyRuns.length / PAGE_SIZE);
   historyPage = Math.max(0, Math.min(historyPage, pages - 1));
@@ -1313,6 +1384,8 @@ function renderHistoryPage() {
   list.innerHTML = slice.map(historyRow).join('');
   list.querySelectorAll('.histrow').forEach(el =>
     el.addEventListener('click', e => { e.preventDefault(); openHistoryRun(el.dataset.prefix); }));
+  list.querySelectorAll('.histrerun').forEach(b =>
+    b.addEventListener('click', e => { e.stopPropagation(); reRunTable(b.dataset.rerun); }));
   if (pages > 1) {
     pager.innerHTML =
       `<button class="btn-secondary" id="pgPrev" ${historyPage === 0 ? 'disabled' : ''}>← Prev</button>` +
@@ -1441,6 +1514,8 @@ function renderHistoryAppPage() {
   });
   list.querySelectorAll('.histrow').forEach(el =>
     el.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); openHistoryRun(el.dataset.prefix); }));
+  list.querySelectorAll('.histrerun').forEach(b =>
+    b.addEventListener('click', e => { e.stopPropagation(); reRunTable(b.dataset.rerun); }));
   if (pages > 1) {
     pager.innerHTML =
       `<button class="btn-secondary" id="apgPrev" ${historyAppPage === 0 ? 'disabled' : ''}>← Prev</button>` +
@@ -1492,9 +1567,10 @@ function statusChip(status) {
   return `<span class="chip ${cls}"><span class="dot"></span>${label}</span>`;
 }
 function gateChip(gate) {
-  if (gate === true) return `<span class="chip good"><span class="dot"></span>Pass</span>`;
-  if (gate === false) return `<span class="chip crit"><span class="dot"></span>Fail</span>`;
-  return `<span class="chip na"><span class="dot"></span>—</span>`;
+  const t = ` data-tip="${esc(GATE_TIP)}"`;
+  if (gate === true) return `<span class="chip good"${t}><span class="dot"></span>Pass</span>`;
+  if (gate === false) return `<span class="chip crit"${t}><span class="dot"></span>Fail</span>`;
+  return `<span class="chip na"${t}><span class="dot"></span>—</span>`;
 }
 function heatCell(score) {
   if (typeof score !== 'number' || !isFinite(score))
@@ -1706,7 +1782,15 @@ function renderTiles(t) {
 }
 
 function renderHealthTable(datasets) {
-  if (!datasets.length) { $('#dashTableWrap').innerHTML = '<p class="dash-muted">No assessments yet.</p>'; return; }
+  if (!datasets.length) {
+    $('#dashTableWrap').innerHTML =
+      `<p class="dash-muted" style="margin:0 0 12px;">No assessments yet for this app.</p>` +
+      `<button id="dashAssessCta">Assess this app's data →</button>` +
+      `<p class="hint" style="margin:12px 0 0;">Then return here to monitor scores, dimensions and trends over time.</p>`;
+    const cta = $('#dashAssessCta');
+    if (cta) cta.addEventListener('click', () => switchTab('appdata'));
+    return;
+  }
   const rows = datasets.map(d => {
     const spark = svgSpark((d.spark || []).map(p => p.score));
     const age = d.ageDays == null ? '—'
@@ -1718,17 +1802,20 @@ function renderHealthTable(datasets) {
         <td>${numInt(d.rows)}</td>
         <td class="dash-muted">${esc(age)}</td>
         <td>${spark}</td>
+        <td><button class="btn-sm" data-rerun="${esc(d.name)}" data-tip="Re-assess this table now">↻ Re-run</button></td>
       </tr>`;
   }).join('');
   $('#dashTableWrap').innerHTML =
     `<table class="dash-table"><tr><th>Dataset</th><th>Score</th><th>Gate</th>` +
-    `<th>Rows</th><th>Last run</th><th>Trend (30d)</th></tr>${rows}</table>`;
+    `<th>Rows</th><th>Last run</th><th>Trend (30d)</th><th></th></tr>${rows}</table>`;
   $('#dashTableWrap').querySelectorAll('.dash-row').forEach(tr =>
     tr.addEventListener('click', () => {
       $('#dashTableWrap').querySelectorAll('.dash-row').forEach(x => x.classList.remove('sel'));
       tr.classList.add('sel');
       selectDataset(tr.getAttribute('data-key'), tr.getAttribute('data-name'));
     }));
+  $('#dashTableWrap').querySelectorAll('button[data-rerun]').forEach(b =>
+    b.addEventListener('click', e => { e.stopPropagation(); reRunTable(b.dataset.rerun); }));
 }
 
 function renderHeatmap(datasets) {
@@ -2277,6 +2364,9 @@ function switchTab(name) {
   // Wide, full-width tabs vs the narrow centered form column.
   const wrapEl = document.querySelector('.wrap');
   if (wrapEl) wrapEl.classList.add('wide');   // every tab now uses the full width
+  // The standards/methodology footer is only relevant where you run assessments.
+  const footEl = document.querySelector('.standards');
+  if (footEl) footEl.style.display = (name === 'upload' || name === 'appdata') ? 'block' : 'none';
   if (name === 'incidents') loadIncidents();
   if (name === 'lineage') loadLineage();
   if (name === 'model') loadModel();
@@ -2320,9 +2410,7 @@ switchTab('dashboard');   // Dashboard is the landing tab; sync the panels + wid
 let appTables = [];
 
 function appBanner(kind, msg) {
-  const b = $('#appBanner');
-  b.className = 'banner ' + (kind === 'ok' ? 'ok' : 'err');
-  b.textContent = msg;
+  showBanner($('#appBanner'), kind === 'ok' ? 'ok' : 'err', msg);
 }
 function appLog(msg, obj) { /* no-op — on-page log panel removed */ }
 
@@ -2416,6 +2504,17 @@ async function assessEntireApp() {
   } finally {
     btn.disabled = false; btn.textContent = orig;
   }
+}
+
+// Re-run one table's assessment (from a Dashboard/History row). Lands on the
+// Assess-app tab so the familiar results view shows the progress.
+async function reRunTable(tableName) {
+  switchTab('appdata');
+  if (!tableName) return;
+  if (!APP_ID) { appBanner('err', 'Re-run needs the app context — open this from inside the Qlik app.'); return; }
+  if (!BEARER) { appBanner('err', 'No Qlik API key configured — set it in the extension settings.'); return; }
+  try { await launchAppAssessment([tableName]); }
+  catch (e) { appBanner('err', e.message); }
 }
 
 function renderAppResults(tables) {
@@ -2533,6 +2632,7 @@ async function pollInto(resultPrefix, bodyEl, opts) {
 
 $('#listTablesBtn').addEventListener('click', listAppTables);
 $('#assessAllBtn').addEventListener('click', assessEntireApp);
+$('#scheduleThisApp').addEventListener('click', e => { e.preventDefault(); switchTab('schedules'); });
 $('#assessTablesBtn').addEventListener('click', assessSelectedTables);
 $('#selectAllTables').addEventListener('click', () => {
   document.querySelectorAll('.tablecb').forEach(cb => cb.checked = true); updateAssessBtn();
@@ -2551,14 +2651,12 @@ let schEditingName = null;
 
 let schBannerTimer = null;
 function schBanner(kind, msg) {
-  const b = $('#schBanner');
   const cls = ({ ok: 'ok', info: 'info', warn: 'warn', err: 'err' })[kind] || 'err';
-  b.className = 'banner ' + cls;
-  b.textContent = msg;
+  showBanner($('#schBanner'), cls, msg);
   if (schBannerTimer) clearTimeout(schBannerTimer);
   schBannerTimer = setTimeout(() => {
-    b.className = 'banner';        // hidden (no ok/err/info/warn modifier)
-    b.textContent = '';
+    const b = $('#schBanner');
+    b.className = 'banner'; b.innerHTML = '';   // auto-hide after 5s (X dismisses sooner)
     schBannerTimer = null;
   }, 5000);
 }
@@ -2956,7 +3054,7 @@ function applyModelZoom() {
   $('#modelSizer').style.height = (MODEL_H * modelZoom) + 'px';
 }
 function setModelZoom(z) { modelZoom = Math.max(MZ_MIN, Math.min(MZ_MAX, Math.round(z * 100) / 100)); applyModelZoom(); }
-function modelBanner(kind, msg) { const b = $('#modelBanner'); b.className = 'banner ' + (kind === 'ok' ? 'ok' : 'err'); b.textContent = msg; }
+function modelBanner(kind, msg) { showBanner($('#modelBanner'), kind === 'ok' ? 'ok' : 'err', msg); }
 const modelKey = () => 'dqmodel:' + APP_ID;
 function loadModelPos() { try { return JSON.parse(localStorage.getItem(modelKey()) || '{}') || {}; } catch (e) { return {}; } }
 function saveModelPos() { try { localStorage.setItem(modelKey(), JSON.stringify(modelPos)); } catch (e) {} }
