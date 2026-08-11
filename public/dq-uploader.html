@@ -229,7 +229,18 @@
   @media (max-width: 900px) { .up-top { grid-template-columns: 1fr; } }
   .up-check .dims { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
   .up-check .dchip { font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 999px;
-    background: var(--idle-bg); color: var(--muted); border: 1px solid var(--border); }
+    background: var(--idle-bg); color: var(--muted); border: 1px solid var(--border); cursor: pointer; }
+  .up-check .dchip:hover { border-color: var(--accent); color: var(--accent); }
+  .up-check .dchip.active { border-color: var(--accent); color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 14%, var(--card)); }
+  .dim-desc { margin-top: 10px; padding: 10px 12px; border-left: 3px solid var(--accent);
+    background: var(--idle-bg); border-radius: 6px; font-size: 12px; line-height: 1.5; }
+  .dim-desc strong { display: block; margin-bottom: 2px; }
+  /* Full-app history: app-wide average box shown when a run is expanded */
+  .apprun-agg { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px;
+    margin: 2px 0 12px; background: var(--idle-bg); }
+  .apprun-agg .chart-title { margin-top: 0; }
+  .apprun-agg .headline { margin-bottom: 6px; }
 
   /* App data: "choose how to assess" cards */
   .app-choose { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-bottom: 16px; }
@@ -487,10 +498,19 @@
         </div>
         <div class="card up-check">
           <h2>What we check</h2>
-          <p class="hint" style="margin:0 0 8px;">Nine dimensions from DAMA &amp; ISO/IEC 25012, weighted into a single score.</p>
+          <p class="hint" style="margin:0 0 8px;">Nine dimensions from DAMA &amp; ISO/IEC 25012, weighted into a single score. Select one to see what it means.</p>
           <div class="dims">
-            <span class="dchip">Completeness</span><span class="dchip">Uniqueness</span><span class="dchip">Validity</span><span class="dchip">Consistency</span><span class="dchip">Timeliness</span><span class="dchip">Accuracy</span><span class="dchip">Integrity</span><span class="dchip">Reasonability</span><span class="dchip">Precision</span>
+            <button type="button" class="dchip" data-dim="Completeness">Completeness</button>
+            <button type="button" class="dchip" data-dim="Uniqueness">Uniqueness</button>
+            <button type="button" class="dchip" data-dim="Validity">Validity</button>
+            <button type="button" class="dchip" data-dim="Consistency">Consistency</button>
+            <button type="button" class="dchip" data-dim="Timeliness">Timeliness</button>
+            <button type="button" class="dchip" data-dim="Accuracy">Accuracy</button>
+            <button type="button" class="dchip" data-dim="Integrity">Integrity</button>
+            <button type="button" class="dchip" data-dim="Reasonability">Reasonability</button>
+            <button type="button" class="dchip" data-dim="Precision">Precision</button>
           </div>
+          <div id="dimDesc" class="dim-desc" style="display:none;"></div>
         </div>
       </aside>
     </div>
@@ -1193,6 +1213,32 @@ function resetForNewUpload() {
 }
 $('#resetBtn').addEventListener('click', resetForNewUpload);
 
+// "What we check": click a dimension chip to reveal a short description.
+const DIM_DESC = {
+  Completeness: 'Are values present where they should be? Flags missing or blank data in required fields.',
+  Uniqueness: 'Are records and key values free of unexpected duplicates that should be one-of-a-kind?',
+  Validity: 'Do values match the expected type, format, range or pattern — e.g. valid dates, emails or codes?',
+  Consistency: 'Do related values agree with each other, within a record and across the dataset?',
+  Timeliness: 'Is the data recent enough? Checks timestamps fall within the expected freshness window.',
+  Accuracy: 'Do values agree with an authoritative source of truth (a supplied list of correct values)?',
+  Integrity: 'Do references hold — do values exist in the related master / reference data they point to?',
+  Reasonability: 'Are values plausible and free of outliers or figures that don’t make business sense?',
+  Precision: 'Is the data captured at the expected level of detail / decimal precision?',
+};
+(function wireDimChips() {
+  const box = $('#dimDesc');
+  document.querySelectorAll('.up-check .dchip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const dim = chip.getAttribute('data-dim'), wasActive = chip.classList.contains('active');
+      document.querySelectorAll('.up-check .dchip').forEach(c => c.classList.remove('active'));
+      if (wasActive) { box.style.display = 'none'; box.innerHTML = ''; return; }
+      chip.classList.add('active');
+      box.innerHTML = `<strong>${esc(dim)}</strong>${esc(DIM_DESC[dim] || '')}`;
+      box.style.display = 'block';
+    });
+  });
+})();
+
 // --------------------------------------------------------------------------- //
 // history
 // --------------------------------------------------------------------------- //
@@ -1316,9 +1362,15 @@ function appBatchRow(b) {
   const worstChip = b.worstScore != null
     ? `<span class="tag ${ragTag(b.worstScore)}" data-tip="Lowest table score in this run">low ${fmtScore(b.worstScore)}</span>`
     : '';
-  const tablesHtml = (b.tables || []).length
+  const hasTables = (b.tables || []).length;
+  const listHtml = hasTables
     ? b.tables.map(historyRow).join('')
     : '<p class="hint">No table results recorded for this run yet.</p>';
+  // App-wide average report (filled lazily on first expand from each table's result).
+  const aggHtml = hasTables
+    ? `<div class="apprun-agg"><div class="chart-title">App-wide average assessment</div>` +
+      `<div class="apprun-overall"><p class="hint"><span class="spin"></span> Loading app-wide average…</p></div></div>`
+    : '';
   return `<div class="apprun">
       <a href="#" class="apprun-head">
         <span class="apprun-caret">▸</span>
@@ -1326,8 +1378,26 @@ function appBatchRow(b) {
         ${worstChip}
         <span class="h-score" data-tip="Average table score">${avg}</span>
       </a>
-      <div class="apprun-tables">${tablesHtml}</div>
+      <div class="apprun-tables">${aggHtml}${listHtml}</div>
     </div>`;
+}
+
+// Lazily compute + render the app-wide average for one batch (fetches each table's
+// result once, then reuses renderOverall — same aggregate as the App data tab).
+async function loadBatchOverall(el, b) {
+  const box = el.querySelector('.apprun-overall');
+  if (!box || box.dataset.loaded) return;
+  box.dataset.loaded = '1';
+  const tables = (b.tables || []).filter(t => t.resultPrefix);
+  if (!tables.length) { const agg = el.querySelector('.apprun-agg'); if (agg) agg.style.display = 'none'; return; }
+  try {
+    const results = await Promise.all(tables.map(t =>
+      postJSON(`${API_BASE}/data-quality/result`, HEADERS, { result_prefix: t.resultPrefix }).catch(() => null)));
+    renderOverall(box, results.filter(Boolean), tables.length);
+  } catch (e) {
+    box.dataset.loaded = '';   // let a re-expand retry
+    box.innerHTML = `<p class="hint" style="color:var(--err)">Could not load app-wide average: ${esc(e.message)}</p>`;
+  }
 }
 
 async function loadHistoryApp() {
@@ -1363,8 +1433,12 @@ function renderHistoryAppPage() {
   historyAppPage = Math.max(0, Math.min(historyAppPage, pages - 1));
   const slice = historyAppBatches.slice(historyAppPage * PAGE_SIZE, historyAppPage * PAGE_SIZE + PAGE_SIZE);
   list.innerHTML = slice.map(appBatchRow).join('');
-  list.querySelectorAll('.apprun-head').forEach(head =>
-    head.addEventListener('click', e => { e.preventDefault(); head.parentElement.classList.toggle('open'); }));
+  list.querySelectorAll('.apprun').forEach((el, i) => {
+    el.querySelector('.apprun-head').addEventListener('click', e => {
+      e.preventDefault();
+      if (el.classList.toggle('open')) loadBatchOverall(el, slice[i]);   // fill the average on open
+    });
+  });
   list.querySelectorAll('.histrow').forEach(el =>
     el.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); openHistoryRun(el.dataset.prefix); }));
   if (pages > 1) {
@@ -2252,20 +2326,25 @@ function appBanner(kind, msg) {
 }
 function appLog(msg, obj) { /* no-op — on-page log panel removed */ }
 
+// Fetch the app's table roster into `appTables` (+ populate the picker list) WITHOUT
+// revealing the picker card. Shared by "List tables" and "Assess entire app".
+async function fetchAppTables() {
+  const hdr = { ...HEADERS, 'X-Qlik-Bearer': BEARER };
+  const res = await postJSON(`${API_BASE}/data-quality/app-tables`, hdr, { app_id: APP_ID });
+  renderTableList(res.tables || []);
+  return res.tables || [];
+}
+
 async function listAppTables() {
-  const bearer = BEARER;
   if (!APP_ID) { appBanner('err', 'No app id — open this from the Qlik extension inside an app.'); return; }
-  if (!bearer) { appBanner('err', 'No Qlik API key configured — set it in the extension settings.'); return; }
+  if (!BEARER) { appBanner('err', 'No Qlik API key configured — set it in the extension settings.'); return; }
   $('#listTablesBtn').disabled = true;
   try {
-    const hdr = { ...HEADERS, 'X-Qlik-Bearer': bearer };
-    appLog('POST /data-quality/app-tables', { app_id: APP_ID });
-    const res = await postJSON(`${API_BASE}/data-quality/app-tables`, hdr, { app_id: APP_ID });
-    renderTableList(res.tables || []);
-    $('#tablePickerCard').style.display = 'block';
-    appBanner('ok', `${(res.tables || []).length} table(s) found.`);
+    const tables = await fetchAppTables();
+    $('#tablePickerCard').style.display = 'block';       // reveal only in the "choose tables" flow
+    appBanner('ok', `${tables.length} table(s) found.`);
   } catch (e) {
-    appBanner('err', e.message); appLog('ERROR: ' + e.message);
+    appBanner('err', e.message);
   } finally {
     $('#listTablesBtn').disabled = false;
   }
@@ -2326,11 +2405,11 @@ async function assessEntireApp() {
   if (!BEARER) { appBanner('err', 'No Qlik API key configured — set it in the extension settings.'); return; }
   const btn = $('#assessAllBtn'), orig = btn.textContent;
   btn.disabled = true; btn.innerHTML = '<span class="spin"></span>Preparing…';
+  $('#tablePickerCard').style.display = 'none';               // full-app flow never shows the picker
   try {
-    if (!appTables.length) await listAppTables();              // fetch the full table roster
+    if (!appTables.length) await fetchAppTables();             // roster only — no picker card
     const tables = appTables.map(t => t.name);
     if (!tables.length) { appBanner('err', 'No tables found in this app.'); return; }
-    document.querySelectorAll('.tablecb').forEach(cb => cb.checked = true); updateAssessBtn();
     await launchAppAssessment(tables);
   } catch (e) {
     appBanner('err', e.message);
