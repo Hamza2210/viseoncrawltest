@@ -134,6 +134,22 @@
   .pager { display: flex; align-items: center; gap: 12px; margin-top: 16px; }
   .pager button { padding: 6px 12px; font-size: 13px; }
   .pager .pinfo { color: var(--muted); font-size: 13px; }
+  /* History subtabs */
+  .subtabs { display: flex; gap: 6px; margin-bottom: 14px; }
+  .subtab { background: none; color: var(--muted); border: 1px solid var(--border); border-radius: 999px;
+    padding: 5px 14px; font-size: 13px; cursor: pointer; }
+  .subtab.active { color: var(--text); border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+  /* Full-app assessment batch (expandable) */
+  .apprun { border-top: 1px solid var(--border); }
+  .apprun:first-child { border-top: 0; }
+  .apprun-head { display: grid; grid-template-columns: 18px 1fr auto auto; gap: 12px; align-items: center;
+    padding: 12px 10px; text-decoration: none; color: var(--text); cursor: pointer; }
+  .apprun-head:hover { background: var(--bg); }
+  .apprun-caret { color: var(--muted); transition: transform .12s; }
+  .apprun.open .apprun-caret { transform: rotate(90deg); }
+  .apprun-tables { display: none; padding: 2px 0 8px 22px; }
+  .apprun.open .apprun-tables { display: block; }
+  .apprun-sub { color: var(--muted); font-size: 12px; font-weight: 400; }
   #results, #assessment, #resetBar, #historyPanel, #historyDetail { display: none; }
   .standards { margin-top: 8px; padding-top: 16px; border-top: 1px solid var(--border);
     color: var(--muted); font-size: 12px; }
@@ -201,6 +217,29 @@
   .apppanel.active { display: block; }
   .dimavg { width: 100%; border-collapse: collapse; margin-top: 10px; }
   .dimavg td { padding: 6px 8px; border-bottom: 1px solid var(--border); font-size: 13px; }
+
+  /* Wide-tab intro header (title + lead line, sits above a tab's content) */
+  .tab-intro { margin: 0 0 16px; }
+  .tab-intro h2 { font-size: 20px; text-transform: none; letter-spacing: 0; color: var(--text);
+    margin: 0 0 4px; display: block; }
+  .tab-intro p { color: var(--muted); font-size: 13px; margin: 0; max-width: 720px; }
+
+  /* Upload tab: two-column (form | progress + info) */
+  .up-top { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+  @media (max-width: 900px) { .up-top { grid-template-columns: 1fr; } }
+  .up-check .dims { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
+  .up-check .dchip { font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 999px;
+    background: var(--idle-bg); color: var(--muted); border: 1px solid var(--border); }
+
+  /* App data: "choose how to assess" cards */
+  .app-choose { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-bottom: 16px; }
+  .choice { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+  .choice .choice-ico { font-size: 26px; line-height: 1; margin-bottom: 2px; }
+  .choice h3 { margin: 0; font-size: 15px; }
+  .choice p { margin: 0 0 8px; }
+  .choice button { margin-top: auto; }
+  .choice-primary { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset;
+    background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 8%, var(--card)), var(--card) 100px); }
 
   /* Modern form controls (app-wide) */
   input[type=text], input[type=number], input[type=time], input[type=email],
@@ -401,8 +440,14 @@
   <!-- ============ UPLOAD ============ -->
   <div id="uploadPanel">
     <div class="banner" id="banner"></div>
+    <div class="tab-intro">
+      <h2>Upload &amp; assess a dataset</h2>
+      <p>Upload a file (Parquet, CSV, JSON/NDJSON or QVD) and score it against the DAMA data-quality dimensions. The run report, scores and failed records are saved and appear in History.</p>
+    </div>
 
-    <div class="card">
+    <div class="up-top">
+      <div class="up-main">
+        <div class="card">
       <h2>Dataset</h2>
       <input type="file" id="file" accept=".parquet,.pq,.json,.ndjson,.jsonl,.qvd,.csv,.tsv" />
       <div class="fileinfo" id="fileinfo">No file selected.</div>
@@ -429,15 +474,25 @@
       </details>
       <button id="go" disabled>Upload &amp; assess</button>
       <progress id="prog" max="100" value="0"></progress>
-    </div>
-
-    <div class="card">
-      <h2>Progress</h2>
+        </div>
+      </div>
+      <aside class="up-side">
+        <div class="card">
+          <h2>Progress</h2>
       <div class="steps">
         <div class="step" data-state="idle" id="s1"><span class="pill">idle</span> 1. Request upload</div>
         <div class="step" data-state="idle" id="s2"><span class="pill">idle</span> 2. Upload file to storage</div>
         <div class="step" data-state="idle" id="s3"><span class="pill">idle</span> 3. Start assessment</div>
-      </div>
+          </div>
+        </div>
+        <div class="card up-check">
+          <h2>What we check</h2>
+          <p class="hint" style="margin:0 0 8px;">Nine dimensions from DAMA &amp; ISO/IEC 25012, weighted into a single score.</p>
+          <div class="dims">
+            <span class="dchip">Completeness</span><span class="dchip">Uniqueness</span><span class="dchip">Validity</span><span class="dchip">Consistency</span><span class="dchip">Timeliness</span><span class="dchip">Accuracy</span><span class="dchip">Integrity</span><span class="dchip">Reasonability</span><span class="dchip">Precision</span>
+          </div>
+        </div>
+      </aside>
     </div>
 
     <div class="card" id="assessment">
@@ -458,11 +513,28 @@
 
   <!-- ============ HISTORY ============ -->
   <div id="historyPanel">
-    <div class="card" id="historyListCard">
-      <h2>Historic runs <button class="linkbtn" id="historyRefresh">Refresh</button></h2>
+    <div class="subtabs" id="historySubtabs">
+      <button class="subtab active" data-hsub="app">Full app assessments</button>
+      <button class="subtab" data-hsub="dataset">By dataset</button>
+    </div>
+
+    <!-- Full app assessments: batches where every table in the app was selected -->
+    <div class="card" id="historyAppCard">
+      <h2>Full app assessments <button class="linkbtn" id="historyAppRefresh">Refresh</button></h2>
+      <p class="dash-muted" style="margin:-4px 0 12px;font-size:12px;">Assessments where <strong>every</strong> table in the app was selected, grouped by run. Click a run to see each table's result.</p>
+      <div class="dash-tiles" id="historyAppTiles" style="margin-bottom:16px;"></div>
+      <div id="historyAppList"><p class="hint">Loading…</p></div>
+      <div class="pager" id="historyAppPager"></div>
+    </div>
+
+    <!-- By dataset: the individual per-table / per-upload runs (original view) -->
+    <div class="card" id="historyListCard" style="display:none;">
+      <h2>Historic runs (by dataset) <button class="linkbtn" id="historyRefresh">Refresh</button></h2>
+      <div class="dash-tiles" id="historyTiles" style="margin-bottom:16px;"></div>
       <div id="historyList"><p class="hint">Loading…</p></div>
       <div class="pager" id="historyPager"></div>
     </div>
+
     <div class="card" id="historyDetail">
       <h2><a href="#" id="historyBack">← Back to history</a></h2>
       <div id="historyDetailBody"></div>
@@ -656,14 +728,31 @@
   <!-- ============ APP DATA ============ -->
   <div id="appDataPanel" style="display:none;">
     <div class="banner" id="appBanner"></div>
+    <div class="tab-intro">
+      <h2>Assess this app's data</h2>
+      <p id="appCtx"></p>
+    </div>
 
     <div class="card">
-      <h2>Measure data quality of current app data</h2>
-      <p class="hint" id="appCtx"></p>
+      <h2>Options</h2>
       <label for="appSampleRows">Sample size <span class="hint">(optional)</span></label>
-      <input type="number" id="appSampleRows" min="1" step="1" placeholder="Leave empty to assess whole tables" />
-      <div class="hint" style="margin: 6px 0 14px;">Randomly samples this many rows per table. Empty — or larger than the table — assesses everything.</div>
-      <button id="listTablesBtn">List tables</button>
+      <input type="number" id="appSampleRows" min="1" step="1" placeholder="Leave empty to assess whole tables" style="max-width:360px;" />
+      <div class="hint" style="margin: 6px 0 0;">Randomly samples this many rows per table. Empty — or larger than the table — assesses everything. Applies to both options below.</div>
+    </div>
+
+    <div class="app-choose">
+      <div class="card choice choice-primary">
+        <div class="choice-ico">📊</div>
+        <h3>Assess the entire app</h3>
+        <p class="hint">One click — assesses <strong>every</strong> table in the app's data model. Best for a full health check, and it lands under History → Full app assessments.</p>
+        <button id="assessAllBtn">Assess all tables</button>
+      </div>
+      <div class="card choice">
+        <div class="choice-ico">☑️</div>
+        <h3>Choose specific tables</h3>
+        <p class="hint">List the tables and pick just the ones you want — useful when you only care about a few.</p>
+        <button id="listTablesBtn" class="btn-secondary">List tables</button>
+      </div>
     </div>
 
     <div class="card" id="tablePickerCard" style="display:none;">
@@ -1107,6 +1196,9 @@ $('#resetBtn').addEventListener('click', resetForNewUpload);
 // --------------------------------------------------------------------------- //
 // history
 // --------------------------------------------------------------------------- //
+function histTilesHtml(tiles) {
+  return tiles.map(t => `<div class="tile"><div class="n">${t.n}</div><div class="l">${esc(t.l)}</div></div>`).join('');
+}
 function rowsDesc(r) {
   if (r.rowsAssessed == null) return '';
   const a = Number(r.rowsAssessed).toLocaleString();
@@ -1159,6 +1251,13 @@ async function loadHistory() {
 
 function renderHistoryPage() {
   const list = $('#historyList'), pager = $('#historyPager');
+  const scored = historyRuns.map(r => r.overallScore).filter(s => typeof s === 'number' && isFinite(s));
+  const passes = historyRuns.filter(r => r.state === 'SUCCEEDED').length;
+  $('#historyTiles').innerHTML = historyRuns.length ? histTilesHtml([
+    { n: historyRuns.length, l: 'Total runs' },
+    { n: scored.length ? fmtScore(scored.reduce((a, c) => a + c, 0) / scored.length) : '—', l: 'Average score' },
+    { n: Math.round(passes / historyRuns.length * 100) + '%', l: 'Passed gate' },
+  ]) : '';
   if (!historyRuns.length) {
     list.innerHTML = '<p class="hint">No runs yet for this tenant.</p>'; pager.innerHTML = ''; return;
   }
@@ -1181,6 +1280,8 @@ function renderHistoryPage() {
 }
 
 async function openHistoryRun(prefix) {
+  $('#historySubtabs').style.display = 'none';
+  $('#historyAppCard').style.display = 'none';
   $('#historyListCard').style.display = 'none';
   const detail = $('#historyDetail'), body = $('#historyDetailBody');
   detail.style.display = 'block';
@@ -1197,9 +1298,98 @@ async function openHistoryRun(prefix) {
 $('#historyBack').addEventListener('click', e => {
   e.preventDefault();
   $('#historyDetail').style.display = 'none';
-  $('#historyListCard').style.display = 'block';
+  $('#historySubtabs').style.display = 'flex';
+  $('#historyAppCard').style.display = historySub === 'app' ? 'block' : 'none';
+  $('#historyListCard').style.display = historySub === 'dataset' ? 'block' : 'none';
 });
 $('#historyRefresh').addEventListener('click', e => { e.preventDefault(); loadHistory(); });
+
+// ---- Full app assessments subtab -----------------------------------------
+let historyAppBatches = [], historyAppPage = 0, historySub = 'app';
+
+function appBatchRow(b) {
+  const when = fmtWhen(b.runId);
+  const avg = b.avgScore != null ? fmtScore(b.avgScore) : '—';
+  const cnt = b.tablesTotal != null ? `${b.tablesReported} of ${b.tablesTotal} tables`
+                                    : `${b.tablesReported} tables`;
+  const ragTag = s => s >= 90 ? 'green' : s >= 75 ? 'amber' : 'red';
+  const worstChip = b.worstScore != null
+    ? `<span class="tag ${ragTag(b.worstScore)}" data-tip="Lowest table score in this run">low ${fmtScore(b.worstScore)}</span>`
+    : '';
+  const tablesHtml = (b.tables || []).length
+    ? b.tables.map(historyRow).join('')
+    : '<p class="hint">No table results recorded for this run yet.</p>';
+  return `<div class="apprun">
+      <a href="#" class="apprun-head">
+        <span class="apprun-caret">▸</span>
+        <span class="h-name">${esc(b.appName || b.appId || 'App')}<div class="apprun-sub">${cnt} · ${esc(when)}</div></span>
+        ${worstChip}
+        <span class="h-score" data-tip="Average table score">${avg}</span>
+      </a>
+      <div class="apprun-tables">${tablesHtml}</div>
+    </div>`;
+}
+
+async function loadHistoryApp() {
+  if (!configOK) return;
+  const list = $('#historyAppList');
+  list.innerHTML = '<p class="hint"><span class="spin"></span>Loading…</p>';
+  $('#historyAppPager').innerHTML = '';
+  try {
+    const body = { limit: 100, mode: 'app' };
+    if (APP_ID) body.app_id = APP_ID;
+    const h = await postJSON(`${API_BASE}/data-quality/history`, HEADERS, body);
+    historyAppBatches = h.batches || [];
+    historyAppPage = 0;
+    renderHistoryAppPage();
+  } catch (e) {
+    list.innerHTML = `<p class="hint" style="color:var(--err)">Could not load app history: ${e.message}</p>`;
+  }
+}
+
+function renderHistoryAppPage() {
+  const list = $('#historyAppList'), pager = $('#historyAppPager');
+  const avgs = historyAppBatches.map(b => b.avgScore).filter(s => typeof s === 'number' && isFinite(s));
+  $('#historyAppTiles').innerHTML = historyAppBatches.length ? histTilesHtml([
+    { n: historyAppBatches.length, l: 'Full assessments' },
+    { n: avgs.length ? fmtScore(avgs.reduce((a, c) => a + c, 0) / avgs.length) : '—', l: 'Average score' },
+    { n: typeof historyAppBatches[0].avgScore === 'number' ? fmtScore(historyAppBatches[0].avgScore) : '—', l: 'Latest run' },
+  ]) : '';
+  if (!historyAppBatches.length) {
+    list.innerHTML = '<p class="hint">No full app assessments yet — run an app assessment with every table selected and it will appear here.</p>';
+    pager.innerHTML = ''; return;
+  }
+  const pages = Math.ceil(historyAppBatches.length / PAGE_SIZE);
+  historyAppPage = Math.max(0, Math.min(historyAppPage, pages - 1));
+  const slice = historyAppBatches.slice(historyAppPage * PAGE_SIZE, historyAppPage * PAGE_SIZE + PAGE_SIZE);
+  list.innerHTML = slice.map(appBatchRow).join('');
+  list.querySelectorAll('.apprun-head').forEach(head =>
+    head.addEventListener('click', e => { e.preventDefault(); head.parentElement.classList.toggle('open'); }));
+  list.querySelectorAll('.histrow').forEach(el =>
+    el.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); openHistoryRun(el.dataset.prefix); }));
+  if (pages > 1) {
+    pager.innerHTML =
+      `<button class="btn-secondary" id="apgPrev" ${historyAppPage === 0 ? 'disabled' : ''}>← Prev</button>` +
+      `<span class="pinfo">Page ${historyAppPage + 1} of ${pages}</span>` +
+      `<button class="btn-secondary" id="apgNext" ${historyAppPage >= pages - 1 ? 'disabled' : ''}>Next →</button>`;
+    $('#apgPrev').addEventListener('click', () => { historyAppPage--; renderHistoryAppPage(); });
+    $('#apgNext').addEventListener('click', () => { historyAppPage++; renderHistoryAppPage(); });
+  } else { pager.innerHTML = ''; }
+}
+
+function setHistorySub(sub) {
+  historySub = sub;
+  document.querySelectorAll('#historySubtabs .subtab').forEach(b =>
+    b.classList.toggle('active', b.dataset.hsub === sub));
+  $('#historyDetail').style.display = 'none';
+  $('#historySubtabs').style.display = 'flex';
+  $('#historyAppCard').style.display = sub === 'app' ? 'block' : 'none';
+  $('#historyListCard').style.display = sub === 'dataset' ? 'block' : 'none';
+  if (sub === 'app') loadHistoryApp(); else loadHistory();
+}
+document.querySelectorAll('#historySubtabs .subtab').forEach(b =>
+  b.addEventListener('click', () => setHistorySub(b.dataset.hsub)));
+$('#historyAppRefresh').addEventListener('click', e => { e.preventDefault(); loadHistoryApp(); });
 
 // --------------------------------------------------------------------------- //
 // tabs
@@ -2012,16 +2202,11 @@ function switchTab(name) {
   $('#lineagePanel').style.display = name === 'lineage' ? 'block' : 'none';
   // Wide, full-width tabs vs the narrow centered form column.
   const wrapEl = document.querySelector('.wrap');
-  if (wrapEl) wrapEl.classList.toggle('wide',
-    name === 'dashboard' || name === 'schedules' || name === 'model' || name === 'incidents' || name === 'lineage');
+  if (wrapEl) wrapEl.classList.add('wide');   // every tab now uses the full width
   if (name === 'incidents') loadIncidents();
   if (name === 'lineage') loadLineage();
   if (name === 'model') loadModel();
-  if (name === 'history') {
-    $('#historyDetail').style.display = 'none';
-    $('#historyListCard').style.display = 'block';
-    loadHistory();
-  }
+  if (name === 'history') setHistorySub('app');   // Full app assessments is the default subtab
   if (name === 'dashboard') { loadDashboard(); refreshIncBadge(); }
   if (name === 'schedules') {
     $('#schCtx').textContent = APP_ID
@@ -2109,28 +2294,48 @@ function selectedTables() {
 }
 function updateAssessBtn() { $('#assessTablesBtn').disabled = selectedTables().length === 0; }
 
-async function assessSelectedTables() {
+// Core launcher shared by both flows (assess selected / assess entire app).
+async function launchAppAssessment(tables) {
   const bearer = BEARER;
-  const tables = selectedTables();
   if (!bearer) { appBanner('err', 'No Qlik API key configured — set it in the extension settings.'); return; }
   if (!tables.length) return;
   const sampleRaw = $('#appSampleRows').value.trim();
   const sample = sampleRaw ? parseInt(sampleRaw, 10) : NaN;
-  const body = { app_id: APP_ID, tables };
+  const body = { app_id: APP_ID, tables, tables_total: appTables.length,
+                 all_tables: appTables.length > 0 && tables.length === appTables.length };
   if (EMAIL) body.notify_email = EMAIL;
   if (Number.isFinite(sample) && sample > 0) body.sample_rows = sample;
+  const hdr = { ...HEADERS, 'X-Qlik-Bearer': bearer };
+  const res = await postJSON(`${API_BASE}/data-quality/app-assessment`, hdr, body);
+  appBanner('ok', 'Extracting & assessing — waiting for results…');
+  await renderAppResults(res.tables || []);
+}
+
+async function assessSelectedTables() {
+  const tables = selectedTables();
+  if (!tables.length) return;
   $('#assessTablesBtn').disabled = true;
+  try { await launchAppAssessment(tables); }
+  catch (e) { appBanner('err', e.message); }
+  finally { $('#assessTablesBtn').disabled = false; }
+}
+
+// One-click: assess every table in the app (fetches the roster first if needed).
+async function assessEntireApp() {
+  if (!APP_ID) { appBanner('err', 'No app id — open this from the Qlik extension inside an app.'); return; }
+  if (!BEARER) { appBanner('err', 'No Qlik API key configured — set it in the extension settings.'); return; }
+  const btn = $('#assessAllBtn'), orig = btn.textContent;
+  btn.disabled = true; btn.innerHTML = '<span class="spin"></span>Preparing…';
   try {
-    const hdr = { ...HEADERS, 'X-Qlik-Bearer': bearer };
-    appLog('POST /data-quality/app-assessment', { app_id: APP_ID, tables, sample_rows: body.sample_rows });
-    const res = await postJSON(`${API_BASE}/data-quality/app-assessment`, hdr, body);
-    appLog('assessment started', res);
-    appBanner('ok', 'Extracting & assessing — waiting for results…');
-    await renderAppResults(res.tables || []);   // stay disabled until every table's results land
+    if (!appTables.length) await listAppTables();              // fetch the full table roster
+    const tables = appTables.map(t => t.name);
+    if (!tables.length) { appBanner('err', 'No tables found in this app.'); return; }
+    document.querySelectorAll('.tablecb').forEach(cb => cb.checked = true); updateAssessBtn();
+    await launchAppAssessment(tables);
   } catch (e) {
-    appBanner('err', e.message); appLog('ERROR: ' + e.message);
+    appBanner('err', e.message);
   } finally {
-    $('#assessTablesBtn').disabled = false;
+    btn.disabled = false; btn.textContent = orig;
   }
 }
 
@@ -2248,6 +2453,7 @@ async function pollInto(resultPrefix, bodyEl, opts) {
 }
 
 $('#listTablesBtn').addEventListener('click', listAppTables);
+$('#assessAllBtn').addEventListener('click', assessEntireApp);
 $('#assessTablesBtn').addEventListener('click', assessSelectedTables);
 $('#selectAllTables').addEventListener('click', () => {
   document.querySelectorAll('.tablecb').forEach(cb => cb.checked = true); updateAssessBtn();
