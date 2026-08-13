@@ -134,21 +134,6 @@
   .spin { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--muted);
     border-top-color: transparent; border-radius: 50%; animation: sp .8s linear infinite; vertical-align: -2px; margin-right: 8px; }
   @keyframes sp { to { transform: rotate(360deg); } }
-  .dq-prog { margin: 6px 0 2px; }
-  .dq-prog-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
-  .dq-prog-phase { font-weight: 700; font-size: 15px; }
-  .dq-prog-pct { font-variant-numeric: tabular-nums; font-weight: 800; color: var(--accent2); }
-  .dq-prog-track { height: 8px; border-radius: 999px; background: var(--idle-bg); overflow: hidden; }
-  .dq-prog-fill { height: 100%; border-radius: 999px; background: var(--grad);
-    width: 0; transition: width .5s cubic-bezier(.4,0,.2,1); }
-  .dq-prog-fill.indet { width: 35% !important; animation: dqslide 1.2s ease-in-out infinite; }
-  @keyframes dqslide { 0% { margin-left: -35%; } 100% { margin-left: 100%; } }
-  .dq-steps { display: flex; gap: 6px; margin-top: 12px; }
-  .dq-steps .st { flex: 1; text-align: center; font-size: 11px; color: var(--muted);
-    padding-top: 8px; border-top: 3px solid var(--border); transition: color .3s, border-color .3s; }
-  .dq-steps .st.on { color: var(--accent2); border-top-color: var(--accent2); font-weight: 700; }
-  .dq-steps .st.past { border-top-color: var(--accent); }
-  .dq-prog-sub { color: var(--muted); font-size: 12px; margin-top: 10px; }
   .subhead { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 20px 0 8px; }
   .files { display: flex; flex-wrap: wrap; gap: 8px; }
   .file { display: inline-flex; align-items: center; gap: 8px; text-decoration: none;
@@ -1253,89 +1238,6 @@ function renderAssessment(r, bodyEl, opts) {
 // --------------------------------------------------------------------------- //
 // upload flow
 // --------------------------------------------------------------------------- //
-// Live progress bar. The worker writes its phase (+ dimension count + rows/cols)
-// into _status.json, which the result API forwards verbatim as `r.status`. We map
-// the phase to a determinate percentage; an older worker with no phase field just
-// shows an indeterminate sliding bar, so this degrades gracefully.
-const DQ_PHASES = [
-  { key: 'loading',    label: 'Loading data' },
-  { key: 'preparing',  label: 'Preparing rules' },
-  { key: 'assessing',  label: 'Assessing quality' },
-  { key: 'finalising', label: 'Finalising report' },
-];
-const fmtInt = n => (n == null || isNaN(n)) ? null : Number(n).toLocaleString();
-
-function progressPercent(st) {
-  switch (st && st.phase) {
-    case 'loading':    return 12;
-    case 'preparing':  return 32;
-    case 'assessing': {
-      const t = Number(st.dims_total) || 0, d = Number(st.dims_done) || 0;
-      return t ? Math.round(40 + 50 * (d / t)) : 45;   // 40→90% across the dimensions
-    }
-    case 'finalising': return 96;
-    default:           return null;                    // pre-phase / legacy worker
-  }
-}
-
-// Mount the progress skeleton ONCE, then update parts in place. Rebuilding innerHTML
-// every animation frame would restart the CSS width-transition and flicker; updating
-// nodes lets the .5s ease on the fill smooth the jumps between JS steps.
-function mountProgress(bodyEl) {
-  bodyEl.innerHTML = `<div class="dq-prog">
-      <div class="dq-prog-head"><span class="dq-prog-phase" data-p="phase">Starting…</span><span class="dq-prog-pct" data-p="pct"></span></div>
-      <div class="dq-prog-track"><div class="dq-prog-fill" data-p="fill" style="width:0%"></div></div>
-      <div class="dq-steps" data-p="steps">${DQ_PHASES.map(p => `<div class="st">${p.label}</div>`).join('')}</div>
-      <div class="dq-prog-sub" data-p="sub"></div>
-      <div data-p="nudge"></div>
-    </div>`;
-  const q = s => bodyEl.querySelector(`[data-p="${s}"]`);
-  const stepEls = q('steps').children;
-  return function update(r, pct, nudged) {
-    const st = (r && r.status) || {};
-    q('phase').textContent = st.phase_label || 'Starting…';
-    q('pct').textContent = Math.round(pct) + '%';
-    q('fill').style.width = pct + '%';
-    const idx = DQ_PHASES.findIndex(p => p.key === st.phase);
-    for (let i = 0; i < stepEls.length; i++)
-      stepEls[i].className = 'st ' + (i === idx ? 'on' : (idx > i ? 'past' : ''));
-    const rows = fmtInt(st.rows_assessed), cols = fmtInt(st.column_count);
-    const sub = (st.phase === 'assessing' && st.dims_total) ? `Dimension ${st.dims_done || 0} of ${st.dims_total}` : '';
-    const meta = [rows ? `${rows} rows` : '', cols ? `${cols} columns` : ''].filter(Boolean).join(' · ');
-    q('sub').textContent = [sub, meta].filter(Boolean).join(' · ');
-    q('nudge').innerHTML = nudged ? `<p class="hint">This is taking longer than usual — still working…</p>` : '';
-  };
-}
-
-// Render a progress panel from a poll result (one-shot; used by the app-assessment
-// which advances a table count rather than a live phase).
-function renderProgress(r, opts) {
-  opts = opts || {};
-  const st = (r && r.status) || {};
-  const pct = (opts.pct != null) ? opts.pct : progressPercent(st);
-  const phaseLabel = opts.label || st.phase_label || 'Starting…';
-  const idx = DQ_PHASES.findIndex(p => p.key === st.phase);
-  const rows = fmtInt(st.rows_assessed), cols = fmtInt(st.column_count);
-  let sub = opts.sub || '';
-  if (!sub && st.phase === 'assessing' && st.dims_total)
-    sub = `Dimension ${st.dims_done || 0} of ${st.dims_total}`;
-  const meta = [rows ? `${rows} rows` : '', cols ? `${cols} columns` : ''].filter(Boolean).join(' &middot; ');
-  const steps = opts.noSteps ? '' :
-    `<div class="dq-steps">${DQ_PHASES.map((p, i) =>
-      `<div class="st ${i === idx ? 'on' : (idx > i ? 'past' : '')}">${p.label}</div>`).join('')}</div>`;
-  const fillCls = pct == null ? 'dq-prog-fill indet' : 'dq-prog-fill';
-  const fillStyle = pct == null ? '' : ` style="width:${pct}%"`;
-  const pctTxt = pct == null ? '' : `<span class="dq-prog-pct">${pct}%</span>`;
-  const subLine = [sub, meta].filter(Boolean).join(' &middot; ');
-  return `<div class="dq-prog">
-      <div class="dq-prog-head"><span class="dq-prog-phase">${esc(phaseLabel)}</span>${pctTxt}</div>
-      <div class="dq-prog-track"><div class="${fillCls}"${fillStyle}></div></div>
-      ${steps}
-      ${subLine ? `<div class="dq-prog-sub">${subLine}</div>` : ''}
-    </div>`;
-}
-
-// --------------------------------------------------------------------------- //
 // Poll cadence: quick early so short runs feel snappy, then back off to spare the
 // server (each poll is an S3 read, and the terminal poll also lists the run folder).
 function pollDelay(start) {
@@ -1343,58 +1245,28 @@ function pollDelay(start) {
   return elapsed < 30000 ? 2000 : elapsed < 120000 ? 5000 : 15000;
 }
 
-// The real wait is mostly ECS boot (no signal, ~30-60s) and the assessment itself
-// is often faster than one poll interval, so a purely data-driven bar would jump
-// PENDING -> done. Instead a smooth animator always eases the bar FORWARD toward a
-// ceiling set by the current phase (a time-based creep while the task boots), and
-// real phases snap it up when they arrive. It never goes backward and never reaches
-// 100% until the run is actually terminal.
-function pollResults(resultPrefix) {
+async function pollResults(resultPrefix) {
   const NUDGE_MS = 10 * 60 * 1000, start = Date.now();
   const card = $('#assessment'), body = $('#assessBody');
   card.style.display = 'block';
-  const update = mountProgress(body);
-  let latest = null, shown = 2;
-
-  const ceilingFor = st => {
-    switch (st && st.phase) {
-      case 'loading':    return 45;
-      case 'preparing':  return 62;
-      case 'assessing': {
-        const t = Number(st.dims_total) || 0, d = Number(st.dims_done) || 0;
-        return t ? Math.min(92, 62 + 30 * (d / t)) : 72;
-      }
-      case 'finalising': return 97;
-      default:           return Math.min(30, (Date.now() - start) / 1500);  // creep while booting
+  // Spinner stays until results arrive — no hard timeout, no per-poll logging.
+  body.innerHTML = `<p><span class="spin"></span>Assessing — waiting for results…</p>`;
+  let nudged = false;
+  while (true) {
+    let r = null;
+    try { r = await postJSON(`${API_BASE}/data-quality/result`, HEADERS, { result_prefix: resultPrefix }); }
+    catch (e) { /* transient poll error — keep waiting quietly */ }
+    if (r && TERMINAL.includes(r.state)) {
+      renderAssessment(r);
+      $('#resetBar').style.display = 'block';
+      return;                              // history reloads fresh whenever the tab is opened
     }
-  };
-  const anim = setInterval(() => {
-    const ceil = ceilingFor(latest && latest.status);
-    const gap = ceil - shown;
-    if (gap > 0) shown += Math.max(0.08, gap * 0.06);   // ease-out with a floor so it never stalls
-    if (shown > ceil) shown = ceil;
-    update(latest, shown, Date.now() - start > NUDGE_MS);
-  }, 120);
-
-  return (async () => {
-    let terminal = null;
-    try {
-      while (true) {
-        let r = null;
-        try { r = await postJSON(`${API_BASE}/data-quality/result`, HEADERS, { result_prefix: resultPrefix }); }
-        catch (e) { /* transient poll error — keep waiting quietly */ }
-        if (r) latest = r;
-        if (r && TERMINAL.includes(r.state)) { terminal = r; break; }
-        await sleep(pollDelay(start));
-      }
-    } finally {
-      clearInterval(anim);
+    if (!nudged && Date.now() - start > NUDGE_MS) {
+      nudged = true;
+      body.insertAdjacentHTML('beforeend', `<p class="hint">This is taking longer than usual — still working…</p>`);
     }
-    update(latest, 100, false);           // snap to 100% before revealing results
-    await sleep(220);
-    renderAssessment(terminal);
-    $('#resetBar').style.display = 'block';
-  })();
+    await sleep(pollDelay(start));
+  }
 }
 
 goBtn.addEventListener('click', async () => {
@@ -2904,8 +2776,10 @@ async function launchAppAssessment(tables, augment, opts) {
   if (!tables.length) return;
   const sampleRaw = $('#appSampleRows').value.trim();
   const sample = sampleRaw ? parseInt(sampleRaw, 10) : NaN;
-  const body = { app_id: APP_ID, tables, tables_total: appTables.length,
-                 all_tables: appTables.length > 0 && tables.length === appTables.length };
+  // "Full app" = every table in the app was selected. Only then is an app-wide
+  // average meaningful, so only then do we show the Overall Quality tab.
+  const isFullApp = appTables.length > 0 && tables.length === appTables.length;
+  const body = { app_id: APP_ID, tables, tables_total: appTables.length, all_tables: isFullApp };
   if (EMAIL) body.notify_email = EMAIL;
   if (Number.isFinite(sample) && sample > 0) body.sample_rows = sample;
   if (augment && Object.keys(augment).length) body.ruleset_augment = augment;
@@ -2913,7 +2787,7 @@ async function launchAppAssessment(tables, augment, opts) {
   const hdr = { ...HEADERS, 'X-Qlik-Bearer': bearer };
   const res = await postJSON(`${API_BASE}/data-quality/app-assessment`, hdr, body);
   appBanner('ok', 'Extracting & assessing — waiting for results…');
-  await renderAppResults(res.tables || []);
+  await renderAppResults(res.tables || [], isFullApp);
 }
 
 async function assessSelectedTables() {
@@ -2955,7 +2829,7 @@ async function reRunTable(tableName) {
   catch (e) { appBanner('err', e.message); }
 }
 
-async function renderAppResults(tables) {
+async function renderAppResults(tables, isFullApp) {
   const wrap = $('#appResults'), body = $('#appResultsBody');
   wrap.style.display = 'block';
   if (!tables.length) { body.innerHTML = '<p class="hint">No tables were assessed.</p>'; return; }
@@ -2964,17 +2838,14 @@ async function renderAppResults(tables) {
   // view (Overall Quality + each table) only appears once every table has finished.
   const total = tables.length, noun = total > 1 ? 'app assessment' : 'assessment';
   let done = 0;
-  const showRunning = () => { body.innerHTML = renderProgress(null, {
-    label: `Running ${noun}`, noSteps: true,
-    pct: Math.round(100 * done / total),
-    sub: `${done} of ${total} table${total > 1 ? 's' : ''} assessed`,
-  }); };
+  const showRunning = () => { body.innerHTML =
+    `<p style="padding:10px 2px;font-size:15px;"><span class="spin"></span> Running ${noun} — ${done} of ${total} table(s) assessed…</p>`; };
   showRunning();
 
   const results = await Promise.all(tables.map(t =>
     pollResult(t.resultPrefix).then(r => { done++; showRunning(); return r; })));
 
-  renderAppResultsFinal(tables, results);
+  renderAppResultsFinal(tables, results, isFullApp);
   appBanner('ok', 'Assessment complete.');
 }
 
@@ -2990,19 +2861,29 @@ async function pollResult(resultPrefix) {
   }
 }
 
-// All tables done: vertical tab per table (+ "Overall Quality" pinned first), rendered at once.
-function renderAppResultsFinal(tables, results) {
+// All tables done: one vertical tab per table. The app-wide "Overall Quality" tab is
+// only meaningful (and only shown) when EVERY table in the app was assessed; a
+// selected subset or a single-table re-run shows just the per-table tabs.
+function renderAppResultsFinal(tables, results, isFullApp) {
   const body = $('#appResultsBody');
-  let tabs = `<button class="apptab active" data-target="overall">Overall Quality</button>`;
-  let panels = `<div class="apppanel active" id="apppanel_overall"></div>`;
+  const showOverall = isFullApp && tables.length > 1;
+  let tabs = '', panels = '';
+  if (showOverall) {
+    tabs += `<button class="apptab active" data-target="overall">Overall Quality</button>`;
+    panels += `<div class="apppanel active" id="apppanel_overall"></div>`;
+  }
   tables.forEach((t, i) => {
-    tabs += `<button class="apptab" data-target="${i}"></button>`;
-    panels += `<div class="apppanel" id="apppanel_${i}"><div id="appres_${i}"></div></div>`;
+    const on = (!showOverall && i === 0) ? ' active' : '';   // first table active when no overall
+    tabs += `<button class="apptab${on}" data-target="${i}"></button>`;
+    panels += `<div class="apppanel${on}" id="apppanel_${i}"><div id="appres_${i}"></div></div>`;
   });
   body.innerHTML = `<div class="apptabs"><div class="apptablist">${tabs}</div>
       <div class="apppanels">${panels}</div></div>`;
   const btns = [...body.querySelectorAll('.apptab')];
-  btns.forEach((b, idx) => { if (idx > 0) b.textContent = tables[idx - 1].table; });  // label safely
+  btns.forEach(btn => {                                       // label table tabs by their index
+    const tgt = btn.getAttribute('data-target');
+    if (tgt !== 'overall') btn.textContent = tables[+tgt].table;
+  });
   btns.forEach(btn => btn.addEventListener('click', () => {
     btns.forEach(b => b.classList.toggle('active', b === btn));
     body.querySelectorAll('.apppanel').forEach(p => p.classList.remove('active'));
@@ -3012,7 +2893,7 @@ function renderAppResultsFinal(tables, results) {
     if (r) renderAssessment(r, $('#appres_' + i), { context: 'app' });
     else $('#appres_' + i).innerHTML = '<p class="hint">No result for this table.</p>';
   });
-  renderOverall($('#apppanel_overall'), results.filter(Boolean), tables.length);
+  if (showOverall) renderOverall($('#apppanel_overall'), results.filter(Boolean), tables.length);
 }
 
 const _avg = a => a.reduce((x, y) => x + y, 0) / a.length;
