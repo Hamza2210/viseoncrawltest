@@ -2827,24 +2827,49 @@ async function reRunTable(tableName) {
   catch (e) { appBanner('err', e.message); }
 }
 
-function renderAppResults(tables) {
+async function renderAppResults(tables) {
   const wrap = $('#appResults'), body = $('#appResultsBody');
   wrap.style.display = 'block';
   if (!tables.length) { body.innerHTML = '<p class="hint">No tables were assessed.</p>'; return; }
 
-  // Left: a vertical tab per table, with "Overall Quality" pinned first.
-  // Right: the matching panel; each table renders into its own panel as it lands.
+  // While running, show ONE simple status (not a panel per table). The full tabbed
+  // view (Overall Quality + each table) only appears once every table has finished.
+  const total = tables.length, noun = total > 1 ? 'app assessment' : 'assessment';
+  let done = 0;
+  const showRunning = () => { body.innerHTML =
+    `<p style="padding:10px 2px;font-size:15px;"><span class="spin"></span> Running ${noun} — ${done} of ${total} table(s) assessed…</p>`; };
+  showRunning();
+
+  const results = await Promise.all(tables.map(t =>
+    pollResult(t.resultPrefix).then(r => { done++; showRunning(); return r; })));
+
+  renderAppResultsFinal(tables, results);
+  appBanner('ok', 'Assessment complete.');
+}
+
+// Poll one run to a terminal state and return the result (no rendering).
+async function pollResult(resultPrefix) {
+  const start = Date.now();
+  while (true) {
+    let r = null;
+    try { r = await postJSON(`${API_BASE}/data-quality/result`, HEADERS, { result_prefix: resultPrefix }); }
+    catch (e) { /* transient poll error — keep waiting */ }
+    if (r && TERMINAL.includes(r.state)) return r;
+    await sleep(pollDelay(start));
+  }
+}
+
+// All tables done: vertical tab per table (+ "Overall Quality" pinned first), rendered at once.
+function renderAppResultsFinal(tables, results) {
+  const body = $('#appResultsBody');
   let tabs = `<button class="apptab active" data-target="overall">Overall Quality</button>`;
   let panels = `<div class="apppanel active" id="apppanel_overall"></div>`;
   tables.forEach((t, i) => {
     tabs += `<button class="apptab" data-target="${i}"></button>`;
-    panels += `<div class="apppanel" id="apppanel_${i}">
-        <div id="appres_${i}"><p><span class="spin"></span>Extracting & assessing…</p></div>
-      </div>`;
+    panels += `<div class="apppanel" id="apppanel_${i}"><div id="appres_${i}"></div></div>`;
   });
   body.innerHTML = `<div class="apptabs"><div class="apptablist">${tabs}</div>
       <div class="apppanels">${panels}</div></div>`;
-
   const btns = [...body.querySelectorAll('.apptab')];
   btns.forEach((b, idx) => { if (idx > 0) b.textContent = tables[idx - 1].table; });  // label safely
   btns.forEach(btn => btn.addEventListener('click', () => {
@@ -2852,14 +2877,11 @@ function renderAppResults(tables) {
     body.querySelectorAll('.apppanel').forEach(p => p.classList.remove('active'));
     body.querySelector('#apppanel_' + btn.getAttribute('data-target')).classList.add('active');
   }));
-
-  // Overall aggregates as each table completes; resolve once every table is done.
-  const collected = [];
-  renderOverall($('#apppanel_overall'), collected, tables.length);
-  return Promise.all(tables.map((t, i) => pollInto(t.resultPrefix, $('#appres_' + i), {
-    context: 'app',
-    onResult: (r) => { collected.push(r); renderOverall($('#apppanel_overall'), collected, tables.length); },
-  })));
+  results.forEach((r, i) => {
+    if (r) renderAssessment(r, $('#appres_' + i), { context: 'app' });
+    else $('#appres_' + i).innerHTML = '<p class="hint">No result for this table.</p>';
+  });
+  renderOverall($('#apppanel_overall'), results.filter(Boolean), tables.length);
 }
 
 const _avg = a => a.reduce((x, y) => x + y, 0) / a.length;
