@@ -134,6 +134,21 @@
   .spin { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--muted);
     border-top-color: transparent; border-radius: 50%; animation: sp .8s linear infinite; vertical-align: -2px; margin-right: 8px; }
   @keyframes sp { to { transform: rotate(360deg); } }
+  .dq-prog { margin: 6px 0 2px; }
+  .dq-prog-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+  .dq-prog-phase { font-weight: 700; font-size: 15px; }
+  .dq-prog-pct { font-variant-numeric: tabular-nums; font-weight: 800; color: var(--accent2); }
+  .dq-prog-track { height: 8px; border-radius: 999px; background: var(--idle-bg); overflow: hidden; }
+  .dq-prog-fill { height: 100%; border-radius: 999px; background: var(--grad);
+    width: 0; transition: width .5s cubic-bezier(.4,0,.2,1); }
+  .dq-prog-fill.indet { width: 35% !important; animation: dqslide 1.2s ease-in-out infinite; }
+  @keyframes dqslide { 0% { margin-left: -35%; } 100% { margin-left: 100%; } }
+  .dq-steps { display: flex; gap: 6px; margin-top: 12px; }
+  .dq-steps .st { flex: 1; text-align: center; font-size: 11px; color: var(--muted);
+    padding-top: 8px; border-top: 3px solid var(--border); transition: color .3s, border-color .3s; }
+  .dq-steps .st.on { color: var(--accent2); border-top-color: var(--accent2); font-weight: 700; }
+  .dq-steps .st.past { border-top-color: var(--accent); }
+  .dq-prog-sub { color: var(--muted); font-size: 12px; margin-top: 10px; }
   .subhead { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 20px 0 8px; }
   .files { display: flex; flex-wrap: wrap; gap: 8px; }
   .file { display: inline-flex; align-items: center; gap: 8px; text-decoration: none;
@@ -1238,6 +1253,60 @@ function renderAssessment(r, bodyEl, opts) {
 // --------------------------------------------------------------------------- //
 // upload flow
 // --------------------------------------------------------------------------- //
+// Live progress bar. The worker writes its phase (+ dimension count + rows/cols)
+// into _status.json, which the result API forwards verbatim as `r.status`. We map
+// the phase to a determinate percentage; an older worker with no phase field just
+// shows an indeterminate sliding bar, so this degrades gracefully.
+const DQ_PHASES = [
+  { key: 'loading',    label: 'Loading data' },
+  { key: 'preparing',  label: 'Preparing rules' },
+  { key: 'assessing',  label: 'Assessing quality' },
+  { key: 'finalising', label: 'Finalising report' },
+];
+const fmtInt = n => (n == null || isNaN(n)) ? null : Number(n).toLocaleString();
+
+function progressPercent(st) {
+  switch (st && st.phase) {
+    case 'loading':    return 12;
+    case 'preparing':  return 32;
+    case 'assessing': {
+      const t = Number(st.dims_total) || 0, d = Number(st.dims_done) || 0;
+      return t ? Math.round(40 + 50 * (d / t)) : 45;   // 40→90% across the dimensions
+    }
+    case 'finalising': return 96;
+    default:           return null;                    // pre-phase / legacy worker
+  }
+}
+
+// Render a progress panel from a poll result. `pctOverride`/`subOverride` let the
+// app-assessment reuse the same bar with a table count instead of a phase.
+function renderProgress(r, opts) {
+  opts = opts || {};
+  const st = (r && r.status) || {};
+  const pct = (opts.pct != null) ? opts.pct : progressPercent(st);
+  const phaseLabel = opts.label || st.phase_label || 'Starting…';
+  const idx = DQ_PHASES.findIndex(p => p.key === st.phase);
+  const rows = fmtInt(st.rows_assessed), cols = fmtInt(st.column_count);
+  let sub = opts.sub || '';
+  if (!sub && st.phase === 'assessing' && st.dims_total)
+    sub = `Dimension ${st.dims_done || 0} of ${st.dims_total}`;
+  const meta = [rows ? `${rows} rows` : '', cols ? `${cols} columns` : ''].filter(Boolean).join(' &middot; ');
+  const steps = opts.noSteps ? '' :
+    `<div class="dq-steps">${DQ_PHASES.map((p, i) =>
+      `<div class="st ${i === idx ? 'on' : (idx > i ? 'past' : '')}">${p.label}</div>`).join('')}</div>`;
+  const fillCls = pct == null ? 'dq-prog-fill indet' : 'dq-prog-fill';
+  const fillStyle = pct == null ? '' : ` style="width:${pct}%"`;
+  const pctTxt = pct == null ? '' : `<span class="dq-prog-pct">${pct}%</span>`;
+  const subLine = [sub, meta].filter(Boolean).join(' &middot; ');
+  return `<div class="dq-prog">
+      <div class="dq-prog-head"><span class="dq-prog-phase">${esc(phaseLabel)}</span>${pctTxt}</div>
+      <div class="dq-prog-track"><div class="${fillCls}"${fillStyle}></div></div>
+      ${steps}
+      ${subLine ? `<div class="dq-prog-sub">${subLine}</div>` : ''}
+    </div>`;
+}
+
+// --------------------------------------------------------------------------- //
 // Poll cadence: quick early so short runs feel snappy, then back off to spare the
 // server (each poll is an S3 read, and the terminal poll also lists the run folder).
 function pollDelay(start) {
@@ -1249,8 +1318,9 @@ async function pollResults(resultPrefix) {
   const NUDGE_MS = 10 * 60 * 1000, start = Date.now();
   const card = $('#assessment'), body = $('#assessBody');
   card.style.display = 'block';
-  // Spinner stays until results arrive — no hard timeout, no per-poll logging.
-  body.innerHTML = `<p><span class="spin"></span>Assessing — waiting for results…</p>`;
+  // Determinate bar driven by the worker's phase; falls back to an indeterminate
+  // slide until the first status write lands. No hard timeout, no per-poll logging.
+  body.innerHTML = renderProgress(null);
   let nudged = false;
   while (true) {
     let r = null;
@@ -1261,10 +1331,9 @@ async function pollResults(resultPrefix) {
       $('#resetBar').style.display = 'block';
       return;                              // history reloads fresh whenever the tab is opened
     }
-    if (!nudged && Date.now() - start > NUDGE_MS) {
-      nudged = true;
-      body.insertAdjacentHTML('beforeend', `<p class="hint">This is taking longer than usual — still working…</p>`);
-    }
+    if (!nudged && Date.now() - start > NUDGE_MS) nudged = true;
+    body.innerHTML = renderProgress(r) +
+      (nudged ? `<p class="hint">This is taking longer than usual — still working…</p>` : '');
     await sleep(pollDelay(start));
   }
 }
@@ -2836,8 +2905,11 @@ async function renderAppResults(tables) {
   // view (Overall Quality + each table) only appears once every table has finished.
   const total = tables.length, noun = total > 1 ? 'app assessment' : 'assessment';
   let done = 0;
-  const showRunning = () => { body.innerHTML =
-    `<p style="padding:10px 2px;font-size:15px;"><span class="spin"></span> Running ${noun} — ${done} of ${total} table(s) assessed…</p>`; };
+  const showRunning = () => { body.innerHTML = renderProgress(null, {
+    label: `Running ${noun}`, noSteps: true,
+    pct: Math.round(100 * done / total),
+    sub: `${done} of ${total} table${total > 1 ? 's' : ''} assessed`,
+  }); };
   showRunning();
 
   const results = await Promise.all(tables.map(t =>
