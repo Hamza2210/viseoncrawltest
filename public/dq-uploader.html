@@ -253,12 +253,29 @@
   .dim-desc { margin-top: 10px; padding: 10px 12px; border-left: 3px solid var(--accent);
     background: var(--idle-bg); border-radius: 6px; font-size: 12px; line-height: 1.5; }
   .dim-desc strong { display: block; margin-bottom: 2px; }
-  /* Incidents: grouped by dataset, each incident a card with a ⋯ actions menu */
-  .inc-group { margin-bottom: 20px; }
-  .inc-group-head { display: flex; align-items: baseline; gap: 10px; margin: 0 0 8px; }
+  /* Incidents: an open-across-all overview, then collapsible groups per dataset */
+  .inc-overview { border: 1px solid var(--border); border-left: 3px solid var(--err); border-radius: 12px;
+    padding: 14px 16px; margin-bottom: 22px; background: color-mix(in srgb, var(--err) 4%, var(--card)); }
+  .inc-overview h3 { margin: 0 0 10px; font-size: 12px; text-transform: uppercase; letter-spacing: .04em;
+    color: var(--muted); display: flex; align-items: center; gap: 8px; font-weight: 600; }
+  .inc-ov-list { display: flex; flex-direction: column; gap: 2px; }
+  .inc-ov-row { display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 8px; cursor: pointer; }
+  .inc-ov-row:hover { background: var(--card); }
+  .inc-ov-ds { font-weight: 600; white-space: nowrap; }
+  .inc-ov-rule { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .inc-ov-when { margin-left: auto; color: var(--muted); font-size: 12px; white-space: nowrap; }
+  .inc-group { margin-bottom: 20px; border-radius: 12px; }
+  .inc-group-head { display: flex; align-items: center; gap: 9px; margin: 0 0 8px; cursor: pointer;
+    user-select: none; padding: 2px; border-radius: 8px; }
+  .inc-group-head:hover { background: var(--idle-bg); }
+  .inc-caret { color: var(--muted); font-size: 11px; flex: none; transition: transform .12s; }
+  .inc-group.collapsed .inc-caret { transform: rotate(-90deg); }
+  .inc-group.collapsed .inc-cards { display: none; }
   .inc-group-name { font-weight: 700; font-size: 15px; word-break: break-word; }
   .inc-group-meta { color: var(--muted); font-size: 12px; }
   .inc-cards { display: flex; flex-direction: column; gap: 8px; }
+  .inc-flash { animation: incflash 1.3s ease; }
+  @keyframes incflash { 0%, 100% { background: transparent; } 22% { background: color-mix(in srgb, var(--accent2) 13%, transparent); } }
   .inc-card { border: 1px solid var(--border); border-left-width: 3px; border-radius: 10px; padding: 11px 14px; }
   .inc-card.open { border-left-color: var(--err); }
   .inc-card.recovered { border-left-color: var(--ok); }
@@ -2278,19 +2295,58 @@ function renderIncidents(r) {
     if (!groups.has(k)) groups.set(k, { name: it.dataset, items: [] });
     groups.get(k).items.push(it);
   });
-  $('#incList').innerHTML = [...groups.values()].map(g => {
-    const openN = g.items.filter(i => i.status === 'OPEN').length;
+  const groupArr = [...groups.values()];
+  groupArr.forEach((g, i) => { g.gid = i; g.open = g.items.filter(x => x.status === 'OPEN'); });
+
+  // Overview: every OPEN incident across all datasets, worst severity first. Click one
+  // to jump to (and expand) its dataset group below.
+  const sevRank = { blocker: 3, major: 2, warning: 1 };
+  const allOpen = [];
+  groupArr.forEach(g => g.open.forEach(it => allOpen.push({ it, gid: g.gid, dataset: g.name })));
+  allOpen.sort((a, b) => (sevRank[b.it.severity] || 0) - (sevRank[a.it.severity] || 0));
+  const overview = allOpen.length ? `
+    <div class="inc-overview">
+      <h3><span class="chip crit"><span class="dot"></span>${allOpen.length} open</span> across ${new Set(allOpen.map(o => o.gid)).size} dataset(s)</h3>
+      <div class="inc-ov-list">${allOpen.map(o => `
+        <div class="inc-ov-row" data-goto="${o.gid}">
+          ${incSevChip(o.it.severity)}
+          <span class="inc-ov-ds">${esc(o.dataset)}</span>
+          <span class="inc-ov-rule">${esc(ruleLabel(o.it.rule))}</span>
+          <span class="inc-ov-when">opened ${esc(fmtWhen(o.it.openedRun))}</span>
+        </div>`).join('')}
+      </div>
+    </div>` : '';
+
+  const groupsHtml = groupArr.map(g => {
+    const openN = g.open.length;
     const recN = g.items.filter(i => i.status !== 'OPEN' && !i.dismissed).length;
     const disN = g.items.filter(i => i.dismissed).length;
     const meta = [openN ? `${openN} open` : '', recN ? `${recN} recovered` : '', disN ? `${disN} dismissed` : '']
       .filter(Boolean).join(' · ');
-    return `<div class="inc-group">
-        <div class="inc-group-head"><span class="inc-group-name">${esc(g.name)}</span><span class="inc-group-meta">${meta}</span></div>
+    const collapsed = openN === 0 ? ' collapsed' : '';       // closed-only groups start collapsed
+    return `<div class="inc-group${collapsed}" data-gid="${g.gid}">
+        <div class="inc-group-head">
+          <span class="inc-caret">▾</span>
+          <span class="inc-group-name">${esc(g.name)}</span>
+          <span class="inc-group-meta">${meta}</span>
+        </div>
         <div class="inc-cards">${g.items.map(incCard).join('')}</div>
       </div>`;
   }).join('');
 
+  $('#incList').innerHTML = overview + groupsHtml;
   const listEl = $('#incList');
+
+  listEl.querySelectorAll('.inc-group-head').forEach(h =>
+    h.addEventListener('click', () => h.parentElement.classList.toggle('collapsed')));
+  listEl.querySelectorAll('.inc-ov-row').forEach(row => row.addEventListener('click', () => {
+    const g = listEl.querySelector(`.inc-group[data-gid="${row.dataset.goto}"]`);
+    if (!g) return;
+    g.classList.remove('collapsed');
+    g.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    g.classList.remove('inc-flash'); void g.offsetWidth; g.classList.add('inc-flash');   // restart the flash
+    setTimeout(() => g.classList.remove('inc-flash'), 1400);
+  }));
   listEl.querySelectorAll('.inc-kebab').forEach(k => k.addEventListener('click', e => {
     e.stopPropagation();
     const menu = k.nextElementSibling, wasOpen = menu.classList.contains('open');
