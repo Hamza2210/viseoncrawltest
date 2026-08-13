@@ -70,7 +70,8 @@
     padding: 11px 18px; font: inherit; font-weight: 600; cursor: pointer;
     box-shadow: 0 1px 2px rgba(16,24,40,.12);
   }
-  .tab, .subtab, .linkbtn, .dchip, .apptab, .x-close, .banner-x, .mzoom, .sched-caret { box-shadow: none; }
+  .tab, .subtab, .linkbtn, .dchip, .apptab, .x-close, .banner-x, .mzoom, .sched-caret,
+  .inc-kebab, .inc-menu-item { box-shadow: none; }
   button:disabled { opacity: .5; cursor: not-allowed; box-shadow: none; }
   .btn-secondary { background: var(--bg); color: var(--text); border: 1px solid var(--border); }
   .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
@@ -252,6 +253,35 @@
   .dim-desc { margin-top: 10px; padding: 10px 12px; border-left: 3px solid var(--accent);
     background: var(--idle-bg); border-radius: 6px; font-size: 12px; line-height: 1.5; }
   .dim-desc strong { display: block; margin-bottom: 2px; }
+  /* Incidents: grouped by dataset, each incident a card with a ⋯ actions menu */
+  .inc-group { margin-bottom: 20px; }
+  .inc-group-head { display: flex; align-items: baseline; gap: 10px; margin: 0 0 8px; }
+  .inc-group-name { font-weight: 700; font-size: 15px; word-break: break-word; }
+  .inc-group-meta { color: var(--muted); font-size: 12px; }
+  .inc-cards { display: flex; flex-direction: column; gap: 8px; }
+  .inc-card { border: 1px solid var(--border); border-left-width: 3px; border-radius: 10px; padding: 11px 14px; }
+  .inc-card.open { border-left-color: var(--err); }
+  .inc-card.recovered { border-left-color: var(--ok); }
+  .inc-card.dismissed { border-left-color: var(--border); opacity: .82; }
+  .inc-card-top { display: flex; align-items: center; gap: 8px; }
+  .inc-rule { font-weight: 600; flex: 1 1 auto; min-width: 0; }
+  .inc-msg { color: var(--muted); font-size: 13px; margin: 7px 0 0; }
+  .inc-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px;
+    color: var(--muted); font-size: 12px; margin-top: 8px; }
+  .inc-meta .hint { font-size: 12px; }
+  .inc-menu-wrap { position: relative; flex: none; }
+  .inc-kebab { background: none; border: 1px solid var(--border); border-radius: 8px; padding: 1px 9px;
+    font-size: 17px; line-height: 1.2; color: var(--muted); cursor: pointer; }
+  .inc-kebab:hover { border-color: var(--accent); color: var(--accent); }
+  .inc-menu { position: absolute; right: 0; top: calc(100% + 5px); z-index: 60; min-width: 196px;
+    background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+    box-shadow: 0 12px 34px rgba(0,0,0,.22); padding: 6px; display: none; }
+  .inc-menu.open { display: block; }
+  .inc-menu-item { display: block; width: 100%; text-align: left; background: none; border: 0;
+    border-radius: 6px; padding: 8px 10px; font: inherit; font-size: 13px; color: var(--text); cursor: pointer; }
+  .inc-menu-item:hover { background: var(--idle-bg); }
+  .inc-menu-item.danger { color: var(--err); }
+  .inc-menu-sep { height: 1px; background: var(--border); margin: 5px 4px; }
   /* AI ruleset reviewer */
   .rules-review { border-left: 3px solid var(--accent); padding: 6px 0 6px 14px; }
   .rules-list { display: flex; flex-direction: column; }
@@ -430,7 +460,7 @@
     transition: transform .13s ease, box-shadow .16s ease,
       background-color .13s, border-color .13s, color .13s;
   }
-  button:not(.tab):not(.subtab):not(.linkbtn):not(.dchip):not(.apptab):not(.x-close):not(.banner-x):not(.mzoom):not(.sched-caret):not(:disabled):hover,
+  button:not(.tab):not(.subtab):not(.linkbtn):not(.dchip):not(.apptab):not(.x-close):not(.banner-x):not(.mzoom):not(.sched-caret):not(.inc-kebab):not(.inc-menu-item):not(:disabled):hover,
   .btn-sm:not(:disabled):hover { transform: translateY(-1px) scale(1.03);
     box-shadow: 0 6px 18px color-mix(in srgb, var(--accent2) 26%, transparent); }
   button:not(:disabled):active, .btn-sm:not(:disabled):active { transform: translateY(0) scale(.98); box-shadow: none; }
@@ -2157,62 +2187,102 @@ async function loadIncidents() {
     list.innerHTML = `<p class="dash-muted" style="color:var(--err)">${esc(e.message)}</p>`;
   }
 }
+function incMenu(it, dka, ka) {
+  const open = it.status === 'OPEN';
+  const items = [
+    `<button class="inc-menu-item" data-prefix="${esc(it.resultPrefix)}" data-name="${esc(it.dataset)}">View run</button>`,
+    `<button class="inc-menu-item" data-explain="1" data-dk="${dka}" data-key="${ka}" data-name="${esc(it.dataset)}">${it.explainedAt ? 'AI explanation ✓' : 'Explain (AI)'}</button>`,
+  ];
+  if (open) {
+    items.push('<div class="inc-menu-sep"></div>');
+    items.push(`<button class="inc-menu-item" data-act="${it.ackBy ? 'unack' : 'acknowledge'}" data-dk="${dka}" data-key="${ka}">${it.ackBy ? 'Un-acknowledge' : 'Acknowledge'}</button>`);
+    items.push(`<button class="inc-menu-item" data-act="assign" data-dk="${dka}" data-key="${ka}" data-owner="${esc(it.owner || '')}">Assign…</button>`);
+    items.push(`<button class="inc-menu-item" data-act="snooze" data-hours="1" data-dk="${dka}" data-key="${ka}">Snooze 1 hour</button>`);
+    items.push(`<button class="inc-menu-item" data-act="snooze" data-hours="4" data-dk="${dka}" data-key="${ka}">Snooze 4 hours</button>`);
+    items.push(`<button class="inc-menu-item" data-act="snooze" data-hours="24" data-dk="${dka}" data-key="${ka}">Snooze 1 day</button>`);
+    if (it.snoozeUntil) items.push(`<button class="inc-menu-item" data-act="unsnooze" data-dk="${dka}" data-key="${ka}">Wake now</button>`);
+    items.push(`<button class="inc-menu-item" data-act="${it.muted ? 'unmute' : 'mute'}" data-dk="${dka}" data-key="${ka}">${it.muted ? 'Unmute alerts' : 'Mute alerts'}</button>`);
+    if (String(it.rule || '').startsWith('BASELINE_'))
+      items.push(`<button class="inc-menu-item" data-act="accept_new_normal" data-dk="${dka}" data-key="${ka}">Accept as new normal</button>`);
+    items.push('<div class="inc-menu-sep"></div>');
+    items.push(`<button class="inc-menu-item danger" data-act="dismiss" data-dk="${dka}" data-key="${ka}">Not an incident</button>`);
+  }
+  if (it.dismissed) items.push(`<button class="inc-menu-item" data-act="restore" data-dk="${dka}" data-key="${ka}">Reopen</button>`);
+  return items.join('');
+}
+function incCard(it) {
+  const open = it.status === 'OPEN';
+  const cls = open ? 'open' : it.dismissed ? 'dismissed' : 'recovered';
+  const statusChip = open
+    ? `<span class="chip crit"><span class="dot"></span>Open</span>`
+    : it.dismissed ? `<span class="chip na"><span class="dot"></span>Dismissed</span>`
+      : `<span class="chip good"><span class="dot"></span>Recovered</span>`;
+  const when = open ? `opened ${esc(fmtWhen(it.openedRun))}`
+    : it.dismissed ? `dismissed ${esc(fmtWhen(it.resolvedRun || it.lastRun))}`
+      : `recovered ${esc(fmtWhen(it.resolvedRun))}`;
+  const chips = [
+    it.ackBy ? `<span class="hint">✓ acknowledged</span>` : '',
+    it.owner ? `<span class="hint">👤 ${esc(it.owner)}</span>` : '',
+    it.muted ? `<span class="hint">🔇 muted</span>` : '',
+    it.snoozeUntil ? `<span class="hint">💤 until ${esc(fmtWhen(it.snoozeUntil))}</span>` : '',
+    it.explainedAt ? `<span class="hint" style="color:var(--accent)">🧠 AI explanation</span>` : '',
+    it.dismissed ? `<span class="hint">🗂 intentional${it.dismissReason ? ': ' + esc(it.dismissReason) : ''}</span>` : '',
+  ].filter(Boolean).join('');
+  const dka = esc(it.datasetKey), ka = esc(it.key);
+  return `<div class="inc-card ${cls}">
+      <div class="inc-card-top">
+        ${incSevChip(it.severity)}${statusChip}
+        <span class="inc-rule">${esc(ruleLabel(it.rule))}</span>
+        <span class="inc-menu-wrap">
+          <button class="inc-kebab" aria-label="Actions">⋯</button>
+          <div class="inc-menu">${incMenu(it, dka, ka)}</div>
+        </span>
+      </div>
+      ${it.message ? `<div class="inc-msg">${esc(it.message)}</div>` : ''}
+      <div class="inc-meta">
+        <span>${when}</span>
+        <span>${esc(incidentDuration(it))} · ${esc(String(it.occurrences || 1))} run(s)</span>
+        ${chips}
+      </div>
+    </div>`;
+}
 function renderIncidents(r) {
   const list = r.incidents || [];
   if (!list.length) {
     $('#incList').innerHTML = '<p class="dash-muted">No incidents — every dataset is within its expected range. 🎉</p>';
     return;
   }
-  const rows = list.map(it => {
-    const open = it.status === 'OPEN';
-    const statusChip = open
-      ? `<span class="chip crit"><span class="dot"></span>Open</span>`
-      : it.dismissed
-        ? `<span class="chip na"><span class="dot"></span>Dismissed</span>`
-        : `<span class="chip good"><span class="dot"></span>Recovered</span>`;
-    const state = [
-      it.ackBy ? `<div class="hint" title="${esc(it.ackBy)}">✓ acknowledged</div>` : '',
-      it.owner ? `<div class="hint">👤 ${esc(it.owner)}</div>` : '',
-      it.dismissed ? `<div class="hint" style="color:var(--muted)">🗂 intentional${it.dismissReason ? ': ' + esc(it.dismissReason) : ''}${it.dismissedBy ? ' (' + esc(it.dismissedBy) + ')' : ''}</div>` : '',
-      it.explainedAt ? `<div class="hint" style="color:var(--accent)">🧠 AI explanation · ${esc(fmtWhen(it.explainedAt))}${it.explainedBy ? ' (' + esc(it.explainedBy) + ')' : ''}</div>` : '',
-      it.muted ? `<div class="hint" style="color:var(--muted)">🔇 muted</div>` : '',
-      it.snoozeUntil ? `<div class="hint" style="color:var(--muted)">💤 snoozed until ${esc(fmtWhen(it.snoozeUntil))}</div>` : '',
-    ].join('');
-    const when = open ? `opened ${esc(fmtWhen(it.openedRun))}`
-      : it.dismissed ? `dismissed ${esc(fmtWhen(it.resolvedRun || it.lastRun))}`
-      : `recovered ${esc(fmtWhen(it.resolvedRun))}`;
-    const sub = `${esc(incidentDuration(it))} · ${esc(String(it.occurrences || 1))} run(s)`;
-    const dka = esc(it.datasetKey), ka = esc(it.key);
-    const actions = open ? `
-        <button class="btn-sm" data-act="${it.ackBy ? 'unack' : 'acknowledge'}" data-dk="${dka}" data-key="${ka}">${it.ackBy ? 'Un-ack' : 'Ack'}</button>
-        <button class="btn-sm" data-act="assign" data-dk="${dka}" data-key="${ka}" data-owner="${esc(it.owner || '')}">Assign</button>
-        <select class="btn-sm inc-snooze" data-dk="${dka}" data-key="${ka}" aria-label="Snooze">
-          <option value="">Snooze…</option><option value="1">1h</option><option value="4">4h</option><option value="24">1 day</option>
-        </select>
-        ${it.snoozeUntil ? `<button class="btn-sm" data-act="unsnooze" data-dk="${dka}" data-key="${ka}">Wake</button>` : ''}
-        <button class="btn-sm" data-act="${it.muted ? 'unmute' : 'mute'}" data-dk="${dka}" data-key="${ka}">${it.muted ? 'Unmute' : 'Mute'}</button>
-        ${String(it.rule || '').startsWith('BASELINE_') ? `<button class="btn-sm" data-act="accept_new_normal" data-dk="${dka}" data-key="${ka}">Accept as new normal</button>` : ''}
-        <button class="btn-sm btn-danger" data-act="dismiss" data-dk="${dka}" data-key="${ka}">Not an incident</button>` : '';
-    return `<tr>
-        <td>${statusChip}${state}</td>
-        <td>${incSevChip(it.severity)}</td>
-        <td><strong>${esc(it.dataset)}</strong><div class="hint">${esc(ruleLabel(it.rule))}</div></td>
-        <td class="hint">${esc(it.message || '')}</td>
-        <td class="hint">${when}<div class="hint">${sub}</div></td>
-        <td><div class="actions" style="gap:6px;flex-wrap:wrap;">
-          <button class="btn-sm" data-prefix="${esc(it.resultPrefix)}" data-name="${esc(it.dataset)}">View run</button>
-          <button class="btn-sm" data-explain="1" data-dk="${dka}" data-key="${ka}" data-name="${esc(it.dataset)}">${it.explainedAt ? 'AI explanation ✓' : 'Explain (AI)'}</button>${actions}
-          ${it.dismissed ? `<button class="btn-sm" data-act="restore" data-dk="${dka}" data-key="${ka}">Reopen</button>` : ''}
-        </div></td>
-      </tr>`;
+  // Group by dataset, preserving the API's open-first order so datasets with open issues surface first.
+  const groups = new Map();
+  list.forEach(it => {
+    const k = it.datasetKey || it.dataset;
+    if (!groups.has(k)) groups.set(k, { name: it.dataset, items: [] });
+    groups.get(k).items.push(it);
+  });
+  $('#incList').innerHTML = [...groups.values()].map(g => {
+    const openN = g.items.filter(i => i.status === 'OPEN').length;
+    const recN = g.items.filter(i => i.status !== 'OPEN' && !i.dismissed).length;
+    const disN = g.items.filter(i => i.dismissed).length;
+    const meta = [openN ? `${openN} open` : '', recN ? `${recN} recovered` : '', disN ? `${disN} dismissed` : '']
+      .filter(Boolean).join(' · ');
+    return `<div class="inc-group">
+        <div class="inc-group-head"><span class="inc-group-name">${esc(g.name)}</span><span class="inc-group-meta">${meta}</span></div>
+        <div class="inc-cards">${g.items.map(incCard).join('')}</div>
+      </div>`;
   }).join('');
-  $('#incList').innerHTML = `<div style="overflow-x:auto;"><table class="dash-table">` +
-    `<tr><th>Status</th><th>Severity</th><th>Dataset / rule</th><th>Detail</th><th>When</th><th></th></tr>${rows}</table></div>`;
-  $('#incList').querySelectorAll('button[data-prefix]').forEach(b =>
+
+  const listEl = $('#incList');
+  listEl.querySelectorAll('.inc-kebab').forEach(k => k.addEventListener('click', e => {
+    e.stopPropagation();
+    const menu = k.nextElementSibling, wasOpen = menu.classList.contains('open');
+    listEl.querySelectorAll('.inc-menu.open').forEach(m => m.classList.remove('open'));
+    if (!wasOpen) menu.classList.add('open');
+  }));
+  listEl.querySelectorAll('button[data-prefix]').forEach(b =>
     b.addEventListener('click', () => openIncidentRun(b.dataset.prefix, b.dataset.name)));
-  $('#incList').querySelectorAll('button[data-explain]').forEach(b =>
+  listEl.querySelectorAll('button[data-explain]').forEach(b =>
     b.addEventListener('click', () => explainIncident(b.dataset.dk, b.dataset.key, b.dataset.name, false)));
-  $('#incList').querySelectorAll('button[data-act]').forEach(b => b.addEventListener('click', () => {
+  listEl.querySelectorAll('button[data-act]').forEach(b => b.addEventListener('click', () => {
     const { dk, key, act, owner } = b.dataset;
     if (act === 'assign') {
       const val = prompt('Assign owner (email or name; leave blank to clear):', owner || '');
@@ -2229,15 +2299,18 @@ function renderIncidents(r) {
     } else if (act === 'accept_new_normal') {
       if (!confirm('Accept the current values as this dataset\'s new normal?\n\nIts baseline resets and re-learns from now — deviation alerts pause for a few runs, then resume against the new level. This closes the incident. (Gate / schema / volume-vs-previous checks are unaffected.)')) return;
       incidentAction(dk, key, 'accept_new_normal', {});
+    } else if (act === 'snooze') {
+      incidentAction(dk, key, 'snooze', { snooze_hours: Number(b.dataset.hours) });
     } else {
       incidentAction(dk, key, act, {});
     }
   }));
-  $('#incList').querySelectorAll('select.inc-snooze').forEach(s => s.addEventListener('change', () => {
-    if (!s.value) return;
-    incidentAction(s.dataset.dk, s.dataset.key, 'snooze', { snooze_hours: Number(s.value) });
-  }));
 }
+// Close any open incident action menu when clicking elsewhere.
+document.addEventListener('click', () => {
+  const l = document.getElementById('incList');
+  if (l) l.querySelectorAll('.inc-menu.open').forEach(m => m.classList.remove('open'));
+});
 async function incidentAction(datasetKey, key, action, extra) {
   try {
     await postJSON(`${API_BASE}/data-quality/incidents/action`, HEADERS,
