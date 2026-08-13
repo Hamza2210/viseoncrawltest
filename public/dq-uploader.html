@@ -1278,8 +1278,37 @@ function progressPercent(st) {
   }
 }
 
-// Render a progress panel from a poll result. `pctOverride`/`subOverride` let the
-// app-assessment reuse the same bar with a table count instead of a phase.
+// Mount the progress skeleton ONCE, then update parts in place. Rebuilding innerHTML
+// every animation frame would restart the CSS width-transition and flicker; updating
+// nodes lets the .5s ease on the fill smooth the jumps between JS steps.
+function mountProgress(bodyEl) {
+  bodyEl.innerHTML = `<div class="dq-prog">
+      <div class="dq-prog-head"><span class="dq-prog-phase" data-p="phase">Starting…</span><span class="dq-prog-pct" data-p="pct"></span></div>
+      <div class="dq-prog-track"><div class="dq-prog-fill" data-p="fill" style="width:0%"></div></div>
+      <div class="dq-steps" data-p="steps">${DQ_PHASES.map(p => `<div class="st">${p.label}</div>`).join('')}</div>
+      <div class="dq-prog-sub" data-p="sub"></div>
+      <div data-p="nudge"></div>
+    </div>`;
+  const q = s => bodyEl.querySelector(`[data-p="${s}"]`);
+  const stepEls = q('steps').children;
+  return function update(r, pct, nudged) {
+    const st = (r && r.status) || {};
+    q('phase').textContent = st.phase_label || 'Starting…';
+    q('pct').textContent = Math.round(pct) + '%';
+    q('fill').style.width = pct + '%';
+    const idx = DQ_PHASES.findIndex(p => p.key === st.phase);
+    for (let i = 0; i < stepEls.length; i++)
+      stepEls[i].className = 'st ' + (i === idx ? 'on' : (idx > i ? 'past' : ''));
+    const rows = fmtInt(st.rows_assessed), cols = fmtInt(st.column_count);
+    const sub = (st.phase === 'assessing' && st.dims_total) ? `Dimension ${st.dims_done || 0} of ${st.dims_total}` : '';
+    const meta = [rows ? `${rows} rows` : '', cols ? `${cols} columns` : ''].filter(Boolean).join(' · ');
+    q('sub').textContent = [sub, meta].filter(Boolean).join(' · ');
+    q('nudge').innerHTML = nudged ? `<p class="hint">This is taking longer than usual — still working…</p>` : '';
+  };
+}
+
+// Render a progress panel from a poll result (one-shot; used by the app-assessment
+// which advances a table count rather than a live phase).
 function renderProgress(r, opts) {
   opts = opts || {};
   const st = (r && r.status) || {};
@@ -1314,28 +1343,58 @@ function pollDelay(start) {
   return elapsed < 30000 ? 2000 : elapsed < 120000 ? 5000 : 15000;
 }
 
-async function pollResults(resultPrefix) {
+// The real wait is mostly ECS boot (no signal, ~30-60s) and the assessment itself
+// is often faster than one poll interval, so a purely data-driven bar would jump
+// PENDING -> done. Instead a smooth animator always eases the bar FORWARD toward a
+// ceiling set by the current phase (a time-based creep while the task boots), and
+// real phases snap it up when they arrive. It never goes backward and never reaches
+// 100% until the run is actually terminal.
+function pollResults(resultPrefix) {
   const NUDGE_MS = 10 * 60 * 1000, start = Date.now();
   const card = $('#assessment'), body = $('#assessBody');
   card.style.display = 'block';
-  // Determinate bar driven by the worker's phase; falls back to an indeterminate
-  // slide until the first status write lands. No hard timeout, no per-poll logging.
-  body.innerHTML = renderProgress(null);
-  let nudged = false;
-  while (true) {
-    let r = null;
-    try { r = await postJSON(`${API_BASE}/data-quality/result`, HEADERS, { result_prefix: resultPrefix }); }
-    catch (e) { /* transient poll error — keep waiting quietly */ }
-    if (r && TERMINAL.includes(r.state)) {
-      renderAssessment(r);
-      $('#resetBar').style.display = 'block';
-      return;                              // history reloads fresh whenever the tab is opened
+  const update = mountProgress(body);
+  let latest = null, shown = 2;
+
+  const ceilingFor = st => {
+    switch (st && st.phase) {
+      case 'loading':    return 45;
+      case 'preparing':  return 62;
+      case 'assessing': {
+        const t = Number(st.dims_total) || 0, d = Number(st.dims_done) || 0;
+        return t ? Math.min(92, 62 + 30 * (d / t)) : 72;
+      }
+      case 'finalising': return 97;
+      default:           return Math.min(30, (Date.now() - start) / 1500);  // creep while booting
     }
-    if (!nudged && Date.now() - start > NUDGE_MS) nudged = true;
-    body.innerHTML = renderProgress(r) +
-      (nudged ? `<p class="hint">This is taking longer than usual — still working…</p>` : '');
-    await sleep(pollDelay(start));
-  }
+  };
+  const anim = setInterval(() => {
+    const ceil = ceilingFor(latest && latest.status);
+    const gap = ceil - shown;
+    if (gap > 0) shown += Math.max(0.08, gap * 0.06);   // ease-out with a floor so it never stalls
+    if (shown > ceil) shown = ceil;
+    update(latest, shown, Date.now() - start > NUDGE_MS);
+  }, 120);
+
+  return (async () => {
+    let terminal = null;
+    try {
+      while (true) {
+        let r = null;
+        try { r = await postJSON(`${API_BASE}/data-quality/result`, HEADERS, { result_prefix: resultPrefix }); }
+        catch (e) { /* transient poll error — keep waiting quietly */ }
+        if (r) latest = r;
+        if (r && TERMINAL.includes(r.state)) { terminal = r; break; }
+        await sleep(pollDelay(start));
+      }
+    } finally {
+      clearInterval(anim);
+    }
+    update(latest, 100, false);           // snap to 100% before revealing results
+    await sleep(220);
+    renderAssessment(terminal);
+    $('#resetBar').style.display = 'block';
+  })();
 }
 
 goBtn.addEventListener('click', async () => {
