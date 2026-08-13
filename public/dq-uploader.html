@@ -2191,7 +2191,7 @@ function incMenu(it, dka, ka) {
   const open = it.status === 'OPEN';
   const items = [
     `<button class="inc-menu-item" data-prefix="${esc(it.resultPrefix)}" data-name="${esc(it.dataset)}">View run</button>`,
-    `<button class="inc-menu-item" data-explain="1" data-dk="${dka}" data-key="${ka}" data-name="${esc(it.dataset)}">${it.explainedAt ? 'AI explanation ✓' : 'Explain (AI)'}</button>`,
+    `<button class="inc-menu-item" data-explain="1" data-dk="${dka}" data-key="${ka}" data-name="${esc(it.dataset)}">${it.explainedAt ? 'Explanation ✨ ✓' : 'Explain ✨'}</button>`,
   ];
   if (open) {
     items.push('<div class="inc-menu-sep"></div>');
@@ -2207,7 +2207,11 @@ function incMenu(it, dka, ka) {
     items.push('<div class="inc-menu-sep"></div>');
     items.push(`<button class="inc-menu-item danger" data-act="dismiss" data-dk="${dka}" data-key="${ka}">Not an incident</button>`);
   }
-  if (it.dismissed) items.push(`<button class="inc-menu-item" data-act="restore" data-dk="${dka}" data-key="${ka}">Reopen</button>`);
+  if (!open) {                                             // closed incident: reopen / declutter
+    items.push('<div class="inc-menu-sep"></div>');
+    if (it.dismissed) items.push(`<button class="inc-menu-item" data-act="restore" data-dk="${dka}" data-key="${ka}">Reopen</button>`);
+    items.push(`<button class="inc-menu-item danger" data-act="archive" data-dk="${dka}" data-key="${ka}">Remove from list</button>`);
+  }
   return items.join('');
 }
 function incCard(it) {
@@ -2301,6 +2305,9 @@ function renderIncidents(r) {
       incidentAction(dk, key, 'accept_new_normal', {});
     } else if (act === 'snooze') {
       incidentAction(dk, key, 'snooze', { snooze_hours: Number(b.dataset.hours) });
+    } else if (act === 'archive') {
+      if (!confirm('Remove this closed incident from the list?\n\nIt stays in history but won\'t show here. If the same issue recurs and reopens, it will reappear.')) return;
+      incidentAction(dk, key, 'archive', {});
     } else {
       incidentAction(dk, key, act, {});
     }
