@@ -326,6 +326,8 @@
   .btn-sm { padding: 6px 12px; font-size: 13px; border-radius: 8px; border: 1px solid var(--border);
     background: var(--card); color: var(--text); cursor: pointer; font: inherit; }
   .btn-sm:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-sm.active { border-color: var(--accent); color: var(--accent);
+    background: color-mix(in srgb, var(--accent2) 12%, var(--card)); }
   .btn-sm.btn-danger:hover { border-color: var(--err); color: var(--err); }
   .actions { display: flex; gap: 8px; flex-wrap: wrap; }
 
@@ -1194,13 +1196,26 @@ function renderAssessment(r, bodyEl, opts) {
   }
   html += filesHtml(r.files);
   body.innerHTML = html;
+  // Each AI button TOGGLES its panel: first click loads + shows it, clicking again hides
+  // it (content is kept, so re-showing is instant). The button highlights while open.
   const esb = body.querySelector('[data-explainscore]');
-  if (esb) esb.addEventListener('click', () =>
-    explainScore(r.resultPrefix, (sum.dataset || 'this dataset'),
-                 body.querySelector('.score-ai-out'), false));
+  if (esb) {
+    const out = body.querySelector('.score-ai-out');
+    esb.addEventListener('click', () => {
+      if (out.style.display !== 'none' && out.innerHTML.trim()) { out.style.display = 'none'; esb.classList.remove('active'); return; }
+      esb.classList.add('active'); out.style.display = '';
+      if (!out.innerHTML.trim()) explainScore(r.resultPrefix, (sum.dataset || 'this dataset'), out, false);
+    });
+  }
   const rrb = body.querySelector('[data-reviewrules]');
-  if (rrb) rrb.addEventListener('click', () =>
-    reviewRuleset(r.resultPrefix, body.querySelector('.rules-ai-out'), false));
+  if (rrb) {
+    const out = body.querySelector('.rules-ai-out');
+    rrb.addEventListener('click', () => {
+      if (out.style.display !== 'none' && out.innerHTML.trim()) { out.style.display = 'none'; rrb.classList.remove('active'); return; }
+      rrb.classList.add('active'); out.style.display = '';
+      if (!out.innerHTML.trim()) reviewRuleset(r.resultPrefix, out, false);
+    });
+  }
 }
 
 // --------------------------------------------------------------------------- //
