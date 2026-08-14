@@ -134,6 +134,10 @@
   .spin { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--muted);
     border-top-color: transparent; border-radius: 50%; animation: sp .8s linear infinite; vertical-align: -2px; margin-right: 8px; }
   @keyframes sp { to { transform: rotate(360deg); } }
+  /* Assess-app tab locked while an assessment is in flight (no second run / no re-select) */
+  .app-busy .app-choose, .app-busy #tablePickerCard { opacity: .55; }
+  .app-busy #scheduleThisApp { pointer-events: none; opacity: .5; }
+  #appDataPanel button:disabled, #appDataPanel input:disabled { cursor: not-allowed; opacity: .6; }
   .subhead { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 20px 0 8px; }
   .files { display: flex; flex-wrap: wrap; gap: 8px; }
   .file { display: inline-flex; align-items: center; gap: 8px; text-decoration: none;
@@ -2892,24 +2896,42 @@ function updateAssessBtn() { $('#assessTablesBtn').disabled = selectedTables().l
 
 // Core launcher shared by all flows (assess selected / entire app / re-run /
 // apply-AI-rules). `augment` is an optional ruleset augment applied to each table.
+// Lock every control on the Assess-app tab while a run is in flight, so a second
+// assessment can't be triggered and the table selection can't change mid-run.
+// assessTablesBtn stays selection-aware once unlocked (disabled when nothing picked).
+function setAppBusy(busy) {
+  ['assessAllBtn', 'listTablesBtn', 'selectAllTables', 'selectNoneTables', 'appSampleRows']
+    .forEach(id => { const el = $('#' + id); if (el) el.disabled = busy; });
+  document.querySelectorAll('#tableList input[type="checkbox"]').forEach(cb => { cb.disabled = busy; });
+  const at = $('#assessTablesBtn');
+  if (at) at.disabled = busy || selectedTables().length === 0;
+  const panel = $('#appDataPanel');
+  if (panel) panel.classList.toggle('app-busy', busy);
+}
+
 async function launchAppAssessment(tables, augment, opts) {
   const bearer = BEARER;
   if (!bearer) { appBanner('err', 'No Qlik API key configured — set it in the extension settings.'); return; }
   if (!tables.length) return;
-  const sampleRaw = $('#appSampleRows').value.trim();
-  const sample = sampleRaw ? parseInt(sampleRaw, 10) : NaN;
-  // "Full app" = every table in the app was selected. Only then is an app-wide
-  // average meaningful, so only then do we show the Overall Quality tab.
-  const isFullApp = appTables.length > 0 && tables.length === appTables.length;
-  const body = { app_id: APP_ID, tables, tables_total: appTables.length, all_tables: isFullApp };
-  if (EMAIL) body.notify_email = EMAIL;
-  if (Number.isFinite(sample) && sample > 0) body.sample_rows = sample;
-  if (augment && Object.keys(augment).length) body.ruleset_augment = augment;
-  if (opts && opts.reviewRuleset) body.review_ruleset = true;
-  const hdr = { ...HEADERS, 'X-Qlik-Bearer': bearer };
-  const res = await postJSON(`${API_BASE}/data-quality/app-assessment`, hdr, body);
-  appBanner('ok', 'Extracting & assessing — waiting for results…');
-  await renderAppResults(res.tables || [], isFullApp);
+  setAppBusy(true);
+  try {
+    const sampleRaw = $('#appSampleRows').value.trim();
+    const sample = sampleRaw ? parseInt(sampleRaw, 10) : NaN;
+    // "Full app" = every table in the app was selected. Only then is an app-wide
+    // average meaningful, so only then do we show the Overall Quality tab.
+    const isFullApp = appTables.length > 0 && tables.length === appTables.length;
+    const body = { app_id: APP_ID, tables, tables_total: appTables.length, all_tables: isFullApp };
+    if (EMAIL) body.notify_email = EMAIL;
+    if (Number.isFinite(sample) && sample > 0) body.sample_rows = sample;
+    if (augment && Object.keys(augment).length) body.ruleset_augment = augment;
+    if (opts && opts.reviewRuleset) body.review_ruleset = true;
+    const hdr = { ...HEADERS, 'X-Qlik-Bearer': bearer };
+    const res = await postJSON(`${API_BASE}/data-quality/app-assessment`, hdr, body);
+    appBanner('ok', 'Extracting & assessing — waiting for results…');
+    await renderAppResults(res.tables || [], isFullApp);
+  } finally {
+    setAppBusy(false);          // unlock whether the run finished or errored
+  }
 }
 
 async function assessSelectedTables() {
