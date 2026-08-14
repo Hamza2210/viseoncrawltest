@@ -1232,6 +1232,18 @@ function renderAssessment(r, bodyEl, opts) {
   } else {
     html += `<p class="hint">Assessment finished (${r.state}) but no summary was found.</p>`;
   }
+  // On-demand AI: explain the score, and review the ruleset (aggregate/masked facts only).
+  // Kept ABOVE the failed-records table so the buttons are reachable without scrolling
+  // past a long list of records.
+  if (crit.length && score != null && r.resultPrefix) {
+    html += `<div style="margin-top:14px;">` +
+      `<div class="actions">` +
+      `<button class="btn-sm" data-explainscore="1">✨ Explain score &amp; how to improve (AI)</button>` +
+      `<button class="btn-sm" data-reviewrules="1">🔧 Review rules (AI)</button>` +
+      `</div>` +
+      `<div class="score-ai-out" style="margin-top:10px;"></div>` +
+      `<div class="rules-ai-out" style="margin-top:10px;"></div></div>`;
+  }
   // Failed records surfaced INLINE here (not just on the dashboard), so the offending
   // rows are visible wherever a run is shown — upload result, incident view, history,
   // app tables. Blockers auto-load (gate fail); an otherwise-clean run offers a lazy
@@ -1243,16 +1255,6 @@ function renderAssessment(r, bodyEl, opts) {
     const autoAttr = (!gatePass && !(opts && opts.lazyRecords)) ? ' data-auto="1"' : '';
     html += `<h3 style="margin:18px 0 8px;">Failed records</h3>` +
       `<div class="assess-failed" data-prefix="${esc(r.resultPrefix)}"${autoAttr}></div>`;
-  }
-  // On-demand AI: explain the score, and review the ruleset (aggregate/masked facts only).
-  if (crit.length && score != null && r.resultPrefix) {
-    html += `<div style="margin-top:14px;">` +
-      `<div class="actions">` +
-      `<button class="btn-sm" data-explainscore="1">✨ Explain score &amp; how to improve (AI)</button>` +
-      `<button class="btn-sm" data-reviewrules="1">🔧 Review rules (AI)</button>` +
-      `</div>` +
-      `<div class="score-ai-out" style="margin-top:10px;"></div>` +
-      `<div class="rules-ai-out" style="margin-top:10px;"></div></div>`;
   }
   html += filesHtml(r.files);
   body.innerHTML = html;
