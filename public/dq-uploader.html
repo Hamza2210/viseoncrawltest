@@ -253,32 +253,31 @@
   .dim-desc { margin-top: 10px; padding: 10px 12px; border-left: 3px solid var(--accent);
     background: var(--idle-bg); border-radius: 6px; font-size: 12px; line-height: 1.5; }
   .dim-desc strong { display: block; margin-bottom: 2px; }
-  /* Global blocker bar — persistent on EVERY tab so open blockers are always visible */
-  .blocker-bar { position: sticky; top: 8px; z-index: 40; margin: 0 0 18px; border-radius: 12px;
+  /* Global blocker bar — a slim strip pinned to the very top, above the title, on every tab */
+  .blocker-bar { position: sticky; top: 0; z-index: 50; margin: 0 0 14px; border-radius: 8px;
     border: 1px solid var(--err); color: #fff; overflow: hidden;
-    background: linear-gradient(135deg, #c31d1d, #7f1d1d);
-    box-shadow: 0 8px 24px rgba(185,28,28,.30); animation: bbpulse 2.6s ease-in-out infinite; }
+    background: linear-gradient(135deg, #c31d1d, #8a1c1c);
+    box-shadow: 0 2px 10px rgba(185,28,28,.24); }
   .blocker-bar.warnonly { border-color: #b45309; background: linear-gradient(135deg, #b45309, #7c2d12);
-    box-shadow: 0 8px 24px rgba(180,83,9,.26); animation: none; }
-  @keyframes bbpulse { 0%,100% { box-shadow: 0 8px 24px rgba(185,28,28,.30);} 50% { box-shadow: 0 8px 30px rgba(185,28,28,.60);} }
-  .bb-head { display: flex; align-items: center; gap: 12px; padding: 12px 16px; }
-  .bb-icon { font-size: 22px; line-height: 1; }
-  .bb-title { font-weight: 800; font-size: 15px; }
-  .bb-sub { opacity: .9; font-size: 12px; margin-top: 1px; }
+    box-shadow: 0 2px 10px rgba(180,83,9,.20); }
+  .bb-row { display: flex; align-items: center; gap: 10px; padding: 6px 12px; font-size: 13px; }
+  .bb-icon { font-size: 14px; line-height: 1; }
+  .bb-title { font-weight: 800; white-space: nowrap; }
+  .bb-inline { display: flex; align-items: center; gap: 8px; min-width: 0; overflow: hidden; }
+  .bb-more { opacity: .9; white-space: nowrap; font-size: 12px; }
   .bb-spacer { flex: 1; }
   .bb-all { background: rgba(255,255,255,.18); color: #fff; border: 0; border-radius: 999px;
-    padding: 7px 15px; font-weight: 800; cursor: pointer; white-space: nowrap; font-size: 13px; }
+    padding: 3px 11px; font-weight: 700; cursor: pointer; white-space: nowrap; font-size: 12px; }
   .bb-all:hover { background: rgba(255,255,255,.30); }
-  .bb-chips { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 16px 13px; }
-  .bb-chip { display: inline-flex; align-items: center; gap: 8px; max-width: 100%; cursor: pointer;
-    background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.24); color: #fff;
-    border-radius: 10px; padding: 6px 10px; font-size: 12px; }
+  .bb-chip { display: inline-flex; align-items: center; gap: 7px; max-width: 100%; cursor: pointer;
+    background: rgba(255,255,255,.15); border: 1px solid rgba(255,255,255,.22); color: #fff;
+    border-radius: 999px; padding: 2px 9px; font-size: 12px; white-space: nowrap; overflow: hidden; }
   .bb-chip:hover { background: rgba(255,255,255,.28); }
-  .bb-sev { font-weight: 800; text-transform: uppercase; font-size: 10px; letter-spacing: .04em;
-    background: #fff; color: #b91c1c; border-radius: 5px; padding: 1px 6px; white-space: nowrap; }
+  .bb-sev { font-weight: 800; text-transform: uppercase; font-size: 9px; letter-spacing: .04em;
+    background: #fff; color: #b91c1c; border-radius: 4px; padding: 1px 5px; white-space: nowrap; }
   .bb-chip.major .bb-sev { color: #b45309; }
   .bb-chip-ds { font-weight: 700; white-space: nowrap; }
-  .bb-chip-rule { opacity: .92; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bb-chip-rule { opacity: .92; overflow: hidden; text-overflow: ellipsis; }
   /* Failed-record blocker emphasis (blockers float to the top + get a red rail) */
   tr.fr-blocker td { background: color-mix(in srgb, var(--err) 12%, var(--card)); }
   tr.fr-blocker td:first-child { box-shadow: inset 3px 0 0 var(--err); }
@@ -544,6 +543,8 @@
 </head>
 <body>
 <div class="wrap">
+  <!-- Slim strip pinned above the title, on every tab: open blockers/incidents at all times -->
+  <div id="blockerBar" class="blocker-bar" style="display:none;"></div>
   <h1>Data Quality Profiling</h1>
   <p class="tagline">Automated DAMA quality scoring, monitoring and insight for your Qlik data.</p>
   <p class="sub" id="ctx"></p>
@@ -558,9 +559,6 @@
     <button class="tab" data-tab="schedules">Schedules</button>
     <button class="tab" data-tab="history">History</button>
   </div>
-
-  <!-- Persistent across every tab: shows open blockers/incidents at all times -->
-  <div id="blockerBar" class="blocker-bar" style="display:none;"></div>
 
   <!-- ============ UPLOAD ============ -->
   <div id="uploadPanel">
@@ -2275,16 +2273,13 @@ function renderBlockerBar(open) {
     || (Date.parse(b.openedAt || 0) || 0) - (Date.parse(a.openedAt || 0) || 0));
   const nBlk = sorted.filter(i => (i.severity || '').toLowerCase() === 'blocker').length;
   const nTot = sorted.length;
-  const dsCount = new Set(sorted.map(i => i.datasetKey || i.dataset)).size;
   const warnOnly = nBlk === 0;
   bar.classList.toggle('warnonly', warnOnly);
   const title = warnOnly
-    ? `${nTot} open issue${nTot > 1 ? 's' : ''} need attention`
+    ? `${nTot} open issue${nTot > 1 ? 's' : ''} need${nTot > 1 ? '' : 's'} attention`
     : `${nBlk} blocker${nBlk > 1 ? 's' : ''} need${nBlk > 1 ? '' : 's'} attention`;
-  const others = nTot - nBlk;
-  const sub = `across ${dsCount} dataset${dsCount > 1 ? 's' : ''}`
-    + (!warnOnly && others ? ` · ${others} other issue${others > 1 ? 's' : ''}` : '');
-  const chips = sorted.slice(0, 6).map(it => {
+  const shown = sorted.slice(0, 2);                     // keep the strip to one line
+  const chips = shown.map(it => {
     const sev = (it.severity || '').toLowerCase();
     return `<button class="bb-chip ${sev === 'blocker' ? '' : 'major'}" data-prefix="${esc(it.resultPrefix || '')}" data-name="${esc(it.dataset || 'dataset')}">
         <span class="bb-sev">${esc(sev || 'issue')}</span>
@@ -2292,14 +2287,15 @@ function renderBlockerBar(open) {
         <span class="bb-chip-rule">${esc(ruleLabel(it.rule))}</span>
       </button>`;
   }).join('');
-  const more = nTot > 6 ? `<button class="bb-chip" data-all="1"><span class="bb-chip-rule">+${nTot - 6} more…</span></button>` : '';
-  bar.innerHTML = `<div class="bb-head">
+  const moreN = nTot - shown.length;
+  const more = moreN > 0 ? `<span class="bb-more">+${moreN} more</span>` : '';
+  bar.innerHTML = `<div class="bb-row">
       <span class="bb-icon">${warnOnly ? '⚠️' : '⛔'}</span>
-      <div><div class="bb-title">${esc(title)}</div><div class="bb-sub">${esc(sub)}</div></div>
+      <span class="bb-title">${esc(title)}</span>
+      <span class="bb-inline">${chips}${more}</span>
       <span class="bb-spacer"></span>
       <button class="bb-all" data-all="1">View all ${nTot} →</button>
-    </div>
-    <div class="bb-chips">${chips}${more}</div>`;
+    </div>`;
   bar.style.display = 'block';
   // One click from ANY tab → jump to Incidents and open that run's blocker records.
   bar.querySelectorAll('.bb-chip[data-prefix]').forEach(b => b.addEventListener('click', () => {
