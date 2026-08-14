@@ -286,6 +286,9 @@
   tr.fr-blocker td { background: color-mix(in srgb, var(--err) 12%, var(--card)); }
   tr.fr-blocker td:first-child { box-shadow: inset 3px 0 0 var(--err); }
   .fr-count { font-weight: 800; color: var(--err); margin: 2px 0 8px; }
+  /* Failed-records table lives in a fixed-height scroller so the "how to fix" block below stays reachable */
+  .fr-scroll { max-height: 380px; overflow: auto; border: 1px solid var(--border); border-radius: 8px; }
+  .fr-scroll th { position: sticky; top: 0; z-index: 1; background: var(--card); }
   /* "How to fix" worked examples: current value -> corrected example, per failing check */
   .fx-wrap { margin: 16px 0 4px; }
   .fx-title { margin: 0 0 10px; font-size: 14px; }
@@ -2191,7 +2194,7 @@ function renderFailedRecords(data) {
   const note = data.truncated
     ? `<p class="dash-muted">Showing ${recs.length} of ${data.total} failed records (download the file for all).</p>`
     : `<p class="dash-muted">${data.total} failed record(s).</p>`;
-  return head + `<div style="overflow-x:auto;"><table class="dash-table">` +
+  return head + `<div class="fr-scroll"><table class="dash-table">` +
     `<tr><th>Dimension</th><th>Check</th><th>Severity</th><th>Offending record</th></tr>${rows}</table></div>${note}` +
     renderExampleFixes(data);
 }
