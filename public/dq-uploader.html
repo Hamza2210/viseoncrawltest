@@ -2122,39 +2122,51 @@ function fixFor(exp, badVal, populatedExample) {
   const d = exp.details || {}, num = Number(badVal);
   switch (exp.kind) {
     case 'format':
-      return { req: d.format ? `Must be a valid ${d.format.replace(/_/g, ' ')}.` : 'Must match the required pattern.',
+      return { valueFix: true, req: d.format ? `Must be a valid ${d.format.replace(/_/g, ' ')}.` : 'Must match the required pattern.',
                after: _FX_FMT[d.format] || '(a value matching the pattern)' };
     case 'range': {
       const bounds = [d.min != null ? `≥ ${d.min}` : null, d.max != null ? `≤ ${d.max}` : null].filter(Boolean).join(' and ');
       let after = badVal;
       if (d.max != null && num > d.max) after = d.max;
       else if (d.min != null && num < d.min) after = d.min;
-      return { req: `Must be ${bounds}.`, after };
+      return { valueFix: true, req: `Must be ${bounds}.`, after };
     }
     case 'date_range': {
       const parts = [d.min_date ? `on/after ${d.min_date}` : null, d.max_date ? `on/before ${d.max_date}` : null,
         d.not_future ? 'not in the future' : null].filter(Boolean).join(', ');
-      return { req: `Date must be ${parts || 'within the allowed range'}.`, after: d.max_date || d.min_date || '2026-01-15' };
+      return { valueFix: true, req: `Date must be ${parts || 'within the allowed range'}.`, after: d.max_date || d.min_date || '2026-01-15' };
     }
     case 'length':
-      return { req: `Length must be ${[d.min_length != null ? `≥ ${d.min_length}` : null, d.max_length != null ? `≤ ${d.max_length}` : null].filter(Boolean).join(' and ')} characters.`,
+      return { valueFix: true, req: `Length must be ${[d.min_length != null ? `≥ ${d.min_length}` : null, d.max_length != null ? `≤ ${d.max_length}` : null].filter(Boolean).join(' and ')} characters.`,
                after: '(trim or pad to the allowed length)' };
     case 'domain': {
       const av = d.allowed_values || [];
       const shown = av.slice(0, 6).map(v => `"${v}"`).join(', ');
       const hidden = (d.allowed_total || av.length) - Math.min(av.length, 6);
-      return { req: `Must be one of: ${shown}${hidden > 0 ? ` (+${hidden} more)` : ''}.`,
+      return { valueFix: true, req: `Must be one of: ${shown}${hidden > 0 ? ` (+${hidden} more)` : ''}.`,
                after: av.length ? av[0] : '(an allowed value)' };
     }
     case 'type':
-      return { req: `Must be a valid ${d.declared_type || 'value'}.`, after: _FX_TYPE[d.declared_type] || '(a correctly-typed value)' };
+      return { valueFix: true, req: `Must be a valid ${d.declared_type || 'value'}.`, after: _FX_TYPE[d.declared_type] || '(a correctly-typed value)' };
     case 'populated':
-      return { req: 'Must not be empty — give it a real value.', after: populatedExample != null ? populatedExample : '(fill this cell)' };
+      return { valueFix: true, req: 'Must not be empty — give it a real value.', after: populatedExample != null ? populatedExample : '(fill this cell)' };
     case 'unique':
     case 'primary_key':
-      return { req: 'Must be unique — remove the duplicate or make it distinct.', after: '(a value no other row uses)' };
+      return { valueFix: true, req: 'Must be unique — remove the duplicate or make it distinct.', after: '(a value no other row uses)' };
+    // ---- Distributional checks: no single "correct" value exists, so we show a ----
+    // ---- requirement to normalise toward, never a fabricated per-row "fix to". ----
+    case 'format_stability': {
+      const shape = d.dominant_shape;
+      return { valueFix: false, after: null,
+        req: shape
+          ? `Values in this column don't all share one format. Most match the shape "${shape}" (9=digit, A=UPPER-case letter, a=lower-case letter, other characters literal) — reformat the odd rows to match it. There's no single correct value, so no per-row example is shown.`
+          : 'Values use inconsistent formats — normalise the minority rows to the column\'s dominant format.' };
+    }
+    case 'representation':
+      return { valueFix: false, after: null,
+        req: 'The same value is written more than one way (differences in letter case or spacing). Pick one spelling and apply it to every row.' };
     default:
-      return { req: exp.description || 'Must satisfy the rule.', after: null };
+      return { valueFix: false, req: exp.description || 'Must satisfy the rule.', after: null };
   }
 }
 
@@ -2175,20 +2187,25 @@ function renderExampleFixes(data) {
     const exp = exps[cid], col = exp.column;
     let popEx = null;                                             // a real populated value of this col, if any
     for (const r of recs) { const v = (r.record || {})[col]; if (v !== '' && v != null) { popEx = v; break; } }
+    const meta = fixFor(exp, '', popEx);
+    const head = `<div class="fx-head"><span class="fx-dim">${esc((exp.kind || '').replace(/_/g, ' '))}</span><span class="fx-colname">${esc(col)}</span></div>
+        <div class="fx-req">${esc(meta.req)}</div>`;
+    // Distributional checks (format stability, representation, …) have no single
+    // corrected value — show the requirement only, never a blank/null "fix to".
+    if (!meta.valueFix) return `<div class="fx-card">${head}</div>`;
     const rows = groups.get(cid).slice(0, 2).map(r => {
       const rec = r.record || {}, bad = rec[col], { after } = fixFor(exp, bad, popEx);
+      if (after == null) return '';                               // never render a null "fix to"
       const rid = rec._row != null ? String(rec._row) : '';
       return `<div class="fx-row">
           <span class="fx-rid" title="${esc(rid)}">${esc(rid || '—')}</span>
           <span class="fx-bad" title="${esc(fmt(bad))}">${esc(fmt(bad))}</span>
           <span class="fx-arrow">→</span>
-          <span class="fx-good" title="${esc(after == null ? '' : String(after))}">${esc(after == null ? '—' : String(after))}</span>
+          <span class="fx-good" title="${esc(String(after))}">${esc(String(after))}</span>
         </div>`;
-    }).join('');
-    const { req } = fixFor(exp, '', popEx);
-    return `<div class="fx-card">
-        <div class="fx-head"><span class="fx-dim">${esc((exp.kind || '').replace(/_/g, ' '))}</span><span class="fx-colname">${esc(col)}</span></div>
-        <div class="fx-req">${esc(req)}</div>
+    }).filter(Boolean).join('');
+    if (!rows) return `<div class="fx-card">${head}</div>`;        // no concrete rows — fall back to requirement only
+    return `<div class="fx-card">${head}
         <div class="fx-legend"><span>row</span><span>current value</span><span></span><span>fix to</span></div>
         ${rows}
       </div>`;
