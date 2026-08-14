@@ -253,6 +253,36 @@
   .dim-desc { margin-top: 10px; padding: 10px 12px; border-left: 3px solid var(--accent);
     background: var(--idle-bg); border-radius: 6px; font-size: 12px; line-height: 1.5; }
   .dim-desc strong { display: block; margin-bottom: 2px; }
+  /* Global blocker bar — persistent on EVERY tab so open blockers are always visible */
+  .blocker-bar { position: sticky; top: 8px; z-index: 40; margin: 0 0 18px; border-radius: 12px;
+    border: 1px solid var(--err); color: #fff; overflow: hidden;
+    background: linear-gradient(135deg, #c31d1d, #7f1d1d);
+    box-shadow: 0 8px 24px rgba(185,28,28,.30); animation: bbpulse 2.6s ease-in-out infinite; }
+  .blocker-bar.warnonly { border-color: #b45309; background: linear-gradient(135deg, #b45309, #7c2d12);
+    box-shadow: 0 8px 24px rgba(180,83,9,.26); animation: none; }
+  @keyframes bbpulse { 0%,100% { box-shadow: 0 8px 24px rgba(185,28,28,.30);} 50% { box-shadow: 0 8px 30px rgba(185,28,28,.60);} }
+  .bb-head { display: flex; align-items: center; gap: 12px; padding: 12px 16px; }
+  .bb-icon { font-size: 22px; line-height: 1; }
+  .bb-title { font-weight: 800; font-size: 15px; }
+  .bb-sub { opacity: .9; font-size: 12px; margin-top: 1px; }
+  .bb-spacer { flex: 1; }
+  .bb-all { background: rgba(255,255,255,.18); color: #fff; border: 0; border-radius: 999px;
+    padding: 7px 15px; font-weight: 800; cursor: pointer; white-space: nowrap; font-size: 13px; }
+  .bb-all:hover { background: rgba(255,255,255,.30); }
+  .bb-chips { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 16px 13px; }
+  .bb-chip { display: inline-flex; align-items: center; gap: 8px; max-width: 100%; cursor: pointer;
+    background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.24); color: #fff;
+    border-radius: 10px; padding: 6px 10px; font-size: 12px; }
+  .bb-chip:hover { background: rgba(255,255,255,.28); }
+  .bb-sev { font-weight: 800; text-transform: uppercase; font-size: 10px; letter-spacing: .04em;
+    background: #fff; color: #b91c1c; border-radius: 5px; padding: 1px 6px; white-space: nowrap; }
+  .bb-chip.major .bb-sev { color: #b45309; }
+  .bb-chip-ds { font-weight: 700; white-space: nowrap; }
+  .bb-chip-rule { opacity: .92; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* Failed-record blocker emphasis (blockers float to the top + get a red rail) */
+  tr.fr-blocker td { background: color-mix(in srgb, var(--err) 12%, var(--card)); }
+  tr.fr-blocker td:first-child { box-shadow: inset 3px 0 0 var(--err); }
+  .fr-count { font-weight: 800; color: var(--err); margin: 2px 0 8px; }
   /* Incidents: an open-across-all overview, then collapsible groups per dataset */
   .inc-overview { border: 1px solid var(--border); border-left: 3px solid var(--err); border-radius: 12px;
     padding: 14px 16px; margin-bottom: 22px; background: color-mix(in srgb, var(--err) 4%, var(--card)); }
@@ -528,6 +558,9 @@
     <button class="tab" data-tab="schedules">Schedules</button>
     <button class="tab" data-tab="history">History</button>
   </div>
+
+  <!-- Persistent across every tab: shows open blockers/incidents at all times -->
+  <div id="blockerBar" class="blocker-bar" style="display:none;"></div>
 
   <!-- ============ UPLOAD ============ -->
   <div id="uploadPanel">
@@ -1159,7 +1192,7 @@ function renderAssessment(r, bodyEl, opts) {
     html += `<div style="margin:10px 0;padding:10px 14px;border-left:4px solid var(--err);background:#fdecea;border-radius:4px;">
         <strong>Why the gate failed</strong>
         <ul style="margin:6px 0 4px 18px;padding:0;">${items}</ul>
-        <div class="hint">The gate is a pass/fail safety check — any <em>blocker</em>-severity issue fails it regardless of the overall score. Fix the blocking records above to pass.</div>
+        <div class="hint">The gate is a pass/fail safety check — any <em>blocker</em>-severity issue fails it regardless of the overall score. Fix the blocking records shown below to pass.</div>
       </div>`;
   }
   if (st.rows_assessed != null) {
@@ -1201,6 +1234,18 @@ function renderAssessment(r, bodyEl, opts) {
   } else {
     html += `<p class="hint">Assessment finished (${r.state}) but no summary was found.</p>`;
   }
+  // Failed records surfaced INLINE here (not just on the dashboard), so the offending
+  // rows are visible wherever a run is shown — upload result, incident view, history,
+  // app tables. Blockers auto-load (gate fail); an otherwise-clean run offers a lazy
+  // button. Callers that render records separately (dashboard) pass opts.noRecords.
+  const showRecords = !(opts && opts.noRecords) && r.resultPrefix && !(gatePass && score === 100);
+  if (showRecords) {
+    // Auto-load blockers (gate fail) in single-run views; the multi-panel app view
+    // passes lazyRecords so it doesn't fire one fetch per table on render.
+    const autoAttr = (!gatePass && !(opts && opts.lazyRecords)) ? ' data-auto="1"' : '';
+    html += `<h3 style="margin:18px 0 8px;">Failed records</h3>` +
+      `<div class="assess-failed" data-prefix="${esc(r.resultPrefix)}"${autoAttr}></div>`;
+  }
   // On-demand AI: explain the score, and review the ruleset (aggregate/masked facts only).
   if (crit.length && score != null && r.resultPrefix) {
     html += `<div style="margin-top:14px;">` +
@@ -1232,6 +1277,24 @@ function renderAssessment(r, bodyEl, opts) {
       rrb.classList.add('active'); out.style.display = '';
       if (!out.innerHTML.trim()) reviewRuleset(r.resultPrefix, out, false);
     });
+  }
+  const frEl = body.querySelector('.assess-failed');
+  if (frEl) {
+    const loadFR = async () => {
+      frEl.innerHTML = `<p class="dash-muted"><span class="spin"></span> Loading failed records…</p>`;
+      try {
+        const data = await postJSON(`${API_BASE}/data-quality/failed-records`, HEADERS,
+          { result_prefix: frEl.dataset.prefix, limit: 500 });
+        frEl.innerHTML = renderFailedRecords(data);
+      } catch (e) {
+        frEl.innerHTML = `<p class="dash-muted" style="color:var(--err)">${esc(e.message)}</p>`;
+      }
+    };
+    if (frEl.dataset.auto) loadFR();                    // gate failed → show blockers immediately
+    else {
+      frEl.innerHTML = `<button class="btn-sm" data-loadfr="1">Show failing records</button>`;
+      frEl.querySelector('[data-loadfr]').addEventListener('click', loadFR);
+    }
   }
 }
 
@@ -1993,21 +2056,31 @@ function sevChip(sev) {
   return `<span class="chip ${cls}"><span class="dot"></span>${esc(label)}</span>`;
 }
 
+const _FR_RANK = { blocker: 3, major: 2, minor: 1 };
 function renderFailedRecords(data) {
-  const recs = data.records || [];
+  const recs = (data.records || []).slice();
   if (!recs.length) return '<p class="dash-muted">No failed records — this run passed every check. 🎉</p>';
+  // Blockers first (they fail the gate), then major, then minor — so the most urgent
+  // offending rows are always at the top of the table.
+  recs.sort((a, b) => (_FR_RANK[(b.severity || '').toLowerCase()] || 0)
+    - (_FR_RANK[(a.severity || '').toLowerCase()] || 0));
+  const nBlk = recs.filter(x => (x.severity || '').toLowerCase() === 'blocker').length;
   const rows = recs.map(x => {
     const rec = x.record || {};
     const fields = Object.entries(rec).filter(([k]) => k !== '_row')
       .map(([k, v]) => `${esc(k)}=${esc(v)}`).join('  ·  ');
-    return `<tr><td>${esc(x.dimension)}</td><td>${esc(x.check_id)}</td>` +
+    const blk = (x.severity || '').toLowerCase() === 'blocker';
+    return `<tr class="${blk ? 'fr-blocker' : ''}"><td>${esc(x.dimension)}</td><td>${esc(x.check_id)}</td>` +
       `<td>${sevChip(x.severity)}</td>` +
       `<td class="dash-muted" style="font-family:ui-monospace,Consolas,monospace;font-size:11px;">${fields}</td></tr>`;
   }).join('');
+  const head = nBlk
+    ? `<p class="fr-count">⛔ ${nBlk} blocker record${nBlk > 1 ? 's' : ''} — fix these first to pass the gate.</p>`
+    : '';
   const note = data.truncated
     ? `<p class="dash-muted">Showing ${recs.length} of ${data.total} failed records (download the file for all).</p>`
     : `<p class="dash-muted">${data.total} failed record(s).</p>`;
-  return `<div style="overflow-x:auto;"><table class="dash-table">` +
+  return head + `<div style="overflow-x:auto;"><table class="dash-table">` +
     `<tr><th>Dimension</th><th>Check</th><th>Severity</th><th>Offending record</th></tr>${rows}</table></div>${note}`;
 }
 
@@ -2028,7 +2101,7 @@ async function viewLatestRun() {
   box.scrollIntoView({ behavior: 'smooth', block: 'start' });
   try {
     const r = await postJSON(`${API_BASE}/data-quality/result`, HEADERS, { result_prefix: prefix });
-    renderAssessment(r, $('#dashRunScores'), { context: 'app' });
+    renderAssessment(r, $('#dashRunScores'), { context: 'app', noRecords: true });
   } catch (e) {
     $('#dashRunScores').innerHTML = `<p class="dash-muted" style="color:var(--err)">${esc(e.message)}</p>`;
   }
@@ -2191,14 +2264,62 @@ function updateIncBadge(n) {
   if (n > 0) { b.textContent = n; b.style.display = 'inline-block'; }
   else { b.style.display = 'none'; }
 }
-async function refreshIncBadge() {
-  if (!APP_ID) return;
+// ---- Global blocker bar: always-visible summary of open blockers/incidents ---- //
+const _BB_SEV = { blocker: 3, major: 2, warning: 1, minor: 1 };
+function renderBlockerBar(open) {
+  const bar = $('#blockerBar');
+  if (!bar) return;
+  if (!APP_ID || !open || !open.length) { bar.style.display = 'none'; bar.innerHTML = ''; return; }
+  const sorted = [...open].sort((a, b) =>
+    (_BB_SEV[(b.severity || '').toLowerCase()] || 0) - (_BB_SEV[(a.severity || '').toLowerCase()] || 0)
+    || (Date.parse(b.openedAt || 0) || 0) - (Date.parse(a.openedAt || 0) || 0));
+  const nBlk = sorted.filter(i => (i.severity || '').toLowerCase() === 'blocker').length;
+  const nTot = sorted.length;
+  const dsCount = new Set(sorted.map(i => i.datasetKey || i.dataset)).size;
+  const warnOnly = nBlk === 0;
+  bar.classList.toggle('warnonly', warnOnly);
+  const title = warnOnly
+    ? `${nTot} open issue${nTot > 1 ? 's' : ''} need attention`
+    : `${nBlk} blocker${nBlk > 1 ? 's' : ''} need${nBlk > 1 ? '' : 's'} attention`;
+  const others = nTot - nBlk;
+  const sub = `across ${dsCount} dataset${dsCount > 1 ? 's' : ''}`
+    + (!warnOnly && others ? ` · ${others} other issue${others > 1 ? 's' : ''}` : '');
+  const chips = sorted.slice(0, 6).map(it => {
+    const sev = (it.severity || '').toLowerCase();
+    return `<button class="bb-chip ${sev === 'blocker' ? '' : 'major'}" data-prefix="${esc(it.resultPrefix || '')}" data-name="${esc(it.dataset || 'dataset')}">
+        <span class="bb-sev">${esc(sev || 'issue')}</span>
+        <span class="bb-chip-ds">${esc(it.dataset || 'dataset')}</span>
+        <span class="bb-chip-rule">${esc(ruleLabel(it.rule))}</span>
+      </button>`;
+  }).join('');
+  const more = nTot > 6 ? `<button class="bb-chip" data-all="1"><span class="bb-chip-rule">+${nTot - 6} more…</span></button>` : '';
+  bar.innerHTML = `<div class="bb-head">
+      <span class="bb-icon">${warnOnly ? '⚠️' : '⛔'}</span>
+      <div><div class="bb-title">${esc(title)}</div><div class="bb-sub">${esc(sub)}</div></div>
+      <span class="bb-spacer"></span>
+      <button class="bb-all" data-all="1">View all ${nTot} →</button>
+    </div>
+    <div class="bb-chips">${chips}${more}</div>`;
+  bar.style.display = 'block';
+  // One click from ANY tab → jump to Incidents and open that run's blocker records.
+  bar.querySelectorAll('.bb-chip[data-prefix]').forEach(b => b.addEventListener('click', () => {
+    const pfx = b.dataset.prefix;
+    switchTab('incidents');
+    if (pfx) openIncidentRun(pfx, b.dataset.name);
+  }));
+  bar.querySelectorAll('[data-all]').forEach(b => b.addEventListener('click', () => switchTab('incidents')));
+}
+async function refreshBlockerBar() {
+  if (!APP_ID) { renderBlockerBar([]); updateIncBadge(0); return; }
   try {
     const r = await postJSON(`${API_BASE}/data-quality/incidents/list`, HEADERS,
-      { app_id: APP_ID, status: 'open', limit: 1 });
-    updateIncBadge(r.openCount || 0);
-  } catch (e) { /* badge is best-effort */ }
+      { app_id: APP_ID, status: 'open', limit: 50 });
+    const open = r.incidents || [];
+    updateIncBadge(r.openCount != null ? r.openCount : open.length);
+    renderBlockerBar(open);
+  } catch (e) { /* best-effort */ }
 }
+const refreshIncBadge = refreshBlockerBar;   // legacy name kept for existing callers
 async function loadIncidents() {
   if (!configOK) return;
   const list = $('#incList');
@@ -2215,6 +2336,7 @@ async function loadIncidents() {
       { app_id: APP_ID, window_days: 30 });
     renderIncidents(r);
     updateIncBadge(r.openCount || 0);
+    renderBlockerBar((r.incidents || []).filter(i => i.status === 'OPEN'));
   } catch (e) {
     list.innerHTML = `<p class="dash-muted" style="color:var(--err)">${esc(e.message)}</p>`;
   }
@@ -2693,6 +2815,8 @@ function switchTab(name) {
 }
 document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => switchTab(t.dataset.tab)));
 switchTab('dashboard');   // Dashboard is the landing tab; sync the panels + wide layout on load
+refreshBlockerBar();                          // show open blockers immediately, on every tab
+setInterval(refreshBlockerBar, 60000);        // keep the always-visible bar current
 
 // Floating value tooltip — any element with a data-tip attribute shows it on hover.
 (function () {
@@ -2890,7 +3014,7 @@ function renderAppResultsFinal(tables, results, isFullApp) {
     body.querySelector('#apppanel_' + btn.getAttribute('data-target')).classList.add('active');
   }));
   results.forEach((r, i) => {
-    if (r) renderAssessment(r, $('#appres_' + i), { context: 'app' });
+    if (r) renderAssessment(r, $('#appres_' + i), { context: 'app', lazyRecords: true });
     else $('#appres_' + i).innerHTML = '<p class="hint">No result for this table.</p>';
   });
   if (showOverall) renderOverall($('#apppanel_overall'), results.filter(Boolean), tables.length);
