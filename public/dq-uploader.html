@@ -1261,7 +1261,7 @@ function renderAssessment(r, bodyEl, opts) {
   const APP_INTEGRITY_MSG = `Referential integrity checks a column's values against a separate master list. ` +
     `It isn't evaluated for app-data assessments, so it's simply not scored — leaving it out doesn't lower ` +
     `your result.`;
-  html += renderDimBars(crit);
+  html += renderDimRadar(crit);
   if (crit.length) {
     html += `<table class="assess"><tr><td class="k">Criterion</td><td class="k">Score</td><td class="k">Status</td></tr>` +
       crit.map(c => {
@@ -2231,6 +2231,55 @@ function renderDimBars(criteria) {
       </div>`;
   }).join('');
   return `<div class="viz"><div class="viz-title">Scores by dimension</div>${rows}</div>`;
+}
+
+// A RAG status -> its reserved status colour (state palette; never a series hue).
+function statusColor(s) { return ({ green: 'var(--ok)', amber: 'var(--run)', red: 'var(--err)' })[s] || 'var(--muted)'; }
+
+// Radar / spider chart of the assessed DAMA dimension scores (0..100 along each spoke).
+// One profile => one accent-hued fill; every spoke carries its dimension name AND score, and
+// each vertex a status-coloured dot, so magnitude/identity never rest on colour alone. Not-
+// assessed dimensions are OMITTED (a 0 would misread as a terrible score) and named beneath.
+// Falls back to the bar list when there are too few spokes to form a polygon.
+function renderDimRadar(criteria) {
+  const all = (criteria || []).filter(c => c && c.criterion);
+  const dims = all.filter(c => c.status !== 'not_assessed' && c.score != null);
+  if (dims.length < 3) return renderDimBars(criteria);            // radar needs >= 3 spokes
+  const na = all.filter(c => c.status === 'not_assessed' || c.score == null);
+  const N = dims.length, W = 560, H = 400, cx = 280, cy = 205, R = 125, LR = R + 16;
+  const clamp = v => Math.max(0, Math.min(100, v));
+  const ang = i => (-90 + i * 360 / N) * Math.PI / 180;
+  const pt = (i, frac) => [cx + R * frac * Math.cos(ang(i)), cy + R * frac * Math.sin(ang(i))];
+  const fx = x => x.toFixed(1);
+  const rings = [25, 50, 75, 100];
+  const grid = rings.map(rv => {
+    const p = dims.map((_, i) => { const [x, y] = pt(i, rv / 100); return `${fx(x)},${fx(y)}`; }).join(' ');
+    return `<polygon points="${p}" fill="none" stroke="var(--border)" stroke-width="1" opacity="0.7"/>`;
+  }).join('') + rings.map(rv => { const [, y] = pt(0, rv / 100); return `<text x="${cx + 4}" y="${fx(y - 2)}" font-size="8" fill="var(--muted)">${rv}</text>`; }).join('');
+  const spokes = dims.map((c, i) => {
+    const [ox, oy] = pt(i, 1), co = Math.cos(ang(i)), si = Math.sin(ang(i));
+    const lx = cx + LR * co, ly = cy + LR * si;
+    const anchor = co > 0.2 ? 'start' : (co < -0.2 ? 'end' : 'middle');
+    const dy = si > 0.2 ? 10 : (si < -0.2 ? -4 : 3);
+    const name = c.label || c.criterion, short = name.length > 14 ? name.slice(0, 13) + '…' : name;
+    return `<line x1="${cx}" y1="${cy}" x2="${fx(ox)}" y2="${fx(oy)}" stroke="var(--border)" stroke-width="1" opacity="0.6"/>` +
+      `<text x="${fx(lx)}" y="${fx(ly + dy - 6)}" text-anchor="${anchor}" font-size="10" fill="var(--muted)">${esc(short)}</text>` +
+      `<text x="${fx(lx)}" y="${fx(ly + dy + 6)}" text-anchor="${anchor}" font-size="11" font-weight="700" fill="${statusColor(c.status)}">${esc(fmtScore(c.score))}</text>`;
+  }).join('');
+  const poly = dims.map((c, i) => { const [x, y] = pt(i, clamp(c.score) / 100); return `${fx(x)},${fx(y)}`; }).join(' ');
+  const dots = dims.map((c, i) => {
+    const [x, y] = pt(i, clamp(c.score) / 100);
+    return `<circle cx="${fx(x)}" cy="${fx(y)}" r="9" fill="transparent" data-tip="${esc((c.label || c.criterion) + ': ' + fmtScore(c.score) + ' (' + (c.status || '') + ')')}"></circle>` +
+      `<circle cx="${fx(x)}" cy="${fx(y)}" r="3.4" fill="${statusColor(c.status)}" stroke="var(--card)" stroke-width="1"/>`;
+  }).join('');
+  const naNote = na.length ? `<div class="hint" style="text-align:center;margin-top:2px">Not assessed (excluded from the score): ${na.map(c => esc(c.label || c.criterion)).join(', ')}</div>` : '';
+  const svg = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;max-width:520px;display:block;margin:0 auto" role="img" aria-label="Dimension scores radar chart">
+    ${grid}${spokes}
+    <polygon points="${poly}" fill="var(--accent)" opacity="0.16"/>
+    <polygon points="${poly}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round"/>
+    ${dots}
+  </svg>`;
+  return `<div class="viz"><div class="viz-title">Scores by dimension</div>${svg}${naNote}</div>`;
 }
 
 // Severity split (status colours + counts) and the most-affected columns, from the ACCURATE
