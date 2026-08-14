@@ -322,13 +322,13 @@
   .sev-key { display: inline-flex; align-items: center; gap: 6px; }
   .sev-dot { width: 9px; height: 9px; border-radius: 3px; }
   .sev-dot.blocker { background: var(--err); } .sev-dot.major { background: var(--run); } .sev-dot.minor { background: var(--idle); }
-  .heat { overflow-x: auto; }
-  .heat table { border-collapse: separate; border-spacing: 3px; }
-  .heat th { font-size: 10px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; padding: 2px 3px; text-align: center; white-space: nowrap; }
-  .heat td.tname { font-size: 12px; font-weight: 600; text-align: left; white-space: nowrap; max-width: 210px; overflow: hidden; text-overflow: ellipsis; padding-right: 8px; }
-  .heat .cell { min-width: 46px; height: 30px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; }
-  .heat .cell.green { background: var(--ok-bg); color: var(--ok); } .heat .cell.amber { background: var(--run-bg); color: var(--run); }
-  .heat .cell.red { background: var(--err-bg); color: var(--err); } .heat .cell.na { background: var(--idle-bg); color: var(--muted); }
+  .ah { overflow-x: auto; }
+  .ah table { border-collapse: separate; border-spacing: 3px; }
+  .ah th { font-size: 10px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; padding: 2px 3px; text-align: center; white-space: nowrap; }
+  .ah td.tname { font-size: 12px; font-weight: 600; text-align: left; white-space: nowrap; max-width: 210px; overflow: hidden; text-overflow: ellipsis; padding-right: 8px; }
+  .ahcell { min-width: 46px; height: 30px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .ahcell.green { background: var(--ok-bg); color: var(--ok); } .ahcell.amber { background: var(--run-bg); color: var(--run); }
+  .ahcell.red { background: var(--err-bg); color: var(--err); } .ahcell.na { background: var(--idle-bg); color: var(--muted); }
   /* Incidents: an open-across-all overview, then collapsible groups per dataset */
   .inc-overview { border: 1px solid var(--border); border-left: 3px solid var(--err); border-radius: 12px;
     padding: 14px 16px; margin-bottom: 22px; background: color-mix(in srgb, var(--err) 4%, var(--card)); }
@@ -2264,12 +2264,12 @@ function renderAppHeatmap(scored) {
     const cells = dimOrder.map(d => {
       const c = row.byDim[d], na = !c || c.status === 'not_assessed' || c.score == null;
       const cls = na ? 'na' : (tagClass(c.status) || 'na'), val = na ? '—' : fmtScore(c.score);
-      return `<td><div class="cell ${cls}" data-tip="${esc(row.name)} · ${esc(dimLabel[d])}: ${na ? 'not assessed' : val}">${val}</div></td>`;
+      return `<td><div class="ahcell ${cls}" data-tip="${esc(row.name)} · ${esc(dimLabel[d])}: ${na ? 'not assessed' : val}">${val}</div></td>`;
     }).join('');
     return `<tr><td class="tname" title="${esc(row.name)}">${esc(row.name)}</td>${cells}</tr>`;
   }).join('');
   return `<div class="viz"><div class="viz-title">Table × dimension scores (worst first)</div>
-      <div class="heat"><table>${head}${body}</table></div></div>`;
+      <div class="ah"><table>${head}${body}</table></div></div>`;
 }
 
 const _FR_RANK = { blocker: 3, major: 2, minor: 1 };
