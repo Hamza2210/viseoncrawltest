@@ -307,6 +307,11 @@
   /* Visual summary: score bars, severity split, table x dimension heatmap (status palette; value labels never rely on colour alone) */
   .viz { margin: 14px 0 4px; }
   .viz-title { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); font-weight: 700; margin: 0 0 8px; }
+  /* Dimension radar + criteria table sit side by side (stack on narrow screens) */
+  .dim-split { display: flex; gap: 24px; align-items: flex-start; flex-wrap: wrap; margin: 14px 0 4px; }
+  .dim-split-chart { flex: 1 1 360px; min-width: 300px; }
+  .dim-split-table { flex: 1 1 460px; min-width: 300px; }
+  .dim-split-chart .viz { margin: 0; }
   .bar-row { display: grid; grid-template-columns: 128px 1fr 44px; gap: 10px; align-items: center; margin: 5px 0; }
   .bar-lab { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .bar-track { height: 9px; border-radius: 999px; background: var(--idle-bg); overflow: hidden; }
@@ -1261,9 +1266,10 @@ function renderAssessment(r, bodyEl, opts) {
   const APP_INTEGRITY_MSG = `Referential integrity checks a column's values against a separate master list. ` +
     `It isn't evaluated for app-data assessments, so it's simply not scored — leaving it out doesn't lower ` +
     `your result.`;
-  html += renderDimRadar(crit);
+  const radarHtml = renderDimRadar(crit);
+  let tableHtml;
   if (crit.length) {
-    html += `<table class="assess"><tr><td class="k">Criterion</td><td class="k">Score</td><td class="k">Status</td></tr>` +
+    tableHtml = `<table class="assess"><tr><td class="k">Criterion</td><td class="k">Score</td><td class="k">Status</td></tr>` +
       crit.map(c => {
         let reason = c.not_assessed_reason;
         if (c.status === 'not_assessed') {
@@ -1278,8 +1284,11 @@ function renderAssessment(r, bodyEl, opts) {
           </tr>`;
       }).join('') + `</table>`;
   } else {
-    html += `<p class="hint">Assessment finished (${r.state}) but no summary was found.</p>`;
+    tableHtml = `<p class="hint">Assessment finished (${r.state}) but no summary was found.</p>`;
   }
+  // Radar and the criteria table side by side (they stack on narrow screens) — the
+  // chart used to sit above the table, leaving a wide empty band beside it.
+  html += `<div class="dim-split"><div class="dim-split-chart">${radarHtml}</div><div class="dim-split-table">${tableHtml}</div></div>`;
   // On-demand AI: explain the score, and review the ruleset (aggregate/masked facts only).
   // Kept ABOVE the failed-records table so the buttons are reachable without scrolling
   // past a long list of records.
