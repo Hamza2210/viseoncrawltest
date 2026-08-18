@@ -744,6 +744,7 @@
         <button type="button" class="src-run" data-runsource="redshift">Run assessment</button>
         <div class="src-status" data-status="redshift"></div>
       </div>
+      <div class="card" id="redshiftResult" style="display:none;"><h2>Assessment</h2><div id="redshiftResultBody"></div></div>
     </div>
 
     <!-- ===== Source: Amazon S3 file ===== -->
@@ -3257,14 +3258,48 @@ function runSource(key) {
     statusEl.textContent = 'Please fill in the required field(s): ' + missing.join(', ') + '.';
     return;
   }
-  // Backend connectors are being built source by source; for now the config is
-  // captured + validated so the flow is testable end-to-end from the UI.
+  if (key === 'redshift') { runRedshift(cfg, statusEl); return; }   // wired end-to-end
+  // Remaining connectors are being built source by source; capture + validate for now.
   statusEl.className = 'src-status dev';
   statusEl.innerHTML = `<strong>${esc(SOURCE_LABEL[key] || key)} connector — in development.</strong> ` +
     `Your connection details are captured and validated. Live assessment for this source ships next; ` +
     `<a href="#" class="linkbtn" data-usefile="1" style="margin:0;">file upload</a> is fully available now.`;
   const link = statusEl.querySelector('[data-usefile]');
   if (link) link.addEventListener('click', e => { e.preventDefault(); selectSource('file'); });
+}
+
+// Launch a full-table Redshift assessment, then poll + render its result like the other flows.
+async function runRedshift(cfg, statusEl) {
+  const btn = document.querySelector('[data-runsource="redshift"]');
+  const body = {
+    database: cfg.database, schema: cfg.schema, table: cfg.table,
+    region: cfg.region || undefined, cluster: cfg.cluster || undefined,
+    role_arn: cfg.role_arn || undefined, db_user: cfg.db_user || undefined,
+    secret_arn: cfg.secret_arn || undefined,
+    sample_rows: cfg.sample_rows ? Number(cfg.sample_rows) : undefined,
+    notify_email: EMAIL || undefined,
+  };
+  statusEl.className = 'src-status';
+  statusEl.innerHTML = `<p><span class="spin"></span> Launching Redshift assessment…</p>`;
+  if (btn) btn.disabled = true;
+  let res;
+  try {
+    res = await postJSON(`${API_BASE}/data-quality/redshift-assessment`, HEADERS, body);
+  } catch (e) {
+    statusEl.className = 'src-status err';
+    statusEl.textContent = e.message;
+    if (btn) btn.disabled = false;
+    return;
+  }
+  statusEl.className = 'src-status dev';
+  statusEl.innerHTML = `Assessment started (run <code>${esc(res.runId || '')}</code>). ` +
+    `Inferring the ruleset from a sample, then scoring the whole table in Redshift — this can take a little while…`;
+  const card = document.getElementById('redshiftResult');
+  const bodyEl = document.getElementById('redshiftResultBody');
+  if (card) card.style.display = 'block';
+  if (res.resultPrefix && bodyEl) {
+    pollInto(res.resultPrefix, bodyEl, {}).finally(() => { if (btn) btn.disabled = false; });
+  } else if (btn) { btn.disabled = false; }
 }
 
 document.querySelectorAll('.source-card').forEach(c => c.addEventListener('click', () => selectSource(c.dataset.source)));
