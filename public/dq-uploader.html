@@ -316,6 +316,29 @@
   .dim-split-chart { flex: 1 1 360px; min-width: 300px; }
   .dim-split-table { flex: 1 1 460px; min-width: 300px; }
   .dim-split-chart .viz { margin: 0; }
+  /* Data-from-source picker + per-source connector forms */
+  .source-picker { display: flex; flex-wrap: wrap; gap: 10px; margin: 4px 0 18px; }
+  .source-card { display: inline-flex; align-items: center; gap: 8px; padding: 10px 14px; border: 1px solid var(--border);
+    border-radius: 10px; background: var(--card); cursor: pointer; font-size: 14px; font-weight: 600; color: var(--text); }
+  .source-card:hover { border-color: var(--accent); }
+  .source-card.active { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent); }
+  .src-tag { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; padding: 2px 6px;
+    border-radius: 5px; background: var(--ok-bg); color: var(--ok); }
+  .src-tag.beta { background: var(--run-bg); color: var(--run); }
+  .src-form { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px 16px; margin: 12px 0 16px; }
+  .src-field { display: flex; flex-direction: column; gap: 4px; }
+  .src-field.full { grid-column: 1 / -1; }
+  .src-field label { font-size: 12px; font-weight: 600; color: var(--muted); }
+  .src-field input, .src-field select { padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px;
+    background: var(--card); color: var(--text); font-size: 13px; }
+  .src-note { font-size: 13px; color: var(--muted); margin: 0 0 6px; max-width: 760px; line-height: 1.5; }
+  .src-run { padding: 9px 18px; border: none; border-radius: 8px; background: var(--accent); color: var(--accent-fg);
+    font-size: 14px; font-weight: 600; cursor: pointer; }
+  .src-run:hover { filter: brightness(1.06); }
+  .src-status { margin-top: 12px; font-size: 13px; line-height: 1.5; }
+  .src-status.dev { padding: 10px 12px; border-left: 4px solid var(--run); background: var(--run-bg); border-radius: 4px; color: var(--text); }
+  .src-status.err { color: var(--err); }
+  .src-hidden { display: none !important; }
   .bar-row { display: grid; grid-template-columns: 128px 1fr 44px; gap: 10px; align-items: center; margin: 5px 0; }
   .bar-lab { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .bar-track { height: 9px; border-radius: 999px; background: var(--idle-bg); overflow: hidden; }
@@ -608,7 +631,7 @@
   <div class="tabs">
     <button class="tab active" data-tab="dashboard">Dashboard</button>
     <button class="tab" data-tab="incidents">Incidents <span class="tab-badge" id="incBadge" style="display:none;"></span></button>
-    <button class="tab" data-tab="upload">Upload</button>
+    <button class="tab" data-tab="upload">Data from Source</button>
     <button class="tab" data-tab="appdata">Assess app</button>
     <button class="tab" data-tab="model">Data Model</button>
     <button class="tab" data-tab="lineage">Lineage</button>
@@ -620,10 +643,22 @@
   <div id="uploadPanel">
     <div class="banner" id="banner"></div>
     <div class="tab-intro">
-      <h2>Upload &amp; assess a dataset</h2>
-      <p>Upload a file (Parquet, CSV, JSON/NDJSON or QVD) and score it against the DAMA data-quality dimensions. The run report, scores and failed records are saved and appear in History.</p>
+      <h2>Data from Source</h2>
+      <p>Pick where your data lives, point us at it, and score it against the DAMA data-quality dimensions. The run report, scores and failed records are saved and appear in History.</p>
     </div>
 
+    <!-- Source picker: file upload today; connectors (Redshift, S3, warehouses) in preview -->
+    <div class="source-picker" id="sourcePicker">
+      <button type="button" class="source-card active" data-source="file">📄 File upload <span class="src-tag">Ready</span></button>
+      <button type="button" class="source-card" data-source="redshift">📊 Amazon Redshift <span class="src-tag beta">Preview</span></button>
+      <button type="button" class="source-card" data-source="s3">🗄️ Amazon S3 file <span class="src-tag beta">Preview</span></button>
+      <button type="button" class="source-card" data-source="snowflake">❄️ Snowflake <span class="src-tag beta">Preview</span></button>
+      <button type="button" class="source-card" data-source="databricks">🧱 Databricks <span class="src-tag beta">Preview</span></button>
+      <button type="button" class="source-card" data-source="postgres">🐘 PostgreSQL <span class="src-tag beta">Preview</span></button>
+    </div>
+
+    <!-- ===== Source: File upload (existing flow) ===== -->
+    <div id="src-file" class="source-body">
     <div class="up-top">
       <div class="up-main">
         <div class="card">
@@ -682,6 +717,112 @@
           <div id="dimDesc" class="dim-desc" style="display:none;"></div>
         </div>
       </aside>
+    </div>
+    </div><!-- /src-file -->
+
+    <!-- ===== Source: Amazon Redshift ===== -->
+    <div id="src-redshift" class="source-body" style="display:none;">
+      <div class="card">
+        <h2>Amazon Redshift <span class="src-tag beta">Preview</span></h2>
+        <p class="src-note">Point us at a Redshift table. Via the Data API and a cross-account IAM role, the assessment runs as SQL <em>inside</em> Redshift — only aggregate results (and up to 50 sample failing rows per check) come back. Your data is never copied out, and full tables are profiled (no 100k sampling cap).</p>
+        <div class="src-form">
+          <div class="src-field"><label>Connection method</label>
+            <select data-f="method"><option value="data_api">Data API (recommended)</option><option value="direct">Direct connection</option></select></div>
+          <div class="src-field"><label>AWS region</label><input data-f="region" placeholder="eu-west-1" value="eu-west-1"></div>
+          <div class="src-field full"><label>Cross-account role ARN (assumed by our worker)</label><input data-f="role_arn" placeholder="arn:aws:iam::&lt;their-account&gt;:role/dq-redshift-reader"></div>
+          <div class="src-field"><label>Cluster ID / Serverless workgroup</label><input data-f="cluster" placeholder="my-cluster or my-workgroup"></div>
+          <div class="src-field"><label>Database</label><input data-f="database" placeholder="analytics"></div>
+          <div class="src-field"><label>Schema</label><input data-f="schema" placeholder="public"></div>
+          <div class="src-field"><label>Table</label><input data-f="table" placeholder="orders"></div>
+          <div class="src-field"><label>DB user (for temp credentials)</label><input data-f="db_user" placeholder="dq_reader"></div>
+          <div class="src-field full"><label>…or Secrets Manager secret ARN</label><input data-f="secret_arn" placeholder="arn:aws:secretsmanager:eu-west-1:…:secret:…"></div>
+          <div class="src-field"><label>Sample rows <span class="hint">(optional)</span></label><input data-f="sample_rows" type="number" min="1" placeholder="Empty = whole table"></div>
+        </div>
+        <button type="button" class="src-run" data-runsource="redshift">Run assessment</button>
+        <div class="src-status" data-status="redshift"></div>
+      </div>
+    </div>
+
+    <!-- ===== Source: Amazon S3 file ===== -->
+    <div id="src-s3" class="source-body" style="display:none;">
+      <div class="card">
+        <h2>Amazon S3 file <span class="src-tag beta">Preview</span></h2>
+        <p class="src-note">Point us at a single object (Parquet, CSV, JSON/NDJSON or QVD). A same-account bucket needs only the URI; a cross-account bucket needs a role ARN or read-only access keys.</p>
+        <div class="src-form">
+          <div class="src-field full"><label>S3 URI</label><input data-f="uri" placeholder="s3://bucket/path/to/file.parquet"></div>
+          <div class="src-field"><label>AWS region</label><input data-f="region" placeholder="eu-west-1" value="eu-west-1"></div>
+          <div class="src-field"><label>Format</label>
+            <select data-f="format"><option value="auto">Auto-detect</option><option>parquet</option><option>csv</option><option>json</option><option>qvd</option></select></div>
+          <div class="src-field full"><label>Cross-account role ARN <span class="hint">(optional)</span></label><input data-f="role_arn" placeholder="arn:aws:iam::…:role/…"></div>
+          <div class="src-field"><label>Access key ID <span class="hint">(optional)</span></label><input data-f="access_key" placeholder="AKIA…"></div>
+          <div class="src-field"><label>Secret access key <span class="hint">(optional)</span></label><input data-f="secret_key" type="password"></div>
+          <div class="src-field"><label>Sample rows <span class="hint">(optional)</span></label><input data-f="sample_rows" type="number" min="1" placeholder="Empty = whole file"></div>
+        </div>
+        <button type="button" class="src-run" data-runsource="s3">Run assessment</button>
+        <div class="src-status" data-status="s3"></div>
+      </div>
+    </div>
+
+    <!-- ===== Source: Snowflake ===== -->
+    <div id="src-snowflake" class="source-body" style="display:none;">
+      <div class="card">
+        <h2>Snowflake <span class="src-tag beta">Preview</span></h2>
+        <p class="src-note">Read a Snowflake table with a read-only role. Checks push down as SQL so only results return.</p>
+        <div class="src-form">
+          <div class="src-field"><label>Account</label><input data-f="account" placeholder="xy12345.eu-west-1"></div>
+          <div class="src-field"><label>User</label><input data-f="user" placeholder="dq_reader"></div>
+          <div class="src-field"><label>Password</label><input data-f="password" type="password"></div>
+          <div class="src-field"><label>Warehouse</label><input data-f="warehouse" placeholder="COMPUTE_WH"></div>
+          <div class="src-field"><label>Role <span class="hint">(optional)</span></label><input data-f="role" placeholder="DQ_READER"></div>
+          <div class="src-field"><label>Database</label><input data-f="database" placeholder="ANALYTICS"></div>
+          <div class="src-field"><label>Schema</label><input data-f="schema" placeholder="PUBLIC"></div>
+          <div class="src-field"><label>Table</label><input data-f="table" placeholder="ORDERS"></div>
+          <div class="src-field"><label>Sample rows <span class="hint">(optional)</span></label><input data-f="sample_rows" type="number" min="1" placeholder="Empty = whole table"></div>
+        </div>
+        <button type="button" class="src-run" data-runsource="snowflake">Run assessment</button>
+        <div class="src-status" data-status="snowflake"></div>
+      </div>
+    </div>
+
+    <!-- ===== Source: Databricks ===== -->
+    <div id="src-databricks" class="source-body" style="display:none;">
+      <div class="card">
+        <h2>Databricks <span class="src-tag beta">Preview</span></h2>
+        <p class="src-note">Read a Unity Catalog / SQL-warehouse table via a personal access token.</p>
+        <div class="src-form">
+          <div class="src-field full"><label>Server hostname</label><input data-f="host" placeholder="dbc-1234.cloud.databricks.com"></div>
+          <div class="src-field full"><label>HTTP path</label><input data-f="http_path" placeholder="/sql/1.0/warehouses/abcdef"></div>
+          <div class="src-field full"><label>Access token</label><input data-f="token" type="password" placeholder="dapi…"></div>
+          <div class="src-field"><label>Catalog</label><input data-f="catalog" placeholder="main"></div>
+          <div class="src-field"><label>Schema</label><input data-f="schema" placeholder="default"></div>
+          <div class="src-field"><label>Table</label><input data-f="table" placeholder="orders"></div>
+          <div class="src-field"><label>Sample rows <span class="hint">(optional)</span></label><input data-f="sample_rows" type="number" min="1" placeholder="Empty = whole table"></div>
+        </div>
+        <button type="button" class="src-run" data-runsource="databricks">Run assessment</button>
+        <div class="src-status" data-status="databricks"></div>
+      </div>
+    </div>
+
+    <!-- ===== Source: PostgreSQL ===== -->
+    <div id="src-postgres" class="source-body" style="display:none;">
+      <div class="card">
+        <h2>PostgreSQL <span class="src-tag beta">Preview</span></h2>
+        <p class="src-note">Read a Postgres table with a read-only user. The endpoint must be reachable from our worker.</p>
+        <div class="src-form">
+          <div class="src-field"><label>Host</label><input data-f="host" placeholder="db.example.com"></div>
+          <div class="src-field"><label>Port</label><input data-f="port" placeholder="5432" value="5432"></div>
+          <div class="src-field"><label>Database</label><input data-f="database" placeholder="analytics"></div>
+          <div class="src-field"><label>User</label><input data-f="user" placeholder="dq_reader"></div>
+          <div class="src-field"><label>Password</label><input data-f="password" type="password"></div>
+          <div class="src-field"><label>Schema</label><input data-f="schema" placeholder="public"></div>
+          <div class="src-field"><label>Table</label><input data-f="table" placeholder="orders"></div>
+          <div class="src-field"><label>SSL mode <span class="hint">(optional)</span></label>
+            <select data-f="sslmode"><option value="">default</option><option>require</option><option>verify-full</option><option>disable</option></select></div>
+          <div class="src-field"><label>Sample rows <span class="hint">(optional)</span></label><input data-f="sample_rows" type="number" min="1" placeholder="Empty = whole table"></div>
+        </div>
+        <button type="button" class="src-run" data-runsource="postgres">Run assessment</button>
+        <div class="src-status" data-status="postgres"></div>
+      </div>
     </div>
 
     <div class="card" id="assessment">
@@ -3074,6 +3215,57 @@ function renderLineage(r) {
     (stamp ? `<p class="hint" style="margin-top:14px;">${stamp}</p>` : '');
 }
 $('#lineageRefresh').addEventListener('click', e => { e.preventDefault(); loadLineage(true); });
+
+// ---- Data-from-source picker -------------------------------------------- //
+// File upload is fully wired (existing flow); the connector sources capture +
+// validate their config and report status. Their backends are built per-source.
+const SOURCE_REQUIRED = {
+  redshift: ['role_arn', 'cluster', 'database', 'schema', 'table'],
+  s3: ['uri'],
+  snowflake: ['account', 'user', 'database', 'schema', 'table'],
+  databricks: ['host', 'http_path', 'token', 'catalog', 'schema', 'table'],
+  postgres: ['host', 'database', 'user', 'schema', 'table'],
+};
+const SOURCE_LABEL = { redshift: 'Amazon Redshift', s3: 'Amazon S3', snowflake: 'Snowflake',
+  databricks: 'Databricks', postgres: 'PostgreSQL' };
+const _SRC_FILE_ONLY = ['assessment', 'resetBar', 'results'];   // cards that belong to the file flow
+
+function selectSource(key) {
+  document.querySelectorAll('.source-card').forEach(c => c.classList.toggle('active', c.dataset.source === key));
+  document.querySelectorAll('.source-body').forEach(b => { b.style.display = (b.id === 'src-' + key) ? 'block' : 'none'; });
+  // The file-upload assessment/results cards only make sense for the file source.
+  _SRC_FILE_ONLY.forEach(id => { const el = document.getElementById(id); if (el) el.classList.toggle('src-hidden', key !== 'file'); });
+}
+
+function collectSourceFields(key) {
+  const body = document.getElementById('src-' + key);
+  const cfg = {};
+  if (body) body.querySelectorAll('[data-f]').forEach(el => { const v = (el.value || '').trim(); if (v) cfg[el.dataset.f] = v; });
+  return cfg;
+}
+
+function runSource(key) {
+  const statusEl = document.querySelector(`[data-status="${key}"]`);
+  if (!statusEl) return;
+  const cfg = collectSourceFields(key);
+  const missing = (SOURCE_REQUIRED[key] || []).filter(f => !cfg[f]);
+  if (missing.length) {
+    statusEl.className = 'src-status err';
+    statusEl.textContent = 'Please fill in the required field(s): ' + missing.join(', ') + '.';
+    return;
+  }
+  // Backend connectors are being built source by source; for now the config is
+  // captured + validated so the flow is testable end-to-end from the UI.
+  statusEl.className = 'src-status dev';
+  statusEl.innerHTML = `<strong>${esc(SOURCE_LABEL[key] || key)} connector — in development.</strong> ` +
+    `Your connection details are captured and validated. Live assessment for this source ships next; ` +
+    `<a href="#" class="linkbtn" data-usefile="1" style="margin:0;">file upload</a> is fully available now.`;
+  const link = statusEl.querySelector('[data-usefile]');
+  if (link) link.addEventListener('click', e => { e.preventDefault(); selectSource('file'); });
+}
+
+document.querySelectorAll('.source-card').forEach(c => c.addEventListener('click', () => selectSource(c.dataset.source)));
+document.querySelectorAll('[data-runsource]').forEach(b => b.addEventListener('click', () => runSource(b.dataset.runsource)));
 
 function switchTab(name) {
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
