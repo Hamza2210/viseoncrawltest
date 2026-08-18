@@ -339,6 +339,9 @@
   .src-status.dev { padding: 10px 12px; border-left: 4px solid var(--run); background: var(--run-bg); border-radius: 4px; color: var(--text); }
   .src-status.err { color: var(--err); }
   .src-hidden { display: none !important; }
+  .src-field label { display: flex; align-items: center; gap: 5px; }
+  .src-info { font-size: 13px; color: var(--muted); cursor: help; line-height: 1; }
+  .src-info:hover { color: var(--accent); }
   .bar-row { display: grid; grid-template-columns: 128px 1fr 44px; gap: 10px; align-items: center; margin: 5px 0; }
   .bar-lab { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .bar-track { height: 9px; border-radius: 999px; background: var(--idle-bg); overflow: hidden; }
@@ -3266,6 +3269,69 @@ function runSource(key) {
 
 document.querySelectorAll('.source-card').forEach(c => c.addEventListener('click', () => selectSource(c.dataset.source)));
 document.querySelectorAll('[data-runsource]').forEach(b => b.addEventListener('click', () => runSource(b.dataset.runsource)));
+
+// Per-field help: an ⓘ icon (with the page's data-tip tooltip) on every connector field.
+// Keyed by field key; a source-specific entry wins over the shared `common` one.
+const SOURCE_FIELD_HELP = {
+  common: {
+    region: 'The AWS region the resource is in, e.g. eu-west-1.',
+    database: 'Name of the database (or catalog) that holds the table.',
+    schema: 'The schema/namespace the table lives in, e.g. public.',
+    table: 'The exact name of the table to assess.',
+    user: 'A read-only user with SELECT access to the table.',
+    password: 'Password for that user. Sent over HTTPS and never stored in plain text.',
+    sample_rows: 'Optional. Assess a random sample of this many rows; leave empty to profile the whole table.',
+  },
+  redshift: {
+    method: 'Data API (recommended) runs the queries through AWS with no networking setup. Direct connection opens a database socket instead.',
+    region: 'The AWS region the Redshift cluster/workgroup is in, e.g. eu-west-1.',
+    role_arn: 'An IAM role IN THE REDSHIFT ACCOUNT that trusts our worker to assume it. We provide a template to create it.',
+    cluster: 'The provisioned cluster identifier, or the Serverless workgroup name.',
+    db_user: 'A Redshift DB user to mint temporary read-only credentials for. Use this OR a Secrets Manager ARN.',
+    secret_arn: 'ARN of a Secrets Manager secret holding the DB username/password — an alternative to a DB user.',
+  },
+  s3: {
+    uri: 'Full path to a single object, e.g. s3://my-bucket/folder/data.parquet.',
+    region: 'The AWS region the bucket is in, e.g. eu-west-1.',
+    format: 'File format. Auto-detect uses the file extension; override it if the extension is missing or wrong.',
+    role_arn: 'Optional. An IAM role we assume to read a bucket in another AWS account.',
+    access_key: 'Optional. Access key ID for read-only credentials, if you are not using a role.',
+    secret_key: 'Optional. The secret access key that pairs with the access key ID.',
+  },
+  snowflake: {
+    account: 'Your Snowflake account identifier, e.g. xy12345.eu-west-1.',
+    warehouse: 'The virtual warehouse used to run the profiling queries.',
+    role: 'Optional. The Snowflake role to use — it must have SELECT on the table.',
+  },
+  databricks: {
+    host: 'The workspace server hostname, e.g. dbc-1234.cloud.databricks.com.',
+    http_path: 'The SQL warehouse HTTP path, e.g. /sql/1.0/warehouses/abcdef.',
+    token: 'A Databricks personal access token with read access.',
+    catalog: 'The Unity Catalog catalog that holds the table.',
+  },
+  postgres: {
+    host: 'Hostname/endpoint of the Postgres server — it must be reachable from our worker.',
+    port: 'The port Postgres listens on. Default is 5432.',
+    sslmode: 'Optional. TLS mode for the connection; leave default unless your server requires a specific mode.',
+  },
+};
+
+function annotateSourceFields() {
+  document.querySelectorAll('.source-body').forEach(body => {
+    const src = body.id.replace('src-', '');
+    const per = SOURCE_FIELD_HELP[src] || {};
+    body.querySelectorAll('.src-field').forEach(fld => {
+      const input = fld.querySelector('[data-f]'), label = fld.querySelector('label');
+      if (!input || !label || label.querySelector('.src-info')) return;
+      const desc = per[input.dataset.f] || SOURCE_FIELD_HELP.common[input.dataset.f];
+      if (!desc) return;
+      const ic = document.createElement('span');
+      ic.className = 'src-info'; ic.textContent = 'ⓘ'; ic.setAttribute('data-tip', desc);
+      label.appendChild(ic);                         // dataset-driven so no per-field markup
+    });
+  });
+}
+annotateSourceFields();
 
 function switchTab(name) {
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
