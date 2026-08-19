@@ -3280,6 +3280,7 @@ async function runRedshift(cfg, statusEl) {
   const btn = document.querySelector('[data-runsource="redshift"]');
   const serverless = cfg.cluster_type === 'workgroup';
   const body = {
+    app_id: APP_ID || undefined,
     database: cfg.database, schema: cfg.schema, table: cfg.table,
     region: cfg.region || undefined,
     cluster: serverless ? undefined : (cfg.cluster || undefined),
@@ -3307,6 +3308,7 @@ async function runRedshift(cfg, statusEl) {
   const card = document.getElementById('redshiftResult');
   const bodyEl = document.getElementById('redshiftResultBody');
   if (card) card.style.display = 'block';
+  if (bodyEl) bodyEl.innerHTML = `<p><span class="spin"></span> Scoring the dataset — this can take a moment…</p>`;
   if (res.resultPrefix && bodyEl) {
     pollInto(res.resultPrefix, bodyEl, {}).finally(() => { if (btn) btn.disabled = false; });
   } else if (btn) { btn.disabled = false; }
@@ -3316,6 +3318,7 @@ async function runRedshift(cfg, statusEl) {
 async function runS3(cfg, statusEl) {
   const btn = document.querySelector('[data-runsource="s3"]');
   const body = {
+    app_id: APP_ID || undefined,
     uri: cfg.uri,
     format: (cfg.format && cfg.format !== 'auto') ? cfg.format : undefined,
     region: cfg.region || undefined, role_arn: cfg.role_arn || undefined,
@@ -3340,6 +3343,7 @@ async function runS3(cfg, statusEl) {
   const card = document.getElementById('s3Result');
   const bodyEl = document.getElementById('s3ResultBody');
   if (card) card.style.display = 'block';
+  if (bodyEl) bodyEl.innerHTML = `<p><span class="spin"></span> Scoring the dataset — this can take a moment…</p>`;
   if (res.resultPrefix && bodyEl) {
     pollInto(res.resultPrefix, bodyEl, {}).finally(() => { if (btn) btn.disabled = false; });
   } else if (btn) { btn.disabled = false; }
@@ -3349,6 +3353,7 @@ async function runS3(cfg, statusEl) {
 async function runSnowflake(cfg, statusEl) {
   const btn = document.querySelector('[data-runsource="snowflake"]');
   const body = {
+    app_id: APP_ID || undefined,
     account: cfg.account, user: cfg.user, database: cfg.database, table: cfg.table,
     schema: cfg.schema || undefined, password: cfg.password || undefined,
     warehouse: cfg.warehouse || undefined, role: cfg.role || undefined,
@@ -3373,6 +3378,7 @@ async function runSnowflake(cfg, statusEl) {
   const card = document.getElementById('snowflakeResult');
   const bodyEl = document.getElementById('snowflakeResultBody');
   if (card) card.style.display = 'block';
+  if (bodyEl) bodyEl.innerHTML = `<p><span class="spin"></span> Scoring the dataset — this can take a moment…</p>`;
   if (res.resultPrefix && bodyEl) {
     pollInto(res.resultPrefix, bodyEl, {}).finally(() => { if (btn) btn.disabled = false; });
   } else if (btn) { btn.disabled = false; }
