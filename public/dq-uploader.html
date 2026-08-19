@@ -664,7 +664,7 @@
       <button type="button" class="source-card" data-source="redshift">📊 Amazon Redshift <span class="src-tag betatag">Beta</span></button>
       <button type="button" class="source-card" data-source="s3">🗄️ Amazon S3 file <span class="src-tag betatag">Beta</span></button>
       <button type="button" class="source-card" data-source="snowflake">❄️ Snowflake <span class="src-tag betatag">Beta</span></button>
-      <button type="button" class="source-card" data-source="databricks">🧱 Databricks <span class="src-tag beta">Preview</span></button>
+      <button type="button" class="source-card" data-source="databricks">🧱 Databricks <span class="src-tag betatag">Beta</span></button>
       <button type="button" class="source-card" data-source="postgres">🐘 PostgreSQL <span class="src-tag beta">Preview</span></button>
     </div>
 
@@ -803,7 +803,7 @@
     <!-- ===== Source: Databricks ===== -->
     <div id="src-databricks" class="source-body" style="display:none;">
       <div class="card">
-        <h2>Databricks <span class="src-tag beta">Preview</span></h2>
+        <h2>Databricks <span class="src-tag betatag">Beta</span></h2>
         <p class="src-note">Read a Unity Catalog / SQL-warehouse table via a personal access token.</p>
         <div class="src-form">
           <div class="src-field full"><label>Server hostname</label><input data-f="host" placeholder="dbc-1234.cloud.databricks.com"></div>
@@ -817,6 +817,7 @@
         <button type="button" class="src-run" data-runsource="databricks">Run assessment</button>
         <div class="src-status" data-status="databricks"></div>
       </div>
+      <div class="card" id="databricksResult" style="display:none;"><h2>Assessment</h2><div id="databricksResultBody"></div></div>
     </div>
 
     <!-- ===== Source: PostgreSQL ===== -->
@@ -1061,6 +1062,7 @@
           <option value="redshift">Amazon Redshift</option>
           <option value="s3">Amazon S3 file</option>
           <option value="snowflake">Snowflake</option>
+          <option value="databricks">Databricks</option>
         </select>
 
         <div id="schQlikFields">
@@ -3317,7 +3319,7 @@ const SOURCE_REQUIRED = {
   redshift: ['cluster', 'database', 'schema', 'table'],
   s3: ['uri'],
   snowflake: ['account', 'user', 'database', 'schema', 'table'],
-  databricks: ['host', 'http_path', 'token', 'catalog', 'schema', 'table'],
+  databricks: ['host', 'http_path', 'token', 'schema', 'table'],
   postgres: ['host', 'database', 'user', 'schema', 'table'],
 };
 const SOURCE_LABEL = { redshift: 'Amazon Redshift', s3: 'Amazon S3', snowflake: 'Snowflake',
@@ -3351,6 +3353,7 @@ function runSource(key) {
   if (key === 'redshift') { runRedshift(cfg, statusEl); return; }   // wired end-to-end
   if (key === 's3') { runS3(cfg, statusEl); return; }               // wired end-to-end
   if (key === 'snowflake') { runSnowflake(cfg, statusEl); return; } // wired end-to-end
+  if (key === 'databricks') { runDatabricks(cfg, statusEl); return; } // wired end-to-end
   // Remaining connectors are being built source by source; capture + validate for now.
   statusEl.className = 'src-status dev';
   statusEl.innerHTML = `<strong>${esc(SOURCE_LABEL[key] || key)} connector — in development.</strong> ` +
@@ -3462,6 +3465,40 @@ async function runSnowflake(cfg, statusEl) {
     `Inferring the ruleset from a sample, then scoring the whole table in Snowflake…`;
   const card = document.getElementById('snowflakeResult');
   const bodyEl = document.getElementById('snowflakeResultBody');
+  if (card) card.style.display = 'block';
+  if (bodyEl) bodyEl.innerHTML = `<p><span class="spin"></span> Scoring the dataset — this can take a moment…</p>`;
+  if (res.resultPrefix && bodyEl) {
+    pollInto(res.resultPrefix, bodyEl, {}).finally(() => { if (btn) btn.disabled = false; });
+  } else if (btn) { btn.disabled = false; }
+}
+
+// Launch a full-table Databricks assessment, then poll + render its result.
+async function runDatabricks(cfg, statusEl) {
+  const btn = document.querySelector('[data-runsource="databricks"]');
+  const body = {
+    app_id: APP_ID || undefined,
+    host: cfg.host, http_path: cfg.http_path, token: cfg.token, table: cfg.table,
+    schema: cfg.schema || undefined, catalog: cfg.catalog || undefined,
+    sample_rows: cfg.sample_rows ? Number(cfg.sample_rows) : undefined,
+    notify_email: EMAIL || undefined,
+  };
+  statusEl.className = 'src-status';
+  statusEl.innerHTML = `<p><span class="spin"></span> Launching Databricks assessment…</p>`;
+  if (btn) btn.disabled = true;
+  let res;
+  try {
+    res = await postJSON(`${API_BASE}/data-quality/databricks-assessment`, HEADERS, body);
+  } catch (e) {
+    statusEl.className = 'src-status err';
+    statusEl.textContent = e.message;
+    if (btn) btn.disabled = false;
+    return;
+  }
+  statusEl.className = 'src-status dev';
+  statusEl.innerHTML = `Assessment started (run <code>${esc(res.runId || '')}</code>). ` +
+    `Inferring the ruleset from a sample, then scoring the whole table in Databricks…`;
+  const card = document.getElementById('databricksResult');
+  const bodyEl = document.getElementById('databricksResultBody');
   if (card) card.style.display = 'block';
   if (bodyEl) bodyEl.innerHTML = `<p><span class="spin"></span> Scoring the dataset — this can take a moment…</p>`;
   if (res.resultPrefix && bodyEl) {
@@ -4029,6 +4066,13 @@ const SCHED_SOURCE_FIELDS = {
     { f: 'password', label: 'Password', type: 'password' },
     { f: 'warehouse', label: 'Warehouse' }, { f: 'role', label: 'Role' },
     { f: 'database', label: 'Database' }, { f: 'schema', label: 'Schema', value: 'PUBLIC' },
+    { f: 'table', label: 'Table' }, { f: 'sample_rows', label: 'Sample rows', type: 'number' },
+  ],
+  databricks: [
+    { f: 'host', label: 'Server hostname', full: true },
+    { f: 'http_path', label: 'HTTP path', full: true },
+    { f: 'token', label: 'Access token', type: 'password', full: true },
+    { f: 'catalog', label: 'Catalog' }, { f: 'schema', label: 'Schema', value: 'default' },
     { f: 'table', label: 'Table' }, { f: 'sample_rows', label: 'Sample rows', type: 'number' },
   ],
 };
