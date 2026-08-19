@@ -656,7 +656,7 @@
       <button type="button" class="source-card active" data-source="file">📄 File upload <span class="src-tag">Ready</span></button>
       <button type="button" class="source-card" data-source="redshift">📊 Amazon Redshift <span class="src-tag betatag">Beta</span></button>
       <button type="button" class="source-card" data-source="s3">🗄️ Amazon S3 file <span class="src-tag betatag">Beta</span></button>
-      <button type="button" class="source-card" data-source="snowflake">❄️ Snowflake <span class="src-tag beta">Preview</span></button>
+      <button type="button" class="source-card" data-source="snowflake">❄️ Snowflake <span class="src-tag betatag">Beta</span></button>
       <button type="button" class="source-card" data-source="databricks">🧱 Databricks <span class="src-tag beta">Preview</span></button>
       <button type="button" class="source-card" data-source="postgres">🐘 PostgreSQL <span class="src-tag beta">Preview</span></button>
     </div>
@@ -772,7 +772,7 @@
     <!-- ===== Source: Snowflake ===== -->
     <div id="src-snowflake" class="source-body" style="display:none;">
       <div class="card">
-        <h2>Snowflake <span class="src-tag beta">Preview</span></h2>
+        <h2>Snowflake <span class="src-tag betatag">Beta</span></h2>
         <p class="src-note">Read a Snowflake table with a read-only role. Checks push down as SQL so only results return.</p>
         <div class="src-form">
           <div class="src-field"><label>Account</label><input data-f="account" placeholder="xy12345.eu-west-1"></div>
@@ -788,6 +788,7 @@
         <button type="button" class="src-run" data-runsource="snowflake">Run assessment</button>
         <div class="src-status" data-status="snowflake"></div>
       </div>
+      <div class="card" id="snowflakeResult" style="display:none;"><h2>Assessment</h2><div id="snowflakeResultBody"></div></div>
     </div>
 
     <!-- ===== Source: Databricks ===== -->
@@ -3262,6 +3263,7 @@ function runSource(key) {
   }
   if (key === 'redshift') { runRedshift(cfg, statusEl); return; }   // wired end-to-end
   if (key === 's3') { runS3(cfg, statusEl); return; }               // wired end-to-end
+  if (key === 'snowflake') { runSnowflake(cfg, statusEl); return; } // wired end-to-end
   // Remaining connectors are being built source by source; capture + validate for now.
   statusEl.className = 'src-status dev';
   statusEl.innerHTML = `<strong>${esc(SOURCE_LABEL[key] || key)} connector — in development.</strong> ` +
@@ -3332,6 +3334,39 @@ async function runS3(cfg, statusEl) {
   statusEl.innerHTML = `Assessment started (run <code>${esc(res.runId || '')}</code>). Reading the file and scoring…`;
   const card = document.getElementById('s3Result');
   const bodyEl = document.getElementById('s3ResultBody');
+  if (card) card.style.display = 'block';
+  if (res.resultPrefix && bodyEl) {
+    pollInto(res.resultPrefix, bodyEl, {}).finally(() => { if (btn) btn.disabled = false; });
+  } else if (btn) { btn.disabled = false; }
+}
+
+// Launch a full-table Snowflake assessment, then poll + render its result.
+async function runSnowflake(cfg, statusEl) {
+  const btn = document.querySelector('[data-runsource="snowflake"]');
+  const body = {
+    account: cfg.account, user: cfg.user, database: cfg.database, table: cfg.table,
+    schema: cfg.schema || undefined, password: cfg.password || undefined,
+    warehouse: cfg.warehouse || undefined, role: cfg.role || undefined,
+    sample_rows: cfg.sample_rows ? Number(cfg.sample_rows) : undefined,
+    notify_email: EMAIL || undefined,
+  };
+  statusEl.className = 'src-status';
+  statusEl.innerHTML = `<p><span class="spin"></span> Launching Snowflake assessment…</p>`;
+  if (btn) btn.disabled = true;
+  let res;
+  try {
+    res = await postJSON(`${API_BASE}/data-quality/snowflake-assessment`, HEADERS, body);
+  } catch (e) {
+    statusEl.className = 'src-status err';
+    statusEl.textContent = e.message;
+    if (btn) btn.disabled = false;
+    return;
+  }
+  statusEl.className = 'src-status dev';
+  statusEl.innerHTML = `Assessment started (run <code>${esc(res.runId || '')}</code>). ` +
+    `Inferring the ruleset from a sample, then scoring the whole table in Snowflake…`;
+  const card = document.getElementById('snowflakeResult');
+  const bodyEl = document.getElementById('snowflakeResultBody');
   if (card) card.style.display = 'block';
   if (res.resultPrefix && bodyEl) {
     pollInto(res.resultPrefix, bodyEl, {}).finally(() => { if (btn) btn.disabled = false; });
