@@ -181,6 +181,12 @@
   /* Observability dashboard */
   /* The dashboard breaks out of the narrow form column to use the full width. */
   .wrap.wide { max-width: 100%; }
+  /* Dashboard App-data / Source-data segmented toggle */
+  .scope-toggle { display: inline-flex; gap: 2px; margin-left: 12px; padding: 2px; border: 1px solid var(--border);
+    border-radius: 8px; background: var(--bg); vertical-align: middle; }
+  .scope-btn { border: none; background: transparent; color: var(--muted); font-size: 12px; font-weight: 600;
+    padding: 4px 12px; border-radius: 6px; cursor: pointer; }
+  .scope-btn.active { background: var(--card); color: var(--accent); box-shadow: 0 1px 2px rgba(0,0,0,.08); }
   .dash-cols { display: grid; grid-template-columns: 3fr 2fr; gap: 16px; align-items: start; }
   .trend-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
   @media (max-width: 1000px) { .dash-cols { grid-template-columns: 1fr; } }
@@ -921,7 +927,13 @@
       <p>Monitor this app's data quality over time - overall scores, per-dimension health and trends across every assessed table.</p>
     </div>
     <div class="card">
-      <h2>Overview <button class="linkbtn" id="dashRefresh">Refresh</button></h2>
+      <h2>Overview
+        <span class="scope-toggle" id="dashScopeToggle">
+          <button type="button" class="scope-btn active" data-scope="app">App data</button>
+          <button type="button" class="scope-btn" data-scope="source">Source data</button>
+        </span>
+        <button class="linkbtn" id="dashRefresh">Refresh</button>
+      </h2>
       <p class="dash-muted" id="dashCtx">Loading…</p>
       <div class="dash-tiles" id="dashTiles"></div>
     </div>
@@ -1036,17 +1048,31 @@
         <label for="schTz">Timezone</label>
         <input id="schTz" value="UTC" style="max-width:240px;" />
 
-        <label>Tables</label>
-        <div class="chooser">
-          <button type="button" class="btn-sm" id="schChooseTables">Choose tables…</button>
-          <span class="summary" id="schTablesSummary">All tables</span>
+        <label for="schSourceKind">Assess</label>
+        <select id="schSourceKind">
+          <option value="qlik">This app's tables (Qlik)</option>
+          <option value="redshift">Amazon Redshift</option>
+          <option value="s3">Amazon S3 file</option>
+          <option value="snowflake">Snowflake</option>
+        </select>
+
+        <div id="schQlikFields">
+          <label>Tables</label>
+          <div class="chooser">
+            <button type="button" class="btn-sm" id="schChooseTables">Choose tables…</button>
+            <span class="summary" id="schTablesSummary">All tables</span>
+          </div>
+          <label for="schSample">Sample size <span class="hint" style="font-weight:400;">(optional)</span></label>
+          <input type="number" id="schSample" min="1" placeholder="Leave empty to assess whole tables" />
+        </div>
+
+        <div id="schSourceWrap" style="display:none;">
+          <p class="hint" style="margin:8px 0;">The connection details are stored with the schedule so it can run unattended — prefer a role or Secrets Manager ARN over raw passwords/keys where the source allows it.</p>
+          <div class="src-form" id="schedSourceFields"></div>
         </div>
 
         <label for="schEmail">Alert email</label>
         <input id="schEmail" placeholder="alerts@company.com" />
-
-        <label for="schSample">Sample size <span class="hint" style="font-weight:400;">(optional)</span></label>
-        <input type="number" id="schSample" min="1" placeholder="Leave empty to assess whole tables" />
 
         <div class="actions" style="margin-top:22px;">
           <button id="schSave">Save schedule</button>
@@ -2092,6 +2118,10 @@ function multiLine(series, opts) {
 }
 
 let dashDatasets = [];
+let dashDatasetsAll = [];
+let dashServerTiles = {};
+let dashWindowDays = 30;
+let dashScope = 'app';                          // 'app' (Qlik tables) | 'source' (Data-from-Source)
 let dashSelected = null;
 
 async function loadDashboard() {
@@ -2111,19 +2141,54 @@ async function loadDashboard() {
   try {
     const d = await postJSON(`${API_BASE}/data-quality/dashboard`, HEADERS,
       { window_days: 30, app_id: APP_ID });
-    dashDatasets = d.datasets || [];
-    renderTiles(d.tiles || {});
-    renderHealthTable(dashDatasets);
-    renderHeatmap(dashDatasets);
-    renderAppOverview(dashDatasets);           // all-tables overview by default
+    dashDatasetsAll = d.datasets || [];
+    dashServerTiles = d.tiles || {};
+    dashWindowDays = d.windowDays || 30;
+    applyDashScope();                          // filter to the active scope + render
     trendsIn();                                // gentle grow-in on load/refresh
-    $('#dashCtx').textContent =
-      `This app · ${dashDatasets.length} table(s) assessed · last ${d.windowDays || 30} days`;
   } catch (e) {
     $('#dashCtx').textContent = '';
     $('#dashTableWrap').innerHTML = `<p class="dash-muted" style="color:var(--err)">${esc(e.message)}</p>`;
   }
 }
+
+// A dataset is "source data" (Data-from-Source) when its format isn't the Qlik app model.
+function isSourceDataset(ds) { return ds && ds.sourceFormat && ds.sourceFormat !== 'qlik'; }
+
+// Tiles for just the datasets in the active scope (server tiles cover everything).
+function computeScopeTiles(datasets) {
+  let green = 0, amber = 0, red = 0, gate = 0, stale = 0;
+  datasets.forEach(d => {
+    if (d.status === 'green') green++; else if (d.status === 'amber') amber++; else if (d.status === 'red') red++;
+    if (d.gate === false) gate++;
+    if (d.ageDays != null && d.ageDays > 7) stale++;
+  });
+  return { datasets: datasets.length, green, amber, red, gateFailures: gate, stale,
+           runsWindow: (dashServerTiles && dashServerTiles.runsWindow) || 0 };
+}
+
+// Re-render every dashboard chart for the current App-data / Source-data scope.
+function applyDashScope() {
+  document.querySelectorAll('#dashScopeToggle .scope-btn')
+    .forEach(b => b.classList.toggle('active', b.dataset.scope === dashScope));
+  dashDatasets = dashDatasetsAll.filter(ds => dashScope === 'source' ? isSourceDataset(ds) : !isSourceDataset(ds));
+  const noun = dashScope === 'source' ? 'source dataset' : 'app table';
+  renderTiles(computeScopeTiles(dashDatasets));
+  if (!dashDatasets.length) {
+    $('#dashTableWrap').innerHTML = `<p class="dash-muted">No ${noun} data for this app yet.</p>`;
+    $('#dashHeat').innerHTML = '';
+    $('#dashTrends').innerHTML = '';
+  } else {
+    renderHealthTable(dashDatasets);
+    renderHeatmap(dashDatasets);
+    renderAppOverview(dashDatasets);
+  }
+  $('#dashCtx').textContent =
+    `This app · ${dashDatasets.length} ${noun}${dashDatasets.length === 1 ? '' : 's'} · last ${dashWindowDays} days`;
+}
+
+document.querySelectorAll('#dashScopeToggle .scope-btn').forEach(b =>
+  b.addEventListener('click', () => { dashScope = b.dataset.scope; applyDashScope(); }));
 
 function renderTiles(t) {
   const healthPct = t.datasets ? Math.round(((t.green || 0) / t.datasets) * 100) : 0;
@@ -3864,6 +3929,8 @@ function resetScheduleForm() {
   $('#schFreq').value = 'daily'; $('#schTime').value = '06:00';
   $('#schDom').value = '1'; $('#schCustom').value = ''; $('#schTz').value = 'UTC';
   $('#schCancelEdit').style.display = 'none';
+  if ($('#schSourceKind')) $('#schSourceKind').value = 'qlik';
+  if (typeof schSourceUI === 'function') schSourceUI();
   schSelected = [];
   updateTablesSummary();
   schFreqUI();
@@ -3911,31 +3978,113 @@ $('#tmApply').addEventListener('click', () => {
   closeTableModal();
 });
 
+// Data-source schedule fields (config-driven so we reuse the same field help/tooltips
+// as the Data-from-Source tab without duplicating the whole forms).
+const SCHED_SOURCE_FIELDS = {
+  redshift: [
+    { f: 'region', label: 'AWS region', value: 'eu-west-1' },
+    { f: 'role_arn', label: 'Cross-account role ARN' },
+    { f: 'cluster_type', label: 'Deployment type', type: 'select',
+      options: [['cluster', 'Provisioned cluster'], ['workgroup', 'Serverless workgroup']] },
+    { f: 'cluster', label: 'Cluster ID / Workgroup name' },
+    { f: 'database', label: 'Database' },
+    { f: 'schema', label: 'Schema', value: 'public' },
+    { f: 'table', label: 'Table' },
+    { f: 'db_user', label: 'DB user' },
+    { f: 'secret_arn', label: 'Secrets Manager ARN' },
+    { f: 'sample_rows', label: 'Sample rows', type: 'number' },
+  ],
+  s3: [
+    { f: 'uri', label: 'S3 URI', full: true },
+    { f: 'region', label: 'AWS region', value: 'eu-west-1' },
+    { f: 'format', label: 'Format', type: 'select',
+      options: [['auto', 'Auto-detect'], ['parquet', 'parquet'], ['csv', 'csv'], ['json', 'json'], ['qvd', 'qvd']] },
+    { f: 'role_arn', label: 'Cross-account role ARN' },
+    { f: 'access_key', label: 'Access key ID' },
+    { f: 'secret_key', label: 'Secret access key', type: 'password' },
+    { f: 'sample_rows', label: 'Sample rows', type: 'number' },
+  ],
+  snowflake: [
+    { f: 'account', label: 'Account' }, { f: 'user', label: 'User' },
+    { f: 'password', label: 'Password', type: 'password' },
+    { f: 'warehouse', label: 'Warehouse' }, { f: 'role', label: 'Role' },
+    { f: 'database', label: 'Database' }, { f: 'schema', label: 'Schema', value: 'PUBLIC' },
+    { f: 'table', label: 'Table' }, { f: 'sample_rows', label: 'Sample rows', type: 'number' },
+  ],
+};
+
+function _schFieldHelp(kind, f) {
+  return (SOURCE_FIELD_HELP[kind] && SOURCE_FIELD_HELP[kind][f]) ||
+    (SOURCE_FIELD_HELP.common && SOURCE_FIELD_HELP.common[f]) || '';
+}
+
+function renderSchedSourceFields(kind) {
+  const wrap = $('#schedSourceFields');
+  if (!wrap) return;
+  wrap.innerHTML = (SCHED_SOURCE_FIELDS[kind] || []).map(fld => {
+    const help = _schFieldHelp(kind, fld.f);
+    const ic = help ? ` <span class="src-info" data-tip="${esc(help)}">ⓘ</span>` : '';
+    const input = fld.type === 'select'
+      ? `<select data-f="${fld.f}">` + fld.options.map(o => `<option value="${esc(o[0])}">${esc(o[1])}</option>`).join('') + `</select>`
+      : `<input data-f="${fld.f}"${fld.type ? ` type="${fld.type}"` : ''}${fld.value ? ` value="${esc(fld.value)}"` : ''}>`;
+    return `<div class="src-field${fld.full ? ' full' : ''}"><label>${esc(fld.label)}${ic}</label>${input}</div>`;
+  }).join('');
+}
+
+function collectSchedSource() {
+  const wrap = $('#schedSourceFields'), cfg = {};
+  if (wrap) wrap.querySelectorAll('[data-f]').forEach(el => { const v = (el.value || '').trim(); if (v) cfg[el.dataset.f] = v; });
+  return cfg;
+}
+
+function schSourceUI() {
+  const kind = ($('#schSourceKind') && $('#schSourceKind').value) || 'qlik';
+  const qlik = kind === 'qlik';
+  if ($('#schQlikFields')) $('#schQlikFields').style.display = qlik ? '' : 'none';
+  if ($('#schSourceWrap')) $('#schSourceWrap').style.display = qlik ? 'none' : 'block';
+  if (!qlik) renderSchedSourceFields(kind);
+}
+if ($('#schSourceKind')) $('#schSourceKind').addEventListener('change', schSourceUI);
+
 async function saveSchedule() {
   if (!APP_ID) { schBanner('err', 'Open from inside a Qlik app to schedule its checks.'); return; }
-  if (!BEARER) { schBanner('err', 'No Qlik API key configured — set it in the extension settings.'); return; }
+  const kind = ($('#schSourceKind') && $('#schSourceKind').value) || 'qlik';
   const label = $('#schLabel').value.trim();
   const email = $('#schEmail').value.trim();
   const cron = schBuildCron();
   if (!label) { schBanner('err', 'Give the schedule a name.'); return; }
   if (!email) { schBanner('err', 'Enter an alert email.'); return; }
   if (!cron) { schBanner('err', 'Set a frequency / cron expression.'); return; }
-  const sampleRaw = $('#schSample').value.trim();
-  const sample = sampleRaw ? parseInt(sampleRaw, 10) : NaN;
+
   const body = {
-    app_id: APP_ID, label, email,
-    schedule_expression: cron,
-    timezone: ($('#schTz').value || 'UTC').trim(),
-    tables: schSelected,
-    enabled: true,
+    app_id: APP_ID, label, email, schedule_expression: cron,
+    timezone: ($('#schTz').value || 'UTC').trim(), enabled: true, source_kind: kind,
   };
-  if (Number.isFinite(sample) && sample > 0) body.sample_rows = sample;
   if (schEditingName) body.name = schEditingName;
+
+  if (kind === 'qlik') {
+    if (!BEARER) { schBanner('err', 'No Qlik API key configured — set it in the extension settings.'); return; }
+    body.tables = schSelected;
+    const sampleRaw = $('#schSample').value.trim();
+    const sample = sampleRaw ? parseInt(sampleRaw, 10) : NaN;
+    if (Number.isFinite(sample) && sample > 0) body.sample_rows = sample;
+  } else {
+    const cfg = collectSchedSource();
+    const missing = (SOURCE_REQUIRED[kind] || []).filter(f => !cfg[f]);
+    if (missing.length) { schBanner('err', 'Fill in the source field(s): ' + missing.join(', ') + '.'); return; }
+    if (kind === 'redshift') {
+      if (cfg.cluster_type === 'workgroup') { cfg.workgroup = cfg.cluster; delete cfg.cluster; }
+      delete cfg.cluster_type;
+    }
+    if (kind === 's3' && cfg.format === 'auto') delete cfg.format;
+    body.source = cfg;
+  }
+
   $('#schSave').disabled = true;
   try {
-    const hdr = { ...HEADERS, 'X-Qlik-Bearer': BEARER };
+    const hdr = { ...HEADERS };
+    if (BEARER) hdr['X-Qlik-Bearer'] = BEARER;
     const r = await postJSON(`${API_BASE}/data-quality/schedules`, hdr, body);
-    // created → green, updated → blue
     schBanner(r.action === 'updated' ? 'info' : 'ok', `Schedule ${r.action}.`);
     resetScheduleForm();
     loadSchedules();
@@ -4105,7 +4254,10 @@ function renderSchedules(list) {
   }
   const rows = list.map((s, i) => {
     const on = s.state === 'ENABLED';
-    const tables = (s.tables && s.tables.length) ? `${s.tables.length} table(s)` : 'All tables';
+    const isSrc = s.sourceKind && s.sourceKind !== 'qlik';
+    const tables = isSrc
+      ? `${SOURCE_LABEL[s.sourceKind] || s.sourceKind}${s.sourceSummary ? ' · ' + s.sourceSummary : ''}`
+      : ((s.tables && s.tables.length) ? `${s.tables.length} table(s)` : 'All tables');
     const stateChip = on ? `<span class="chip good"><span class="dot"></span>Enabled</span>`
       : `<span class="chip na"><span class="dot"></span>Disabled</span>`;
     return `<tr class="sched-main">
@@ -4146,7 +4298,9 @@ function renderSchedules(list) {
     const exp = $(`tr[data-exp="${i}"]`);
     exp.querySelector('.v-cron').textContent = s.cron || '—';
     exp.querySelector('.v-tz').textContent = s.timezone || 'UTC';
-    exp.querySelector('.v-tables').textContent = (s.tables && s.tables.length) ? s.tables.join(', ') : 'All tables';
+    exp.querySelector('.v-tables').textContent = (s.sourceKind && s.sourceKind !== 'qlik')
+      ? `${SOURCE_LABEL[s.sourceKind] || s.sourceKind}${s.sourceSummary ? ' · ' + s.sourceSummary : ''}`
+      : ((s.tables && s.tables.length) ? s.tables.join(', ') : 'All tables');
     exp.querySelector('.v-email').textContent = s.email || '—';
     exp.querySelector('.v-sample').textContent = s.sampleRows ? `${s.sampleRows} rows` : 'Whole tables';
   });
@@ -4194,8 +4348,15 @@ function editSchedule(s) {
   $('#schFreq').value = 'custom';
   $('#schCustom').value = s.cron || '';
   schFreqUI();
-  schSelected = (s.tables || []).slice();   // preserve the schedule's table selection
-  updateTablesSummary();
+  const kind = (s.sourceKind && s.sourceKind !== 'qlik') ? s.sourceKind : 'qlik';
+  if ($('#schSourceKind')) $('#schSourceKind').value = kind;
+  schSourceUI();
+  if (kind === 'qlik') {
+    schSelected = (s.tables || []).slice();   // preserve the schedule's table selection
+    updateTablesSummary();
+  } else {
+    schBanner('info', 'Re-enter this source’s connection details — credentials aren’t stored back into the form.');
+  }
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
