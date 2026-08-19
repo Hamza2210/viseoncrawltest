@@ -655,7 +655,7 @@
     <div class="source-picker" id="sourcePicker">
       <button type="button" class="source-card active" data-source="file">📄 File upload <span class="src-tag">Ready</span></button>
       <button type="button" class="source-card" data-source="redshift">📊 Amazon Redshift <span class="src-tag betatag">Beta</span></button>
-      <button type="button" class="source-card" data-source="s3">🗄️ Amazon S3 file <span class="src-tag beta">Preview</span></button>
+      <button type="button" class="source-card" data-source="s3">🗄️ Amazon S3 file <span class="src-tag betatag">Beta</span></button>
       <button type="button" class="source-card" data-source="snowflake">❄️ Snowflake <span class="src-tag beta">Preview</span></button>
       <button type="button" class="source-card" data-source="databricks">🧱 Databricks <span class="src-tag beta">Preview</span></button>
       <button type="button" class="source-card" data-source="postgres">🐘 PostgreSQL <span class="src-tag beta">Preview</span></button>
@@ -751,7 +751,7 @@
     <!-- ===== Source: Amazon S3 file ===== -->
     <div id="src-s3" class="source-body" style="display:none;">
       <div class="card">
-        <h2>Amazon S3 file <span class="src-tag beta">Preview</span></h2>
+        <h2>Amazon S3 file <span class="src-tag betatag">Beta</span></h2>
         <p class="src-note">Point us at a single object (Parquet, CSV, JSON/NDJSON or QVD). A same-account bucket needs only the URI; a cross-account bucket needs a role ARN or read-only access keys.</p>
         <div class="src-form">
           <div class="src-field full"><label>S3 URI</label><input data-f="uri" placeholder="s3://bucket/path/to/file.parquet"></div>
@@ -766,6 +766,7 @@
         <button type="button" class="src-run" data-runsource="s3">Run assessment</button>
         <div class="src-status" data-status="s3"></div>
       </div>
+      <div class="card" id="s3Result" style="display:none;"><h2>Assessment</h2><div id="s3ResultBody"></div></div>
     </div>
 
     <!-- ===== Source: Snowflake ===== -->
@@ -3260,6 +3261,7 @@ function runSource(key) {
     return;
   }
   if (key === 'redshift') { runRedshift(cfg, statusEl); return; }   // wired end-to-end
+  if (key === 's3') { runS3(cfg, statusEl); return; }               // wired end-to-end
   // Remaining connectors are being built source by source; capture + validate for now.
   statusEl.className = 'src-status dev';
   statusEl.innerHTML = `<strong>${esc(SOURCE_LABEL[key] || key)} connector — in development.</strong> ` +
@@ -3297,6 +3299,39 @@ async function runRedshift(cfg, statusEl) {
     `Inferring the ruleset from a sample, then scoring the whole table in Redshift — this can take a little while…`;
   const card = document.getElementById('redshiftResult');
   const bodyEl = document.getElementById('redshiftResultBody');
+  if (card) card.style.display = 'block';
+  if (res.resultPrefix && bodyEl) {
+    pollInto(res.resultPrefix, bodyEl, {}).finally(() => { if (btn) btn.disabled = false; });
+  } else if (btn) { btn.disabled = false; }
+}
+
+// Launch an assessment of a single existing S3 object, then poll + render its result.
+async function runS3(cfg, statusEl) {
+  const btn = document.querySelector('[data-runsource="s3"]');
+  const body = {
+    uri: cfg.uri,
+    format: (cfg.format && cfg.format !== 'auto') ? cfg.format : undefined,
+    region: cfg.region || undefined, role_arn: cfg.role_arn || undefined,
+    access_key: cfg.access_key || undefined, secret_key: cfg.secret_key || undefined,
+    sample_rows: cfg.sample_rows ? Number(cfg.sample_rows) : undefined,
+    notify_email: EMAIL || undefined,
+  };
+  statusEl.className = 'src-status';
+  statusEl.innerHTML = `<p><span class="spin"></span> Launching S3 assessment…</p>`;
+  if (btn) btn.disabled = true;
+  let res;
+  try {
+    res = await postJSON(`${API_BASE}/data-quality/s3-assessment`, HEADERS, body);
+  } catch (e) {
+    statusEl.className = 'src-status err';
+    statusEl.textContent = e.message;
+    if (btn) btn.disabled = false;
+    return;
+  }
+  statusEl.className = 'src-status dev';
+  statusEl.innerHTML = `Assessment started (run <code>${esc(res.runId || '')}</code>). Reading the file and scoring…`;
+  const card = document.getElementById('s3Result');
+  const bodyEl = document.getElementById('s3ResultBody');
   if (card) card.style.display = 'block';
   if (res.resultPrefix && bodyEl) {
     pollInto(res.resultPrefix, bodyEl, {}).finally(() => { if (btn) btn.disabled = false; });
