@@ -182,6 +182,7 @@
   /* The dashboard breaks out of the narrow form column to use the full width. */
   .wrap.wide { max-width: 100%; }
   /* Dashboard App-data / Source-data segmented toggle */
+  .tab-ico { margin-right: 6px; font-size: 0.95em; }
   .scope-toggle { display: inline-flex; gap: 2px; margin-left: 12px; padding: 2px; border: 1px solid var(--border);
     border-radius: 8px; background: var(--bg); vertical-align: middle; }
   .scope-btn { border: none; background: transparent; color: var(--muted); font-size: 12px; font-weight: 600;
@@ -639,14 +640,14 @@
   <p class="sub" id="ctx"></p>
 
   <div class="tabs">
-    <button class="tab active" data-tab="dashboard">Dashboard</button>
-    <button class="tab" data-tab="incidents">Incidents <span class="tab-badge" id="incBadge" style="display:none;"></span></button>
-    <button class="tab" data-tab="upload">Data from Source</button>
-    <button class="tab" data-tab="appdata">Assess app</button>
-    <button class="tab" data-tab="model">Data Model</button>
-    <button class="tab" data-tab="lineage">Lineage</button>
-    <button class="tab" data-tab="schedules">Schedules</button>
-    <button class="tab" data-tab="history">History</button>
+    <button class="tab active" data-tab="dashboard"><span class="tab-ico">📊</span>Dashboard</button>
+    <button class="tab" data-tab="incidents"><span class="tab-ico">🚨</span>Incidents <span class="tab-badge" id="incBadge" style="display:none;"></span></button>
+    <button class="tab" data-tab="upload"><span class="tab-ico">📥</span>Data from Source</button>
+    <button class="tab" data-tab="appdata"><span class="tab-ico">🧮</span>Assess app</button>
+    <button class="tab" data-tab="model"><span class="tab-ico">🧩</span>Data Model</button>
+    <button class="tab" data-tab="lineage"><span class="tab-ico">🔗</span>Lineage</button>
+    <button class="tab" data-tab="schedules"><span class="tab-ico">⏰</span>Schedules</button>
+    <button class="tab" data-tab="history"><span class="tab-ico">📜</span>History</button>
   </div>
 
   <!-- ============ UPLOAD ============ -->
@@ -900,7 +901,13 @@
       <p>Recurring quality alerts, grouped into tracked issues, opened when a dataset first breaches its expected range, recovered when it returns to normal.</p>
     </div>
     <div class="card">
-      <h2>Open &amp; recent <button class="linkbtn" id="incRefresh">Refresh</button></h2>
+      <h2>Open &amp; recent
+        <span class="scope-toggle" id="incScopeToggle">
+          <button type="button" class="scope-btn active" data-scope="app">App data</button>
+          <button type="button" class="scope-btn" data-scope="source">Source data</button>
+        </span>
+        <button class="linkbtn" id="incRefresh">Refresh</button>
+      </h2>
       <p class="dash-muted" id="incCtx"></p>
       <div id="incList"><p class="dash-muted">Loading…</p></div>
     </div>
@@ -2829,6 +2836,18 @@ async function refreshBlockerBar() {
   } catch (e) { /* best-effort */ }
 }
 const refreshIncBadge = refreshBlockerBar;   // legacy name kept for existing callers
+let incAll = [];
+let incScope = 'app';                           // 'app' (Qlik tables) | 'source' (Data-from-Source)
+function isSourceIncident(it) { return it && it.sourceFormat && it.sourceFormat !== 'qlik'; }
+function applyIncScope() {
+  document.querySelectorAll('#incScopeToggle .scope-btn')
+    .forEach(b => b.classList.toggle('active', b.dataset.scope === incScope));
+  const filtered = incAll.filter(it => incScope === 'source' ? isSourceIncident(it) : !isSourceIncident(it));
+  renderIncidents({ incidents: filtered });
+}
+document.querySelectorAll('#incScopeToggle .scope-btn').forEach(b =>
+  b.addEventListener('click', () => { incScope = b.dataset.scope; applyIncScope(); }));
+
 async function loadIncidents() {
   if (!configOK) return;
   const list = $('#incList');
@@ -2843,9 +2862,10 @@ async function loadIncidents() {
   try {
     const r = await postJSON(`${API_BASE}/data-quality/incidents/list`, HEADERS,
       { app_id: APP_ID, window_days: 30 });
-    renderIncidents(r);
-    updateIncBadge(r.openCount || 0);
-    renderBlockerBar((r.incidents || []).filter(i => i.status === 'OPEN'));
+    incAll = r.incidents || [];
+    updateIncBadge(r.openCount || 0);                 // badge/bar stay global (all open)
+    renderBlockerBar(incAll.filter(i => i.status === 'OPEN'));
+    applyIncScope();                                  // list filtered to the active scope
   } catch (e) {
     list.innerHTML = `<p class="dash-muted" style="color:var(--err)">${esc(e.message)}</p>`;
   }
