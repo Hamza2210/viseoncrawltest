@@ -733,8 +733,10 @@
           <div class="src-field"><label>Connection method</label>
             <select data-f="method"><option value="data_api">Data API (recommended)</option><option value="direct">Direct connection</option></select></div>
           <div class="src-field"><label>AWS region</label><input data-f="region" placeholder="eu-west-1" value="eu-west-1"></div>
-          <div class="src-field full"><label>Cross-account role ARN (assumed by our worker)</label><input data-f="role_arn" placeholder="arn:aws:iam::&lt;their-account&gt;:role/dq-redshift-reader"></div>
-          <div class="src-field"><label>Cluster ID / Serverless workgroup</label><input data-f="cluster" placeholder="my-cluster or my-workgroup"></div>
+          <div class="src-field full"><label>Cross-account role ARN <span class="hint">(optional — blank for same-account)</span></label><input data-f="role_arn" placeholder="arn:aws:iam::&lt;account&gt;:role/dq-redshift-reader"></div>
+          <div class="src-field"><label>Deployment type</label>
+            <select data-f="cluster_type"><option value="cluster">Provisioned cluster</option><option value="workgroup">Serverless workgroup</option></select></div>
+          <div class="src-field"><label>Cluster ID / Workgroup name</label><input data-f="cluster" placeholder="my-cluster or my-workgroup"></div>
           <div class="src-field"><label>Database</label><input data-f="database" placeholder="analytics"></div>
           <div class="src-field"><label>Schema</label><input data-f="schema" placeholder="public"></div>
           <div class="src-field"><label>Table</label><input data-f="table" placeholder="orders"></div>
@@ -3227,7 +3229,7 @@ $('#lineageRefresh').addEventListener('click', e => { e.preventDefault(); loadLi
 // File upload is fully wired (existing flow); the connector sources capture +
 // validate their config and report status. Their backends are built per-source.
 const SOURCE_REQUIRED = {
-  redshift: ['role_arn', 'cluster', 'database', 'schema', 'table'],
+  redshift: ['cluster', 'database', 'schema', 'table'],
   s3: ['uri'],
   snowflake: ['account', 'user', 'database', 'schema', 'table'],
   databricks: ['host', 'http_path', 'token', 'catalog', 'schema', 'table'],
@@ -3276,9 +3278,12 @@ function runSource(key) {
 // Launch a full-table Redshift assessment, then poll + render its result like the other flows.
 async function runRedshift(cfg, statusEl) {
   const btn = document.querySelector('[data-runsource="redshift"]');
+  const serverless = cfg.cluster_type === 'workgroup';
   const body = {
     database: cfg.database, schema: cfg.schema, table: cfg.table,
-    region: cfg.region || undefined, cluster: cfg.cluster || undefined,
+    region: cfg.region || undefined,
+    cluster: serverless ? undefined : (cfg.cluster || undefined),
+    workgroup: serverless ? (cfg.cluster || undefined) : undefined,
     role_arn: cfg.role_arn || undefined, db_user: cfg.db_user || undefined,
     secret_arn: cfg.secret_arn || undefined,
     sample_rows: cfg.sample_rows ? Number(cfg.sample_rows) : undefined,
@@ -3391,8 +3396,9 @@ const SOURCE_FIELD_HELP = {
   redshift: {
     method: 'Data API (recommended) runs the queries through AWS with no networking setup. Direct connection opens a database socket instead.',
     region: 'The AWS region the Redshift cluster/workgroup is in, e.g. eu-west-1.',
-    role_arn: 'An IAM role IN THE REDSHIFT ACCOUNT that trusts our worker to assume it. We provide a template to create it.',
-    cluster: 'The provisioned cluster identifier, or the Serverless workgroup name.',
+    role_arn: 'Optional. Only for a Redshift in a DIFFERENT AWS account — an IAM role there that trusts our worker to assume it. Leave blank for same-account (the worker uses its own role).',
+    cluster_type: 'Provisioned cluster vs Redshift Serverless — pick which your Redshift is, then enter its id/name below.',
+    cluster: 'The provisioned cluster identifier, or the Serverless workgroup name (matching the deployment type above).',
     db_user: 'A Redshift DB user to mint temporary read-only credentials for. Use this OR a Secrets Manager ARN.',
     secret_arn: 'ARN of a Secrets Manager secret holding the DB username/password — an alternative to a DB user.',
   },
