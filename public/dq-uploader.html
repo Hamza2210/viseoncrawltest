@@ -456,7 +456,11 @@
   .ar-flag { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text);
     background: var(--bg); border: 1px solid var(--border); border-radius: 999px; padding: 3px 10px; cursor: pointer; }
   .ar-flag input { margin: 0; }
-  .ar-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px 14px; }
+  .ar-props { display: flex; flex-wrap: wrap; gap: 10px 16px; margin-bottom: 12px; }
+  .ar-con-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
+    color: var(--muted); margin: 2px 0 7px; }
+  .ar-cons { display: flex; flex-wrap: wrap; gap: 8px; }
+  .ar-constraint { border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; background: var(--bg); }
   .ar-empty { font-size: 12px; color: var(--muted); }
   .ar-add { margin-top: 10px; display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
   .ar-add select { padding: 4px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); font-size: 12px; }
@@ -1736,7 +1740,10 @@ async function editActiveRules(prefix, outEl) {
   const state = { columns: norm, primaryKey: (data.primaryKey || []).slice(), hasPending: !!data.hasPending };
   renderActiveRulesEditor(state, outEl, prefix);
 }
-function _activeTypedField(col, f, spec) {
+// Type / Severity / Weight are column PROPERTIES (always present, no remove); everything
+// else in RULE_FIELD_ORDER is a pass/fail CONSTRAINT (removable, its own box).
+const AR_PROP_FIELDS = ['type', 'severity', 'weight'];
+function _activeTypedField(col, f, spec, removable) {
   const meta = RULE_FIELD_META[f], id = `ar-${col}-${f}`;
   let input;
   if (meta.type === 'select') {
@@ -1747,19 +1754,21 @@ function _activeTypedField(col, f, spec) {
     const shown = (meta.list && Array.isArray(spec[f])) ? spec[f].join(', ') : spec[f];
     input = `<input id="${id}" class="rule-edit-in ar-in" type="${meta.type}"${extra} value="${esc(String(shown == null ? '' : shown))}" data-arcol="${esc(col)}" data-arf="${f}">`;
   }
-  return `<span class="rule-edit-field"><label for="${id}">${esc(meta.label)}` +
-    `<button type="button" class="ar-field-x" data-arcol="${esc(col)}" data-arf="${f}" title="Remove this constraint" aria-label="Remove ${esc(meta.label)}">✕</button>` +
-    `</label>${input}</span>`;
+  const x = removable
+    ? `<button type="button" class="ar-field-x" data-arcol="${esc(col)}" data-arf="${f}" title="Remove this constraint" aria-label="Remove ${esc(meta.label)}">✕</button>` : '';
+  return `<span class="rule-edit-field"><label for="${id}">${esc(meta.label)}${x}</label>${input}</span>`;
 }
 function _activeRuleCard(col, spec) {
   const flags = Object.entries(RULE_BOOL_FIELDS).map(([bf, label]) =>
     `<label class="ar-flag"><input type="checkbox" class="ar-bool" data-arcol="${esc(col)}" data-arf="${bf}"${spec[bf] === true ? ' checked' : ''}> ${esc(label)}</label>`).join('');
-  const typed = RULE_FIELD_ORDER.filter(f => f in spec).map(f => _activeTypedField(col, f, spec));
-  const grid = typed.length
-    ? `<div class="ar-grid">${typed.join('')}</div>`
-    : `<div class="ar-empty">No value constraints — use “Add constraint” to add one.</div>`;
-  // Fields not yet set on this column, offered under an "Add constraint" dropdown.
-  const unset = RULE_FIELD_ORDER.filter(f => !(f in spec));
+  const props = AR_PROP_FIELDS.filter(f => f in spec).map(f => _activeTypedField(col, f, spec, false));
+  const conFields = RULE_FIELD_ORDER.filter(f => !AR_PROP_FIELDS.includes(f) && f in spec);
+  const cons = conFields.map(f => `<div class="ar-constraint">${_activeTypedField(col, f, spec, true)}</div>`).join('');
+  const conBlock = cons
+    ? `<div class="ar-con-label">Constraints</div><div class="ar-cons">${cons}</div>`
+    : `<div class="ar-con-label">Constraints</div><div class="ar-empty">None — add one below.</div>`;
+  // Only unset CONSTRAINT fields are addable (properties are always present).
+  const unset = RULE_FIELD_ORDER.filter(f => !AR_PROP_FIELDS.includes(f) && !(f in spec));
   const addSel = unset.length
     ? `<div class="ar-add">＋ Add constraint <select class="ar-add-sel" data-arcol="${esc(col)}">` +
         `<option value="">Choose…</option>` + unset.map(f => `<option value="${f}">${esc(RULE_FIELD_META[f].label)}</option>`).join('') +
@@ -1768,7 +1777,8 @@ function _activeRuleCard(col, spec) {
       <div class="ar-card-head"><strong>${esc(col)}</strong>
         <button type="button" class="linkbtn ar-remove" data-arcol="${esc(col)}">Remove all rules</button></div>
       <div class="ar-flags">${flags}</div>
-      ${grid}${addSel}
+      ${props.length ? `<div class="ar-props">${props.join('')}</div>` : ''}
+      ${conBlock}${addSel}
     </div>`;
 }
 function renderActiveRulesEditor(state, outEl, prefix) {
