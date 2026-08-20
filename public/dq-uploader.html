@@ -1586,15 +1586,13 @@ function renderAssessment(r, bodyEl, opts) {
   // Kept ABOVE the failed-records table so the buttons are reachable without scrolling
   // past a long list of records.
   if (crit.length && score != null && r.resultPrefix) {
+    // Explain-score is run-specific so it lives here; Review/Edit rules are dataset-level
+    // and live on the dataset (trends) view instead.
     html += `<div style="margin-top:14px;">` +
       `<div class="actions">` +
       `<button class="btn-sm" data-explainscore="1">✨ Explain score &amp; how to improve (AI)</button>` +
-      `<button class="btn-sm" data-reviewrules="1">🔧 Review rules (AI)</button>` +
-      `<button class="btn-sm" data-editrules="1">📋 Edit active rules</button>` +
       `</div>` +
-      `<div class="score-ai-out" style="margin-top:10px;"></div>` +
-      `<div class="rules-ai-out" style="margin-top:10px;"></div>` +
-      `<div class="rules-active-out" style="margin-top:10px;"></div></div>`;
+      `<div class="score-ai-out" style="margin-top:10px;"></div></div>`;
   }
   // Failed records surfaced INLINE here (not just on the dashboard), so the offending
   // rows are visible wherever a run is shown — upload result, incident view, history,
@@ -1622,24 +1620,6 @@ function renderAssessment(r, bodyEl, opts) {
       if (out.style.display !== 'none' && out.innerHTML.trim()) { out.style.display = 'none'; esb.classList.remove('active'); return; }
       esb.classList.add('active'); out.style.display = '';
       if (!out.innerHTML.trim()) explainScore(r.resultPrefix, (sum.dataset || 'this dataset'), out, false);
-    });
-  }
-  const rrb = body.querySelector('[data-reviewrules]');
-  if (rrb) {
-    const out = body.querySelector('.rules-ai-out');
-    rrb.addEventListener('click', () => {
-      if (out.style.display !== 'none' && out.innerHTML.trim()) { out.style.display = 'none'; rrb.classList.remove('active'); return; }
-      rrb.classList.add('active'); out.style.display = '';
-      if (!out.innerHTML.trim()) reviewRuleset(r.resultPrefix, out, false);
-    });
-  }
-  const erb = body.querySelector('[data-editrules]');
-  if (erb) {
-    const out = body.querySelector('.rules-active-out');
-    erb.addEventListener('click', () => {
-      if (out.style.display !== 'none' && out.innerHTML.trim()) { out.style.display = 'none'; erb.classList.remove('active'); return; }
-      erb.classList.add('active'); out.style.display = '';
-      if (!out.innerHTML.trim()) editActiveRules(r.resultPrefix, out);
     });
   }
   const frEl = body.querySelector('.assess-failed');
@@ -3061,7 +3041,11 @@ function renderTrends(d) {
     `<div class="actions" style="margin-bottom:14px;">` +
       `<button class="btn-sm" id="dashBack">← All tables</button>` +
       `<button class="btn-sm" id="dashViewRun">View latest run details</button>` +
+      `<button class="btn-sm" id="dashReviewRules">🔧 Review rules (AI)</button>` +
+      `<button class="btn-sm" id="dashEditRules">📋 Edit active rules</button>` +
     `</div>` +
+    // Rules apply to the DATASET (not one run), so they're reachable here without opening a run.
+    `<div id="dashDatasetRules" style="display:none;margin:0 0 14px;"></div>` +
     whatChanged(runs) +
     `<div class="trend-cols">` +
       `<div><div class="chart-title">Overall score</div>${lineChart(scorePts, { ymin: 0, ymax: 100, ragBands: true, band: base.overall })}</div>` +
@@ -3078,6 +3062,24 @@ function renderTrends(d) {
   });
   const view = $('#dashViewRun');
   if (view) view.addEventListener('click', viewLatestRun);
+  // Dataset-level ruleset tools (operate on the latest run's prefix; the ruleset is the
+  // dataset's, so it doesn't matter which run). Each button toggles its panel in-place.
+  const rulesOut = $('#dashDatasetRules');
+  const reviewBtn = $('#dashReviewRules'), editBtn = $('#dashEditRules');
+  const toggleDatasetPanel = (kind, btn, loader) => {
+    if (!rulesOut || !dashSelected || !dashSelected.prefix) return;
+    if (rulesOut.dataset.shown === kind) {                 // clicking the open one closes it
+      rulesOut.style.display = 'none'; rulesOut.innerHTML = ''; rulesOut.dataset.shown = '';
+      btn.classList.remove('active'); return;
+    }
+    [reviewBtn, editBtn].forEach(b => b && b.classList.remove('active'));
+    btn.classList.add('active');
+    rulesOut.style.display = ''; rulesOut.dataset.shown = kind;
+    rulesOut.innerHTML = `<p><span class="spin"></span> Loading…</p>`;
+    loader(dashSelected.prefix, rulesOut);
+  };
+  if (reviewBtn) reviewBtn.addEventListener('click', () => toggleDatasetPanel('review', reviewBtn, (p, o) => reviewRuleset(p, o, false)));
+  if (editBtn) editBtn.addEventListener('click', () => toggleDatasetPanel('edit', editBtn, editActiveRules));
 }
 
 $('#dashRefresh').addEventListener('click', loadDashboard);
