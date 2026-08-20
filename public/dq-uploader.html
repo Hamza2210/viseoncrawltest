@@ -453,6 +453,14 @@
   .ar-head { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
   .ar-fields { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: flex-end; }
   .ar-flag { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--muted); }
+  .na-line { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .na-chip { font-size: 11px; color: var(--muted); background: var(--idle-bg); padding: 2px 8px;
+    border-radius: 999px; cursor: help; }
+  .rd-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin: 4px 0 14px; }
+  .rd-tab { background: none; border: 0; border-bottom: 2px solid transparent; color: var(--muted);
+    font-size: 13px; font-weight: 600; padding: 7px 12px; cursor: pointer; border-radius: 0; }
+  .rd-tab:hover { color: var(--text); }
+  .rd-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
   /* Full-app history: app-wide average box shown when a run is expanded */
   .apprun-agg { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px;
     margin: 2px 0 12px; background: var(--idle-bg); }
@@ -1447,9 +1455,11 @@ function uploadToS3(url, fields, file, onProgress) {
 // --------------------------------------------------------------------------- //
 function filesHtml(files) {
   if (!files || !files.length) return '';
-  return `<div class="subhead">Download files</div><div class="files">` +
+  // Collapsed by default — rarely needed, and it was taking a full row of space.
+  return `<details style="margin-top:14px;"><summary class="subhead" style="cursor:pointer;display:inline-block;">Download files (${files.length})</summary>` +
+    `<div class="files" style="margin-top:8px;">` +
     files.map(f => `<a class="file" href="${f.url}" target="_blank" rel="noopener">📄 ${f.name}` +
-      `<span class="sz">${humanSize(f.sizeBytes)}</span></a>`).join('') + `</div>`;
+      `<span class="sz">${humanSize(f.sizeBytes)}</span></a>`).join('') + `</div></details>`;
 }
 
 function renderAssessment(r, bodyEl, opts) {
@@ -1530,22 +1540,29 @@ function renderAssessment(r, bodyEl, opts) {
     `It isn't evaluated for app-data assessments, so it's simply not scored — leaving it out doesn't lower ` +
     `your result.`;
   const radarHtml = renderDimRadar(crit);
+  const reasonFor = (c) => {
+    let reason = c.not_assessed_reason;
+    if (isApp && c.criterion === 'accuracy') reason = APP_ACCURACY_MSG;
+    else if (isApp && c.criterion === 'integrity') reason = APP_INTEGRITY_MSG;
+    else if (c.criterion === 'integrity') reason = INTEGRITY_MSG;
+    return reason || 'Excluded from the score — it neither helps nor harms the result.';
+  };
+  // Assessed dimensions carry the table; not-assessed ones collapse to compact chips (their
+  // long "why" text lives in a tooltip) so they stop dominating the view.
+  const assessed = crit.filter(c => c.status !== 'not_assessed' && c.score != null);
+  const notAssessed = crit.filter(c => c.status === 'not_assessed' || c.score == null);
   let tableHtml;
   if (crit.length) {
     tableHtml = `<table class="assess"><tr><td class="k">Criterion</td><td class="k">Score</td><td class="k">Status</td></tr>` +
-      crit.map(c => {
-        let reason = c.not_assessed_reason;
-        if (c.status === 'not_assessed') {
-          if (isApp && c.criterion === 'accuracy') reason = APP_ACCURACY_MSG;
-          else if (isApp && c.criterion === 'integrity') reason = APP_INTEGRITY_MSG;
-          else if (c.criterion === 'integrity') reason = INTEGRITY_MSG;
-        }
-        return `<tr>
-            <td>${c.label || c.criterion}</td>
-            <td>${fmtScore(c.score)}</td>
-            <td><span class="tag ${tagClass(c.status)}">${c.status}</span>${reason ? `<div class="hint">${reason}</div>` : ''}</td>
-          </tr>`;
-      }).join('') + `</table>`;
+      assessed.map(c => `<tr>
+          <td>${c.label || c.criterion}</td>
+          <td>${fmtScore(c.score)}</td>
+          <td><span class="tag ${tagClass(c.status)}">${c.status}</span></td>
+        </tr>`).join('') + `</table>`;
+    if (notAssessed.length) {
+      const chips = notAssessed.map(c => `<span class="na-chip" data-tip="${esc(reasonFor(c))}">${esc(c.label || c.criterion)} ⓘ</span>`).join(' ');
+      tableHtml += `<div class="na-line"><span class="hint">Not assessed (${notAssessed.length}) — excluded from the score:</span> ${chips}</div>`;
+    }
   } else {
     tableHtml = `<p class="hint">Assessment finished (${r.state}) but no summary was found.</p>`;
   }
@@ -2746,14 +2763,14 @@ function renderDimRadar(criteria) {
     return `<circle cx="${fx(x)}" cy="${fx(y)}" r="9" fill="transparent" data-tip="${esc((c.label || c.criterion) + ': ' + fmtScore(c.score) + ' (' + (c.status || '') + ')')}"></circle>` +
       `<circle cx="${fx(x)}" cy="${fx(y)}" r="3.4" fill="${statusColor(c.status)}" stroke="var(--card)" stroke-width="1"/>`;
   }).join('');
-  const naNote = na.length ? `<div class="hint" style="text-align:center;margin-top:2px">Not assessed (excluded from the score): ${na.map(c => esc(c.label || c.criterion)).join(', ')}</div>` : '';
   const svg = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;max-width:520px;display:block;margin:0 auto" role="img" aria-label="Dimension scores radar chart">
     ${grid}${spokes}
     <polygon points="${poly}" fill="var(--accent)" opacity="0.16"/>
     <polygon points="${poly}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round"/>
     ${dots}
   </svg>`;
-  return `<div class="viz"><div class="viz-title">Scores by dimension</div>${svg}${naNote}</div>`;
+  // Not-assessed dimensions are listed once, beside the table (as chips) — no repeat here.
+  return `<div class="viz"><div class="viz-title">Scores by dimension</div>${svg}</div>`;
 }
 
 // Severity split (status colours + counts) and the most-affected columns, from the ACCURATE
@@ -2846,15 +2863,25 @@ async function viewLatestRun() {
   if (!dashSelected || !dashSelected.prefix) return;
   const { prefix, name } = dashSelected;
   const box = $('#dashRunDetail');
+  // Tabbed so the default view is just the scores + chart; the heavy Column profile and
+  // Failed records sit one click away instead of stacking into a long scroll. The dataset
+  // name comes from the assessment header inside #dashRunScores (no separate heading).
   box.innerHTML =
     `<div class="card" style="margin-top:14px;">` +
-    `<h3 style="margin:0 0 10px;">Latest run — ${esc(name)}</h3>` +
-    `<div id="dashRunScores"><p><span class="spin"></span>Loading run…</p></div>` +
-    `<h3 style="margin:18px 0 8px;">Column profile</h3>` +
-    `<div id="dashRunProfile"><p><span class="spin"></span>Loading profile…</p></div>` +
-    `<h3 style="margin:18px 0 8px;">Failed records</h3>` +
-    `<div id="dashRunFailed"><p><span class="spin"></span>Loading failed records…</p></div>` +
+    `<div class="hint" style="margin:0 0 4px;">Latest run</div>` +
+    `<div class="rd-tabs">` +
+    `<button type="button" class="rd-tab active" data-rdtab="scores">Scores</button>` +
+    `<button type="button" class="rd-tab" data-rdtab="profile">Column profile</button>` +
+    `<button type="button" class="rd-tab" data-rdtab="failed">Failed records</button>` +
+    `</div>` +
+    `<div id="dashRunScores" data-rdpanel="scores"><p><span class="spin"></span>Loading run…</p></div>` +
+    `<div id="dashRunProfile" data-rdpanel="profile" style="display:none;"><p><span class="spin"></span>Loading profile…</p></div>` +
+    `<div id="dashRunFailed" data-rdpanel="failed" style="display:none;"><p><span class="spin"></span>Loading failed records…</p></div>` +
     `</div>`;
+  box.querySelectorAll('.rd-tab').forEach(t => t.addEventListener('click', () => {
+    box.querySelectorAll('.rd-tab').forEach(x => x.classList.toggle('active', x === t));
+    box.querySelectorAll('[data-rdpanel]').forEach(p => { p.style.display = p.dataset.rdpanel === t.dataset.rdtab ? '' : 'none'; });
+  }));
   box.scrollIntoView({ behavior: 'smooth', block: 'start' });
   try {
     const r = await postJSON(`${API_BASE}/data-quality/result`, HEADERS, { result_prefix: prefix });
