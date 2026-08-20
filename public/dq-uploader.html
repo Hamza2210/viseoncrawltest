@@ -460,6 +460,8 @@
   .ar-empty { font-size: 12px; color: var(--muted); }
   .ar-add { margin-top: 10px; display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
   .ar-add select { padding: 4px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); font-size: 12px; }
+  .ar-field-x { border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 11px; line-height: 1; padding: 0 0 0 5px; }
+  .ar-field-x:hover { color: var(--err); }
   .na-line { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
   .na-chip { font-size: 11px; color: var(--muted); background: var(--idle-bg); padding: 2px 8px;
     border-radius: 999px; cursor: help; }
@@ -1745,7 +1747,9 @@ function _activeTypedField(col, f, spec) {
     const shown = (meta.list && Array.isArray(spec[f])) ? spec[f].join(', ') : spec[f];
     input = `<input id="${id}" class="rule-edit-in ar-in" type="${meta.type}"${extra} value="${esc(String(shown == null ? '' : shown))}" data-arcol="${esc(col)}" data-arf="${f}">`;
   }
-  return `<span class="rule-edit-field"><label for="${id}">${esc(meta.label)}</label>${input}</span>`;
+  return `<span class="rule-edit-field"><label for="${id}">${esc(meta.label)}` +
+    `<button type="button" class="ar-field-x" data-arcol="${esc(col)}" data-arf="${f}" title="Remove this constraint" aria-label="Remove ${esc(meta.label)}">✕</button>` +
+    `</label>${input}</span>`;
 }
 function _activeRuleCard(col, spec) {
   const flags = Object.entries(RULE_BOOL_FIELDS).map(([bf, label]) =>
@@ -1784,6 +1788,14 @@ function renderActiveRulesEditor(state, outEl, prefix) {
         <span class="hint" id="arNote">Edits apply on the next assessment of this dataset (no new AI call).</span>
       </div>
     </div>`;
+  // Re-render in place WITHOUT losing the reader's position in the rules list.
+  const rerender = () => {
+    const list = outEl.querySelector('.ar-list');
+    const top = list ? list.scrollTop : 0;
+    renderActiveRulesEditor(state, outEl, prefix);
+    const nl = outEl.querySelector('.ar-list');
+    if (nl) nl.scrollTop = top;
+  };
   outEl.querySelectorAll('.ar-in').forEach(el => el.addEventListener('input', () => {
     if (el.dataset.arpk) { state.primaryKey = el.value.split(',').map(x => x.trim()).filter(Boolean); return; }
     const col = el.dataset.arcol, f = el.dataset.arf;
@@ -1797,12 +1809,17 @@ function renderActiveRulesEditor(state, outEl, prefix) {
   outEl.querySelectorAll('.ar-add-sel').forEach(sel => sel.addEventListener('change', () => {
     const col = sel.dataset.arcol, f = sel.value;
     if (!f || !state.columns[col]) return;
-    state.columns[col][f] = (RULE_FIELD_META[f].type === 'number') ? '' : '';   // appears as a blank input to fill
-    renderActiveRulesEditor(state, outEl, prefix);
+    state.columns[col][f] = '';                          // blank input to fill in
+    rerender();
+  }));
+  outEl.querySelectorAll('.ar-field-x').forEach(b => b.addEventListener('click', () => {
+    const col = b.dataset.arcol, f = b.dataset.arf;
+    if (state.columns[col]) delete state.columns[col][f];
+    rerender();
   }));
   outEl.querySelectorAll('.ar-remove').forEach(b => b.addEventListener('click', () => {
     delete state.columns[b.dataset.arcol];
-    renderActiveRulesEditor(state, outEl, prefix);
+    rerender();
   }));
   const saveBtn = outEl.querySelector('.ar-save');
   if (saveBtn) saveBtn.addEventListener('click', () => saveActiveRules(prefix, state, saveBtn, outEl.querySelector('#arNote')));
