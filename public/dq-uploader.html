@@ -130,6 +130,7 @@
   .tag.green { background: var(--ok-bg); color: var(--ok); }
   .tag.amber { background: var(--run-bg); color: var(--run); }
   .tag.red { background: var(--err-bg); color: var(--err); }
+  .ds-name { font-size: 18px; font-weight: 700; color: var(--text); margin: 0 0 4px; word-break: break-word; }
   .headline { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
   .spin { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--muted);
     border-top-color: transparent; border-radius: 50%; animation: sp .8s linear infinite; vertical-align: -2px; margin-right: 8px; }
@@ -1427,10 +1428,16 @@ function renderAssessment(r, bodyEl, opts) {
   const score = overall.score != null ? overall.score : (st.overall_score != null ? st.overall_score : null);
   const status = overall.status || st.overall_status || '';
   const gatePass = st.gate ? st.gate.passed : (r.state === 'SUCCEEDED');
-  let html = `<div class="headline">
+  const dsName = sum.dataset || st.dataset_name || '';
+  const provTip = 'These rules were auto-inferred and have not been reviewed by a person yet. ' +
+    'Open “Review rules (AI)” below to check, edit and pin them — this clears once you do.';
+  const provBadge = (r.rulesetInferred === true)
+    ? `<span class="tag amber" data-tip="${esc(provTip)}">⚠ Provisional — rules not yet reviewed</span>` : '';
+  let html = `${dsName ? `<div class="ds-name">${esc(dsName)}</div>` : ''}<div class="headline">
       <span class="score">${fmtScore(score)}</span>
       ${status ? `<span class="tag ${tagClass(status)}">${status}</span>` : ''}
       <span class="tag ${gatePass ? 'green' : 'red'}" data-tip="${esc(GATE_TIP)}">Gate ${gatePass ? 'pass' : 'fail'}</span>
+      ${provBadge}
     </div>`;
   // Explain a gate failure explicitly: a high score can still fail the gate because
   // the gate is a pass/fail safety check on blocker-severity issues, not an average.
