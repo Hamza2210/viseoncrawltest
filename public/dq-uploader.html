@@ -447,6 +447,12 @@
   .rule-flag { align-self: center; font-size: 11px; color: var(--muted);
     background: var(--idle-bg); padding: 2px 8px; border-radius: 10px; }
   .rule-edited { align-self: center; font-size: 11px; color: var(--accent2); }
+  .ar-list { max-height: 440px; overflow-y: auto; }
+  .ar-row { border-top: 1px solid var(--border); padding: 10px 0; }
+  .ar-row:first-child { border-top: 0; }
+  .ar-head { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+  .ar-fields { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: flex-end; }
+  .ar-flag { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--muted); }
   /* Full-app history: app-wide average box shown when a run is expanded */
   .apprun-agg { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px;
     margin: 2px 0 12px; background: var(--idle-bg); }
@@ -1554,9 +1560,11 @@ function renderAssessment(r, bodyEl, opts) {
       `<div class="actions">` +
       `<button class="btn-sm" data-explainscore="1">✨ Explain score &amp; how to improve (AI)</button>` +
       `<button class="btn-sm" data-reviewrules="1">🔧 Review rules (AI)</button>` +
+      `<button class="btn-sm" data-editrules="1">📋 Edit active rules</button>` +
       `</div>` +
       `<div class="score-ai-out" style="margin-top:10px;"></div>` +
-      `<div class="rules-ai-out" style="margin-top:10px;"></div></div>`;
+      `<div class="rules-ai-out" style="margin-top:10px;"></div>` +
+      `<div class="rules-active-out" style="margin-top:10px;"></div></div>`;
   }
   // Failed records surfaced INLINE here (not just on the dashboard), so the offending
   // rows are visible wherever a run is shown — upload result, incident view, history,
@@ -1593,6 +1601,15 @@ function renderAssessment(r, bodyEl, opts) {
       if (out.style.display !== 'none' && out.innerHTML.trim()) { out.style.display = 'none'; rrb.classList.remove('active'); return; }
       rrb.classList.add('active'); out.style.display = '';
       if (!out.innerHTML.trim()) reviewRuleset(r.resultPrefix, out, false);
+    });
+  }
+  const erb = body.querySelector('[data-editrules]');
+  if (erb) {
+    const out = body.querySelector('.rules-active-out');
+    erb.addEventListener('click', () => {
+      if (out.style.display !== 'none' && out.innerHTML.trim()) { out.style.display = 'none'; erb.classList.remove('active'); return; }
+      erb.classList.add('active'); out.style.display = '';
+      if (!out.innerHTML.trim()) editActiveRules(r.resultPrefix, out);
     });
   }
   const frEl = body.querySelector('.assess-failed');
@@ -1666,6 +1683,98 @@ function closePinRulesModal() { $('#pinRulesModal').classList.remove('open'); }
 if ($('#prmClose')) $('#prmClose').addEventListener('click', closePinRulesModal);
 if ($('#prmDone')) $('#prmDone').addEventListener('click', closePinRulesModal);
 if ($('#pinRulesModal')) $('#pinRulesModal').addEventListener('click', e => { if (e.target.id === 'pinRulesModal') closePinRulesModal(); });
+
+// ---- Edit active rules (the ruleset currently pinned / in effect for a dataset) --------
+async function editActiveRules(prefix, outEl) {
+  outEl.innerHTML = `<p><span class="spin"></span> Loading the active ruleset…</p>`;
+  let data;
+  try {
+    data = await postJSON(`${API_BASE}/data-quality/active-ruleset`, HEADERS, { result_prefix: prefix });
+  } catch (e) {
+    outEl.innerHTML = `<p class="dash-muted" style="color:var(--err)">${esc(e.message)}</p>`;
+    return;
+  }
+  const state = {                                          // working copy the editor mutates
+    columns: JSON.parse(JSON.stringify(data.columns || {})),
+    primaryKey: (data.primaryKey || []).slice(),
+    hasPending: !!data.hasPending,
+  };
+  renderActiveRulesEditor(state, outEl, prefix);
+}
+function _activeRuleControls(col, spec) {
+  const parts = [];
+  for (const [bf, label] of Object.entries(RULE_BOOL_FIELDS)) {
+    const on = spec[bf] === true ? ' checked' : '';
+    parts.push(`<label class="ar-flag"><input type="checkbox" class="ar-bool" data-arcol="${esc(col)}" data-arf="${bf}"${on}> ${esc(label)}</label>`);
+  }
+  for (const f of RULE_FIELD_ORDER) {
+    if (!(f in spec)) continue;
+    const meta = RULE_FIELD_META[f], id = `ar-${col}-${f}`;
+    let input;
+    if (meta.type === 'select') {
+      input = `<select id="${id}" class="rule-edit-in ar-in" data-arcol="${esc(col)}" data-arf="${f}">` +
+        [`<option value="">(none)</option>`].concat(meta.options.map(o => `<option value="${esc(o)}"${String(o) === String(spec[f]) ? ' selected' : ''}>${esc(o)}</option>`)).join('') + `</select>`;
+    } else {
+      const extra = (meta.step ? ` step="${meta.step}"` : '') + (meta.min !== undefined ? ` min="${meta.min}"` : '') + (meta.wide ? ` style="min-width:220px;"` : '');
+      const shown = (meta.list && Array.isArray(spec[f])) ? spec[f].join(', ') : spec[f];
+      input = `<input id="${id}" class="rule-edit-in ar-in" type="${meta.type}"${extra} value="${esc(String(shown == null ? '' : shown))}" data-arcol="${esc(col)}" data-arf="${f}">`;
+    }
+    parts.push(`<span class="rule-edit-field"><label for="${id}">${esc(meta.label)}</label>${input}</span>`);
+  }
+  return parts.join('') || `<span class="hint" style="align-self:center;">No editable rules on this column.</span>`;
+}
+function renderActiveRulesEditor(state, outEl, prefix) {
+  const cols = Object.keys(state.columns);
+  const pendWarn = state.hasPending
+    ? `<p class="hint" style="color:var(--run);">You already have queued changes for this dataset — saving here replaces them.</p>` : '';
+  const rows = cols.map(col => `
+    <div class="ar-row">
+      <div class="ar-head"><strong>${esc(col)}</strong>
+        <button type="button" class="linkbtn ar-remove" data-arcol="${esc(col)}">Remove all rules</button></div>
+      <div class="ar-fields">${_activeRuleControls(col, state.columns[col])}</div>
+    </div>`).join('') || `<p class="hint">No column rules are currently pinned for this dataset.</p>`;
+  outEl.innerHTML = `<div class="rules-review">
+      <p class="hint">These are the rules currently in effect. Edit or clear any field, toggle a flag off, remove a column's rules, or set the primary key. Changes apply on the next run.</p>
+      ${pendWarn}
+      <span class="rule-edit-field" style="margin-bottom:10px;"><label for="arPk">Primary key (comma-separated columns)</label>
+        <input id="arPk" class="rule-edit-in ar-in" style="min-width:220px;" value="${esc((state.primaryKey || []).join(', '))}" data-arpk="1"></span>
+      <div class="ar-list">${rows}</div>
+      <div class="actions" style="margin-top:12px;align-items:center;">
+        <button type="button" class="ar-save">Save changes</button>
+        <span class="hint" id="arNote">Edits apply on the next assessment of this dataset (no new AI call).</span>
+      </div>
+    </div>`;
+  outEl.querySelectorAll('.ar-in').forEach(el => el.addEventListener('input', () => {
+    if (el.dataset.arpk) { state.primaryKey = el.value.split(',').map(x => x.trim()).filter(Boolean); return; }
+    const col = el.dataset.arcol, f = el.dataset.arf;
+    if (state.columns[col]) applyRuleEdit(state.columns[col], f, el.value);
+  }));
+  outEl.querySelectorAll('.ar-bool').forEach(cb => cb.addEventListener('change', () => {
+    const col = cb.dataset.arcol, f = cb.dataset.arf;
+    if (!state.columns[col]) return;
+    if (cb.checked) state.columns[col][f] = true; else delete state.columns[col][f];
+  }));
+  outEl.querySelectorAll('.ar-remove').forEach(b => b.addEventListener('click', () => {
+    delete state.columns[b.dataset.arcol];
+    renderActiveRulesEditor(state, outEl, prefix);
+  }));
+  const saveBtn = outEl.querySelector('.ar-save');
+  if (saveBtn) saveBtn.addEventListener('click', () => saveActiveRules(prefix, state, saveBtn, outEl.querySelector('#arNote')));
+}
+async function saveActiveRules(prefix, state, btn, note) {
+  const columns = {};
+  for (const [c, spec] of Object.entries(state.columns)) if (spec && Object.keys(spec).length) columns[c] = spec;
+  const old = btn.textContent; btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    await postJSON(`${API_BASE}/data-quality/save-ruleset`, HEADERS,
+      { result_prefix: prefix, columns, primary_key: state.primaryKey || [], actor: EMAIL || undefined });
+    btn.textContent = 'Saved ✓';
+    if (note) { note.textContent = 'Saved — your next assessment of this dataset will use these rules.'; }
+  } catch (e) {
+    btn.disabled = false; btn.textContent = old;
+    if (note) note.textContent = e.message;
+  }
+}
 
 // --------------------------------------------------------------------------- //
 // upload flow
