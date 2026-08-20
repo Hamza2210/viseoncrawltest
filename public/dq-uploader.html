@@ -1719,6 +1719,9 @@ async function editActiveRules(prefix, outEl) {
     columns: norm, primaryKey: (data.primaryKey || []).slice(), hasPending: !!data.hasPending,
     integrityRules: JSON.parse(JSON.stringify(data.integrityRules || [])),
     accuracy: JSON.parse(JSON.stringify(data.accuracy || {})),
+    // Lookups edited as ordered rows, folded back to an object on save.
+    accuracyLookups: Object.entries((data.accuracy || {}).lookups || {})
+      .map(([col, vals]) => ({ col, values: Array.isArray(vals) ? vals.slice() : [] })),
   };
   renderActiveRulesEditor(state, outEl, prefix);
 }
@@ -1733,8 +1736,18 @@ function _refsSection(state) {
       <button type="button" class="ar-field-x ir-remove" data-iri="${i}" title="Remove rule">✕</button>
     </div>`).join('') || `<p class="hint" style="margin:0 0 6px;">No integrity rules yet.</p>`;
   const acc = state.accuracy || {};
+  const lrows = (state.accuracyLookups || []).map((l, i) => `
+    <div class="ar-ref-row">
+      <input class="rule-edit-in al-in" data-ali="${i}" data-alf="col" placeholder="column" value="${esc(l.col || '')}" style="min-width:150px;">
+      <input class="rule-edit-in al-in" data-ali="${i}" data-alf="values" placeholder="allowed values, comma-separated" value="${esc((l.values || []).join(', '))}" style="flex:1;min-width:240px;">
+      <button type="button" class="ar-field-x al-remove" data-ali="${i}" title="Remove lookup">✕</button>
+    </div>`).join('') || `<p class="hint" style="margin:0 0 6px;">No accuracy lookups yet.</p>`;
   return `<div class="ar-refs">
-      <div class="ar-con-label">Referential integrity</div>
+      <div class="ar-con-label">Accuracy — authoritative lookups</div>
+      <p class="hint" style="margin:0 0 8px;">A column and its full set of allowed values — anything outside the list counts as inaccurate.</p>
+      <div class="ar-al-list">${lrows}</div>
+      <div class="ar-add"><button type="button" class="btn-sm al-add">＋ Add lookup</button></div>
+      <div class="ar-con-label" style="margin-top:16px;">Referential integrity</div>
       <p class="hint" style="margin:0 0 8px;">A column's values must exist in a reference (master) table in the same warehouse.</p>
       <div class="ar-ir-list">${irows}</div>
       <div class="ar-add"><button type="button" class="btn-sm ir-add">＋ Add integrity rule</button></div>
@@ -1858,6 +1871,16 @@ function renderActiveRulesEditor(state, outEl, prefix) {
     state.accuracy = state.accuracy || {};
     state.accuracy[f] = (f === 'reference_uri') ? el.value.trim() : _splitList(el.value);
   }));
+  outEl.querySelectorAll('.al-in').forEach(el => el.addEventListener('input', () => {
+    const l = state.accuracyLookups[+el.dataset.ali]; if (!l) return;
+    const f = el.dataset.alf;
+    l[f] = (f === 'col') ? el.value.trim() : _splitList(el.value);
+  }));
+  outEl.querySelectorAll('.al-remove').forEach(b => b.addEventListener('click', () => {
+    state.accuracyLookups.splice(+b.dataset.ali, 1); rerender();
+  }));
+  const alAdd = outEl.querySelector('.al-add');
+  if (alAdd) alAdd.addEventListener('click', () => { state.accuracyLookups.push({ col: '', values: [] }); rerender(); });
   const saveBtn = outEl.querySelector('.ar-save');
   if (saveBtn) saveBtn.addEventListener('click', () => saveActiveRules(prefix, state, saveBtn, outEl.querySelector('#arNote')));
 }
@@ -1879,9 +1902,11 @@ async function saveActiveRules(prefix, state, btn, note) {
       reference_columns: (r.reference_columns && r.reference_columns.length) ? r.reference_columns : r.columns,
       severity: r.severity || 'major', weight: r.weight || 1 }));
   const acc = state.accuracy || {};
+  const lookups = {};
+  (state.accuracyLookups || []).forEach(l => { if (l.col && (l.values || []).length) lookups[l.col] = l.values; });
   const accuracy = { ...acc,
     reference_uri: (acc.reference_uri || '').trim(),
-    join_on: acc.join_on || [], compare_columns: acc.compare_columns || [] };
+    join_on: acc.join_on || [], compare_columns: acc.compare_columns || [], lookups };
   const old = btn.textContent; btn.disabled = true; btn.textContent = 'Saving…';
   try {
     await postJSON(`${API_BASE}/data-quality/save-ruleset`, HEADERS,
