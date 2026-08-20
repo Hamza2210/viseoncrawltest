@@ -130,6 +130,9 @@
   .tag.green { background: var(--ok-bg); color: var(--ok); }
   .tag.amber { background: var(--run-bg); color: var(--run); }
   .tag.red { background: var(--err-bg); color: var(--err); }
+  .source-chip { display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 9px;
+    border-radius: 999px; background: var(--accent-soft); color: var(--accent2);
+    border: 1px solid color-mix(in srgb, var(--accent2) 30%, transparent); white-space: nowrap; }
   .ds-name { font-size: 18px; font-weight: 700; color: var(--text); margin: 0 0 4px; word-break: break-word; }
   .headline { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
   .spin { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--muted);
@@ -1258,6 +1261,22 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 const TERMINAL = ['SUCCEEDED', 'GATE_FAILED', 'FAILED'];
 const fmtScore = n => (n == null ? '—' : Number(Number(n).toFixed(2)));
 function tagClass(s) { return ({ green: 'green', amber: 'amber', red: 'red' })[s] || ''; }
+// A friendly label + chip for the dataset's origin (source_format on the run).
+const SOURCE_FMT_LABEL = {
+  qlik: 'Qlik app', redshift: 'Amazon Redshift', snowflake: 'Snowflake', databricks: 'Databricks',
+  s3: 'Amazon S3', parquet: 'Parquet file', csv: 'CSV file', tsv: 'TSV file',
+  json: 'JSON file', ndjson: 'JSON file', qvd: 'QVD file',
+};
+const SOURCE_FMT_ICON = {
+  qlik: '📊', redshift: '🟥', snowflake: '❄️', databricks: '🧱', s3: '🪣',
+  parquet: '📦', csv: '📄', tsv: '📄', json: '📄', ndjson: '📄', qvd: '📄',
+};
+function sourceLabel(fmt) { const f = (fmt || '').toLowerCase(); return SOURCE_FMT_LABEL[f] || (f ? f.toUpperCase() : ''); }
+function sourceChip(fmt) {
+  const f = (fmt || '').toLowerCase(), label = sourceLabel(f);
+  if (!label) return '';
+  return `<span class="source-chip" data-tip="Data source for this assessment">${SOURCE_FMT_ICON[f] || '🗄️'} ${esc(label)}</span>`;
+}
 function fmtWhen(runId) {
   // run_id is a timestamp, optionally with a "-<token>" collision suffix; match the
   // timestamp prefix and ignore anything after the trailing Z.
@@ -1438,6 +1457,7 @@ function renderAssessment(r, bodyEl, opts) {
       ${status ? `<span class="tag ${tagClass(status)}">${status}</span>` : ''}
       <span class="tag ${gatePass ? 'green' : 'red'}" data-tip="${esc(GATE_TIP)}">Gate ${gatePass ? 'pass' : 'fail'}</span>
       ${provBadge}
+      ${sourceChip(r.sourceFormat)}
     </div>`;
   // Explain a gate failure explicitly: a high score can still fail the gate because
   // the gate is a pass/fail safety check on blocker-severity issues, not an average.
@@ -1739,9 +1759,11 @@ function historyRow(r) {
     : (r.state ? `<span class="tag">${esc(r.state.toLowerCase())}</span>` : '<span></span>');
   const sub = [rowsDesc(r), hasCustomWeights(r.dimensionWeights) ? 'custom weights' : '']
     .filter(Boolean).join(' · ');
-  // Re-run only for this app's own tables (app-data rows have slug "appId/table") — not uploads / tenant-wide.
-  const rerun = (APP_ID && typeof r.slug === 'string' && r.slug.includes('/'))
-    ? `<button class="btn-sm histrerun" data-rerun="${esc(r.dataset)}" data-tip="Re-assess this table now">↻</button>`
+  // Re-run for this app's own tables (slug "appId/table"), or any source dataset (routed to
+  // its Data-from-Source tab). Not tenant-wide uploads, which can't be replayed from here.
+  const isSrc = r.sourceFormat && r.sourceFormat !== 'qlik';
+  const rerun = ((APP_ID && typeof r.slug === 'string' && r.slug.includes('/')) || isSrc)
+    ? `<button class="btn-sm histrerun" data-rerun="${esc(r.dataset)}" data-fmt="${esc(r.sourceFormat || '')}" data-tip="Re-assess this dataset">↻</button>`
     : '<span></span>';
   return `<div class="histrow" data-prefix="${esc(r.resultPrefix)}">
       <span class="h-name">${esc(r.dataset)}${sub ? `<div class="hint">${esc(sub)}</div>` : ''}</span>
@@ -1794,7 +1816,7 @@ function renderHistoryPage() {
   list.querySelectorAll('.histrow').forEach(el =>
     el.addEventListener('click', e => { e.preventDefault(); openHistoryRun(el.dataset.prefix); }));
   list.querySelectorAll('.histrerun').forEach(b =>
-    b.addEventListener('click', e => { e.stopPropagation(); reRunTable(b.dataset.rerun); }));
+    b.addEventListener('click', e => { e.stopPropagation(); reRunTable(b.dataset.rerun, b.dataset.fmt); }));
   if (pages > 1) {
     pager.innerHTML =
       `<button class="btn-secondary" id="pgPrev" ${historyPage === 0 ? 'disabled' : ''}>← Prev</button>` +
@@ -1924,7 +1946,7 @@ function renderHistoryAppPage() {
   list.querySelectorAll('.histrow').forEach(el =>
     el.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); openHistoryRun(el.dataset.prefix); }));
   list.querySelectorAll('.histrerun').forEach(b =>
-    b.addEventListener('click', e => { e.stopPropagation(); reRunTable(b.dataset.rerun); }));
+    b.addEventListener('click', e => { e.stopPropagation(); reRunTable(b.dataset.rerun, b.dataset.fmt); }));
   if (pages > 1) {
     pager.innerHTML =
       `<button class="btn-secondary" id="apgPrev" ${historyAppPage === 0 ? 'disabled' : ''}>← Prev</button>` +
@@ -2243,14 +2265,15 @@ function renderHealthTable(datasets) {
     const spark = svgSpark((d.spark || []).map(p => p.score));
     const age = d.ageDays == null ? '—'
       : (d.ageDays < 1 ? 'today' : `${Math.round(d.ageDays)}d ago`);
+    const srcChip = sourceChip(d.sourceFormat);
     return `<tr class="dash-row" data-key="${esc(d.key)}" data-name="${esc(d.name)}">
-        <td>${esc(d.name)}</td>
+        <td>${esc(d.name)}${srcChip ? `<div style="margin-top:3px;">${srcChip}</div>` : ''}</td>
         <td><strong>${num1(d.score)}</strong> ${statusChip(d.status)}</td>
         <td>${gateChip(d.gate)}</td>
         <td>${numInt(d.rows)}</td>
         <td class="dash-muted">${esc(age)}</td>
         <td>${spark}</td>
-        <td><button class="btn-sm" data-rerun="${esc(d.name)}" data-tip="Re-assess this table now">↻ Re-run</button></td>
+        <td><button class="btn-sm" data-rerun="${esc(d.name)}" data-fmt="${esc(d.sourceFormat || '')}" data-tip="Re-assess this dataset">↻ Re-run</button></td>
       </tr>`;
   }).join('');
   $('#dashTableWrap').innerHTML =
@@ -2263,7 +2286,7 @@ function renderHealthTable(datasets) {
       selectDataset(tr.getAttribute('data-key'), tr.getAttribute('data-name'));
     }));
   $('#dashTableWrap').querySelectorAll('button[data-rerun]').forEach(b =>
-    b.addEventListener('click', e => { e.stopPropagation(); reRunTable(b.dataset.rerun); }));
+    b.addEventListener('click', e => { e.stopPropagation(); reRunTable(b.dataset.rerun, b.dataset.fmt); }));
 }
 
 function renderHeatmap(datasets) {
@@ -3979,7 +4002,20 @@ async function assessEntireApp() {
 
 // Re-run one table's assessment (from a Dashboard/History row). Lands on the
 // Assess-app tab so the familiar results view shows the progress.
-async function reRunTable(tableName) {
+// Source datasets don't store their credentials, so a run can't be replayed blindly.
+// Qlik app tables re-run in place (the extension holds the bearer); every other source is
+// routed to its Data-from-Source card to re-enter details + run (pinned rules still apply).
+const _SRC_CARD_BY_FMT = { redshift: 'redshift', snowflake: 'snowflake', databricks: 'databricks', s3: 's3' };
+async function reRunTable(tableName, sourceFormat) {
+  const fmt = (sourceFormat || '').toLowerCase();
+  if (fmt && fmt !== 'qlik') {
+    const card = _SRC_CARD_BY_FMT[fmt] || 's3';           // file formats (parquet/csv/…) -> S3 datasource
+    switchTab('upload');
+    if (typeof selectSource === 'function') selectSource(card);
+    banner('info', `Re-enter your ${SOURCE_LABEL[card] || 'data source'} connection details and run “${tableName}” again — ` +
+      `your pinned rules are applied automatically. (Credentials aren't stored between runs, so a source run can't be replayed for you.)`);
+    return;
+  }
   switchTab('appdata');
   if (!tableName) return;
   if (!APP_ID) { appBanner('err', 'Re-run needs the app context — open this from inside the Qlik app.'); return; }
