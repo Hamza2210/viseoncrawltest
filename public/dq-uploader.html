@@ -886,8 +886,9 @@
       </div>
     </div>
 
-    <!-- Shared optional Accuracy & Integrity config for source runs (applied on the first run). -->
-    <details class="card" id="srcRefs" style="display:none;">
+    <!-- Shared optional Accuracy & Integrity config; selectSource() moves this into the active
+         source card, just above its Run button, so it reads as part of the connection config. -->
+    <details id="srcRefs" style="display:none;margin:16px 0;border-top:1px solid var(--border);padding-top:14px;">
       <summary style="cursor:pointer;font-weight:600;">Accuracy &amp; referential integrity <span style="font-weight:400;color:var(--muted);">(optional)</span></summary>
       <p class="hint" style="margin:8px 0 12px;">Added on top of the auto-detected rules for this run — leave empty to skip. Lights up the Accuracy and Referential Integrity dimensions.</p>
       <div id="srcRefsBody"></div>
@@ -3968,12 +3969,21 @@ function selectSource(key) {
   document.querySelectorAll('.source-body').forEach(b => { b.style.display = (b.id === 'src-' + key) ? 'block' : 'none'; });
   // The file-upload assessment/results cards only make sense for the file source.
   _SRC_FILE_ONLY.forEach(id => { const el = document.getElementById(id); if (el) el.classList.toggle('src-hidden', key !== 'file'); });
-  // File has its own inline accuracy/integrity block; postgres is preview-only.
+  // File has its own inline accuracy/integrity block; postgres is preview-only. For the
+  // other sources, move the shared refs section INTO the active card, just above its Run
+  // button, so it reads as part of the connection config rather than the result.
   const refs = document.getElementById('srcRefs');
   if (refs) {
     const show = !['file', 'postgres'].includes(key);
-    refs.style.display = show ? '' : 'none';
-    if (show) { srcRefsState.warehouse = _WAREHOUSE_SRC.has(key); renderSrcRefs(); }
+    if (show) {
+      const runBtn = document.querySelector(`#src-${key} .src-run`);
+      if (runBtn && runBtn.parentNode) runBtn.parentNode.insertBefore(refs, runBtn);
+      refs.style.display = '';
+      srcRefsState.warehouse = _WAREHOUSE_SRC.has(key);
+      renderSrcRefs();
+    } else {
+      refs.style.display = 'none';
+    }
   }
 }
 
