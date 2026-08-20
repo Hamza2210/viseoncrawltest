@@ -432,6 +432,16 @@
   .rule-sug-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 7px; }
   .rule-sug-head strong { font-weight: 600; }
   .tag-adv { background: var(--idle-bg); color: var(--muted); }
+  .rule-sug-lbl { display: flex; flex-direction: column; gap: 4px; cursor: pointer; }
+  .rule-sug.rule-adv .rule-sug-lbl { cursor: default; }
+  .rule-edit { display: flex; flex-wrap: wrap; gap: 8px 12px; margin-top: 7px; }
+  .rule-edit-field { display: flex; flex-direction: column; gap: 2px; }
+  .rule-edit-field label { font-size: 11px; color: var(--muted); }
+  .rule-edit-in { padding: 3px 6px; border: 1px solid var(--border); border-radius: 5px;
+    background: var(--bg); color: var(--text); font-size: 12px; min-width: 92px; }
+  .rule-flag { align-self: center; font-size: 11px; color: var(--muted);
+    background: var(--idle-bg); padding: 2px 8px; border-radius: 10px; }
+  .rule-edited { align-self: center; font-size: 11px; color: var(--accent2); }
   /* Full-app history: app-wide average box shown when a run is expanded */
   .apprun-agg { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px;
     margin: 2px 0 12px; background: var(--idle-bg); }
@@ -3110,6 +3120,78 @@ const RULE_KIND_LABEL = {
   severity: 'Severity', weight: 'Weight', scale: 'Precision', allowed_values: 'Allowed values',
   accuracy_lookup: 'Accuracy lookup', consistency: 'Consistency',
 };
+// --- Phase A: inline editing of an applyable suggestion's rule values --------------
+// Each control is bound to a field inside the suggestion's own augment fragment
+// ({columns:{col:{...}}}); editing mutates that fragment live, so Pin/Apply use the
+// edited values. The full-table validation on the next run is the backstop for anything
+// the data doesn't support.
+const DQ_RULE_TYPES = ['integer', 'decimal', 'boolean', 'date', 'datetime', 'string'];
+const DQ_RULE_FORMATS = ['alphanumeric', 'country_code_iso2', 'currency_code', 'e164_phone',
+  'email', 'iban', 'ipv4', 'iso_date', 'iso_datetime', 'numeric_string', 'uk_nino',
+  'uk_postcode', 'uk_sort_code', 'url', 'uuid'];
+const RULE_FIELD_META = {
+  min: { label: 'Min', type: 'number' }, max: { label: 'Max', type: 'number' },
+  min_length: { label: 'Min length', type: 'number', step: '1', min: '0', int: true },
+  max_length: { label: 'Max length', type: 'number', step: '1', min: '0', int: true },
+  scale: { label: 'Decimal places', type: 'number', step: '1', min: '0', int: true },
+  weight: { label: 'Weight', type: 'number', step: '0.1', min: '0' },
+  min_date: { label: 'From date', type: 'date' }, max_date: { label: 'To date', type: 'date' },
+  regex: { label: 'Pattern', type: 'text' },
+  format: { label: 'Format', type: 'select', options: DQ_RULE_FORMATS },
+  type: { label: 'Type', type: 'select', options: DQ_RULE_TYPES },
+  severity: { label: 'Severity', type: 'select', options: ['blocker', 'major', 'minor'] },
+};
+const RULE_BOOL_FIELDS = { mandatory: 'Mandatory', unique: 'Unique', not_future: 'No future dates' };
+const RULE_FIELD_ORDER = ['type', 'format', 'regex', 'min', 'max', 'min_date', 'max_date',
+  'min_length', 'max_length', 'scale', 'weight', 'severity'];
+
+function _augCol(aug) {
+  if (aug && aug.columns) { const col = Object.keys(aug.columns)[0]; if (col) return { col, obj: aug.columns[col] }; }
+  return null;
+}
+function _ruleFieldControl(i, f, meta, val, optional) {
+  const id = `re-${i}-${f}`;
+  let input;
+  if (meta.type === 'select') {
+    const opts = [optional ? `<option value="">(default)</option>` : '']
+      .concat(meta.options.map(o => `<option value="${esc(o)}"${String(o) === String(val) ? ' selected' : ''}>${esc(o)}</option>`)).join('');
+    input = `<select id="${id}" class="rule-edit-in" data-edit-i="${i}" data-edit-f="${f}">${opts}</select>`;
+  } else {
+    const extra = (meta.step ? ` step="${meta.step}"` : '') + (meta.min !== undefined ? ` min="${meta.min}"` : '');
+    const v = (val === undefined || val === null) ? '' : esc(String(val));
+    input = `<input id="${id}" class="rule-edit-in" type="${meta.type}"${extra} value="${v}" data-edit-i="${i}" data-edit-f="${f}">`;
+  }
+  return `<span class="rule-edit-field"><label for="${id}">${esc(meta.label)}</label>${input}</span>`;
+}
+function renderRuleEditor(s, i) {
+  const ac = _augCol(s.augment);
+  if (!ac) {
+    if (s.augment && s.augment.keys && s.augment.keys.primary)
+      return `<div class="rule-edit"><span class="rule-flag">Key: ${esc(s.augment.keys.primary.join(', '))}</span></div>`;
+    return '';
+  }
+  const obj = ac.obj;
+  const parts = [];
+  for (const bf of Object.keys(RULE_BOOL_FIELDS)) if (obj[bf] === true) parts.push(`<span class="rule-flag">${esc(RULE_BOOL_FIELDS[bf])}</span>`);
+  for (const f of RULE_FIELD_ORDER) {
+    if (f === 'severity') continue;                       // severity handled last (always offered)
+    if (f in obj) parts.push(_ruleFieldControl(i, f, RULE_FIELD_META[f], obj[f]));
+  }
+  // Severity is a universally useful tweak: show it always (default = leave as inferred).
+  parts.push(_ruleFieldControl(i, 'severity', RULE_FIELD_META.severity, obj.severity, !('severity' in obj)));
+  return `<div class="rule-edit" data-col="${esc(ac.col)}">${parts.join('')}<span class="rule-edited" data-edited-i="${i}" style="display:none;">edited</span></div>`;
+}
+function applyRuleEdit(obj, f, raw) {
+  const meta = RULE_FIELD_META[f];
+  if (raw === '' || raw == null) { delete obj[f]; return; }
+  if (meta && meta.type === 'number') {
+    const n = Number(raw);
+    if (Number.isNaN(n)) return;
+    obj[f] = meta.int ? Math.trunc(n) : n;
+  } else {
+    obj[f] = raw;
+  }
+}
 function mergeAugments(frags) {
   const out = {};
   for (const f of (frags || [])) {
@@ -3159,16 +3241,20 @@ function renderRuleReview(r, outEl, prefix) {
   }
   const rows = sug.map((s, i) => {
     const cols = (s.columns || []).map(esc).join(', ');
-    const acc = s.applyable ? `<input type="checkbox" class="rule-acc" data-i="${i}">` : '';
+    const cbId = `rule-cb-${i}`;
+    const acc = s.applyable ? `<input id="${cbId}" type="checkbox" class="rule-acc" data-i="${i}">` : '';
     const advChip = s.applyable ? ''
       : `<span class="tag tag-adv" data-tip="Advisory — pin this in your ruleset manually">advisory</span>`;
-    return `<label class="rule-sug${s.applyable ? '' : ' rule-adv'}">
+    const headInner = `<span class="rule-sug-head"><span class="tag">${esc(RULE_KIND_LABEL[s.kind] || s.kind || 'Rule')}</span>${advChip}<strong>${esc(s.title || '')}</strong>${cols ? `<span class="hint">· ${cols}</span>` : ''}</span><span class="hint">${esc(s.rationale || '')}</span>`;
+    // Head is a <label for> (clicking toggles the tick); the editor sits OUTSIDE it so
+    // editing a field never toggles the checkbox.
+    const head = s.applyable ? `<label class="rule-sug-lbl" for="${cbId}">${headInner}</label>`
+      : `<span class="rule-sug-lbl">${headInner}</span>`;
+    const editor = s.applyable ? renderRuleEditor(s, i) : '';
+    return `<div class="rule-sug${s.applyable ? '' : ' rule-adv'}">
         <span class="rule-acc-cell">${acc}</span>
-        <span class="rule-sug-body">
-          <span class="rule-sug-head"><span class="tag">${esc(RULE_KIND_LABEL[s.kind] || s.kind || 'Rule')}</span>${advChip}<strong>${esc(s.title || '')}</strong>${cols ? `<span class="hint">· ${cols}</span>` : ''}</span>
-          <span class="hint">${esc(s.rationale || '')}</span>
-        </span>
-      </label>`;
+        <span class="rule-sug-body">${head}${editor}</span>
+      </div>`;
   }).join('');
   const rerun = rerun0;
   const anyApplyable = sug.some(s => s.applyable);
@@ -3195,6 +3281,19 @@ function renderRuleReview(r, outEl, prefix) {
     if (note && note.dataset.sticky !== '1') note.textContent = n ? `${n} selected.` : `Tick the suggestions to pin${canRerun ? ' or re-run' : ''}.`;
   };
   outEl.querySelectorAll('.rule-acc').forEach(cb => cb.addEventListener('change', update));
+  // Live-edit: a field change mutates that suggestion's augment, auto-ticks it (the user
+  // clearly wants an edited rule), flags it "edited", and refreshes the buttons.
+  outEl.querySelectorAll('.rule-edit-in').forEach(el => el.addEventListener('input', () => {
+    const i = +el.dataset.editI;
+    const s = sug[i]; if (!s) return;
+    const ac = _augCol(s.augment); if (!ac) return;
+    applyRuleEdit(ac.obj, el.dataset.editF, el.value);
+    const cb = outEl.querySelector(`.rule-acc[data-i="${i}"]`);
+    if (cb && !cb.checked) cb.checked = true;
+    const flag = outEl.querySelector(`.rule-edited[data-edited-i="${i}"]`);
+    if (flag) flag.style.display = '';
+    update();
+  }));
   if (applyBtn) applyBtn.addEventListener('click', () => applyRulesAndRerun(rerun, mergeAugments(chosenAugs())));
   if (pinBtn) pinBtn.addEventListener('click', () => pinSelectedRules(prefix, mergeAugments(chosenAugs()), pinBtn, note));
   wireFoot();
