@@ -1579,21 +1579,17 @@ function renderAssessment(r, bodyEl, opts) {
   } else {
     tableHtml = `<p class="hint">Assessment finished (${r.state}) but no summary was found.</p>`;
   }
-  // Criteria table on the left, radar on the right (they stack on narrow screens) —
-  // the chart used to sit above the table, leaving a wide empty band beside it.
-  html += `<div class="dim-split"><div class="dim-split-table">${tableHtml}</div><div class="dim-split-chart">${radarHtml}</div></div>`;
-  // On-demand AI: explain the score, and review the ruleset (aggregate/masked facts only).
-  // Kept ABOVE the failed-records table so the buttons are reachable without scrolling
-  // past a long list of records.
-  if (crit.length && score != null && r.resultPrefix) {
-    // Explain-score is run-specific so it lives here; Review/Edit rules are dataset-level
-    // and live on the dataset (trends) view instead.
-    html += `<div style="margin-top:14px;">` +
-      `<div class="actions">` +
-      `<button class="btn-sm" data-explainscore="1">✨ Explain score &amp; how to improve (AI)</button>` +
-      `</div>` +
-      `<div class="score-ai-out" style="margin-top:10px;"></div></div>`;
-  }
+  // Criteria table on the left, radar on the right (they stack on narrow screens).
+  // The Explain-score button lives UNDER the table in the left column so it fills the
+  // whitespace beside the tall radar instead of stranding at the bottom-left; its AI
+  // output renders full-width below the split. (Run-specific, so it stays here; Review/
+  // Edit rules are dataset-level and live on the dataset trends view.)
+  const canAI = crit.length && score != null && r.resultPrefix;
+  const explainBtn = canAI
+    ? `<div class="actions" style="margin-top:14px;"><button class="btn-sm" data-explainscore="1">✨ Explain score &amp; how to improve (AI)</button></div>`
+    : '';
+  html += `<div class="dim-split"><div class="dim-split-table">${tableHtml}${explainBtn}</div><div class="dim-split-chart">${radarHtml}</div></div>`;
+  if (canAI) html += `<div class="score-ai-out" style="margin-top:12px;"></div>`;
   // Failed records surfaced INLINE here (not just on the dashboard), so the offending
   // rows are visible wherever a run is shown — upload result, incident view, history,
   // app tables. Blockers auto-load (gate fail); an otherwise-clean run offers a lazy
