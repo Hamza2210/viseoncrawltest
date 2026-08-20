@@ -2303,7 +2303,9 @@ function renderHeatmap(datasets) {
       return `<td class="cell" style="background:${c.bg};color:${c.fg}" ` +
         `data-tip="${esc(d.name)} · ${esc(dim[1])}: ${c.txt}">${c.txt}</td>`;
     }).join('');
-    return `<tr><td class="hname" title="${esc(d.name)}">${esc(d.name)}</td>${cells}</tr>`;
+    const srcChip = sourceChip(d.sourceFormat);
+    return `<tr><td class="hname" title="${esc(d.name)}">${esc(d.name)}` +
+      `${srcChip ? `<div style="margin-top:2px;">${srcChip}</div>` : ''}</td>${cells}</tr>`;
   }).join('');
   $('#dashHeat').innerHTML = `<table class="heat">${head}${body}</table>`;
 }
