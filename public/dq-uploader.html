@@ -886,6 +886,13 @@
       </div>
     </div>
 
+    <!-- Shared optional Accuracy & Integrity config for source runs (applied on the first run). -->
+    <details class="card" id="srcRefs" style="display:none;">
+      <summary style="cursor:pointer;font-weight:600;">Accuracy &amp; referential integrity <span style="font-weight:400;color:var(--muted);">(optional)</span></summary>
+      <p class="hint" style="margin:8px 0 12px;">Added on top of the auto-detected rules for this run — leave empty to skip. Lights up the Accuracy and Referential Integrity dimensions.</p>
+      <div id="srcRefsBody"></div>
+    </details>
+
     <div class="card" id="assessment">
       <h2>Assessment</h2>
       <div id="assessBody"></div>
@@ -3951,11 +3958,101 @@ const SOURCE_LABEL = { redshift: 'Amazon Redshift', s3: 'Amazon S3', snowflake: 
   databricks: 'Databricks', postgres: 'PostgreSQL' };
 const _SRC_FILE_ONLY = ['assessment', 'resetBar', 'results'];   // cards that belong to the file flow
 
+// Optional Accuracy & Integrity config for a source's FIRST run (sent as a ruleset augment).
+// Lookups apply to every source; reference-table integrity/accuracy apply to warehouses.
+const srcRefsState = { lookups: [], integrity: [], accuracy: {}, warehouse: false };
+const _WAREHOUSE_SRC = new Set(['redshift', 'snowflake', 'databricks']);
+
 function selectSource(key) {
   document.querySelectorAll('.source-card').forEach(c => c.classList.toggle('active', c.dataset.source === key));
   document.querySelectorAll('.source-body').forEach(b => { b.style.display = (b.id === 'src-' + key) ? 'block' : 'none'; });
   // The file-upload assessment/results cards only make sense for the file source.
   _SRC_FILE_ONLY.forEach(id => { const el = document.getElementById(id); if (el) el.classList.toggle('src-hidden', key !== 'file'); });
+  // File has its own inline accuracy/integrity block; postgres is preview-only.
+  const refs = document.getElementById('srcRefs');
+  if (refs) {
+    const show = !['file', 'postgres'].includes(key);
+    refs.style.display = show ? '' : 'none';
+    if (show) { srcRefsState.warehouse = _WAREHOUSE_SRC.has(key); renderSrcRefs(); }
+  }
+}
+
+function renderSrcRefs() {
+  const body = document.getElementById('srcRefsBody');
+  if (!body) return;
+  const s = srcRefsState;
+  const lrows = s.lookups.map((l, i) => `
+    <div class="ar-ref-row">
+      <input class="rule-edit-in sr-lk" data-i="${i}" data-f="col" placeholder="column" value="${esc(l.col || '')}" style="min-width:150px;">
+      <input class="rule-edit-in sr-lk" data-i="${i}" data-f="values" placeholder="allowed values, comma-separated" value="${esc((l.values || []).join(', '))}" style="flex:1;min-width:240px;">
+      <button type="button" class="ar-field-x sr-lk-x" data-i="${i}" title="Remove">✕</button>
+    </div>`).join('') || `<p class="hint" style="margin:0 0 6px;">No lookups yet.</p>`;
+  let html = `<div class="ar-con-label">Accuracy — authoritative lookups</div>
+    <p class="hint" style="margin:0 0 8px;">A column and its full set of allowed values — anything outside the list counts as inaccurate.</p>
+    <div>${lrows}</div><div class="ar-add"><button type="button" class="btn-sm sr-lk-add">＋ Add lookup</button></div>`;
+  if (s.warehouse) {
+    const irows = s.integrity.map((r, i) => `
+      <div class="ar-ref-row">
+        <input class="rule-edit-in sr-ir" data-i="${i}" data-f="columns" placeholder="column(s)" value="${esc((r.columns || []).join(', '))}" style="min-width:130px;">
+        <span class="hint">must exist in</span>
+        <input class="rule-edit-in sr-ir" data-i="${i}" data-f="reference_uri" placeholder="schema.table" value="${esc(r.reference_uri || '')}" style="min-width:150px;">
+        <input class="rule-edit-in sr-ir" data-i="${i}" data-f="reference_columns" placeholder="ref column(s)" value="${esc((r.reference_columns || []).join(', '))}" style="min-width:130px;">
+        <button type="button" class="ar-field-x sr-ir-x" data-i="${i}" title="Remove">✕</button>
+      </div>`).join('') || `<p class="hint" style="margin:0 0 6px;">No integrity rules yet.</p>`;
+    const a = s.accuracy || {};
+    html += `<div class="ar-con-label" style="margin-top:16px;">Referential integrity</div>
+      <p class="hint" style="margin:0 0 8px;">A column's values must exist in a reference (master) table in the same warehouse.</p>
+      <div>${irows}</div><div class="ar-add"><button type="button" class="btn-sm sr-ir-add">＋ Add integrity rule</button></div>
+      <div class="ar-con-label" style="margin-top:16px;">Accuracy — system of record</div>
+      <p class="hint" style="margin:0 0 8px;">Join rows to a reference table on key column(s); checks they exist and compared columns agree.</p>
+      <div class="ar-fields">
+        <span class="rule-edit-field"><label>Reference table</label><input class="rule-edit-in sr-acc" data-f="reference_uri" placeholder="schema.table" value="${esc(a.reference_uri || '')}"></span>
+        <span class="rule-edit-field"><label>Join on (keys)</label><input class="rule-edit-in sr-acc" data-f="join_on" placeholder="col(s)" value="${esc((a.join_on || []).join(', '))}"></span>
+        <span class="rule-edit-field"><label>Compare columns</label><input class="rule-edit-in sr-acc" data-f="compare_columns" placeholder="col(s)" value="${esc((a.compare_columns || []).join(', '))}"></span>
+      </div>`;
+  }
+  body.innerHTML = html;
+  body.querySelectorAll('.sr-lk').forEach(el => el.addEventListener('input', () => {
+    const l = s.lookups[+el.dataset.i]; if (!l) return;
+    l[el.dataset.f] = el.dataset.f === 'col' ? el.value.trim() : _splitList(el.value);
+  }));
+  body.querySelectorAll('.sr-lk-x').forEach(b => b.addEventListener('click', () => { s.lookups.splice(+b.dataset.i, 1); renderSrcRefs(); }));
+  const la = body.querySelector('.sr-lk-add');
+  if (la) la.addEventListener('click', () => { s.lookups.push({ col: '', values: [] }); renderSrcRefs(); });
+  if (s.warehouse) {
+    body.querySelectorAll('.sr-ir').forEach(el => el.addEventListener('input', () => {
+      const r = s.integrity[+el.dataset.i]; if (!r) return;
+      const f = el.dataset.f; r[f] = f === 'reference_uri' ? el.value.trim() : _splitList(el.value);
+    }));
+    body.querySelectorAll('.sr-ir-x').forEach(b => b.addEventListener('click', () => { s.integrity.splice(+b.dataset.i, 1); renderSrcRefs(); }));
+    const ia = body.querySelector('.sr-ir-add');
+    if (ia) ia.addEventListener('click', () => { s.integrity.push({ id: `fk_${s.integrity.length + 1}`, columns: [], reference_uri: '', reference_columns: [] }); renderSrcRefs(); });
+    body.querySelectorAll('.sr-acc').forEach(el => el.addEventListener('input', () => {
+      s.accuracy = s.accuracy || {};
+      const f = el.dataset.f; s.accuracy[f] = f === 'reference_uri' ? el.value.trim() : _splitList(el.value);
+    }));
+  }
+}
+
+// Build the ruleset augment from the source-refs section, or null if nothing set.
+function collectSourceRefsAugment() {
+  const s = srcRefsState, aug = {}, acc = {}, lookups = {};
+  s.lookups.forEach(l => { if (l.col && (l.values || []).length) lookups[l.col] = l.values; });
+  if (Object.keys(lookups).length) acc.lookups = lookups;
+  if (s.warehouse) {
+    const a = s.accuracy || {};
+    if ((a.reference_uri || '').trim() && (a.join_on || []).length) {
+      acc.reference_uri = a.reference_uri.trim(); acc.join_on = a.join_on; acc.compare_columns = a.compare_columns || [];
+    }
+    const integ = (s.integrity || [])
+      .filter(r => (r.columns || []).length && (r.reference_uri || '').trim())
+      .map((r, i) => ({ id: r.id || `fk_${i + 1}`, columns: r.columns, reference_uri: r.reference_uri.trim(),
+        reference_columns: (r.reference_columns && r.reference_columns.length) ? r.reference_columns : r.columns,
+        severity: 'major', weight: 1 }));
+    if (integ.length) aug.integrity_rules = integ;
+  }
+  if (Object.keys(acc).length) aug.accuracy = acc;
+  return Object.keys(aug).length ? aug : null;
 }
 
 function collectSourceFields(key) {
@@ -4020,6 +4117,7 @@ async function runRedshift(cfg, statusEl) {
     secret_arn: cfg.secret_arn || undefined,
     sample_rows: cfg.sample_rows ? Number(cfg.sample_rows) : undefined,
     notify_email: EMAIL || undefined,
+    ruleset_augment: collectSourceRefsAugment() || undefined,
   };
   statusEl.className = 'src-status';
   statusEl.innerHTML = `<p><span class="spin"></span> Launching Redshift assessment…</p>`;
@@ -4056,6 +4154,7 @@ async function runS3(cfg, statusEl) {
     access_key: cfg.access_key || undefined, secret_key: cfg.secret_key || undefined,
     sample_rows: cfg.sample_rows ? Number(cfg.sample_rows) : undefined,
     notify_email: EMAIL || undefined,
+    ruleset_augment: collectSourceRefsAugment() || undefined,
   };
   statusEl.className = 'src-status';
   statusEl.innerHTML = `<p><span class="spin"></span> Launching S3 assessment…</p>`;
@@ -4090,6 +4189,7 @@ async function runSnowflake(cfg, statusEl) {
     warehouse: cfg.warehouse || undefined, role: cfg.role || undefined,
     sample_rows: cfg.sample_rows ? Number(cfg.sample_rows) : undefined,
     notify_email: EMAIL || undefined,
+    ruleset_augment: collectSourceRefsAugment() || undefined,
   };
   statusEl.className = 'src-status';
   statusEl.innerHTML = `<p><span class="spin"></span> Launching Snowflake assessment…</p>`;
@@ -4124,6 +4224,7 @@ async function runDatabricks(cfg, statusEl) {
     schema: cfg.schema || undefined, catalog: cfg.catalog || undefined,
     sample_rows: cfg.sample_rows ? Number(cfg.sample_rows) : undefined,
     notify_email: EMAIL || undefined,
+    ruleset_augment: collectSourceRefsAugment() || undefined,
   };
   statusEl.className = 'src-status';
   statusEl.innerHTML = `<p><span class="spin"></span> Launching Databricks assessment…</p>`;
