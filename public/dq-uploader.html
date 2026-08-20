@@ -466,6 +466,8 @@
   .ar-add select { padding: 4px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); font-size: 12px; }
   .ar-field-x { border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 11px; line-height: 1; padding: 0 0 0 5px; }
   .ar-field-x:hover { color: var(--err); }
+  .ar-refs { border-top: 1px solid var(--border); margin-top: 14px; padding-top: 14px; }
+  .ar-ref-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 8px; }
   .na-line { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
   .na-chip { font-size: 11px; color: var(--muted); background: var(--idle-bg); padding: 2px 8px;
     border-radius: 999px; cursor: help; }
@@ -1713,8 +1715,37 @@ async function editActiveRules(prefix, outEl) {
     }
     norm[col] = clean;
   }
-  const state = { columns: norm, primaryKey: (data.primaryKey || []).slice(), hasPending: !!data.hasPending };
+  const state = {
+    columns: norm, primaryKey: (data.primaryKey || []).slice(), hasPending: !!data.hasPending,
+    integrityRules: JSON.parse(JSON.stringify(data.integrityRules || [])),
+    accuracy: JSON.parse(JSON.stringify(data.accuracy || {})),
+  };
   renderActiveRulesEditor(state, outEl, prefix);
+}
+const _splitList = s => String(s || '').split(',').map(x => x.trim()).filter(Boolean);
+function _refsSection(state) {
+  const irows = (state.integrityRules || []).map((r, i) => `
+    <div class="ar-ref-row">
+      <input class="rule-edit-in ir-in" data-iri="${i}" data-irf="columns" placeholder="column(s)" value="${esc((r.columns || []).join(', '))}" style="min-width:130px;">
+      <span class="hint">must exist in</span>
+      <input class="rule-edit-in ir-in" data-iri="${i}" data-irf="reference_uri" placeholder="schema.table" value="${esc(r.reference_uri || '')}" style="min-width:150px;">
+      <input class="rule-edit-in ir-in" data-iri="${i}" data-irf="reference_columns" placeholder="ref column(s)" value="${esc((r.reference_columns || []).join(', '))}" style="min-width:130px;">
+      <button type="button" class="ar-field-x ir-remove" data-iri="${i}" title="Remove rule">✕</button>
+    </div>`).join('') || `<p class="hint" style="margin:0 0 6px;">No integrity rules yet.</p>`;
+  const acc = state.accuracy || {};
+  return `<div class="ar-refs">
+      <div class="ar-con-label">Referential integrity</div>
+      <p class="hint" style="margin:0 0 8px;">A column's values must exist in a reference (master) table in the same warehouse.</p>
+      <div class="ar-ir-list">${irows}</div>
+      <div class="ar-add"><button type="button" class="btn-sm ir-add">＋ Add integrity rule</button></div>
+      <div class="ar-con-label" style="margin-top:16px;">Accuracy — system of record</div>
+      <p class="hint" style="margin:0 0 8px;">Join rows to a reference table on key column(s); checks they exist and that the compared column(s) agree.</p>
+      <div class="ar-fields">
+        <span class="rule-edit-field"><label>Reference table</label><input class="rule-edit-in acc-in" data-accf="reference_uri" placeholder="schema.table" value="${esc(acc.reference_uri || '')}"></span>
+        <span class="rule-edit-field"><label>Join on (keys)</label><input class="rule-edit-in acc-in" data-accf="join_on" placeholder="col(s)" value="${esc((acc.join_on || []).join(', '))}"></span>
+        <span class="rule-edit-field"><label>Compare columns</label><input class="rule-edit-in acc-in" data-accf="compare_columns" placeholder="col(s)" value="${esc((acc.compare_columns || []).join(', '))}"></span>
+      </div>
+    </div>`;
 }
 // Type / Severity / Weight are column PROPERTIES (always present, no remove); everything
 // else in RULE_FIELD_ORDER is a pass/fail CONSTRAINT (removable, its own box).
@@ -1769,7 +1800,8 @@ function renderActiveRulesEditor(state, outEl, prefix) {
       <div class="rule-edit-field" style="margin-bottom:12px;max-width:420px;"><label for="arPk">Primary key <span class="hint">(comma-separated, blank = none)</span></label>
         <input id="arPk" class="rule-edit-in ar-in" value="${esc((state.primaryKey || []).join(', '))}" data-arpk="1"></div>
       <div class="ar-list">${cards}</div>
-      <div class="actions" style="margin-top:12px;align-items:center;">
+      ${_refsSection(state)}
+      <div class="actions" style="margin-top:14px;align-items:center;">
         <button type="button" class="ar-save">Save changes</button>
         <span class="hint" id="arNote">Edits apply on the next assessment of this dataset (no new AI call).</span>
       </div>
@@ -1807,6 +1839,25 @@ function renderActiveRulesEditor(state, outEl, prefix) {
     delete state.columns[b.dataset.arcol];
     rerender();
   }));
+  // Referential-integrity rule rows + accuracy reference config.
+  outEl.querySelectorAll('.ir-in').forEach(el => el.addEventListener('input', () => {
+    const r = state.integrityRules[+el.dataset.iri]; if (!r) return;
+    const f = el.dataset.irf;
+    r[f] = (f === 'reference_uri') ? el.value.trim() : _splitList(el.value);
+  }));
+  outEl.querySelectorAll('.ir-remove').forEach(b => b.addEventListener('click', () => {
+    state.integrityRules.splice(+b.dataset.iri, 1); rerender();
+  }));
+  const irAdd = outEl.querySelector('.ir-add');
+  if (irAdd) irAdd.addEventListener('click', () => {
+    state.integrityRules.push({ id: `fk_${state.integrityRules.length + 1}`, columns: [], reference_uri: '', reference_columns: [], severity: 'major', weight: 1 });
+    rerender();
+  });
+  outEl.querySelectorAll('.acc-in').forEach(el => el.addEventListener('input', () => {
+    const f = el.dataset.accf;
+    state.accuracy = state.accuracy || {};
+    state.accuracy[f] = (f === 'reference_uri') ? el.value.trim() : _splitList(el.value);
+  }));
   const saveBtn = outEl.querySelector('.ar-save');
   if (saveBtn) saveBtn.addEventListener('click', () => saveActiveRules(prefix, state, saveBtn, outEl.querySelector('#arNote')));
 }
@@ -1820,10 +1871,22 @@ async function saveActiveRules(prefix, state, btn, note) {
     }
     if (Object.keys(clean).length) columns[c] = clean;
   }
+  // Keep only well-formed integrity rules (a child column + a reference table).
+  const integrity = (state.integrityRules || [])
+    .filter(r => (r.columns || []).length && (r.reference_uri || '').trim())
+    .map((r, i) => ({ id: r.id || `fk_${i + 1}`, columns: r.columns,
+      reference_uri: r.reference_uri.trim(),
+      reference_columns: (r.reference_columns && r.reference_columns.length) ? r.reference_columns : r.columns,
+      severity: r.severity || 'major', weight: r.weight || 1 }));
+  const acc = state.accuracy || {};
+  const accuracy = { ...acc,
+    reference_uri: (acc.reference_uri || '').trim(),
+    join_on: acc.join_on || [], compare_columns: acc.compare_columns || [] };
   const old = btn.textContent; btn.disabled = true; btn.textContent = 'Saving…';
   try {
     await postJSON(`${API_BASE}/data-quality/save-ruleset`, HEADERS,
-      { result_prefix: prefix, columns, primary_key: state.primaryKey || [], actor: EMAIL || undefined });
+      { result_prefix: prefix, columns, primary_key: state.primaryKey || [],
+        integrity_rules: integrity, accuracy, actor: EMAIL || undefined });
     btn.textContent = 'Saved ✓';
     if (note) { note.textContent = 'Saved — your next assessment of this dataset will use these rules.'; }
   } catch (e) {
