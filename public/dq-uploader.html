@@ -1736,13 +1736,18 @@ function _refsSection(state) {
       <button type="button" class="ar-field-x ir-remove" data-iri="${i}" title="Remove rule">✕</button>
     </div>`).join('') || `<p class="hint" style="margin:0 0 6px;">No integrity rules yet.</p>`;
   const acc = state.accuracy || {};
+  const cols = Object.keys(state.columns || {});
+  const colOptions = (sel) => `<option value="">column…</option>` +
+    cols.map(c => `<option value="${esc(c)}"${c === sel ? ' selected' : ''}>${esc(c)}</option>`).join('');
   const lrows = (state.accuracyLookups || []).map((l, i) => `
     <div class="ar-ref-row">
-      <input class="rule-edit-in al-in" data-ali="${i}" data-alf="col" placeholder="column" value="${esc(l.col || '')}" style="min-width:150px;">
+      <select class="rule-edit-in al-in" data-ali="${i}" data-alf="col" style="min-width:160px;">${colOptions(l.col || '')}</select>
       <input class="rule-edit-in al-in" data-ali="${i}" data-alf="values" placeholder="allowed values, comma-separated" value="${esc((l.values || []).join(', '))}" style="flex:1;min-width:240px;">
       <button type="button" class="ar-field-x al-remove" data-ali="${i}" title="Remove lookup">✕</button>
     </div>`).join('') || `<p class="hint" style="margin:0 0 6px;">No accuracy lookups yet.</p>`;
   return `<div class="ar-refs">
+      <div class="ar-con-label">Accuracy &amp; referential integrity <span style="text-transform:none;font-weight:400;color:var(--muted);">(optional)</span></div>
+      <p class="hint" style="margin:0 0 12px;">Added on top of the auto-detected rules — leave empty to skip. These light up the Accuracy and Referential Integrity dimensions.</p>
       <div class="ar-con-label">Accuracy — authoritative lookups</div>
       <p class="hint" style="margin:0 0 8px;">A column and its full set of allowed values — anything outside the list counts as inaccurate.</p>
       <div class="ar-al-list">${lrows}</div>
