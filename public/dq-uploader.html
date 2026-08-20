@@ -130,6 +130,7 @@
   .tag.green { background: var(--ok-bg); color: var(--ok); }
   .tag.amber { background: var(--run-bg); color: var(--run); }
   .tag.red { background: var(--err-bg); color: var(--err); }
+  .tag.info-tag { background: color-mix(in srgb, var(--accent) 15%, var(--card)); color: var(--accent); }
   .source-chip { display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 9px;
     border-radius: 999px; background: var(--accent-soft); color: var(--accent2);
     border: 1px solid color-mix(in srgb, var(--accent2) 30%, transparent); white-space: nowrap; }
@@ -1450,8 +1451,20 @@ function renderAssessment(r, bodyEl, opts) {
   const dsName = sum.dataset || st.dataset_name || '';
   const provTip = 'These rules were auto-inferred and have not been reviewed by a person yet. ' +
     'Open “Review rules (AI)” below to check, edit and pin them — this clears once you do.';
-  const provBadge = (r.rulesetInferred === true)
-    ? `<span class="tag amber" data-tip="${esc(provTip)}">⚠ Provisional — rules not yet reviewed</span>` : '';
+  // Three exclusive states, most-actioned first:
+  //  1) rules pinned but not yet applied -> "queued" note (replaces Provisional)
+  //  2) auto-inferred, unreviewed        -> Provisional
+  //  3) reviewed/applied                 -> nothing
+  let statusBadge = '';
+  if (r.pendingPin) {
+    const whenTxt = r.pendingPinAt ? ` (pinned ${esc(fmtWhen(r.pendingPinAt))})` : '';
+    const pinTip = 'You pinned rule changes for this dataset. They apply automatically on the ' +
+      'next assessment of it — re-run the dataset and this note clears.';
+    statusBadge = `<span class="tag info-tag" data-tip="${esc(pinTip)}">✎ Pinned rules queued — apply on next run${whenTxt}</span>`;
+  } else if (r.rulesetInferred === true) {
+    statusBadge = `<span class="tag amber" data-tip="${esc(provTip)}">⚠ Provisional — rules not yet reviewed</span>`;
+  }
+  const provBadge = statusBadge;
   let html = `${dsName ? `<div class="ds-name">${esc(dsName)}</div>` : ''}<div class="headline">
       <span class="score">${fmtScore(score)}</span>
       ${status ? `<span class="tag ${tagClass(status)}">${status}</span>` : ''}
