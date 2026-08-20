@@ -3171,28 +3171,32 @@ function renderRuleReview(r, outEl, prefix) {
       </label>`;
   }).join('');
   const rerun = rerun0;
-  const canApply = sug.some(s => s.applyable) && canRerun;
-  const applyBar = canApply
-    ? `<div class="actions" style="margin-top:12px;align-items:center;">
-         <button class="rule-apply" disabled>Apply selected &amp; re-run</button>
-         <span class="hint" id="ruleApplyNote">Tick the suggestions to apply, then re-run.</span>
+  const anyApplyable = sug.some(s => s.applyable);
+  // "Pin" works for EVERY run (writes the rules for the next assessment to pick up);
+  // "Apply & re-run now" only when the run can be re-launched (app table / file).
+  const applyBar = anyApplyable
+    ? `<div class="actions" style="margin-top:12px;align-items:center;gap:8px;">
+         <button class="rule-pin" disabled>Pin selected to ruleset</button>
+         ${canRerun ? `<button class="rule-apply" disabled>Apply &amp; re-run now</button>` : ``}
+         <span class="hint" id="ruleApplyNote">Tick the suggestions to pin${canRerun ? ' or re-run' : ''}.</span>
        </div>
-       <p class="hint" style="margin:8px 0 0;">Applied rules become this dataset's <strong>pinned ruleset</strong> — future runs reuse it automatically (no new AI call).</p>`
-    : (sug.some(s => s.applyable)
-        ? `<p class="hint" style="margin-top:10px;">These can't be auto-applied to this run, but you can pin them in your ruleset.</p>` : '');
+       <p class="hint" style="margin:8px 0 0;">Pinned rules become this dataset's <strong>pinned ruleset</strong> — your next assessment uses them automatically (no new AI call).</p>`
+    : '';
   outEl.innerHTML = `<div class="rules-review"><div class="rules-list">${rows}</div>${applyBar}${foot}</div>`;
   const applyBtn = outEl.querySelector('.rule-apply');
+  const pinBtn = outEl.querySelector('.rule-pin');
   const note = outEl.querySelector('#ruleApplyNote');
+  const chosenAugs = () => [...outEl.querySelectorAll('.rule-acc:checked')]
+    .map(cb => sug[+cb.dataset.i]).filter(Boolean).map(s => s.augment);
   const update = () => {
     const n = outEl.querySelectorAll('.rule-acc:checked').length;
-    if (applyBtn) { applyBtn.disabled = !n; applyBtn.textContent = n ? `Apply ${n} selected & re-run` : 'Apply selected & re-run'; }
-    if (note) note.textContent = n ? `${n} selected.` : 'Tick the suggestions to apply, then re-run.';
+    if (applyBtn) { applyBtn.disabled = !n; applyBtn.textContent = n ? `Apply ${n} & re-run now` : 'Apply & re-run now'; }
+    if (pinBtn && pinBtn.dataset.done !== '1') { pinBtn.disabled = !n; pinBtn.textContent = n ? `Pin ${n} selected to ruleset` : 'Pin selected to ruleset'; }
+    if (note && note.dataset.sticky !== '1') note.textContent = n ? `${n} selected.` : `Tick the suggestions to pin${canRerun ? ' or re-run' : ''}.`;
   };
   outEl.querySelectorAll('.rule-acc').forEach(cb => cb.addEventListener('change', update));
-  if (applyBtn) applyBtn.addEventListener('click', () => {
-    const chosen = [...outEl.querySelectorAll('.rule-acc:checked')].map(cb => sug[+cb.dataset.i]).filter(Boolean);
-    applyRulesAndRerun(rerun, mergeAugments(chosen.map(s => s.augment)));
-  });
+  if (applyBtn) applyBtn.addEventListener('click', () => applyRulesAndRerun(rerun, mergeAugments(chosenAugs())));
+  if (pinBtn) pinBtn.addEventListener('click', () => pinSelectedRules(prefix, mergeAugments(chosenAugs()), pinBtn, note));
   wireFoot();
   update();
 }
@@ -3215,6 +3219,25 @@ async function rerunWithReview(rerun) {
       if (res.resultPrefix) pollResults(res.resultPrefix);
       else banner('err', 'Re-run did not start.');
     } catch (e) { banner('err', e.message); }
+  }
+}
+// Pin the selected rules for the NEXT run (no re-run now). Works for every dataset,
+// including warehouse/source runs that can't be re-launched from the results view.
+async function pinSelectedRules(prefix, augment, btn, note) {
+  if (!augment || !Object.keys(augment).length) {
+    if (note) { note.textContent = 'Only advisory suggestions selected — nothing to pin.'; note.dataset.sticky = '1'; }
+    return;
+  }
+  const old = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = 'Pinning…'; }
+  try {
+    await postJSON(`${API_BASE}/data-quality/pin-ruleset`, HEADERS,
+      { result_prefix: prefix, augment, actor: EMAIL || undefined });
+    if (btn) { btn.textContent = 'Pinned ✓'; btn.dataset.done = '1'; }
+    if (note) { note.textContent = 'Pinned — your next assessment of this dataset will use these rules.'; note.dataset.sticky = '1'; }
+  } catch (e) {
+    if (btn) { btn.disabled = false; btn.textContent = old; }
+    if (note) { note.textContent = e.message; note.dataset.sticky = '1'; }
   }
 }
 async function applyRulesAndRerun(rerun, augment) {
