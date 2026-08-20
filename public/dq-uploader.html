@@ -344,6 +344,7 @@
   .src-field label { font-size: 12px; font-weight: 600; color: var(--muted); }
   .src-field input, .src-field select { padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px;
     background: var(--card); color: var(--text); font-size: 13px; }
+  .src-field input.src-missing, .src-field select.src-missing { border-color: var(--err); box-shadow: 0 0 0 2px var(--err-bg); }
   .src-note { font-size: 13px; color: var(--muted); margin: 0 0 6px; max-width: 760px; line-height: 1.5; }
   .src-run { padding: 9px 18px; border: none; border-radius: 8px; background: var(--accent); color: var(--accent-fg);
     font-size: 14px; font-weight: 600; cursor: pointer; }
@@ -447,12 +448,18 @@
   .rule-flag { align-self: center; font-size: 11px; color: var(--muted);
     background: var(--idle-bg); padding: 2px 8px; border-radius: 10px; }
   .rule-edited { align-self: center; font-size: 11px; color: var(--accent2); }
-  .ar-list { max-height: 440px; overflow-y: auto; }
-  .ar-row { border-top: 1px solid var(--border); padding: 10px 0; }
-  .ar-row:first-child { border-top: 0; }
-  .ar-head { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
-  .ar-fields { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: flex-end; }
-  .ar-flag { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--muted); }
+  .ar-list { max-height: 460px; overflow-y: auto; padding-right: 4px; }
+  .ar-card { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; background: var(--card); }
+  .ar-card-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+  .ar-card-head strong { font-size: 14px; }
+  .ar-flags { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+  .ar-flag { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text);
+    background: var(--bg); border: 1px solid var(--border); border-radius: 999px; padding: 3px 10px; cursor: pointer; }
+  .ar-flag input { margin: 0; }
+  .ar-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px 14px; }
+  .ar-empty { font-size: 12px; color: var(--muted); }
+  .ar-add { margin-top: 10px; display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
+  .ar-add select { padding: 4px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); font-size: 12px; }
   .na-line { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
   .na-chip { font-size: 11px; color: var(--muted); background: var(--idle-bg); padding: 2px 8px;
     border-radius: 999px; cursor: help; }
@@ -1711,51 +1718,67 @@ async function editActiveRules(prefix, outEl) {
     outEl.innerHTML = `<p class="dash-muted" style="color:var(--err)">${esc(e.message)}</p>`;
     return;
   }
-  const state = {                                          // working copy the editor mutates
-    columns: JSON.parse(JSON.stringify(data.columns || {})),
-    primaryKey: (data.primaryKey || []).slice(),
-    hasPending: !!data.hasPending,
-  };
+  // Normalise: keep only the rules actually SET (drop null/empty/false), so the editor
+  // shows the real active constraints instead of every possible-but-empty field.
+  const norm = {};
+  for (const [col, spec] of Object.entries(data.columns || {})) {
+    const clean = {};
+    for (const [k, v] of Object.entries(spec || {})) {
+      if (v === null || v === undefined || v === '') continue;
+      if (typeof v === 'boolean' && !v) continue;
+      if (Array.isArray(v) && !v.length) continue;
+      clean[k] = v;
+    }
+    norm[col] = clean;
+  }
+  const state = { columns: norm, primaryKey: (data.primaryKey || []).slice(), hasPending: !!data.hasPending };
   renderActiveRulesEditor(state, outEl, prefix);
 }
-function _activeRuleControls(col, spec) {
-  const parts = [];
-  for (const [bf, label] of Object.entries(RULE_BOOL_FIELDS)) {
-    const on = spec[bf] === true ? ' checked' : '';
-    parts.push(`<label class="ar-flag"><input type="checkbox" class="ar-bool" data-arcol="${esc(col)}" data-arf="${bf}"${on}> ${esc(label)}</label>`);
+function _activeTypedField(col, f, spec) {
+  const meta = RULE_FIELD_META[f], id = `ar-${col}-${f}`;
+  let input;
+  if (meta.type === 'select') {
+    input = `<select id="${id}" class="rule-edit-in ar-in" data-arcol="${esc(col)}" data-arf="${f}">` +
+      [`<option value="">(none)</option>`].concat(meta.options.map(o => `<option value="${esc(o)}"${String(o) === String(spec[f]) ? ' selected' : ''}>${esc(o)}</option>`)).join('') + `</select>`;
+  } else {
+    const extra = (meta.step ? ` step="${meta.step}"` : '') + (meta.min !== undefined ? ` min="${meta.min}"` : '');
+    const shown = (meta.list && Array.isArray(spec[f])) ? spec[f].join(', ') : spec[f];
+    input = `<input id="${id}" class="rule-edit-in ar-in" type="${meta.type}"${extra} value="${esc(String(shown == null ? '' : shown))}" data-arcol="${esc(col)}" data-arf="${f}">`;
   }
-  for (const f of RULE_FIELD_ORDER) {
-    if (!(f in spec)) continue;
-    const meta = RULE_FIELD_META[f], id = `ar-${col}-${f}`;
-    let input;
-    if (meta.type === 'select') {
-      input = `<select id="${id}" class="rule-edit-in ar-in" data-arcol="${esc(col)}" data-arf="${f}">` +
-        [`<option value="">(none)</option>`].concat(meta.options.map(o => `<option value="${esc(o)}"${String(o) === String(spec[f]) ? ' selected' : ''}>${esc(o)}</option>`)).join('') + `</select>`;
-    } else {
-      const extra = (meta.step ? ` step="${meta.step}"` : '') + (meta.min !== undefined ? ` min="${meta.min}"` : '') + (meta.wide ? ` style="min-width:220px;"` : '');
-      const shown = (meta.list && Array.isArray(spec[f])) ? spec[f].join(', ') : spec[f];
-      input = `<input id="${id}" class="rule-edit-in ar-in" type="${meta.type}"${extra} value="${esc(String(shown == null ? '' : shown))}" data-arcol="${esc(col)}" data-arf="${f}">`;
-    }
-    parts.push(`<span class="rule-edit-field"><label for="${id}">${esc(meta.label)}</label>${input}</span>`);
-  }
-  return parts.join('') || `<span class="hint" style="align-self:center;">No editable rules on this column.</span>`;
+  return `<span class="rule-edit-field"><label for="${id}">${esc(meta.label)}</label>${input}</span>`;
+}
+function _activeRuleCard(col, spec) {
+  const flags = Object.entries(RULE_BOOL_FIELDS).map(([bf, label]) =>
+    `<label class="ar-flag"><input type="checkbox" class="ar-bool" data-arcol="${esc(col)}" data-arf="${bf}"${spec[bf] === true ? ' checked' : ''}> ${esc(label)}</label>`).join('');
+  const typed = RULE_FIELD_ORDER.filter(f => f in spec).map(f => _activeTypedField(col, f, spec));
+  const grid = typed.length
+    ? `<div class="ar-grid">${typed.join('')}</div>`
+    : `<div class="ar-empty">No value constraints — use “Add constraint” to add one.</div>`;
+  // Fields not yet set on this column, offered under an "Add constraint" dropdown.
+  const unset = RULE_FIELD_ORDER.filter(f => !(f in spec));
+  const addSel = unset.length
+    ? `<div class="ar-add">＋ Add constraint <select class="ar-add-sel" data-arcol="${esc(col)}">` +
+        `<option value="">Choose…</option>` + unset.map(f => `<option value="${f}">${esc(RULE_FIELD_META[f].label)}</option>`).join('') +
+      `</select></div>` : '';
+  return `<div class="ar-card">
+      <div class="ar-card-head"><strong>${esc(col)}</strong>
+        <button type="button" class="linkbtn ar-remove" data-arcol="${esc(col)}">Remove all rules</button></div>
+      <div class="ar-flags">${flags}</div>
+      ${grid}${addSel}
+    </div>`;
 }
 function renderActiveRulesEditor(state, outEl, prefix) {
   const cols = Object.keys(state.columns);
   const pendWarn = state.hasPending
     ? `<p class="hint" style="color:var(--run);">You already have queued changes for this dataset — saving here replaces them.</p>` : '';
-  const rows = cols.map(col => `
-    <div class="ar-row">
-      <div class="ar-head"><strong>${esc(col)}</strong>
-        <button type="button" class="linkbtn ar-remove" data-arcol="${esc(col)}">Remove all rules</button></div>
-      <div class="ar-fields">${_activeRuleControls(col, state.columns[col])}</div>
-    </div>`).join('') || `<p class="hint">No column rules are currently pinned for this dataset.</p>`;
+  const cards = cols.map(col => _activeRuleCard(col, state.columns[col])).join('')
+    || `<p class="hint">No column rules are currently pinned for this dataset.</p>`;
   outEl.innerHTML = `<div class="rules-review">
-      <p class="hint">These are the rules currently in effect. Edit or clear any field, toggle a flag off, remove a column's rules, or set the primary key. Changes apply on the next run.</p>
+      <p class="hint">These are the rules currently in effect. Edit a value, toggle a flag, add or remove a constraint, or set the primary key. Changes apply on the next run.</p>
       ${pendWarn}
-      <span class="rule-edit-field" style="margin-bottom:10px;"><label for="arPk">Primary key (comma-separated columns)</label>
-        <input id="arPk" class="rule-edit-in ar-in" style="min-width:220px;" value="${esc((state.primaryKey || []).join(', '))}" data-arpk="1"></span>
-      <div class="ar-list">${rows}</div>
+      <div class="rule-edit-field" style="margin-bottom:12px;max-width:420px;"><label for="arPk">Primary key <span class="hint">(comma-separated, blank = none)</span></label>
+        <input id="arPk" class="rule-edit-in ar-in" value="${esc((state.primaryKey || []).join(', '))}" data-arpk="1"></div>
+      <div class="ar-list">${cards}</div>
       <div class="actions" style="margin-top:12px;align-items:center;">
         <button type="button" class="ar-save">Save changes</button>
         <span class="hint" id="arNote">Edits apply on the next assessment of this dataset (no new AI call).</span>
@@ -1771,6 +1794,12 @@ function renderActiveRulesEditor(state, outEl, prefix) {
     if (!state.columns[col]) return;
     if (cb.checked) state.columns[col][f] = true; else delete state.columns[col][f];
   }));
+  outEl.querySelectorAll('.ar-add-sel').forEach(sel => sel.addEventListener('change', () => {
+    const col = sel.dataset.arcol, f = sel.value;
+    if (!f || !state.columns[col]) return;
+    state.columns[col][f] = (RULE_FIELD_META[f].type === 'number') ? '' : '';   // appears as a blank input to fill
+    renderActiveRulesEditor(state, outEl, prefix);
+  }));
   outEl.querySelectorAll('.ar-remove').forEach(b => b.addEventListener('click', () => {
     delete state.columns[b.dataset.arcol];
     renderActiveRulesEditor(state, outEl, prefix);
@@ -1780,7 +1809,14 @@ function renderActiveRulesEditor(state, outEl, prefix) {
 }
 async function saveActiveRules(prefix, state, btn, note) {
   const columns = {};
-  for (const [c, spec] of Object.entries(state.columns)) if (spec && Object.keys(spec).length) columns[c] = spec;
+  for (const [c, spec] of Object.entries(state.columns)) {
+    const clean = {};
+    for (const [k, v] of Object.entries(spec || {})) {
+      if (v === null || v === undefined || v === '' || (Array.isArray(v) && !v.length)) continue;
+      clean[k] = v;
+    }
+    if (Object.keys(clean).length) columns[c] = clean;
+  }
   const old = btn.textContent; btn.disabled = true; btn.textContent = 'Saving…';
   try {
     await postJSON(`${API_BASE}/data-quality/save-ruleset`, HEADERS,
@@ -3811,14 +3847,32 @@ function collectSourceFields(key) {
   return cfg;
 }
 
+// The human-readable label for a source field key, read straight off its form <label>
+// (stripping the ⓘ info icon and any "(optional)" hint) so error messages name the exact
+// field the user sees — not the internal key.
+function srcFieldLabel(body, f) {
+  const el = body && body.querySelector(`[data-f="${f}"]`);
+  const lbl = el && el.closest('.src-field') && el.closest('.src-field').querySelector('label');
+  if (!lbl) return f;
+  return (lbl.textContent || '').replace(/ⓘ/g, '').replace(/\(optional\)/ig, '').replace(/\s+/g, ' ').trim() || f;
+}
 function runSource(key) {
   const statusEl = document.querySelector(`[data-status="${key}"]`);
   if (!statusEl) return;
+  const body = document.getElementById('src-' + key);
   const cfg = collectSourceFields(key);
   const missing = (SOURCE_REQUIRED[key] || []).filter(f => !cfg[f]);
+  if (body) body.querySelectorAll('.src-missing').forEach(el => el.classList.remove('src-missing'));
   if (missing.length) {
+    const labels = missing.map(f => srcFieldLabel(body, f));
+    missing.forEach(f => {
+      const el = body && body.querySelector(`[data-f="${f}"]`);
+      if (el) { el.classList.add('src-missing'); el.addEventListener('input', () => el.classList.remove('src-missing'), { once: true }); }
+    });
     statusEl.className = 'src-status err';
-    statusEl.textContent = 'Please fill in the required field(s): ' + missing.join(', ') + '.';
+    statusEl.textContent = `Please fill in the required field${labels.length > 1 ? 's' : ''}: ${labels.join(', ')}.`;
+    const first = body && body.querySelector('.src-missing');
+    if (first) first.focus();
     return;
   }
   if (key === 'redshift') { runRedshift(cfg, statusEl); return; }   // wired end-to-end
