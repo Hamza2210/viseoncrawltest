@@ -4622,17 +4622,31 @@ async function reRunTable(tableName, sourceFormat, resultPrefix) {
   if (fmt && fmt !== 'qlik') {
     // Saved credentials? Re-run this exact dataset directly (server reconstructs the config
     // from the run's own table/schema + the saved connection). Otherwise redirect to re-enter.
+    const card = _SRC_CARD_BY_FMT[fmt] || 's3';           // file formats (parquet/csv/…) -> S3 datasource
     if (resultPrefix) {
       try {
         const r = await postJSON(`${API_BASE}/data-quality/rerun-source`, HEADERS,
           { result_prefix: resultPrefix, notify_email: EMAIL || undefined });
         if (r && r.rerun) {
-          banner('ok', `Re-assessment of “${tableName}” started with saved credentials — it’ll appear in History/Dashboard shortly.`);
+          // Behave like a normal run: open the source tab + connector and poll the result live.
+          switchTab('upload');
+          if (typeof selectSource === 'function') selectSource(card);
+          const statusEl = document.querySelector(`[data-status="${card}"]`);
+          if (statusEl) {
+            statusEl.className = 'src-status dev';
+            statusEl.innerHTML = `Re-assessment of “${esc(tableName)}” started with saved credentials (run <code>${esc(r.runId || '')}</code>).`;
+          }
+          const resultCard = document.getElementById(`${card}Result`);
+          const bodyEl = document.getElementById(`${card}ResultBody`);
+          if (resultCard) { resultCard.style.display = 'block'; resultCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
+          if (bodyEl) {
+            bodyEl.innerHTML = `<p><span class="spin"></span> Scoring the dataset — this can take a moment…</p>`;
+            if (r.resultPrefix) pollInto(r.resultPrefix, bodyEl, {});
+          }
           return;
         }
       } catch (e) { /* fall through to the redirect */ }
     }
-    const card = _SRC_CARD_BY_FMT[fmt] || 's3';           // file formats (parquet/csv/…) -> S3 datasource
     switchTab('upload');
     if (typeof selectSource === 'function') selectSource(card);
     banner('info', `No saved credentials for this source. Re-enter your ${SOURCE_LABEL[card] || 'data source'} connection details and run “${tableName}” again — your pinned rules are applied automatically.`);
