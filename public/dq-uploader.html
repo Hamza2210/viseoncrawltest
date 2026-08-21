@@ -345,6 +345,7 @@
   .src-field input, .src-field select { padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px;
     background: var(--card); color: var(--text); font-size: 13px; }
   .src-field input.src-missing, .src-field select.src-missing { border-color: var(--err); box-shadow: 0 0 0 2px var(--err-bg); }
+  .src-run.run-off { opacity: .55; cursor: not-allowed; }
   .src-note { font-size: 13px; color: var(--muted); margin: 0 0 6px; max-width: 760px; line-height: 1.5; }
   .src-run { padding: 9px 18px; border: none; border-radius: 8px; background: var(--accent); color: var(--accent-fg);
     font-size: 14px; font-weight: 600; cursor: pointer; }
@@ -3990,6 +3991,7 @@ function selectSource(key) {
     if (show && runBtn) { runBtn.parentNode.insertBefore(refs, runBtn); refs.style.display = ''; srcRefsState.warehouse = _WAREHOUSE_SRC.has(key); renderSrcRefs(); }
     else refs.style.display = 'none';
   }
+  if (show) updateSourceRunState(key);
 }
 
 // ---- Per-app saved source credentials (opt-in; secrets applied server-side) ------------
@@ -4027,6 +4029,7 @@ function applySavedCreds(key) {
     if (el) { el.value = ''; el.placeholder = 'Using saved credentials'; }
   });
   useSavedCreds[key] = true;
+  updateSourceRunState(key);
   const note = document.getElementById('srcCredsNote');
   if (note) note.innerHTML = `<span class="src-status dev">Saved credentials applied — the secret is supplied securely at run time. ` +
     `<a href="#" class="linkbtn" data-creddelete="1" style="margin:0;color:var(--err);">Delete saved</a></span>`;
@@ -4037,6 +4040,7 @@ async function deleteSavedCreds(key) {
   try { await postJSON(`${API_BASE}/data-quality/source-credentials`, HEADERS, { app_id: APP_ID, source: key, action: 'delete' }); }
   catch (e) { alert(e.message); return; }
   savedCredsCache[key] = null; useSavedCreds[key] = false;
+  updateSourceRunState(key);
   const note = document.getElementById('srcCredsNote');
   if (note) note.innerHTML = `<span class="hint">Saved credentials deleted.</span>`;
 }
@@ -4138,6 +4142,25 @@ function srcFieldLabel(body, f) {
   const lbl = el && el.closest('.src-field') && el.closest('.src-field').querySelector('label');
   if (!lbl) return f;
   return (lbl.textContent || '').replace(/ⓘ/g, '').replace(/\(optional\)/ig, '').replace(/\s+/g, ' ').trim() || f;
+}
+// Enable/disable a source's Run button by whether its required fields are filled, and set a
+// hover tooltip (the page's data-tip system) naming what's still missing while disabled.
+function updateSourceRunState(key) {
+  const btn = document.querySelector(`#src-${key} .src-run`);
+  if (!btn) return;
+  const bodyEl = document.getElementById('src-' + key);
+  const cfg = collectSourceFields(key);
+  const secretF = SRC_SECRET_FIELDS[key] || [];
+  const required = (SOURCE_REQUIRED[key] || []).filter(f => !(useSavedCreds[key] && secretF.includes(f)));
+  const missing = required.filter(f => !cfg[f]);
+  if (missing.length) {
+    btn.classList.add('run-off');
+    const labels = missing.map(f => srcFieldLabel(bodyEl, f));
+    btn.dataset.tip = `Fill in the required field${labels.length > 1 ? 's' : ''}: ${labels.join(', ')}`;
+  } else {
+    btn.classList.remove('run-off');
+    delete btn.dataset.tip;
+  }
 }
 function runSource(key) {
   const statusEl = document.querySelector(`[data-status="${key}"]`);
@@ -4332,6 +4355,12 @@ async function runDatabricks(cfg, statusEl) {
 
 document.querySelectorAll('.source-card').forEach(c => c.addEventListener('click', () => selectSource(c.dataset.source)));
 document.querySelectorAll('[data-runsource]').forEach(b => b.addEventListener('click', () => runSource(b.dataset.runsource)));
+// Live-validate each source's Run button as its fields change (disable + hover tooltip).
+document.querySelectorAll('.source-body').forEach(b => {
+  if (b.id === 'src-file') return;
+  const key = b.id.replace('src-', '');
+  b.addEventListener('input', () => updateSourceRunState(key));
+});
 
 // Per-field help: an ⓘ icon (with the page's data-tip tooltip) on every connector field.
 // Keyed by field key; a source-specific entry wins over the shared `common` one.
