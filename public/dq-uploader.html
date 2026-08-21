@@ -1136,6 +1136,7 @@
 
         <div id="schSourceWrap" style="display:none;">
           <p class="hint" style="margin:8px 0;">The connection details are stored with the schedule so it can run unattended — prefer a role or Secrets Manager ARN over raw passwords/keys where the source allows it.</p>
+          <div id="schedCredsNote" style="margin:0 0 10px;"></div>
           <div class="src-form" id="schedSourceFields"></div>
         </div>
 
@@ -4963,9 +4964,36 @@ function _schFieldHelp(kind, f) {
     (SOURCE_FIELD_HELP.common && SOURCE_FIELD_HELP.common[f]) || '';
 }
 
+let schedUseSaved = false;
+async function loadSchedCredsNote(kind) {
+  const note = $('#schedCredsNote'); if (!note) return;
+  note.innerHTML = ''; schedUseSaved = false;
+  if (!APP_ID || !(kind in SRC_SECRET_FIELDS)) return;
+  let r;
+  try { r = await postJSON(`${API_BASE}/data-quality/source-credentials`, HEADERS, { app_id: APP_ID, source: kind, action: 'get' }); }
+  catch (e) { return; }
+  if (!r || !r.found) { savedCredsCache['sched:' + kind] = null; return; }
+  savedCredsCache['sched:' + kind] = r.config || {};
+  note.className = 'src-status dev';
+  note.innerHTML = `Saved credentials for ${esc(SOURCE_LABEL[kind] || kind)} were found. ` +
+    `<a href="#" class="linkbtn" data-schapply="1" style="margin:0;">Apply them</a>`;
+  const ap = note.querySelector('[data-schapply]');
+  if (ap) ap.addEventListener('click', e => { e.preventDefault(); applySchedCreds(kind); });
+}
+function applySchedCreds(kind) {
+  const cfg = savedCredsCache['sched:' + kind] || {}, wrap = $('#schedSourceFields');
+  if (!wrap) return;
+  const skip = new Set(SRC_SECRET_FIELDS[kind] || []);
+  Object.entries(cfg).forEach(([f, v]) => { const el = wrap.querySelector(`[data-f="${f}"]`); if (el && !skip.has(f)) el.value = v; });
+  (SRC_SECRET_FIELDS[kind] || []).forEach(f => { const el = wrap.querySelector(`[data-f="${f}"]`); if (el) { el.value = ''; el.placeholder = 'Using saved credentials'; } });
+  schedUseSaved = true;
+  const note = $('#schedCredsNote');
+  if (note) note.innerHTML = `<span class="src-status dev">Saved credentials applied — the secret is supplied securely when the schedule runs.</span>`;
+}
 function renderSchedSourceFields(kind) {
   const wrap = $('#schedSourceFields');
   if (!wrap) return;
+  loadSchedCredsNote(kind);
   wrap.innerHTML = (SCHED_SOURCE_FIELDS[kind] || []).map(fld => {
     const help = _schFieldHelp(kind, fld.f);
     const ic = help ? ` <span class="src-info" data-tip="${esc(help)}">ⓘ</span>` : '';
@@ -4979,6 +5007,7 @@ function renderSchedSourceFields(kind) {
 function collectSchedSource() {
   const wrap = $('#schedSourceFields'), cfg = {};
   if (wrap) wrap.querySelectorAll('[data-f]').forEach(el => { const v = (el.value || '').trim(); if (v) cfg[el.dataset.f] = v; });
+  if (schedUseSaved) cfg.use_saved_credentials = true;   // secrets injected server-side at create
   return cfg;
 }
 
@@ -5015,7 +5044,10 @@ async function saveSchedule() {
     if (Number.isFinite(sample) && sample > 0) body.sample_rows = sample;
   } else {
     const cfg = collectSchedSource();
-    const missing = (SOURCE_REQUIRED[kind] || []).filter(f => !cfg[f]);
+    // When saved credentials are applied, the blank secret is injected server-side.
+    const secretF = SRC_SECRET_FIELDS[kind] || [];
+    const required = (SOURCE_REQUIRED[kind] || []).filter(f => !(schedUseSaved && secretF.includes(f)));
+    const missing = required.filter(f => !cfg[f]);
     if (missing.length) { schBanner('err', 'Fill in the source field(s): ' + missing.join(', ') + '.'); return; }
     if (kind === 'redshift') {
       if (cfg.cluster_type === 'workgroup') { cfg.workgroup = cfg.cluster; delete cfg.cluster; }
