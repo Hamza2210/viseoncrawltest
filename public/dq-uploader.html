@@ -887,10 +887,11 @@
       </div>
     </div>
 
-    <!-- Shared saved-credentials block (opt-in). selectSource() moves it into the active card. -->
-    <div id="srcCreds" style="display:none;margin:14px 0;">
-      <div id="srcCredsNote"></div>
-      <label class="ar-flag" style="margin-top:8px;"><input type="checkbox" id="srcSaveCreds"> 💾 Save these credentials for this app (stored encrypted)</label>
+    <!-- Saved-credentials note (goes to the TOP of the active card) + save checkbox (stays
+         just above the Run button). selectSource() relocates each into the active source card. -->
+    <div id="srcCredsNote" style="display:none;margin:14px 0;"></div>
+    <div id="srcSaveWrap" style="display:none;margin:14px 0;">
+      <label class="ar-flag"><input type="checkbox" id="srcSaveCreds"> 💾 Save these credentials for this app (stored encrypted)</label>
     </div>
 
     <!-- Shared optional Accuracy & Integrity config; selectSource() moves this into the active
@@ -3987,21 +3988,27 @@ function selectSource(key) {
   // its Run button, so they read as part of the connection config rather than the result.
   const show = !['file', 'postgres'].includes(key);
   const runBtn = show ? document.querySelector(`#src-${key} .src-run`) : null;
-  const creds = document.getElementById('srcCreds');
-  if (creds) {
+  // Saved-credentials NOTE sits at the top of the source card (just under the title).
+  const note = document.getElementById('srcCredsNote');
+  if (note) {
     if (show) {
-      // Sit at the TOP of the source card (just under the title), not above the Run button.
       const card = document.querySelector(`#src-${key} .card`);
       const h2 = card && card.querySelector('h2');
-      if (h2) h2.insertAdjacentElement('afterend', creds);
-      else if (card) card.insertBefore(creds, card.firstChild);
-      creds.style.display = ''; loadSavedCredsNote(key);
-    } else creds.style.display = 'none';
+      if (h2) h2.insertAdjacentElement('afterend', note);
+      else if (card) card.insertBefore(note, card.firstChild);
+      note.style.display = ''; loadSavedCredsNote(key);
+    } else note.style.display = 'none';
   }
   const refs = document.getElementById('srcRefs');
   if (refs) {
     if (show && runBtn) { runBtn.parentNode.insertBefore(refs, runBtn); refs.style.display = ''; srcRefsState.warehouse = _WAREHOUSE_SRC.has(key); renderSrcRefs(); }
     else refs.style.display = 'none';
+  }
+  // The "Save these credentials" checkbox stays just above the Run button (below the refs).
+  const saveWrap = document.getElementById('srcSaveWrap');
+  if (saveWrap) {
+    if (show && runBtn) { runBtn.parentNode.insertBefore(saveWrap, runBtn); saveWrap.style.display = ''; }
+    else saveWrap.style.display = 'none';
   }
   if (show) updateSourceRunState(key);
 }
