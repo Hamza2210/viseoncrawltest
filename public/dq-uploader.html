@@ -2122,7 +2122,7 @@ function historyRow(r) {
   // its Data-from-Source tab). Not tenant-wide uploads, which can't be replayed from here.
   const isSrc = r.sourceFormat && r.sourceFormat !== 'qlik';
   const rerun = ((APP_ID && typeof r.slug === 'string' && r.slug.includes('/')) || isSrc)
-    ? `<button class="btn-sm histrerun" data-rerun="${esc(r.dataset)}" data-fmt="${esc(r.sourceFormat || '')}" data-tip="Re-assess this dataset">↻</button>`
+    ? `<button class="btn-sm histrerun" data-rerun="${esc(r.dataset)}" data-fmt="${esc(r.sourceFormat || '')}" data-prefix="${esc(r.resultPrefix || '')}" data-tip="Re-assess this dataset">↻</button>`
     : '<span></span>';
   return `<div class="histrow" data-prefix="${esc(r.resultPrefix)}">
       <span class="h-name">${esc(r.dataset)}${sub ? `<div class="hint">${esc(sub)}</div>` : ''}</span>
@@ -2175,7 +2175,7 @@ function renderHistoryPage() {
   list.querySelectorAll('.histrow').forEach(el =>
     el.addEventListener('click', e => { e.preventDefault(); openHistoryRun(el.dataset.prefix); }));
   list.querySelectorAll('.histrerun').forEach(b =>
-    b.addEventListener('click', e => { e.stopPropagation(); reRunTable(b.dataset.rerun, b.dataset.fmt); }));
+    b.addEventListener('click', e => { e.stopPropagation(); reRunTable(b.dataset.rerun, b.dataset.fmt, b.dataset.prefix); }));
   if (pages > 1) {
     pager.innerHTML =
       `<button class="btn-secondary" id="pgPrev" ${historyPage === 0 ? 'disabled' : ''}>← Prev</button>` +
@@ -2305,7 +2305,7 @@ function renderHistoryAppPage() {
   list.querySelectorAll('.histrow').forEach(el =>
     el.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); openHistoryRun(el.dataset.prefix); }));
   list.querySelectorAll('.histrerun').forEach(b =>
-    b.addEventListener('click', e => { e.stopPropagation(); reRunTable(b.dataset.rerun, b.dataset.fmt); }));
+    b.addEventListener('click', e => { e.stopPropagation(); reRunTable(b.dataset.rerun, b.dataset.fmt, b.dataset.prefix); }));
   if (pages > 1) {
     pager.innerHTML =
       `<button class="btn-secondary" id="apgPrev" ${historyAppPage === 0 ? 'disabled' : ''}>← Prev</button>` +
@@ -2632,7 +2632,7 @@ function renderHealthTable(datasets) {
         <td>${numInt(d.rows)}</td>
         <td class="dash-muted">${esc(age)}</td>
         <td>${spark}</td>
-        <td><button class="btn-sm" data-rerun="${esc(d.name)}" data-fmt="${esc(d.sourceFormat || '')}" data-tip="Re-assess this dataset">↻ Re-run</button></td>
+        <td><button class="btn-sm" data-rerun="${esc(d.name)}" data-fmt="${esc(d.sourceFormat || '')}" data-prefix="${esc(d.resultPrefix || '')}" data-tip="Re-assess this dataset">↻ Re-run</button></td>
       </tr>`;
   }).join('');
   $('#dashTableWrap').innerHTML =
@@ -2645,7 +2645,7 @@ function renderHealthTable(datasets) {
       selectDataset(tr.getAttribute('data-key'), tr.getAttribute('data-name'));
     }));
   $('#dashTableWrap').querySelectorAll('button[data-rerun]').forEach(b =>
-    b.addEventListener('click', e => { e.stopPropagation(); reRunTable(b.dataset.rerun, b.dataset.fmt); }));
+    b.addEventListener('click', e => { e.stopPropagation(); reRunTable(b.dataset.rerun, b.dataset.fmt, b.dataset.prefix); }));
 }
 
 function renderHeatmap(datasets) {
@@ -3996,6 +3996,8 @@ function selectSource(key) {
 
 // ---- Per-app saved source credentials (opt-in; secrets applied server-side) ------------
 const SRC_SECRET_FIELDS = { redshift: [], s3: ['access_key', 'secret_key'], snowflake: ['password'], databricks: ['token'] };
+// The "which dataset" field(s) — left for the user to type when applying a saved connection.
+const SRC_DATASET_FIELDS = { redshift: ['table'], s3: ['uri'], snowflake: ['table'], databricks: ['table'] };
 const savedCredsCache = {};   // key -> non-secret config from the last get
 const useSavedCreds = {};     // key -> true when the user applied saved creds
 
@@ -4019,11 +4021,13 @@ async function loadSavedCredsNote(key) {
 function applySavedCreds(key) {
   const cfg = savedCredsCache[key] || {}, body = document.getElementById('src-' + key);
   if (!body) return;
+  // Fill the connection identity, but not the secret (server-side) or the dataset field
+  // (table / S3 URI) — the user picks which table/object to assess on this connection.
+  const skip = new Set([...(SRC_SECRET_FIELDS[key] || []), ...(SRC_DATASET_FIELDS[key] || [])]);
   Object.entries(cfg).forEach(([f, v]) => {
     const el = body.querySelector(`[data-f="${f}"]`);
-    if (el && !SRC_SECRET_FIELDS[key].includes(f)) el.value = v;
+    if (el && !skip.has(f)) el.value = v;
   });
-  // Secret inputs stay blank but show they'll be supplied from the saved profile.
   SRC_SECRET_FIELDS[key].forEach(f => {
     const el = body.querySelector(`[data-f="${f}"]`);
     if (el) { el.value = ''; el.placeholder = 'Using saved credentials'; }
@@ -4031,7 +4035,7 @@ function applySavedCreds(key) {
   useSavedCreds[key] = true;
   updateSourceRunState(key);
   const note = document.getElementById('srcCredsNote');
-  if (note) note.innerHTML = `<span class="src-status dev">Saved credentials applied — the secret is supplied securely at run time. ` +
+  if (note) note.innerHTML = `<span class="src-status dev">Saved connection applied — enter the ${key === 's3' ? 'S3 URI' : 'table'} to assess; the secret is supplied securely at run time. ` +
     `<a href="#" class="linkbtn" data-creddelete="1" style="margin:0;color:var(--err);">Delete saved</a></span>`;
   const del = note && note.querySelector('[data-creddelete]');
   if (del) del.addEventListener('click', e => { e.preventDefault(); deleteSavedCreds(key); });
@@ -4612,14 +4616,25 @@ async function assessEntireApp() {
 // Qlik app tables re-run in place (the extension holds the bearer); every other source is
 // routed to its Data-from-Source card to re-enter details + run (pinned rules still apply).
 const _SRC_CARD_BY_FMT = { redshift: 'redshift', snowflake: 'snowflake', databricks: 'databricks', s3: 's3' };
-async function reRunTable(tableName, sourceFormat) {
+async function reRunTable(tableName, sourceFormat, resultPrefix) {
   const fmt = (sourceFormat || '').toLowerCase();
   if (fmt && fmt !== 'qlik') {
+    // Saved credentials? Re-run this exact dataset directly (server reconstructs the config
+    // from the run's own table/schema + the saved connection). Otherwise redirect to re-enter.
+    if (resultPrefix) {
+      try {
+        const r = await postJSON(`${API_BASE}/data-quality/rerun-source`, HEADERS,
+          { result_prefix: resultPrefix, notify_email: EMAIL || undefined });
+        if (r && r.rerun) {
+          banner('ok', `Re-assessment of “${tableName}” started with saved credentials — it’ll appear in History/Dashboard shortly.`);
+          return;
+        }
+      } catch (e) { /* fall through to the redirect */ }
+    }
     const card = _SRC_CARD_BY_FMT[fmt] || 's3';           // file formats (parquet/csv/…) -> S3 datasource
     switchTab('upload');
     if (typeof selectSource === 'function') selectSource(card);
-    banner('info', `Re-enter your ${SOURCE_LABEL[card] || 'data source'} connection details and run “${tableName}” again — ` +
-      `your pinned rules are applied automatically. (Credentials aren't stored between runs, so a source run can't be replayed for you.)`);
+    banner('info', `No saved credentials for this source. Re-enter your ${SOURCE_LABEL[card] || 'data source'} connection details and run “${tableName}” again — your pinned rules are applied automatically.`);
     return;
   }
   switchTab('appdata');
