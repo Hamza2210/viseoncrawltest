@@ -672,8 +672,8 @@
   .whatchg li { margin: 3px 0; font-size: 13px; }
 
   /* Floating value tooltip for charts */
-  #tip { position: fixed; z-index: 2000; pointer-events: none; white-space: nowrap;
-    background: var(--code-bg); color: var(--code-fg); padding: 6px 10px; border-radius: 8px;
+  #tip { position: fixed; z-index: 2000; pointer-events: none; white-space: pre-line;
+    max-width: 320px; background: var(--code-bg); color: var(--code-fg); padding: 6px 10px; border-radius: 8px;
     font-size: 12px; line-height: 1.35; box-shadow: 0 8px 24px rgba(0,0,0,.35);
     opacity: 0; transform: translateY(3px); transition: opacity .1s ease, transform .1s ease; }
   #tip.show { opacity: 1; transform: translateY(0); }
@@ -1580,7 +1580,23 @@ function renderAssessment(r, bodyEl, opts) {
     if (isApp && c.criterion === 'accuracy') reason = APP_ACCURACY_MSG;
     else if (isApp && c.criterion === 'integrity') reason = APP_INTEGRITY_MSG;
     else if (c.criterion === 'integrity') reason = INTEGRITY_MSG;
-    return reason || 'Excluded from the score — it neither helps nor harms the result.';
+    reason = reason || 'Not scored on this run — it neither helps nor harms the result.';
+    // Every unscored DAMA dimension gets an actionable "how to light it up" line so it
+    // reads as one config step from scoring, not a permanent gap. (App-data has no place
+    // to add references, so accuracy/integrity there stay explanatory only.)
+    const ENABLE = {
+      accuracy: 'To score it: add an authoritative lookup or reference table under “Accuracy & integrity rules”.',
+      integrity: 'To score it: add a master/reference table for the column under “Accuracy & integrity rules”.',
+      precision: 'To score it: declare a required number of decimal places on a numeric column.',
+      consistency: 'To score it: add a format / allowed-values rule on a text column, or a cross-field consistency rule.',
+      timeliness: 'To score it: tick “No future dates”, or add a recency window, on a date/time column.',
+      validity: 'To score it: add a type, format, range, length or allowed-values rule on a column.',
+      reasonability: 'To score it: include a numeric column, or declare a plausible min/max range.',
+      completeness: 'To score it: include at least one column marked mandatory.',
+      uniqueness: 'To score it: mark a column unique or set a primary key.',
+    };
+    const enable = (!isApp || (c.criterion !== 'accuracy' && c.criterion !== 'integrity')) ? ENABLE[c.criterion] : '';
+    return enable ? `${reason}\n\n${enable}` : reason;
   };
   // Assessed dimensions carry the table; not-assessed ones collapse to compact chips (their
   // long "why" text lives in a tooltip) so they stop dominating the view.
@@ -1588,7 +1604,12 @@ function renderAssessment(r, bodyEl, opts) {
   const notAssessed = crit.filter(c => c.status === 'not_assessed' || c.score == null);
   let tableHtml;
   if (crit.length) {
-    tableHtml = `<table class="assess"><tr><td class="k">Criterion</td><td class="k">Score</td><td class="k">Status</td></tr>` +
+    // We assess against the 9 DAMA dimensions. State coverage explicitly so the
+    // framework is always evidenced, even when some dimensions await a reference.
+    const coverage = `<p class="hint">Assessed against the 9 DAMA data-quality dimensions — ` +
+      `<strong>${assessed.length} scored</strong> from this data` +
+      (notAssessed.length ? `, ${notAssessed.length} awaiting a reference/config (below).` : '.') + `</p>`;
+    tableHtml = coverage + `<table class="assess"><tr><td class="k">Criterion</td><td class="k">Score</td><td class="k">Status</td></tr>` +
       assessed.map(c => `<tr>
           <td>${c.label || c.criterion}</td>
           <td>${fmtScore(c.score)}</td>
@@ -1596,7 +1617,7 @@ function renderAssessment(r, bodyEl, opts) {
         </tr>`).join('') + `</table>`;
     if (notAssessed.length) {
       const chips = notAssessed.map(c => `<span class="na-chip" data-tip="${esc(reasonFor(c))}">${esc(c.label || c.criterion)} ⓘ</span>`).join(' ');
-      tableHtml += `<div class="na-line"><span class="hint">Not assessed (${notAssessed.length}) — excluded from the score:</span> ${chips}</div>`;
+      tableHtml += `<div class="na-line"><span class="hint">Also part of the 9 DAMA dimensions — not scored on this run (needs a reference/config to score, hover for how):</span> ${chips}</div>`;
     }
   } else {
     tableHtml = `<p class="hint">Assessment finished (${r.state}) but no summary was found.</p>`;
