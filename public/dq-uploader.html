@@ -3051,24 +3051,40 @@ function renderFailedRecords(data) {
   recs.sort((a, b) => (_FR_RANK[(b.severity || '').toLowerCase()] || 0)
     - (_FR_RANK[(a.severity || '').toLowerCase()] || 0));
   const nBlk = recs.filter(x => (x.severity || '').toLowerCase() === 'blocker').length;
-  const rows = recs.map(x => {
+  // File/S3 rows carry `_row` — the real source-row index. Warehouse tables are
+  // unordered sets with no such number, so we number by position in this list instead
+  // and say so plainly (rather than inventing a "row N" that doesn't map to anything).
+  const hasSrc = recs.some(x => { const r = x.record || {}; return r._row !== undefined && r._row !== null && r._row !== ''; });
+  const rowLabel = hasSrc ? 'Row' : '#';
+  const rowTip = hasSrc
+    ? 'Source row number in the uploaded file'
+    : 'Position in this list — a warehouse table has no fixed row order, so identify a row by its column values';
+  const rows = recs.map((x, i) => {
     const rec = x.record || {};
+    const rowNo = hasSrc ? rec._row : (i + 1);
     const fields = Object.entries(rec).filter(([k]) => k !== '_row')
       .map(([k, v]) => `${esc(k)}=${esc(v)}`).join('  ·  ');
     const sev = (x.severity || '').toLowerCase();
-    return `<tr class="fr-row ${sev === 'blocker' ? 'fr-blocker' : ''}" data-sev="${esc(sev)}"><td>${esc(x.dimension)}</td><td>${esc(x.check_id)}</td>` +
+    return `<tr class="fr-row ${sev === 'blocker' ? 'fr-blocker' : ''}" data-sev="${esc(sev)}">` +
+      `<td class="dash-muted" style="font-variant-numeric:tabular-nums;">${esc(rowNo)}</td>` +
+      `<td>${esc(x.dimension)}</td><td>${esc(x.check_id)}</td>` +
       `<td>${sevChip(x.severity)}</td>` +
       `<td class="dash-muted" style="font-family:ui-monospace,Consolas,monospace;font-size:11px;">${fields}</td></tr>`;
   }).join('');
   const head = nBlk
     ? `<p class="fr-count">⛔ ${nBlk} blocker record${nBlk > 1 ? 's' : ''} — fix these first to pass the gate.</p>`
     : '';
+  // Say once, in plain language, what the leading number means for this source — most
+  // communicative for warehouse users, who'd otherwise read "#" as a table position.
+  const rowNote = hasSrc
+    ? `<p class="dash-muted" style="margin:0 0 6px;">“Row” is the record’s line number in the uploaded file.</p>`
+    : `<p class="dash-muted" style="margin:0 0 6px;">“#” is each record’s position in this list. A warehouse table has no fixed row order, so pinpoint a specific row by the column values shown (duplicate copies appear on consecutive lines).</p>`;
   const note = data.truncated
     ? `<p class="dash-muted">Showing ${recs.length} of ${data.total} failed records (download the file for all).</p>`
     : `<p class="dash-muted">${data.total} failed record(s).</p>`;
-  return head + renderFailuresViz(data) + `<p class="dash-muted fr-filter-note" style="margin:0 0 6px;"></p>` +
+  return head + renderFailuresViz(data) + `<p class="dash-muted fr-filter-note" style="margin:0 0 6px;"></p>` + rowNote +
     `<div class="fr-scroll"><table class="dash-table">` +
-    `<tr><th>Dimension</th><th>Check</th><th>Severity</th><th>Offending record</th></tr>${rows}</table></div>${note}` +
+    `<tr><th title="${esc(rowTip)}">${rowLabel}</th><th>Dimension</th><th>Check</th><th>Severity</th><th>Offending record</th></tr>${rows}</table></div>${note}` +
     renderExampleFixes(data);
 }
 // Render failed records into an element AND wire the clickable severity legend (filters the
