@@ -1831,8 +1831,8 @@ function renderActiveRulesEditor(state, outEl, prefix) {
   outEl.innerHTML = `<div class="rules-review">
       <p class="hint">These are the rules currently in effect. Edit a value, toggle a flag, add or remove a constraint, or set the primary key. Changes apply on the next run.</p>
       ${pendWarn}
-      <div class="rule-edit-field" style="margin-bottom:12px;max-width:420px;"><label for="arPk">Primary key <span class="hint">(comma-separated, blank = none)</span></label>
-        <input id="arPk" class="rule-edit-in ar-in" value="${esc((state.primaryKey || []).join(', '))}" data-arpk="1"></div>
+      <div class="rule-edit-field" style="margin-bottom:12px;max-width:320px;"><label for="arPk">Primary key</label>
+        <select id="arPk" class="rule-edit-in ar-in" data-arpk="1"><option value="">(none)</option>${Object.keys(state.columns || {}).map(c => `<option value="${esc(c)}"${(state.primaryKey || [])[0] === c ? ' selected' : ''}>${esc(c)}</option>`).join('')}</select></div>
       <div class="ar-list">${cards}</div>
       ${_refsSection(state)}
       <div class="actions" style="margin-top:14px;align-items:center;">
@@ -1849,7 +1849,7 @@ function renderActiveRulesEditor(state, outEl, prefix) {
     if (nl) nl.scrollTop = top;
   };
   outEl.querySelectorAll('.ar-in').forEach(el => el.addEventListener('input', () => {
-    if (el.dataset.arpk) { state.primaryKey = el.value.split(',').map(x => x.trim()).filter(Boolean); return; }
+    if (el.dataset.arpk) { state.primaryKey = el.value ? [el.value] : []; return; }
     const col = el.dataset.arcol, f = el.dataset.arf;
     if (state.columns[col]) applyRuleEdit(state.columns[col], f, el.value);
   }));
@@ -1928,10 +1928,15 @@ async function saveActiveRules(prefix, state, btn, note) {
   const accuracy = { ...acc,
     reference_uri: (acc.reference_uri || '').trim(),
     join_on: acc.join_on || [], compare_columns: acc.compare_columns || [], lookups };
+  // Normalise the primary key to the dataset's actual column casing (e.g. FL_DATE -> fl_date),
+  // so a case mismatch doesn't silently make the key match no column.
+  const colCase = {};
+  Object.keys(state.columns || {}).forEach(c => { colCase[c.toLowerCase()] = c; });
+  const primary_key = (state.primaryKey || []).map(x => colCase[String(x).toLowerCase()] || x);
   const old = btn.textContent; btn.disabled = true; btn.textContent = 'Saving…';
   try {
     await postJSON(`${API_BASE}/data-quality/save-ruleset`, HEADERS,
-      { result_prefix: prefix, columns, primary_key: state.primaryKey || [],
+      { result_prefix: prefix, columns, primary_key,
         integrity_rules: integrity, accuracy, actor: EMAIL || undefined });
     btn.textContent = 'Saved ✓';
     if (note) { note.textContent = 'Saved — your next assessment of this dataset will use these rules.'; }
@@ -3984,8 +3989,14 @@ function selectSource(key) {
   const runBtn = show ? document.querySelector(`#src-${key} .src-run`) : null;
   const creds = document.getElementById('srcCreds');
   if (creds) {
-    if (show && runBtn) { runBtn.parentNode.insertBefore(creds, runBtn); creds.style.display = ''; loadSavedCredsNote(key); }
-    else creds.style.display = 'none';
+    if (show) {
+      // Sit at the TOP of the source card (just under the title), not above the Run button.
+      const card = document.querySelector(`#src-${key} .card`);
+      const h2 = card && card.querySelector('h2');
+      if (h2) h2.insertAdjacentElement('afterend', creds);
+      else if (card) card.insertBefore(creds, card.firstChild);
+      creds.style.display = ''; loadSavedCredsNote(key);
+    } else creds.style.display = 'none';
   }
   const refs = document.getElementById('srcRefs');
   if (refs) {
