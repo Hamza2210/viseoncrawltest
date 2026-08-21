@@ -4052,7 +4052,7 @@ function selectSource(key) {
       const h2 = card && card.querySelector('h2');
       if (h2) h2.insertAdjacentElement('afterend', note);
       else if (card) card.insertBefore(note, card.firstChild);
-      note.style.display = ''; loadSavedCredsNote(key);
+      loadSavedCredsNote(key);                             // manages its own show/hide + styling
     } else note.style.display = 'none';
   }
   const refs = document.getElementById('srcRefs');
@@ -4076,16 +4076,21 @@ const SRC_DATASET_FIELDS = { redshift: ['table'], s3: ['uri'], snowflake: ['tabl
 const savedCredsCache = {};   // key -> non-secret config from the last get
 const useSavedCreds = {};     // key -> true when the user applied saved creds
 
+function _clearCredsNote(note) {
+  // Fully reset so an empty note leaves no styled (yellow) strip behind on other sources.
+  if (note) { note.innerHTML = ''; note.className = ''; note.style.display = 'none'; }
+}
 async function loadSavedCredsNote(key) {
   const note = document.getElementById('srcCredsNote');
-  if (!note || !APP_ID) { if (note) note.innerHTML = ''; return; }
-  note.innerHTML = '';
+  _clearCredsNote(note);
+  if (!note || !APP_ID) return;
   let r;
   try { r = await postJSON(`${API_BASE}/data-quality/source-credentials`, HEADERS, { app_id: APP_ID, source: key, action: 'get' }); }
   catch (e) { return; }
   if (!r || !r.found) { savedCredsCache[key] = null; return; }
   savedCredsCache[key] = r.config || {};
   note.className = 'src-status dev';
+  note.style.display = '';
   note.innerHTML = `Saved credentials for this data source were found${r.savedAt ? ` (saved ${esc(fmtWhen(r.savedAt))})` : ''}. ` +
     `<a href="#" class="linkbtn" data-credapply="1" style="margin:0;">Apply them</a> · ` +
     `<a href="#" class="linkbtn" data-creddelete="1" style="margin:0;color:var(--err);">Delete</a>`;
@@ -4110,18 +4115,27 @@ function applySavedCreds(key) {
   useSavedCreds[key] = true;
   updateSourceRunState(key);
   const note = document.getElementById('srcCredsNote');
-  if (note) note.innerHTML = `<span class="src-status dev">Saved connection applied — enter the ${key === 's3' ? 'S3 URI' : 'table'} to assess; the secret is supplied securely at run time. ` +
-    `<a href="#" class="linkbtn" data-creddelete="1" style="margin:0;color:var(--err);">Delete saved</a></span>`;
-  const del = note && note.querySelector('[data-creddelete]');
-  if (del) del.addEventListener('click', e => { e.preventDefault(); deleteSavedCreds(key); });
+  if (note) {
+    note.className = 'src-status dev';                    // the note IS the strip — don't nest another
+    note.style.display = '';
+    note.innerHTML = `Saved connection applied — enter the ${key === 's3' ? 'S3 URI' : 'table'} to assess; the secret is supplied securely at run time. ` +
+      `<a href="#" class="linkbtn" data-creddelete="1" style="margin:0;color:var(--err);">Delete saved</a>`;
+    const del = note.querySelector('[data-creddelete]');
+    if (del) del.addEventListener('click', e => { e.preventDefault(); deleteSavedCreds(key); });
+  }
 }
 async function deleteSavedCreds(key) {
   try { await postJSON(`${API_BASE}/data-quality/source-credentials`, HEADERS, { app_id: APP_ID, source: key, action: 'delete' }); }
   catch (e) { alert(e.message); return; }
   savedCredsCache[key] = null; useSavedCreds[key] = false;
+  // Clear the secret placeholders so the fields read as normal again.
+  (SRC_SECRET_FIELDS[key] || []).forEach(f => {
+    const el = document.querySelector(`#src-${key} [data-f="${f}"]`);
+    if (el) el.placeholder = '';
+  });
   updateSourceRunState(key);
   const note = document.getElementById('srcCredsNote');
-  if (note) note.innerHTML = `<span class="hint">Saved credentials deleted.</span>`;
+  if (note) { note.className = ''; note.style.display = ''; note.innerHTML = `<span class="hint">Saved credentials deleted.</span>`; }
 }
 async function saveSourceCreds(key, cfg) {
   try { await postJSON(`${API_BASE}/data-quality/source-credentials`, HEADERS, { app_id: APP_ID, source: key, action: 'save', config: cfg }); }
