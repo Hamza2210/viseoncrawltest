@@ -1575,28 +1575,60 @@ function renderAssessment(r, bodyEl, opts) {
     `It isn't evaluated for app-data assessments, so it's simply not scored — leaving it out doesn't lower ` +
     `your result.`;
   const radarHtml = renderDimRadar(crit);
+  // Each unscored DAMA dimension gets a three-part explanation — what it measures,
+  // why it wasn't scored on this run (the engine's specific reason, humanised), and
+  // how to light it up — so a blank dimension reads as "one config step away", not a
+  // dead end. WHAT is the DAMA definition; ENABLE is the concrete next step.
+  const DIM_WHAT = {
+    completeness: 'Completeness measures whether required values are actually present — no gaps in mandatory fields.',
+    uniqueness: 'Uniqueness measures whether records and key values appear only once, with no unintended duplicates.',
+    validity: 'Validity measures whether values conform to their expected type, format, range, length or allowed set.',
+    consistency: 'Consistency measures whether values are internally coherent — a uniform representation and no contradictions across related fields.',
+    timeliness: 'Timeliness measures whether the data is current — recent enough for its purpose and not dated in the future.',
+    accuracy: 'Accuracy measures whether values agree with a trusted real-world source (a system of record) — it can’t be judged from this dataset alone.',
+    integrity: 'Referential integrity measures whether key values resolve to a matching record in a separate master / reference table.',
+    reasonability: 'Reasonability measures whether values sit within a plausible range, free of statistical outliers.',
+    precision: 'Precision measures whether numbers are recorded to the expected level of decimal detail.',
+  };
+  const ENABLE = {
+    accuracy: 'add an authoritative lookup or reference table under “Accuracy & integrity rules”.',
+    integrity: 'add a master / reference table for the key column under “Accuracy & integrity rules”.',
+    precision: 'declare a required number of decimal places on a numeric column (clean decimal columns now get one inferred automatically).',
+    consistency: 'add a format or allowed-values rule on a text column, or a cross-field consistency rule.',
+    timeliness: 'tick “No future dates”, or set a recency window, on a date/time column.',
+    validity: 'add a type, format, range, length or allowed-values rule on a column.',
+    reasonability: 'include a numeric column, or declare a plausible min/max range.',
+    completeness: 'mark at least one column as mandatory.',
+    uniqueness: 'mark a column unique, or set a primary key.',
+  };
+  // Humanise a few terse engine reasons; keep the engine's own wording otherwise.
+  const WHY_MAP = {
+    'no columns declare a required decimal scale':
+      'no numeric column had a consistent, clean decimal precision to check (integer and noisy floating-point columns are skipped so precision isn’t guessed).',
+    'declared columns carry no validity constraints':
+      'no column carries a validity rule (type, format, range, length or allowed values) to test against.',
+    'no referential integrity rules declared':
+      'no reference/master table was configured for any key column, so there’s nothing to resolve keys against.',
+    'integrity rules declared but none were applicable':
+      'an integrity rule was declared, but its columns or reference table couldn’t be matched to this data.',
+  };
   const reasonFor = (c) => {
-    let reason = c.not_assessed_reason;
-    if (isApp && c.criterion === 'accuracy') reason = APP_ACCURACY_MSG;
-    else if (isApp && c.criterion === 'integrity') reason = APP_INTEGRITY_MSG;
-    else if (c.criterion === 'integrity') reason = INTEGRITY_MSG;
-    reason = reason || 'Not scored on this run — it neither helps nor harms the result.';
-    // Every unscored DAMA dimension gets an actionable "how to light it up" line so it
-    // reads as one config step from scoring, not a permanent gap. (App-data has no place
-    // to add references, so accuracy/integrity there stay explanatory only.)
-    const ENABLE = {
-      accuracy: 'To score it: add an authoritative lookup or reference table under “Accuracy & integrity rules”.',
-      integrity: 'To score it: add a master/reference table for the column under “Accuracy & integrity rules”.',
-      precision: 'To score it: declare a required number of decimal places on a numeric column.',
-      consistency: 'To score it: add a format / allowed-values rule on a text column, or a cross-field consistency rule.',
-      timeliness: 'To score it: tick “No future dates”, or add a recency window, on a date/time column.',
-      validity: 'To score it: add a type, format, range, length or allowed-values rule on a column.',
-      reasonability: 'To score it: include a numeric column, or declare a plausible min/max range.',
-      completeness: 'To score it: include at least one column marked mandatory.',
-      uniqueness: 'To score it: mark a column unique or set a primary key.',
-    };
-    const enable = (!isApp || (c.criterion !== 'accuracy' && c.criterion !== 'integrity')) ? ENABLE[c.criterion] : '';
-    return enable ? `${reason}\n\n${enable}` : reason;
+    // App-data and referential-integrity keep their existing fuller explanations verbatim.
+    if (isApp && c.criterion === 'accuracy') return APP_ACCURACY_MSG;
+    if (isApp && c.criterion === 'integrity') return APP_INTEGRITY_MSG;
+    if (c.criterion === 'integrity' && !isApp) return INTEGRITY_MSG;
+    const what = DIM_WHAT[c.criterion] || '';
+    let why = c.not_assessed_reason || '';
+    why = WHY_MAP[why] || why;
+    const enable = (!isApp || (c.criterion !== 'accuracy' && c.criterion !== 'integrity'))
+      ? ENABLE[c.criterion] : '';
+    const parts = [];
+    if (what) parts.push(what);
+    parts.push(why
+      ? `Why it isn’t scored here: ${why}`
+      : 'Not scored on this run — it neither helps nor harms the overall result.');
+    if (enable) parts.push(`To score it: ${enable}`);
+    return parts.join('\n\n');
   };
   // Assessed dimensions carry the table; not-assessed ones collapse to compact chips (their
   // long "why" text lives in a tooltip) so they stop dominating the view.
