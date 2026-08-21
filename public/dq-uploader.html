@@ -886,6 +886,12 @@
       </div>
     </div>
 
+    <!-- Shared saved-credentials block (opt-in). selectSource() moves it into the active card. -->
+    <div id="srcCreds" style="display:none;margin:14px 0;">
+      <div id="srcCredsNote"></div>
+      <label class="ar-flag" style="margin-top:8px;"><input type="checkbox" id="srcSaveCreds"> 💾 Save these credentials for this app (stored encrypted)</label>
+    </div>
+
     <!-- Shared optional Accuracy & Integrity config; selectSource() moves this into the active
          source card, just above its Run button, so it reads as part of the connection config. -->
     <details id="srcRefs" style="display:none;margin:16px 0;border-top:1px solid var(--border);padding-top:14px;">
@@ -3970,21 +3976,73 @@ function selectSource(key) {
   // The file-upload assessment/results cards only make sense for the file source.
   _SRC_FILE_ONLY.forEach(id => { const el = document.getElementById(id); if (el) el.classList.toggle('src-hidden', key !== 'file'); });
   // File has its own inline accuracy/integrity block; postgres is preview-only. For the
-  // other sources, move the shared refs section INTO the active card, just above its Run
-  // button, so it reads as part of the connection config rather than the result.
+  // other sources, move the shared creds + refs sections INTO the active card, just above
+  // its Run button, so they read as part of the connection config rather than the result.
+  const show = !['file', 'postgres'].includes(key);
+  const runBtn = show ? document.querySelector(`#src-${key} .src-run`) : null;
+  const creds = document.getElementById('srcCreds');
+  if (creds) {
+    if (show && runBtn) { runBtn.parentNode.insertBefore(creds, runBtn); creds.style.display = ''; loadSavedCredsNote(key); }
+    else creds.style.display = 'none';
+  }
   const refs = document.getElementById('srcRefs');
   if (refs) {
-    const show = !['file', 'postgres'].includes(key);
-    if (show) {
-      const runBtn = document.querySelector(`#src-${key} .src-run`);
-      if (runBtn && runBtn.parentNode) runBtn.parentNode.insertBefore(refs, runBtn);
-      refs.style.display = '';
-      srcRefsState.warehouse = _WAREHOUSE_SRC.has(key);
-      renderSrcRefs();
-    } else {
-      refs.style.display = 'none';
-    }
+    if (show && runBtn) { runBtn.parentNode.insertBefore(refs, runBtn); refs.style.display = ''; srcRefsState.warehouse = _WAREHOUSE_SRC.has(key); renderSrcRefs(); }
+    else refs.style.display = 'none';
   }
+}
+
+// ---- Per-app saved source credentials (opt-in; secrets applied server-side) ------------
+const SRC_SECRET_FIELDS = { redshift: [], s3: ['access_key', 'secret_key'], snowflake: ['password'], databricks: ['token'] };
+const savedCredsCache = {};   // key -> non-secret config from the last get
+const useSavedCreds = {};     // key -> true when the user applied saved creds
+
+async function loadSavedCredsNote(key) {
+  const note = document.getElementById('srcCredsNote');
+  if (!note || !APP_ID) { if (note) note.innerHTML = ''; return; }
+  note.innerHTML = '';
+  let r;
+  try { r = await postJSON(`${API_BASE}/data-quality/source-credentials`, HEADERS, { app_id: APP_ID, source: key, action: 'get' }); }
+  catch (e) { return; }
+  if (!r || !r.found) { savedCredsCache[key] = null; return; }
+  savedCredsCache[key] = r.config || {};
+  note.className = 'src-status dev';
+  note.innerHTML = `Saved credentials for this data source were found${r.savedAt ? ` (saved ${esc(fmtWhen(r.savedAt))})` : ''}. ` +
+    `<a href="#" class="linkbtn" data-credapply="1" style="margin:0;">Apply them</a> · ` +
+    `<a href="#" class="linkbtn" data-creddelete="1" style="margin:0;color:var(--err);">Delete</a>`;
+  const ap = note.querySelector('[data-credapply]'), del = note.querySelector('[data-creddelete]');
+  if (ap) ap.addEventListener('click', e => { e.preventDefault(); applySavedCreds(key); });
+  if (del) del.addEventListener('click', e => { e.preventDefault(); deleteSavedCreds(key); });
+}
+function applySavedCreds(key) {
+  const cfg = savedCredsCache[key] || {}, body = document.getElementById('src-' + key);
+  if (!body) return;
+  Object.entries(cfg).forEach(([f, v]) => {
+    const el = body.querySelector(`[data-f="${f}"]`);
+    if (el && !SRC_SECRET_FIELDS[key].includes(f)) el.value = v;
+  });
+  // Secret inputs stay blank but show they'll be supplied from the saved profile.
+  SRC_SECRET_FIELDS[key].forEach(f => {
+    const el = body.querySelector(`[data-f="${f}"]`);
+    if (el) { el.value = ''; el.placeholder = 'Using saved credentials'; }
+  });
+  useSavedCreds[key] = true;
+  const note = document.getElementById('srcCredsNote');
+  if (note) note.innerHTML = `<span class="src-status dev">Saved credentials applied — the secret is supplied securely at run time. ` +
+    `<a href="#" class="linkbtn" data-creddelete="1" style="margin:0;color:var(--err);">Delete saved</a></span>`;
+  const del = note && note.querySelector('[data-creddelete]');
+  if (del) del.addEventListener('click', e => { e.preventDefault(); deleteSavedCreds(key); });
+}
+async function deleteSavedCreds(key) {
+  try { await postJSON(`${API_BASE}/data-quality/source-credentials`, HEADERS, { app_id: APP_ID, source: key, action: 'delete' }); }
+  catch (e) { alert(e.message); return; }
+  savedCredsCache[key] = null; useSavedCreds[key] = false;
+  const note = document.getElementById('srcCredsNote');
+  if (note) note.innerHTML = `<span class="hint">Saved credentials deleted.</span>`;
+}
+async function saveSourceCreds(key, cfg) {
+  try { await postJSON(`${API_BASE}/data-quality/source-credentials`, HEADERS, { app_id: APP_ID, source: key, action: 'save', config: cfg }); }
+  catch (e) { /* non-fatal: the run still proceeds */ }
 }
 
 function renderSrcRefs() {
@@ -4086,7 +4144,11 @@ function runSource(key) {
   if (!statusEl) return;
   const body = document.getElementById('src-' + key);
   const cfg = collectSourceFields(key);
-  const missing = (SOURCE_REQUIRED[key] || []).filter(f => !cfg[f]);
+  // When saved credentials are applied, the (blank) secret fields are supplied server-side,
+  // so don't flag them as missing.
+  const secretF = SRC_SECRET_FIELDS[key] || [];
+  const required = (SOURCE_REQUIRED[key] || []).filter(f => !(useSavedCreds[key] && secretF.includes(f)));
+  const missing = required.filter(f => !cfg[f]);
   if (body) body.querySelectorAll('.src-missing').forEach(el => el.classList.remove('src-missing'));
   if (missing.length) {
     const labels = missing.map(f => srcFieldLabel(body, f));
@@ -4100,6 +4162,10 @@ function runSource(key) {
     if (first) first.focus();
     return;
   }
+  // Opt-in: save the full connection profile (incl. the secrets just typed) for this app.
+  const saveCb = document.getElementById('srcSaveCreds');
+  if (saveCb && saveCb.checked && APP_ID) saveSourceCreds(key, cfg);
+  cfg._useSaved = !!useSavedCreds[key];
   if (key === 'redshift') { runRedshift(cfg, statusEl); return; }   // wired end-to-end
   if (key === 's3') { runS3(cfg, statusEl); return; }               // wired end-to-end
   if (key === 'snowflake') { runSnowflake(cfg, statusEl); return; } // wired end-to-end
@@ -4128,6 +4194,7 @@ async function runRedshift(cfg, statusEl) {
     sample_rows: cfg.sample_rows ? Number(cfg.sample_rows) : undefined,
     notify_email: EMAIL || undefined,
     ruleset_augment: collectSourceRefsAugment() || undefined,
+    use_saved_credentials: cfg._useSaved || undefined,
   };
   statusEl.className = 'src-status';
   statusEl.innerHTML = `<p><span class="spin"></span> Launching Redshift assessment…</p>`;
@@ -4165,6 +4232,7 @@ async function runS3(cfg, statusEl) {
     sample_rows: cfg.sample_rows ? Number(cfg.sample_rows) : undefined,
     notify_email: EMAIL || undefined,
     ruleset_augment: collectSourceRefsAugment() || undefined,
+    use_saved_credentials: cfg._useSaved || undefined,
   };
   statusEl.className = 'src-status';
   statusEl.innerHTML = `<p><span class="spin"></span> Launching S3 assessment…</p>`;
@@ -4200,6 +4268,7 @@ async function runSnowflake(cfg, statusEl) {
     sample_rows: cfg.sample_rows ? Number(cfg.sample_rows) : undefined,
     notify_email: EMAIL || undefined,
     ruleset_augment: collectSourceRefsAugment() || undefined,
+    use_saved_credentials: cfg._useSaved || undefined,
   };
   statusEl.className = 'src-status';
   statusEl.innerHTML = `<p><span class="spin"></span> Launching Snowflake assessment…</p>`;
@@ -4235,6 +4304,7 @@ async function runDatabricks(cfg, statusEl) {
     sample_rows: cfg.sample_rows ? Number(cfg.sample_rows) : undefined,
     notify_email: EMAIL || undefined,
     ruleset_augment: collectSourceRefsAugment() || undefined,
+    use_saved_credentials: cfg._useSaved || undefined,
   };
   statusEl.className = 'src-status';
   statusEl.innerHTML = `<p><span class="spin"></span> Launching Databricks assessment…</p>`;
