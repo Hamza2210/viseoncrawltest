@@ -1944,6 +1944,8 @@ async function saveActiveRules(prefix, state, btn, note) {
         integrity_rules: integrity, accuracy, actor: EMAIL || undefined });
     btn.textContent = 'Saved ✓';
     if (note) { note.textContent = 'Saved — your next assessment of this dataset will use these rules.'; }
+    // Briefly show "Saved ✓", then close the editor and surface the queued-rules chip.
+    if (typeof closeDatasetRulesPanel === 'function') setTimeout(closeDatasetRulesPanel, 700);
   } catch (e) {
     btn.disabled = false; btn.textContent = old;
     if (note) note.textContent = e.message;
@@ -3182,6 +3184,7 @@ function renderTrends(d) {
       `<button class="btn-sm" id="dashViewRun">View latest run details</button>` +
       `<button class="btn-sm" id="dashReviewRules">🔧 Review rules (AI)</button>` +
       `<button class="btn-sm" id="dashEditRules">📋 Edit active rules</button>` +
+      `<span id="dashQueued" style="display:none;align-items:center;gap:8px;"></span>` +
     `</div>` +
     // Rules apply to the DATASET (not one run), so they're reachable here without opening a run.
     `<div id="dashDatasetRules" style="display:none;margin:0 0 14px;"></div>` +
@@ -3219,6 +3222,31 @@ function renderTrends(d) {
   };
   if (reviewBtn) reviewBtn.addEventListener('click', () => toggleDatasetPanel('review', reviewBtn, (p, o) => reviewRuleset(p, o, false)));
   if (editBtn) editBtn.addEventListener('click', () => toggleDatasetPanel('edit', editBtn, editActiveRules));
+  refreshDatasetQueued(dashSelected && dashSelected.prefix);       // show any already-queued rules
+}
+
+// Show/refresh the "Queued rules" chip + View button next to the dataset's rule buttons.
+async function refreshDatasetQueued(prefix) {
+  const el = $('#dashQueued');
+  if (!el || !prefix) return;
+  el.style.display = 'none'; el.innerHTML = '';
+  let r;
+  try { r = await postJSON(`${API_BASE}/data-quality/result`, HEADERS, { result_prefix: prefix }); }
+  catch (e) { return; }
+  if (!r || !r.pendingPin) return;
+  el.style.display = 'inline-flex';
+  el.innerHTML = `<span class="tag info-tag" data-tip="Rules are pinned for this dataset and apply on its next run">✎ Queued rules</span>` +
+    (r.pendingPinRules ? `<button class="btn-sm" id="dashViewQueued">View queued rules</button>` : '');
+  const vb = el.querySelector('#dashViewQueued');
+  if (vb) vb.addEventListener('click', () => openPinRulesModal(r.pendingPinRules, { by: r.pendingPinBy, at: r.pendingPinAt }));
+}
+// Close the dataset-level Edit panel and refresh the queued chip (called after a save).
+function closeDatasetRulesPanel() {
+  const out = $('#dashDatasetRules'), eb = $('#dashEditRules'), rb = $('#dashReviewRules');
+  if (out) { out.style.display = 'none'; out.innerHTML = ''; out.dataset.shown = ''; }
+  if (eb) eb.classList.remove('active');
+  if (rb) rb.classList.remove('active');
+  if (dashSelected && dashSelected.prefix) refreshDatasetQueued(dashSelected.prefix);
 }
 
 $('#dashRefresh').addEventListener('click', loadDashboard);
