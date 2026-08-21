@@ -370,6 +370,9 @@
   .sev-seg.blocker { background: var(--err); } .sev-seg.major { background: var(--run); } .sev-seg.minor { background: var(--idle); }
   .sev-legend { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 8px; font-size: 12px; color: var(--muted); }
   .sev-key { display: inline-flex; align-items: center; gap: 6px; }
+  .sev-key[data-sevfilter] { cursor: pointer; padding: 2px 8px; border-radius: 999px; border: 1px solid transparent; }
+  .sev-key[data-sevfilter]:hover { background: var(--idle-bg); }
+  .sev-key[data-sevfilter].active { background: var(--accent-soft); border-color: color-mix(in srgb, var(--accent2) 30%, transparent); }
   .sev-dot { width: 9px; height: 9px; border-radius: 3px; }
   .sev-dot.blocker { background: var(--err); } .sev-dot.major { background: var(--run); } .sev-dot.minor { background: var(--idle); }
   .ah { overflow-x: auto; }
@@ -1644,7 +1647,7 @@ function renderAssessment(r, bodyEl, opts) {
       try {
         const data = await postJSON(`${API_BASE}/data-quality/failed-records`, HEADERS,
           { result_prefix: frEl.dataset.prefix, limit: 500 });
-        frEl.innerHTML = renderFailedRecords(data);
+        showFailedRecords(frEl, data);
       } catch (e) {
         frEl.innerHTML = `<p class="dash-muted" style="color:var(--err)">${esc(e.message)}</p>`;
       }
@@ -2825,10 +2828,11 @@ function renderExampleFixes(data) {
   const order = [...groups.keys()]
     .filter(cid => exps[cid] && exps[cid].column)                 // skip record-level rollups
     .sort((a, b) => rank(groups.get(b)[0].severity) - rank(groups.get(a)[0].severity))
-    .slice(0, 4);
+    .slice(0, 8);                                                 // blocker-first; enough to filter across severities
   if (!order.length) return '';
   const fmt = v => (v === '' || v == null) ? '(empty)' : String(v);
   const cards = order.map(cid => {
+    const sev = (groups.get(cid)[0].severity || '').toLowerCase();
     const exp = exps[cid], col = exp.column;
     let popEx = null;                                             // a real populated value of this col, if any
     for (const r of recs) { const v = (r.record || {})[col]; if (v !== '' && v != null) { popEx = v; break; } }
@@ -2837,7 +2841,7 @@ function renderExampleFixes(data) {
         <div class="fx-req">${esc(meta.req)}</div>`;
     // Distributional checks (format stability, representation, …) have no single
     // corrected value — show the requirement only, never a blank/null "fix to".
-    if (!meta.valueFix) return `<div class="fx-card">${head}</div>`;
+    if (!meta.valueFix) return `<div class="fx-card" data-sev="${sev}">${head}</div>`;
     const rows = groups.get(cid).slice(0, 2).map(r => {
       const rec = r.record || {}, bad = rec[col], { after } = fixFor(exp, bad, popEx);
       if (after == null) return '';                               // never render a null "fix to"
@@ -2849,8 +2853,8 @@ function renderExampleFixes(data) {
           <span class="fx-good" title="${esc(String(after))}">${esc(String(after))}</span>
         </div>`;
     }).filter(Boolean).join('');
-    if (!rows) return `<div class="fx-card">${head}</div>`;        // no concrete rows — fall back to requirement only
-    return `<div class="fx-card">${head}
+    if (!rows) return `<div class="fx-card" data-sev="${sev}">${head}</div>`;        // no concrete rows — fall back to requirement only
+    return `<div class="fx-card" data-sev="${sev}">${head}
         <div class="fx-legend"><span>row</span><span>current value</span><span></span><span>fix to</span></div>
         ${rows}
       </div>`;
@@ -2941,7 +2945,7 @@ function renderFailuresViz(data) {
   const tot = sev.blocker + sev.major + sev.minor;
   const seg = k => sev[k] ? `<span class="sev-seg ${k}" style="width:${100 * sev[k] / tot}%" data-tip="${sev[k]} ${k}-level"></span>` : '';
   const legend = ['blocker', 'major', 'minor'].filter(k => sev[k])
-    .map(k => `<span class="sev-key"><span class="sev-dot ${k}"></span>${sev[k].toLocaleString()} ${k}</span>`).join('');
+    .map(k => `<span class="sev-key" data-sevfilter="${k}" title="Click to show only ${k} records"><span class="sev-dot ${k}"></span>${sev[k].toLocaleString()} ${k}</span>`).join('');
   const sevBlock = tot ? `<div class="viz"><div class="viz-title">Failing checks by severity</div>
       <div class="sev-bar">${seg('blocker')}${seg('major')}${seg('minor')}</div>
       <div class="sev-legend">${legend}</div></div>` : '';
@@ -2996,8 +3000,8 @@ function renderFailedRecords(data) {
     const rec = x.record || {};
     const fields = Object.entries(rec).filter(([k]) => k !== '_row')
       .map(([k, v]) => `${esc(k)}=${esc(v)}`).join('  ·  ');
-    const blk = (x.severity || '').toLowerCase() === 'blocker';
-    return `<tr class="${blk ? 'fr-blocker' : ''}"><td>${esc(x.dimension)}</td><td>${esc(x.check_id)}</td>` +
+    const sev = (x.severity || '').toLowerCase();
+    return `<tr class="fr-row ${sev === 'blocker' ? 'fr-blocker' : ''}" data-sev="${esc(sev)}"><td>${esc(x.dimension)}</td><td>${esc(x.check_id)}</td>` +
       `<td>${sevChip(x.severity)}</td>` +
       `<td class="dash-muted" style="font-family:ui-monospace,Consolas,monospace;font-size:11px;">${fields}</td></tr>`;
   }).join('');
@@ -3007,9 +3011,33 @@ function renderFailedRecords(data) {
   const note = data.truncated
     ? `<p class="dash-muted">Showing ${recs.length} of ${data.total} failed records (download the file for all).</p>`
     : `<p class="dash-muted">${data.total} failed record(s).</p>`;
-  return head + renderFailuresViz(data) + `<div class="fr-scroll"><table class="dash-table">` +
+  return head + renderFailuresViz(data) + `<p class="dash-muted fr-filter-note" style="margin:0 0 6px;"></p>` +
+    `<div class="fr-scroll"><table class="dash-table">` +
     `<tr><th>Dimension</th><th>Check</th><th>Severity</th><th>Offending record</th></tr>${rows}</table></div>${note}` +
     renderExampleFixes(data);
+}
+// Render failed records into an element AND wire the clickable severity legend (filters the
+// records table + the "how to fix" cards to the chosen severity; click again to clear).
+const _FR_FILTER_CAP = 200;
+function showFailedRecords(el, data) {
+  if (!el) return;
+  el.innerHTML = renderFailedRecords(data);
+  const apply = (sev) => {
+    el.dataset.frSev = sev || '';
+    let shown = 0;
+    el.querySelectorAll('.fr-row').forEach(r => {
+      const vis = (!sev || r.dataset.sev === sev) && shown < _FR_FILTER_CAP;
+      r.style.display = vis ? '' : 'none';
+      if (vis) shown++;
+    });
+    el.querySelectorAll('.fx-card').forEach(c => { c.style.display = (!sev || c.dataset.sev === sev) ? '' : 'none'; });
+    el.querySelectorAll('.sev-key[data-sevfilter]').forEach(l => l.classList.toggle('active', !!sev && l.dataset.sevfilter === sev));
+    const ntc = el.querySelector('.fr-filter-note');
+    if (ntc) ntc.textContent = sev
+      ? `Showing ${shown}${shown >= _FR_FILTER_CAP ? '+' : ''} ${sev} record${shown === 1 ? '' : 's'} — click ${sev} again to show all.` : '';
+  };
+  el.querySelectorAll('.sev-key[data-sevfilter]').forEach(l =>
+    l.addEventListener('click', () => apply(el.dataset.frSev === l.dataset.sevfilter ? '' : l.dataset.sevfilter)));
 }
 
 // Pull the selected dataset's latest run inline: full scores + criteria + failed records.
@@ -3052,7 +3080,7 @@ async function viewLatestRun() {
   try {
     const fr = await postJSON(`${API_BASE}/data-quality/failed-records`, HEADERS,
       { result_prefix: prefix, limit: 500 });
-    $('#dashRunFailed').innerHTML = renderFailedRecords(fr);
+    showFailedRecords($('#dashRunFailed'), fr);
   } catch (e) {
     $('#dashRunFailed').innerHTML = `<p class="dash-muted" style="color:var(--err)">${esc(e.message)}</p>`;
   }
