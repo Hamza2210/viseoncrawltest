@@ -1534,10 +1534,18 @@ function renderAssessment(r, bodyEl, opts) {
     statusBadge = `<span class="tag amber" data-tip="${esc(provTip)}">⚠ Provisional — rules not yet reviewed</span>`;
   }
   const provBadge = statusBadge;
+  // Count-based visibility: a proportional score rounds a few bad rows in a huge table up to
+  // green, so surface the raw count of failing records too — it stays visible regardless of %.
+  const failing = (st.gate && st.gate.failing_rows) || 0;
+  const bySev = (st.gate && st.gate.failing_rows_by_severity) || {};
+  const failChip = failing > 0
+    ? `<span class="tag ${bySev.blocker ? 'red' : 'amber'}" data-tip="Records that failed one or more checks — blocker ${(bySev.blocker||0).toLocaleString()} · major ${(bySev.major||0).toLocaleString()} · minor ${(bySev.minor||0).toLocaleString()}. Shown regardless of the % score, so a handful of bad rows in a large table stays visible.">⚑ ${failing.toLocaleString()} record${failing === 1 ? '' : 's'} failed checks</span>`
+    : '';
   let html = `${dsName ? `<div class="ds-name">${esc(dsName)}</div>` : ''}<div class="headline">
       <span class="score">${fmtScore(score)}</span>
       ${status ? `<span class="tag ${tagClass(status)}">${status}</span>` : ''}
       <span class="tag ${gatePass ? 'green' : 'red'}" data-tip="${esc(GATE_TIP)}">Gate ${gatePass ? 'pass' : 'fail'}</span>
+      ${failChip}
       ${provBadge}
       ${sourceChip(r.sourceFormat)}
     </div>`;
