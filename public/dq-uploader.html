@@ -677,6 +677,28 @@
     font-size: 12px; line-height: 1.35; box-shadow: 0 8px 24px rgba(0,0,0,.35);
     opacity: 0; transform: translateY(3px); transition: opacity .1s ease, transform .1s ease; }
   #tip.show { opacity: 1; transform: translateY(0); }
+  /* Dashboard dataset controls: source-filter chips + medallion (bronze/silver/gold) tags */
+  .src-filter-chip { cursor: pointer; font: inherit; font-size: 12px; padding: 3px 10px; border-radius: 999px;
+    border: 1px solid var(--border); background: var(--card); color: var(--muted); display: inline-flex; align-items: center; gap: 5px; }
+  .src-filter-chip:hover { background: var(--idle-bg); }
+  .src-filter-chip.active { background: var(--accent-soft); border-color: color-mix(in srgb, var(--accent2) 40%, transparent); color: var(--text); }
+  .medal { cursor: pointer; font: inherit; font-size: 11px; padding: 2px 8px; border-radius: 999px; border: 1px solid transparent; white-space: nowrap; }
+  .medal.none { color: var(--muted); border-color: var(--border); background: transparent; }
+  .medal.bronze { background: #f6e6d6; color: #8a4b1f; border-color: #d9a978; }
+  .medal.silver { background: #eceef1; color: #556; border-color: #b9c0c8; }
+  .medal.gold   { background: #f8efc9; color: #7a5c00; border-color: #e0c65a; }
+  .medal-menu { display: inline-flex; gap: 4px; align-items: center; }
+  .dash-filtgrp { display: inline-flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .ds-tags { display: inline-flex; gap: 5px; align-items: center; flex-wrap: wrap; }
+  .ds-tag { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; font-size: 11px;
+    padding: 1px 6px 1px 7px; border-radius: 999px; background: var(--idle-bg); color: var(--muted);
+    border: 1px solid var(--border); }
+  .ds-tag:hover { color: var(--text); }
+  .ds-tag-x { cursor: pointer; color: var(--muted); font-size: 10px; padding: 0 1px; border-radius: 999px; }
+  .ds-tag-x:hover { color: var(--err); }
+  .ds-tag-add { cursor: pointer; font: inherit; font-size: 11px; color: var(--muted); background: transparent;
+    border: 1px dashed var(--border); border-radius: 999px; padding: 1px 8px; }
+  .ds-tag-add:hover { color: var(--text); border-color: var(--accent2); }
 </style>
 </head>
 <body>
@@ -1013,6 +1035,10 @@
       <div class="card">
         <h2>Datasets</h2>
         <p class="dash-muted" style="margin:0 0 10px;">Sorted by lowest score first. Click a dataset for its trends.</p>
+        <div id="dashDsControls" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:0 0 12px;">
+          <input id="dashSearch" type="search" placeholder="🔍 Search datasets or tags…" style="min-width:200px;max-width:340px;flex:1;padding:6px 10px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--text);font:inherit;font-size:13px;">
+          <div id="dashFilters" style="display:none;gap:12px;flex-wrap:wrap;align-items:center;"></div>
+        </div>
         <div id="dashTableWrap"><p class="dash-muted">Loading…</p></div>
       </div>
 
@@ -2603,6 +2629,112 @@ let dashServerTiles = {};
 let dashWindowDays = 30;
 let dashScope = 'app';                          // 'app' (Qlik tables) | 'source' (Data-from-Source)
 let dashSelected = null;
+let dashSearch = '';                             // matches dataset name + custom tags
+let dashSourceSel = '';                          // '' = all sources (source scope only)
+let dashStageSel = '';                           // '' = all medallion stages
+let dashTagSel = '';                             // '' = no custom-tag filter
+let dashEntries = {};                            // key -> { stage: '', tags: [] }
+let _dashControlsWired = false;
+const MEDALLIONS = ['bronze', 'silver', 'gold'];
+const MEDAL_LABEL = { bronze: '🥉 Bronze', silver: '🥈 Silver', gold: '🥇 Gold' };
+
+function entryFor(key) { const e = dashEntries[key] || {}; return { stage: e.stage || '', tags: (e.tags || []).slice() }; }
+
+// The list, narrowed by search (name + tags) + source + stage + a clicked custom-tag.
+function datasetsFiltered() {
+  const q = dashSearch.trim().toLowerCase();
+  return dashDatasets.filter(d => {
+    const e = entryFor(d.key);
+    const hay = ((d.name || '') + ' ' + e.tags.join(' ')).toLowerCase();
+    return (!q || hay.includes(q))
+      && (!dashSourceSel || (d.sourceFormat || '') === dashSourceSel)
+      && (!dashStageSel || e.stage === dashStageSel)
+      && (!dashTagSel || e.tags.includes(dashTagSel));
+  });
+}
+
+function refreshDatasetsTable() {
+  const rows = datasetsFiltered();
+  if (!rows.length) { $('#dashTableWrap').innerHTML = `<p class="dash-muted">No datasets match your filters.</p>`; return; }
+  renderHealthTable(rows);
+}
+
+// Source (source scope) + Stage + the active custom-tag filter chips.
+function renderDashFilters() {
+  const wrap = $('#dashFilters'); if (!wrap) return;
+  const chip = (attr, val, label, active, icon) =>
+    `<button type="button" class="src-filter-chip${active ? ' active' : ''}" ${attr}="${esc(val)}">${icon || ''}${esc(label)}</button>`;
+  let html = '';
+  const sources = [...new Set(dashDatasets.map(d => d.sourceFormat).filter(Boolean))];
+  if (dashScope === 'source' && sources.length >= 2) {
+    if (dashSourceSel && !sources.includes(dashSourceSel)) dashSourceSel = '';
+    html += `<span class="dash-filtgrp"><span class="hint">Source:</span>` +
+      chip('data-srcf', '', 'All', !dashSourceSel) +
+      sources.map(s => chip('data-srcf', s, sourceLabel(s), dashSourceSel === s, (SOURCE_FMT_ICON[s] || '🗄️') + ' ')).join('') + `</span>`;
+  } else dashSourceSel = '';
+  html += `<span class="dash-filtgrp"><span class="hint">Stage:</span>` +
+    chip('data-stagef', '', 'All', !dashStageSel) +
+    MEDALLIONS.map(m => chip('data-stagef', m, MEDAL_LABEL[m], dashStageSel === m)).join('') + `</span>`;
+  if (dashTagSel)
+    html += `<span class="dash-filtgrp"><span class="hint">Tag:</span>` +
+      `<button type="button" class="src-filter-chip active" data-tagclear="1">🏷️ ${esc(dashTagSel)} ✕</button></span>`;
+  wrap.innerHTML = html;
+  wrap.style.display = 'flex';
+  wrap.querySelectorAll('[data-srcf]').forEach(b => b.addEventListener('click', () => { dashSourceSel = b.dataset.srcf; renderDashFilters(); refreshDatasetsTable(); }));
+  wrap.querySelectorAll('[data-stagef]').forEach(b => b.addEventListener('click', () => { dashStageSel = b.dataset.stagef; renderDashFilters(); refreshDatasetsTable(); }));
+  const tc = wrap.querySelector('[data-tagclear]');
+  if (tc) tc.addEventListener('click', () => { dashTagSel = ''; renderDashFilters(); refreshDatasetsTable(); });
+}
+
+function wireDashControls() {
+  if (_dashControlsWired) return;
+  const s = $('#dashSearch');
+  if (s) s.addEventListener('input', () => { dashSearch = s.value || ''; refreshDatasetsTable(); });
+  _dashControlsWired = true;
+}
+
+// ---- Per-app dataset metadata: medallion stage + custom tags ---------------------------
+async function loadDashEntries() {
+  dashEntries = {};
+  if (!APP_ID) return;
+  try {
+    const r = await postJSON(`${API_BASE}/data-quality/dataset-tags`, HEADERS, { app_id: APP_ID, action: 'get' });
+    if (r && r.entries) dashEntries = r.entries;
+    else if (r && r.tags) for (const k in r.tags) dashEntries[k] = { stage: r.tags[k], tags: [] };  // legacy
+  } catch (e) { /* non-fatal */ }
+}
+async function saveEntry(key) {
+  const e = entryFor(key);
+  try { await postJSON(`${API_BASE}/data-quality/dataset-tags`, HEADERS, { app_id: APP_ID, action: 'set', key, stage: e.stage || '', tags: e.tags }); }
+  catch (err) { /* non-fatal; local state already updated */ }
+}
+function setStage(key, stage) { const e = entryFor(key); e.stage = stage; dashEntries[key] = e; saveEntry(key); }
+function addTagTo(key) {
+  const t = (prompt('Add a tag to group/search this dataset (e.g. finance, pii, weekly):') || '').trim();
+  if (!t) return;
+  const e = entryFor(key);
+  if (!e.tags.some(x => x.toLowerCase() === t.toLowerCase())) e.tags.push(t);
+  dashEntries[key] = e; saveEntry(key); refreshDatasetsTable();
+}
+function removeTagFrom(key, t) {
+  const e = entryFor(key); e.tags = e.tags.filter(x => x !== t);
+  dashEntries[key] = e; saveEntry(key); refreshDatasetsTable();
+}
+
+// The bronze/silver/gold picker for one row (click a stage to set; click the active one to clear).
+function medalCell(key) {
+  const cur = entryFor(key).stage;
+  return `<span class="medal-menu">` + MEDALLIONS.map(m =>
+    `<button type="button" class="medal ${m}" data-medal="${m}" data-key="${esc(key)}" data-tip="${esc(MEDAL_LABEL[m])} stage"${cur === m ? '' : ' style="opacity:.4;"'}>${MEDAL_LABEL[m].split(' ')[0]}</button>`
+  ).join('') + `</span>`;
+}
+// Custom-tag chips (+ an add button) for a row's name cell.
+function tagChips(key) {
+  const e = entryFor(key);
+  const chips = e.tags.map(t =>
+    `<span class="ds-tag" data-tagfilter="${esc(t)}" data-tip="Filter by “${esc(t)}”">🏷️ ${esc(t)}<span class="ds-tag-x" data-tagrm="${esc(t)}" data-key="${esc(key)}" title="Remove">✕</span></span>`).join('');
+  return `<span class="ds-tags">${chips}<button type="button" class="ds-tag-add" data-tagadd="1" data-key="${esc(key)}">＋ tag</button></span>`;
+}
 
 async function loadDashboard() {
   if (!configOK) return;
@@ -2624,6 +2756,7 @@ async function loadDashboard() {
     dashDatasetsAll = d.datasets || [];
     dashServerTiles = d.tiles || {};
     dashWindowDays = d.windowDays || 30;
+    await loadDashEntries();                    // medallion stages + custom tags for this app
     applyDashScope();                          // filter to the active scope + render
     trendsIn();                                // gentle grow-in on load/refresh
   } catch (e) {
@@ -2654,12 +2787,14 @@ function applyDashScope() {
   dashDatasets = dashDatasetsAll.filter(ds => dashScope === 'source' ? isSourceDataset(ds) : !isSourceDataset(ds));
   const noun = dashScope === 'source' ? 'source dataset' : 'app table';
   renderTiles(computeScopeTiles(dashDatasets));
+  wireDashControls();
+  renderDashFilters();
   if (!dashDatasets.length) {
     $('#dashTableWrap').innerHTML = `<p class="dash-muted">No ${noun} data for this app yet.</p>`;
     $('#dashHeat').innerHTML = '';
     $('#dashTrends').innerHTML = '';
   } else {
-    renderHealthTable(dashDatasets);
+    refreshDatasetsTable();
     renderHeatmap(dashDatasets);
     renderAppOverview(dashDatasets);
   }
@@ -2699,18 +2834,19 @@ function renderHealthTable(datasets) {
       : (d.ageDays < 1 ? 'today' : `${Math.round(d.ageDays)}d ago`);
     const srcChip = sourceChip(d.sourceFormat);
     return `<tr class="dash-row" data-key="${esc(d.key)}" data-name="${esc(d.name)}">
-        <td>${esc(d.name)}${srcChip ? `<div style="margin-top:3px;">${srcChip}</div>` : ''}</td>
+        <td>${esc(d.name)}${srcChip ? `<div style="margin-top:3px;">${srcChip}</div>` : ''}<div style="margin-top:4px;">${tagChips(d.key)}</div></td>
         <td><strong>${num1(d.score)}</strong> ${statusChip(d.status)}</td>
         <td>${gateChip(d.gate)}</td>
         <td>${numInt(d.rows)}</td>
         <td class="dash-muted">${esc(age)}</td>
         <td>${spark}</td>
+        <td>${medalCell(d.key)}</td>
         <td><button class="btn-sm" data-rerun="${esc(d.name)}" data-fmt="${esc(d.sourceFormat || '')}" data-prefix="${esc(d.resultPrefix || '')}" data-tip="Re-assess this dataset">↻ Re-run</button></td>
       </tr>`;
   }).join('');
   $('#dashTableWrap').innerHTML =
     `<table class="dash-table"><tr><th>Dataset</th><th>Score</th><th>Gate</th>` +
-    `<th>Rows</th><th>Last run</th><th>Trend (30d)</th><th></th></tr>${rows}</table>`;
+    `<th>Rows</th><th>Last run</th><th>Trend (30d)</th><th data-tip="Data stage: bronze (raw) → silver (cleaned) → gold (curated)">Stage</th><th></th></tr>${rows}</table>`;
   $('#dashTableWrap').querySelectorAll('.dash-row').forEach(tr =>
     tr.addEventListener('click', () => {
       $('#dashTableWrap').querySelectorAll('.dash-row').forEach(x => x.classList.remove('sel'));
@@ -2719,6 +2855,21 @@ function renderHealthTable(datasets) {
     }));
   $('#dashTableWrap').querySelectorAll('button[data-rerun]').forEach(b =>
     b.addEventListener('click', e => { e.stopPropagation(); reRunTable(b.dataset.rerun, b.dataset.fmt, b.dataset.prefix); }));
+  // Medallion stage: click a stage to set it (click the active one to clear); saved per app.
+  $('#dashTableWrap').querySelectorAll('.medal[data-medal]').forEach(b =>
+    b.addEventListener('click', e => {
+      e.stopPropagation();
+      const key = b.dataset.key, m = b.dataset.medal;
+      setStage(key, entryFor(key).stage === m ? '' : m);   // updates entry now, persists async
+      refreshDatasetsTable();
+    }));
+  // Custom tags: add (＋), remove (✕), or click a tag to group the list by it.
+  $('#dashTableWrap').querySelectorAll('[data-tagadd]').forEach(b =>
+    b.addEventListener('click', e => { e.stopPropagation(); addTagTo(b.dataset.key); }));
+  $('#dashTableWrap').querySelectorAll('.ds-tag-x[data-tagrm]').forEach(b =>
+    b.addEventListener('click', e => { e.stopPropagation(); removeTagFrom(b.dataset.key, b.dataset.tagrm); }));
+  $('#dashTableWrap').querySelectorAll('.ds-tag[data-tagfilter]').forEach(el =>
+    el.addEventListener('click', e => { e.stopPropagation(); dashTagSel = el.dataset.tagfilter; renderDashFilters(); refreshDatasetsTable(); }));
 }
 
 function renderHeatmap(datasets) {
