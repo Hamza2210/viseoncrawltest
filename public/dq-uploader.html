@@ -4139,84 +4139,126 @@ function selectSource(key) {
   }
   // The "Save these credentials" checkbox stays just above the Run button (below the refs).
   const saveWrap = document.getElementById('srcSaveWrap');
-  if (saveWrap) {
-    if (show && runBtn) { runBtn.parentNode.insertBefore(saveWrap, runBtn); saveWrap.style.display = ''; }
-    else saveWrap.style.display = 'none';
-  }
+  if (saveWrap) saveWrap.style.display = 'none';   // saving moved into the credential-profile control
   if (show) updateSourceRunState(key);
 }
 
-// ---- Per-app saved source credentials (opt-in; secrets applied server-side) ------------
+// ---- Per-app credential PROFILES (named connections; secrets applied server-side) -------
 const SRC_SECRET_FIELDS = { redshift: [], s3: ['access_key', 'secret_key'], snowflake: ['password'], databricks: ['token'] };
-// The "which dataset" field(s) — left for the user to type when applying a saved connection.
-const SRC_DATASET_FIELDS = { redshift: ['table'], s3: ['uri'], snowflake: ['table'], databricks: ['table'] };
-const savedCredsCache = {};   // key -> non-secret config from the last get
-const useSavedCreds = {};     // key -> true when the user applied saved creds
+const credProfiles = {};      // key -> [{id,name,config,hasSecrets,savedAt}] from the last list
+const activeProfile = {};     // key -> id of the profile currently applied (sent on the run)
 
 function _clearCredsNote(note) {
-  // Fully reset so an empty note leaves no styled (yellow) strip behind on other sources.
+  // Fully reset so an empty note leaves no styled strip behind on other sources.
   if (note) { note.innerHTML = ''; note.className = ''; note.style.display = 'none'; }
 }
-async function loadSavedCredsNote(key) {
+function setCredMsg(key, m, err) {
+  const el = document.getElementById(`credProfMsg-${key}`);
+  if (el) { el.textContent = m; el.style.color = err ? 'var(--err)' : ''; }
+}
+async function loadSavedCredsNote(key) { return renderCredProfiles(key); }   // shim: same call site
+
+async function renderCredProfiles(key) {
   const note = document.getElementById('srcCredsNote');
   _clearCredsNote(note);
   if (!note || !APP_ID) return;
   let r;
-  try { r = await postJSON(`${API_BASE}/data-quality/source-credentials`, HEADERS, { app_id: APP_ID, source: key, action: 'get' }); }
+  try { r = await postJSON(`${API_BASE}/data-quality/credential-profiles`, HEADERS, { app_id: APP_ID, source: key, action: 'list' }); }
   catch (e) { return; }
-  if (!r || !r.found) { savedCredsCache[key] = null; return; }
-  savedCredsCache[key] = r.config || {};
-  note.className = 'src-status dev';
+  const profiles = (r && r.profiles) || [];
+  credProfiles[key] = profiles;
+  if (activeProfile[key] && !profiles.some(p => p.id === activeProfile[key])) activeProfile[key] = null;
+  note.className = 'src-status';
   note.style.display = '';
-  note.innerHTML = `Saved credentials for this data source were found${r.savedAt ? ` (saved ${esc(fmtWhen(r.savedAt))})` : ''}. ` +
-    `<a href="#" class="linkbtn" data-credapply="1" style="margin:0;">Apply them</a> · ` +
-    `<a href="#" class="linkbtn" data-creddelete="1" style="margin:0;color:var(--err);">Delete</a>`;
-  const ap = note.querySelector('[data-credapply]'), del = note.querySelector('[data-creddelete]');
-  if (ap) ap.addEventListener('click', e => { e.preventDefault(); applySavedCreds(key); });
-  if (del) del.addEventListener('click', e => { e.preventDefault(); deleteSavedCreds(key); });
+  const opts = ['<option value="">— choose a saved profile —</option>']
+    .concat(profiles.map(p => `<option value="${esc(p.id)}"${activeProfile[key] === p.id ? ' selected' : ''}>${esc(p.name)}</option>`)).join('');
+  note.innerHTML = `
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+      <strong style="font-weight:600;">Credential profile</strong>
+      <select id="credProfSel-${key}" class="rule-edit-in" style="min-width:210px;">${opts}</select>
+      <button type="button" class="btn-sm" data-credapply="1">Apply</button>
+      <button type="button" class="btn-sm" data-credsaveas="1">Save current as…</button>
+      <button type="button" class="btn-sm" data-credrename="1">Rename</button>
+      <button type="button" class="btn-sm" data-creddelete="1" style="color:var(--err);">Delete</button>
+    </div>
+    <div class="hint" id="credProfMsg-${key}" style="margin-top:6px;">${profiles.length
+      ? 'Pick a saved profile and Apply to fill the connection and table, or fill the form and “Save current as…” to create one.'
+      : 'No saved profiles yet — fill the connection (and table) below, then “Save current as…”.'}</div>`;
+  note.querySelector('[data-credapply]').addEventListener('click', () => applyCredProfile(key));
+  note.querySelector('[data-credsaveas]').addEventListener('click', () => saveCredProfileAs(key));
+  note.querySelector('[data-credrename]').addEventListener('click', () => renameCredProfile(key));
+  note.querySelector('[data-creddelete]').addEventListener('click', () => deleteCredProfile(key));
 }
-function applySavedCreds(key) {
-  const cfg = savedCredsCache[key] || {}, body = document.getElementById('src-' + key);
-  if (!body) return;
-  // Fill the connection identity, but not the secret (server-side) or the dataset field
-  // (table / S3 URI) — the user picks which table/object to assess on this connection.
-  const skip = new Set([...(SRC_SECRET_FIELDS[key] || []), ...(SRC_DATASET_FIELDS[key] || [])]);
-  Object.entries(cfg).forEach(([f, v]) => {
-    const el = body.querySelector(`[data-f="${f}"]`);
-    if (el && !skip.has(f)) el.value = v;
-  });
-  SRC_SECRET_FIELDS[key].forEach(f => {
-    const el = body.querySelector(`[data-f="${f}"]`);
-    if (el) { el.value = ''; el.placeholder = 'Using saved credentials'; }
-  });
-  useSavedCreds[key] = true;
-  updateSourceRunState(key);
-  const note = document.getElementById('srcCredsNote');
-  if (note) {
-    note.className = 'src-status dev';                    // the note IS the strip — don't nest another
-    note.style.display = '';
-    note.innerHTML = `Saved connection applied — enter the ${key === 's3' ? 'S3 URI' : 'table'} to assess; the secret is supplied securely at run time. ` +
-      `<a href="#" class="linkbtn" data-creddelete="1" style="margin:0;color:var(--err);">Delete saved</a>`;
-    const del = note.querySelector('[data-creddelete]');
-    if (del) del.addEventListener('click', e => { e.preventDefault(); deleteSavedCreds(key); });
-  }
+
+async function renameCredProfile(key) {
+  const sel = document.getElementById(`credProfSel-${key}`);
+  const pid = sel ? sel.value : '';
+  if (!pid) { setCredMsg(key, 'Choose a profile to rename.', true); return; }
+  if (pid === 'default') { setCredMsg(key, 'The Default profile can’t be renamed — use “Save current as…” to create a named profile.', true); return; }
+  const p = (credProfiles[key] || []).find(x => x.id === pid);
+  if (!p) return;
+  const name = (prompt('Rename credential profile:', p.name) || '').trim();
+  if (!name || name === p.name) return;
+  try {
+    // Re-save with the same id + existing (non-secret) config; the server preserves the
+    // stored secret the browser never had.
+    await postJSON(`${API_BASE}/data-quality/credential-profiles`, HEADERS,
+      { app_id: APP_ID, source: key, action: 'save', profile_id: pid, name, config: p.config || {} });
+    await renderCredProfiles(key);
+    setCredMsg(key, `Renamed to “${name}”.`);
+  } catch (e) { setCredMsg(key, 'Could not rename: ' + e.message, true); }
 }
-async function deleteSavedCreds(key) {
-  try { await postJSON(`${API_BASE}/data-quality/source-credentials`, HEADERS, { app_id: APP_ID, source: key, action: 'delete' }); }
-  catch (e) { alert(e.message); return; }
-  savedCredsCache[key] = null; useSavedCreds[key] = false;
-  // Clear the secret placeholders so the fields read as normal again.
+
+function applyCredProfile(key) {
+  const sel = document.getElementById(`credProfSel-${key}`);
+  const pid = sel ? sel.value : '';
+  if (!pid) { setCredMsg(key, 'Choose a profile first.', true); return; }
+  const p = (credProfiles[key] || []).find(x => x.id === pid);
+  const body = document.getElementById('src-' + key);
+  if (!p || !body) return;
+  // Profiles carry the connection AND (optionally) the schema/table — fill everything except
+  // the secrets, which stay server-side. Every field stays editable before running.
+  const secretF = new Set(SRC_SECRET_FIELDS[key] || []);
+  Object.entries(p.config || {}).forEach(([f, v]) => {
+    const el = body.querySelector(`[data-f="${f}"]`);
+    if (el && !secretF.has(f)) el.value = v;
+  });
   (SRC_SECRET_FIELDS[key] || []).forEach(f => {
-    const el = document.querySelector(`#src-${key} [data-f="${f}"]`);
-    if (el) el.placeholder = '';
+    const el = body.querySelector(`[data-f="${f}"]`);
+    if (el) { el.value = ''; el.placeholder = p.hasSecrets ? 'Using saved profile' : ''; }
   });
+  activeProfile[key] = pid;
   updateSourceRunState(key);
-  const note = document.getElementById('srcCredsNote');
-  if (note) { note.className = ''; note.style.display = ''; note.innerHTML = `<span class="hint">Saved credentials deleted.</span>`; }
+  setCredMsg(key, `Applied “${p.name}”. Secrets are supplied securely at run time — edit any field before running.`);
 }
-async function saveSourceCreds(key, cfg) {
-  try { await postJSON(`${API_BASE}/data-quality/source-credentials`, HEADERS, { app_id: APP_ID, source: key, action: 'save', config: cfg }); }
-  catch (e) { /* non-fatal: the run still proceeds */ }
+
+async function saveCredProfileAs(key) {
+  const cur = (credProfiles[key] || []).find(x => x.id === activeProfile[key]);
+  const name = (prompt('Name this credential profile (e.g. “Prod Redshift – orders”):', cur ? cur.name : '') || '').trim();
+  if (!name) return;
+  const cfg = collectSourceFields(key);
+  try {
+    const r = await postJSON(`${API_BASE}/data-quality/credential-profiles`, HEADERS,
+      { app_id: APP_ID, source: key, action: 'save', name, config: cfg });
+    activeProfile[key] = r.id;
+    await renderCredProfiles(key);
+    setCredMsg(key, `Saved profile “${name}”.`);
+  } catch (e) { setCredMsg(key, 'Could not save: ' + e.message, true); }
+}
+
+async function deleteCredProfile(key) {
+  const sel = document.getElementById(`credProfSel-${key}`);
+  const pid = sel ? sel.value : '';
+  if (!pid) { setCredMsg(key, 'Choose a profile to delete.', true); return; }
+  const p = (credProfiles[key] || []).find(x => x.id === pid);
+  if (!confirm(`Delete credential profile “${p ? p.name : pid}”? This can’t be undone.`)) return;
+  try { await postJSON(`${API_BASE}/data-quality/credential-profiles`, HEADERS, { app_id: APP_ID, source: key, action: 'delete', profile_id: pid }); }
+  catch (e) { setCredMsg(key, 'Could not delete: ' + e.message, true); return; }
+  if (activeProfile[key] === pid) activeProfile[key] = null;
+  (SRC_SECRET_FIELDS[key] || []).forEach(f => { const el = document.querySelector(`#src-${key} [data-f="${f}"]`); if (el) el.placeholder = ''; });
+  updateSourceRunState(key);
+  await renderCredProfiles(key);
+  setCredMsg(key, `Deleted “${p ? p.name : pid}”.`);
 }
 
 function renderSrcRefs() {
@@ -4321,7 +4363,7 @@ function updateSourceRunState(key) {
   const bodyEl = document.getElementById('src-' + key);
   const cfg = collectSourceFields(key);
   const secretF = SRC_SECRET_FIELDS[key] || [];
-  const required = (SOURCE_REQUIRED[key] || []).filter(f => !(useSavedCreds[key] && secretF.includes(f)));
+  const required = (SOURCE_REQUIRED[key] || []).filter(f => !(activeProfile[key] && secretF.includes(f)));
   const missing = required.filter(f => !cfg[f]);
   if (missing.length) {
     btn.classList.add('run-off');
@@ -4340,7 +4382,7 @@ function runSource(key) {
   // When saved credentials are applied, the (blank) secret fields are supplied server-side,
   // so don't flag them as missing.
   const secretF = SRC_SECRET_FIELDS[key] || [];
-  const required = (SOURCE_REQUIRED[key] || []).filter(f => !(useSavedCreds[key] && secretF.includes(f)));
+  const required = (SOURCE_REQUIRED[key] || []).filter(f => !(activeProfile[key] && secretF.includes(f)));
   const missing = required.filter(f => !cfg[f]);
   if (body) body.querySelectorAll('.src-missing').forEach(el => el.classList.remove('src-missing'));
   if (missing.length) {
@@ -4355,10 +4397,8 @@ function runSource(key) {
     if (first) first.focus();
     return;
   }
-  // Opt-in: save the full connection profile (incl. the secrets just typed) for this app.
-  const saveCb = document.getElementById('srcSaveCreds');
-  if (saveCb && saveCb.checked && APP_ID) saveSourceCreds(key, cfg);
-  cfg._useSaved = !!useSavedCreds[key];
+  // The applied credential profile (if any) supplies the secrets server-side at run time.
+  cfg._credProfile = activeProfile[key] || null;
   if (key === 'redshift') { runRedshift(cfg, statusEl); return; }   // wired end-to-end
   if (key === 's3') { runS3(cfg, statusEl); return; }               // wired end-to-end
   if (key === 'snowflake') { runSnowflake(cfg, statusEl); return; } // wired end-to-end
@@ -4387,7 +4427,7 @@ async function runRedshift(cfg, statusEl) {
     sample_rows: cfg.sample_rows ? Number(cfg.sample_rows) : undefined,
     notify_email: EMAIL || undefined,
     ruleset_augment: collectSourceRefsAugment() || undefined,
-    use_saved_credentials: cfg._useSaved || undefined,
+    credential_profile: cfg._credProfile || undefined,
   };
   statusEl.className = 'src-status';
   statusEl.innerHTML = `<p><span class="spin"></span> Launching Redshift assessment…</p>`;
@@ -4425,7 +4465,7 @@ async function runS3(cfg, statusEl) {
     sample_rows: cfg.sample_rows ? Number(cfg.sample_rows) : undefined,
     notify_email: EMAIL || undefined,
     ruleset_augment: collectSourceRefsAugment() || undefined,
-    use_saved_credentials: cfg._useSaved || undefined,
+    credential_profile: cfg._credProfile || undefined,
   };
   statusEl.className = 'src-status';
   statusEl.innerHTML = `<p><span class="spin"></span> Launching S3 assessment…</p>`;
@@ -4461,7 +4501,7 @@ async function runSnowflake(cfg, statusEl) {
     sample_rows: cfg.sample_rows ? Number(cfg.sample_rows) : undefined,
     notify_email: EMAIL || undefined,
     ruleset_augment: collectSourceRefsAugment() || undefined,
-    use_saved_credentials: cfg._useSaved || undefined,
+    credential_profile: cfg._credProfile || undefined,
   };
   statusEl.className = 'src-status';
   statusEl.innerHTML = `<p><span class="spin"></span> Launching Snowflake assessment…</p>`;
@@ -4497,7 +4537,7 @@ async function runDatabricks(cfg, statusEl) {
     sample_rows: cfg.sample_rows ? Number(cfg.sample_rows) : undefined,
     notify_email: EMAIL || undefined,
     ruleset_augment: collectSourceRefsAugment() || undefined,
-    use_saved_credentials: cfg._useSaved || undefined,
+    credential_profile: cfg._credProfile || undefined,
   };
   statusEl.className = 'src-status';
   statusEl.innerHTML = `<p><span class="spin"></span> Launching Databricks assessment…</p>`;
@@ -5143,31 +5183,39 @@ function _schFieldHelp(kind, f) {
     (SOURCE_FIELD_HELP.common && SOURCE_FIELD_HELP.common[f]) || '';
 }
 
-let schedUseSaved = false;
+let schedProfile = null;      // active credential profile id for the schedule's source
 async function loadSchedCredsNote(kind) {
   const note = $('#schedCredsNote'); if (!note) return;
-  note.innerHTML = ''; schedUseSaved = false;
+  note.innerHTML = ''; schedProfile = null;
   if (!APP_ID || !(kind in SRC_SECRET_FIELDS)) return;
   let r;
-  try { r = await postJSON(`${API_BASE}/data-quality/source-credentials`, HEADERS, { app_id: APP_ID, source: kind, action: 'get' }); }
+  try { r = await postJSON(`${API_BASE}/data-quality/credential-profiles`, HEADERS, { app_id: APP_ID, source: kind, action: 'list' }); }
   catch (e) { return; }
-  if (!r || !r.found) { savedCredsCache['sched:' + kind] = null; return; }
-  savedCredsCache['sched:' + kind] = r.config || {};
-  note.className = 'src-status dev';
-  note.innerHTML = `Saved credentials for ${esc(SOURCE_LABEL[kind] || kind)} were found. ` +
-    `<a href="#" class="linkbtn" data-schapply="1" style="margin:0;">Apply them</a>`;
-  const ap = note.querySelector('[data-schapply]');
-  if (ap) ap.addEventListener('click', e => { e.preventDefault(); applySchedCreds(kind); });
+  const profiles = (r && r.profiles) || [];
+  credProfiles['sched:' + kind] = profiles;
+  if (!profiles.length) {
+    note.innerHTML = `<span class="hint">No saved profiles for ${esc(SOURCE_LABEL[kind] || kind)} — create one in the Data source tab, or enter details below.</span>`;
+    return;
+  }
+  note.className = 'src-status';
+  const opts = ['<option value="">— choose a saved profile —</option>']
+    .concat(profiles.map(p => `<option value="${esc(p.id)}">${esc(p.name)}</option>`)).join('');
+  note.innerHTML = `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;"><strong style="font-weight:600;">Credential profile</strong>` +
+    `<select id="schedProfSel" class="rule-edit-in" style="min-width:210px;">${opts}</select>` +
+    `<button type="button" class="btn-sm" data-schapply="1">Apply</button></div>` +
+    `<div class="hint" id="schedProfMsg" style="margin-top:6px;"></div>`;
+  note.querySelector('[data-schapply]').addEventListener('click', () => applySchedCreds(kind));
 }
 function applySchedCreds(kind) {
-  const cfg = savedCredsCache['sched:' + kind] || {}, wrap = $('#schedSourceFields');
-  if (!wrap) return;
-  const skip = new Set(SRC_SECRET_FIELDS[kind] || []);
-  Object.entries(cfg).forEach(([f, v]) => { const el = wrap.querySelector(`[data-f="${f}"]`); if (el && !skip.has(f)) el.value = v; });
-  (SRC_SECRET_FIELDS[kind] || []).forEach(f => { const el = wrap.querySelector(`[data-f="${f}"]`); if (el) { el.value = ''; el.placeholder = 'Using saved credentials'; } });
-  schedUseSaved = true;
-  const note = $('#schedCredsNote');
-  if (note) note.innerHTML = `<span class="src-status dev">Saved credentials applied — the secret is supplied securely when the schedule runs.</span>`;
+  const sel = $('#schedProfSel'); const pid = sel ? sel.value : '';
+  const p = (credProfiles['sched:' + kind] || []).find(x => x.id === pid);
+  const wrap = $('#schedSourceFields'), msg = $('#schedProfMsg');
+  if (!p || !wrap) { if (msg) { msg.textContent = 'Choose a profile first.'; msg.style.color = 'var(--err)'; } return; }
+  const secretF = new Set(SRC_SECRET_FIELDS[kind] || []);
+  Object.entries(p.config || {}).forEach(([f, v]) => { const el = wrap.querySelector(`[data-f="${f}"]`); if (el && !secretF.has(f)) el.value = v; });
+  (SRC_SECRET_FIELDS[kind] || []).forEach(f => { const el = wrap.querySelector(`[data-f="${f}"]`); if (el) { el.value = ''; el.placeholder = p.hasSecrets ? 'Using saved profile' : ''; } });
+  schedProfile = pid;
+  if (msg) { msg.textContent = `Applied “${p.name}” — the secret is supplied securely when the schedule runs.`; msg.style.color = ''; }
 }
 function renderSchedSourceFields(kind) {
   const wrap = $('#schedSourceFields');
@@ -5186,7 +5234,7 @@ function renderSchedSourceFields(kind) {
 function collectSchedSource() {
   const wrap = $('#schedSourceFields'), cfg = {};
   if (wrap) wrap.querySelectorAll('[data-f]').forEach(el => { const v = (el.value || '').trim(); if (v) cfg[el.dataset.f] = v; });
-  if (schedUseSaved) cfg.use_saved_credentials = true;   // secrets injected server-side at create
+  if (schedProfile) cfg.credential_profile = schedProfile;   // secrets injected server-side at create
   return cfg;
 }
 
@@ -5225,7 +5273,7 @@ async function saveSchedule() {
     const cfg = collectSchedSource();
     // When saved credentials are applied, the blank secret is injected server-side.
     const secretF = SRC_SECRET_FIELDS[kind] || [];
-    const required = (SOURCE_REQUIRED[kind] || []).filter(f => !(schedUseSaved && secretF.includes(f)));
+    const required = (SOURCE_REQUIRED[kind] || []).filter(f => !(schedProfile && secretF.includes(f)));
     const missing = required.filter(f => !cfg[f]);
     if (missing.length) { schBanner('err', 'Fill in the source field(s): ' + missing.join(', ') + '.'); return; }
     if (kind === 'redshift') {
