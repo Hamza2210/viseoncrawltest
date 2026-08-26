@@ -34,9 +34,34 @@
   body {
     margin: 0; background: var(--bg); color: var(--text);
     font: 15px/1.5 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-    padding: 24px 16px;
+    padding: 22px 22px 22px 244px;                /* left room for the fixed sidebar */
   }
   .wrap { max-width: 720px; margin: 0 auto; }
+  /* ---- Left sidebar navigation ---- */
+  .sidebar { position: fixed; top: 0; left: 0; bottom: 0; width: 216px; box-sizing: border-box;
+    overflow-y: auto; background: var(--card); border-right: 1px solid var(--border);
+    padding: 18px 12px; z-index: 40; }
+  .brand { padding: 4px 8px 12px; }
+  .brand-title { font-size: 20px; font-weight: 800; letter-spacing: -.02em;
+    background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .brand-sub { color: var(--muted); font-size: 11px; margin-top: 3px; line-height: 1.4; }
+  .side-nav { display: flex; flex-direction: column; gap: 2px; }
+  .side-group { color: var(--muted); font-size: 10px; font-weight: 700; letter-spacing: .07em;
+    text-transform: uppercase; padding: 13px 8px 4px; }
+  .side-item { display: flex; align-items: center; gap: 9px; width: 100%; text-align: left;
+    background: none; border: 0; border-radius: 8px; padding: 8px 10px; font: inherit; font-size: 13.5px;
+    font-weight: 600; color: var(--muted); cursor: pointer; }
+  .side-item:hover { background: var(--idle-bg); color: var(--text); }
+  .side-item.active { background: var(--accent-soft); color: var(--text); }
+  .side-item.sub { font-weight: 500; }
+  .si-ico { font-size: 15px; width: 18px; text-align: center; flex: none; }
+  @media (max-width: 860px) {
+    body { padding: 16px; }
+    .sidebar { position: static; width: auto; height: auto; margin: 0 0 16px; border-right: 0;
+      border-bottom: 1px solid var(--border); }
+    .side-nav { flex-direction: row; flex-wrap: wrap; }
+    .side-group { width: 100%; padding: 8px 8px 2px; }
+  }
   h1 { font-size: 23px; margin: 0 0 2px; font-weight: 800; letter-spacing: -.02em; width: fit-content;
     background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
   .tagline { color: var(--muted); font-size: 13px; margin: 0 0 3px; }
@@ -646,7 +671,7 @@
     transition: transform .13s ease, box-shadow .16s ease,
       background-color .13s, border-color .13s, color .13s;
   }
-  button:not(.tab):not(.subtab):not(.linkbtn):not(.dchip):not(.apptab):not(.x-close):not(.banner-x):not(.mzoom):not(.sched-caret):not(.inc-kebab):not(.inc-menu-item):not(:disabled):hover,
+  button:not(.tab):not(.side-item):not(.subtab):not(.linkbtn):not(.dchip):not(.apptab):not(.x-close):not(.banner-x):not(.mzoom):not(.sched-caret):not(.inc-kebab):not(.inc-menu-item):not(:disabled):hover,
   .btn-sm:not(:disabled):hover { transform: translateY(-1px) scale(1.03);
     box-shadow: 0 6px 18px color-mix(in srgb, var(--accent2) 26%, transparent); }
   button:not(:disabled):active, .btn-sm:not(:disabled):active { transform: translateY(0) scale(.98); box-shadow: none; }
@@ -721,24 +746,35 @@
 </style>
 </head>
 <body>
-<div class="wrap">
-  <!-- Slim strip pinned above the title, on every tab: open blockers/incidents at all times -->
-  <div id="blockerBar" class="blocker-bar" style="display:none;"></div>
-  <h1>Data Quality Profiling</h1>
-  <p class="tagline">Automated DAMA quality scoring, monitoring and insight for your Qlik data.</p>
-  <p class="sub" id="ctx"></p>
-
-  <div class="tabs">
-    <button class="tab active" data-tab="dashboard"><span class="tab-ico">📊</span>Dashboard</button>
-    <button class="tab" data-tab="medallion"><span class="tab-ico">🏅</span>Medallion</button>
-    <button class="tab" data-tab="incidents"><span class="tab-ico">🚨</span>Incidents <span class="tab-badge" id="incBadge" style="display:none;"></span></button>
-    <button class="tab" data-tab="upload"><span class="tab-ico">📥</span>Data from Source</button>
-    <button class="tab" data-tab="appdata"><span class="tab-ico">🧮</span>Assess app</button>
-    <button class="tab" data-tab="model"><span class="tab-ico">🧩</span>Data Model</button>
-    <button class="tab" data-tab="lineage"><span class="tab-ico">🔗</span>Lineage</button>
-    <button class="tab" data-tab="schedules"><span class="tab-ico">⏰</span>Schedules</button>
-    <button class="tab" data-tab="history"><span class="tab-ico">📜</span>History</button>
+<aside class="sidebar">
+  <div class="brand">
+    <div class="brand-title">Data Quality</div>
+    <div class="brand-sub">DAMA quality scores across your data stages</div>
   </div>
+  <nav class="side-nav">
+    <button class="side-item active" data-tab="dashboard"><span class="si-ico">📊</span>Overview</button>
+    <button class="side-item" data-tab="medallion"><span class="si-ico">🏅</span>Stages</button>
+
+    <div class="side-group">Run assessment</div>
+    <button class="side-item sub" data-tab="upload"><span class="si-ico">📥</span>From a data source</button>
+    <button class="side-item sub" data-tab="appdata"><span class="si-ico">🧮</span>From this app</button>
+
+    <div class="side-group">Monitor</div>
+    <button class="side-item sub" data-tab="incidents"><span class="si-ico">🚨</span>Incidents <span class="tab-badge" id="incBadge" style="display:none;"></span></button>
+    <button class="side-item sub" data-tab="schedules"><span class="si-ico">⏰</span>Schedules</button>
+
+    <div class="side-group">Explore</div>
+    <button class="side-item sub" data-tab="model"><span class="si-ico">🧩</span>Data model</button>
+    <button class="side-item sub" data-tab="lineage"><span class="si-ico">🔗</span>Lineage</button>
+
+    <div class="side-group">Records</div>
+    <button class="side-item sub" data-tab="history"><span class="si-ico">📜</span>Assessment history</button>
+  </nav>
+</aside>
+<div class="wrap">
+  <!-- Slim strip pinned at the top of the content, on every view: open blockers/incidents. -->
+  <div id="blockerBar" class="blocker-bar" style="display:none;"></div>
+  <p class="sub" id="ctx"></p>
 
   <!-- ============ UPLOAD ============ -->
   <div id="uploadPanel">
@@ -4978,7 +5014,7 @@ function renderMedalCompare() {
 }
 
 function switchTab(name) {
-  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+  document.querySelectorAll('.side-item').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
   $('#uploadPanel').style.display = name === 'upload' ? 'block' : 'none';
   $('#historyPanel').style.display = name === 'history' ? 'block' : 'none';
   $('#appDataPanel').style.display = name === 'appdata' ? 'block' : 'none';
@@ -5012,7 +5048,7 @@ function switchTab(name) {
       : 'No app detected — open this from the Qlik extension (updated version) inside an app.';
   }
 }
-document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => switchTab(t.dataset.tab)));
+document.querySelectorAll('.side-item').forEach(t => t.addEventListener('click', () => switchTab(t.dataset.tab)));
 switchTab('dashboard');   // Dashboard is the landing tab; sync the panels + wide layout on load
 refreshBlockerBar();                          // show open blockers immediately, on every tab
 setInterval(refreshBlockerBar, 60000);        // keep the always-visible bar current
