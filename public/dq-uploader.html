@@ -6797,9 +6797,14 @@ function scorePopup(e, name) {
 async function openTableRun(name) {
   const d = modelScores[name]; if (!d) return;
   switchTab('dashboard');
+  // The dashboard list/galaxy is scoped (app vs source); a table opened from the data model
+  // could be either, so switch to ITS scope before loadDashboard applies the filter — otherwise
+  // (e.g. viewing Source data) the table isn't in dashDatasets and nothing would open.
+  dashScope = isSourceDataset(d) ? 'source' : 'app';
   await loadDashboard();
-  const ds = dashDatasets.find(x => x.name === name);
-  if (ds) { await selectDataset(ds.key, name); viewLatestRun(); }
+  const ds = (dashDatasets || []).find(x => x.key === d.key)
+          || (dashDatasets || []).find(x => x.name === name);
+  if (ds) openGalaxyDataset(ds.key, ds.name);   // select the orb, split the view, show the latest run
 }
 
 $('#modelRefresh').addEventListener('click', loadModel);
