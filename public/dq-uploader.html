@@ -5572,13 +5572,18 @@ function deselectDataset() {
   if (wrap) wrap.querySelectorAll('.dash-row').forEach(x => x.classList.remove('sel'));
   setOverviewSplit(false);                                       // galaxy back to full width
 }
-function openGalaxyDataset(key, name) {
+// Force-select a dataset (never toggles closed) — used by the orb click AND programmatic opens.
+function selectGalaxyDataset(key, name) {
   const ds = dashDatasets.find(d => d.key === key); if (!ds) return;
-  if (GALAXY.selected && GALAXY.selected.key === key) { deselectDataset(); return; }   // re-click the selected orb to close
   const wrap = $('#dashTableWrap');
   if (wrap) wrap.querySelectorAll('.dash-row').forEach(x => x.classList.toggle('sel', x.getAttribute('data-key') === key));
   selectDataset(key, name);
   const det = $('#dashDetail'); if (det) det.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+function openGalaxyDataset(key, name) {
+  // Only a genuine re-click on the already-open orb closes it; programmatic opens use selectGalaxyDataset.
+  if (GALAXY.selected && GALAXY.selected.key === key) { deselectDataset(); return; }
+  selectGalaxyDataset(key, name);
 }
 
 function renderGalaxyLegend() {
@@ -6804,7 +6809,7 @@ async function openTableRun(name) {
   await loadDashboard();
   const ds = (dashDatasets || []).find(x => x.key === d.key)
           || (dashDatasets || []).find(x => x.name === name);
-  if (ds) openGalaxyDataset(ds.key, ds.name);   // select the orb, split the view, show the latest run
+  if (ds) selectGalaxyDataset(ds.key, ds.name);   // force-select (never toggles): open the orb + latest run
 }
 
 $('#modelRefresh').addEventListener('click', loadModel);
