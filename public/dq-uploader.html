@@ -773,6 +773,30 @@
     padding: 7px 11px; font-size: 11px; color: #aab4c8; pointer-events: none; }
   .galaxy-legend .gl-item { display: inline-flex; align-items: center; gap: 6px; }
   .galaxy-legend .gl-dot { width: 9px; height: 9px; border-radius: 50%; box-shadow: 0 0 8px currentColor; }
+  /* Assessment-running loader — a small glowing orbital system matching the galaxy aesthetic */
+  .dq-loader { display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 18px; padding: 46px 20px; text-align: center; }
+  .dq-orbit { position: relative; width: 92px; height: 92px; }
+  .dq-orbit .ring { position: absolute; border-radius: 50%; }
+  .dq-orbit .ring.r1 { inset: 0; border: 1px solid color-mix(in srgb, var(--accent2) 35%, transparent); }
+  .dq-orbit .ring.r2 { inset: 17px; border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent); }
+  .dq-orbit .core { position: absolute; inset: 36px; border-radius: 50%; background: var(--grad);
+    box-shadow: 0 0 26px 5px color-mix(in srgb, var(--accent) 60%, transparent); animation: dqpulse 1.7s ease-in-out infinite; }
+  .dq-orbit .sat { position: absolute; inset: 0; animation: dqspin 2.6s linear infinite; }
+  .dq-orbit .sat::before { content: ''; position: absolute; top: -4px; left: 50%; transform: translateX(-50%);
+    width: 9px; height: 9px; border-radius: 50%; background: var(--accent2); box-shadow: 0 0 12px 3px var(--accent2); }
+  .dq-orbit .sat.s2 { inset: 17px; animation-duration: 1.7s; animation-direction: reverse; }
+  .dq-orbit .sat.s2::before { width: 7px; height: 7px; background: var(--accent); box-shadow: 0 0 10px 2px var(--accent); }
+  .dq-loader .msg { font-size: 15px; font-weight: 700; color: var(--text); display: inline-flex; align-items: center; }
+  .dq-loader .sub { font-size: 12.5px; color: var(--muted); max-width: 360px; line-height: 1.5; margin-top: 4px; }
+  .dq-dots { display: inline-flex; margin-left: 5px; }
+  .dq-dots i { width: 5px; height: 5px; margin: 0 2px; border-radius: 50%; background: var(--accent2);
+    display: inline-block; animation: dqbounce 1.3s ease-in-out infinite; }
+  .dq-dots i:nth-child(2) { animation-delay: .18s; }
+  .dq-dots i:nth-child(3) { animation-delay: .36s; }
+  @keyframes dqpulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.2); opacity: .82; } }
+  @keyframes dqspin { to { transform: rotate(360deg); } }
+  @keyframes dqbounce { 0%, 70%, 100% { opacity: .25; transform: translateY(0); } 35% { opacity: 1; transform: translateY(-5px); } }
 </style>
 <script id="three-inline">
 /**
@@ -1662,7 +1686,7 @@ function renderAssessment(r, bodyEl, opts) {
     return;
   }
   if (!TERMINAL.includes(r.state)) {
-    body.innerHTML = `<p><span class="spin"></span>This run is still in progress (${(r.state || 'pending').toLowerCase()}).</p>`;
+    body.innerHTML = dqLoader('Assessment in progress', `The run is ${(r.state || 'pending').toLowerCase()} — results will appear here automatically.`);
     return;
   }
   const sum = r.summary || {};
@@ -2178,12 +2202,21 @@ function pollDelay(start) {
   return elapsed < 30000 ? 2000 : elapsed < 120000 ? 5000 : 15000;
 }
 
+// A themed "assessment running" loader (glowing orbital system) matching the galaxy aesthetic.
+function dqLoader(msg, sub) {
+  return `<div class="dq-loader">
+      <div class="dq-orbit"><div class="ring r1"></div><div class="ring r2"></div><div class="core"></div><div class="sat"></div><div class="sat s2"></div></div>
+      <div><div class="msg">${esc(msg || 'Assessing')}<span class="dq-dots"><i></i><i></i><i></i></span></div>
+        ${sub ? `<div class="sub">${esc(sub)}</div>` : ''}</div>
+    </div>`;
+}
+
 async function pollResults(resultPrefix) {
   const NUDGE_MS = 10 * 60 * 1000, start = Date.now();
   const card = $('#assessment'), body = $('#assessBody');
   card.style.display = 'block';
-  // Spinner stays until results arrive — no hard timeout, no per-poll logging.
-  body.innerHTML = `<p><span class="spin"></span>Assessing — waiting for results…</p>`;
+  // Loader stays until results arrive — no hard timeout, no per-poll logging.
+  body.innerHTML = dqLoader('Assessing your data', 'Scoring against the 9 DAMA quality dimensions — waiting for the run to finish.');
   let nudged = false;
   while (true) {
     let r = null;
@@ -5759,6 +5792,7 @@ function renderOverall(panelEl, results, total) {
 // Generic poll → render into a specific element (used per-table for app data).
 async function pollInto(resultPrefix, bodyEl, opts) {
   const NUDGE_MS = 10 * 60 * 1000, start = Date.now();
+  if (bodyEl) bodyEl.innerHTML = dqLoader('Assessing the dataset', 'Scoring against the 9 DAMA dimensions — this can take a moment for large tables.');
   let nudged = false;
   while (true) {
     let r = null;
