@@ -761,7 +761,9 @@
   .galaxy-card { background: radial-gradient(120% 130% at 30% 0%, #131a2e 0%, #0a0e1a 55%, #070a12 100%);
     border-color: #1e2740; }
   .galaxy-card h2 { color: #aab4c8; }
-  #galaxyWrap { position: relative; height: 460px; border-radius: 10px; overflow: hidden; cursor: grab; }
+  #galaxyWrap { position: relative; height: 420px; border-radius: 10px; overflow: hidden; cursor: grab; }
+  /* Clicking an orb scrolls to the detail but leaves the lower galaxy visible, so it never fully leaves. */
+  #dashDetail { scroll-margin-top: 240px; }
   #galaxyWrap.grabbing { cursor: grabbing; }
   #galaxyWrap canvas { display: block; }
   .galaxy-msg { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
@@ -1141,6 +1143,14 @@
       </div>
     </div>
 
+    <!-- Selected dataset detail sits right under the galaxy so clicking an orb barely scrolls. -->
+    <div class="card" id="dashDetail">
+      <h2 id="dashDetailTitle">Trends</h2>
+      <p class="dash-muted" id="dashDetailHint">Click an orb above (or a dataset in the list below) to see its scores, trends, rules, failed records and history.</p>
+      <div id="dashTrends"></div>
+      <div id="dashRunDetail"></div>
+    </div>
+
     <div class="dash-cols">
       <div class="card">
         <h2>Datasets</h2>
@@ -1163,12 +1173,6 @@
       </div>
     </div>
 
-    <div class="card" id="dashDetail">
-      <h2 id="dashDetailTitle">Trends</h2>
-      <p class="dash-muted" id="dashDetailHint">Select a dataset above to see its score, volume and per-dimension trends.</p>
-      <div id="dashTrends"></div>
-      <div id="dashRunDetail"></div>
-    </div>
   </div>
 
   <!-- ============ MEDALLION COMPARISON ============ -->
@@ -5176,7 +5180,7 @@ function renderMedalCompare() {
 // open the dataset. Three.js is loaded on demand; if it can't load, the dataset list still works.
 const GALAXY = { loaded: false, loading: null, renderer: null, scene: null, camera: null, group: null,
   orbs: [], raf: null, ray: null, mouse: null, glowTex: null, wrap: null, onResize: null,
-  rot: { x: -0.35, y: 0.55 }, dist: 165, auto: true, lastInteract: 0, hovered: null };
+  rot: { x: -0.32, y: 0.55 }, dist: 200, auto: true, lastInteract: 0, hovered: null };
 const GALAXY_RAG = { green: 0x30d67f, amber: 0xf5b73d, red: 0xff5d5d, na: 0x8aa0c0 };
 
 function loadThree() {
@@ -5228,12 +5232,12 @@ function initGalaxyScene(wrap) {
   g.scene.add(new THREE.Points(sg, new THREE.PointsMaterial({ color: 0x5b6aa0, size: 1.5, transparent: true, opacity: 0.7 })));
   // axis gnomon + labels
   const axis = (a, b) => { const geo = new THREE.BufferGeometry().setFromPoints([a, b]); return new THREE.Line(geo, new THREE.LineBasicMaterial({ color: 0x33405e, transparent: true, opacity: 0.4 })); };
-  g.group.add(axis(new THREE.Vector3(-66, 0, 0), new THREE.Vector3(66, 0, 0)));
-  g.group.add(axis(new THREE.Vector3(0, -44, 0), new THREE.Vector3(0, 44, 0)));
-  g.group.add(axis(new THREE.Vector3(0, 0, -54), new THREE.Vector3(0, 0, 54)));
-  const lblScore = _galaxyTextSprite('Score →'); lblScore.position.set(76, 0, 0); g.group.add(lblScore);
-  const lblVol = _galaxyTextSprite('Volume ↑'); lblVol.position.set(0, 52, 0); g.group.add(lblVol);
-  const lblStage = _galaxyTextSprite('Stage'); lblStage.position.set(0, 0, 62); g.group.add(lblStage);
+  g.group.add(axis(new THREE.Vector3(-82, 0, 0), new THREE.Vector3(82, 0, 0)));
+  g.group.add(axis(new THREE.Vector3(0, -58, 0), new THREE.Vector3(0, 58, 0)));
+  g.group.add(axis(new THREE.Vector3(0, 0, -66), new THREE.Vector3(0, 0, 66)));
+  const lblScore = _galaxyTextSprite('Score →'); lblScore.position.set(92, 0, 0); g.group.add(lblScore);
+  const lblVol = _galaxyTextSprite('Volume ↑'); lblVol.position.set(0, 66, 0); g.group.add(lblVol);
+  const lblStage = _galaxyTextSprite('Stage'); lblStage.position.set(0, 0, 74); g.group.add(lblStage);
   g.ray = new THREE.Raycaster(); g.mouse = new THREE.Vector2();
   _wireGalaxyControls(wrap);
   g.onResize = () => { const w = wrap.clientWidth || 600, h = wrap.clientHeight || 460; g.camera.aspect = w / h; g.camera.updateProjectionMatrix(); g.renderer.setSize(w, h); };
@@ -5244,22 +5248,41 @@ function buildGalaxyOrbs(datasets) {
   const THREE = window.THREE, g = GALAXY;
   g.orbs.forEach(o => { g.group.remove(o.mesh); g.group.remove(o.halo); });
   g.orbs = [];
+  // Relative normalisation: spread the actual value RANGE across the space, so a set of similar
+  // (e.g. all-high) scores still separates instead of clumping in one corner.
+  const scores = datasets.map(d => typeof d.score === 'number' ? d.score : 50);
+  const smin = Math.min(...scores), sspan = (Math.max(...scores) - smin) || 1;
   const logs = datasets.map(d => Math.log10(Math.max(1, d.rows || 1)));
   const lmin = Math.min(...logs), lspan = (Math.max(...logs) - lmin) || 1;
-  const STAGE_Z = { bronze: -46, silver: 0, gold: 46 };
-  datasets.forEach((d, i) => {
-    const score = typeof d.score === 'number' ? d.score : 50;
-    const ny = (logs[i] - lmin) / lspan;                    // 0..1 volume
-    const x = (score - 50) / 50 * 62, y = (ny - 0.5) * 78;
+  const STAGE_Z = { bronze: -50, silver: 0, gold: 50 };
+  const pts = datasets.map((d, i) => {
+    const nx = (scores[i] - smin) / sspan, ny = (logs[i] - lmin) / lspan;   // 0..1
     const stage = (dashEntries[d.key] || {}).stage;
-    const z = STAGE_Z[stage] != null ? STAGE_Z[stage] : 0;
-    const col = GALAXY_RAG[d.status] || GALAXY_RAG.na, r = 2.6 + ny * 4;
-    const mesh = new THREE.Mesh(new THREE.SphereGeometry(r, 22, 22), new THREE.MeshBasicMaterial({ color: col }));
-    mesh.position.set(x, y, z);
-    const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: g.glowTex, color: col, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0.9 }));
-    halo.position.set(x, y, z); halo.scale.setScalar(r * 6);
+    // Unstaged datasets fan out along z (golden angle) instead of stacking on one plane.
+    const z = STAGE_Z[stage] != null ? STAGE_Z[stage] : Math.sin(i * 2.399963) * 26;
+    return { d, x: (nx - 0.5) * 130, y: (ny - 0.5) * 92, z, r: 2.4 + ny * 3.2, stage };
+  });
+  // De-clump: a few repulsion passes so no two orbs overlap — makes every one hoverable/clickable.
+  for (let it = 0; it < 70; it++) {
+    for (let a = 0; a < pts.length; a++) for (let b = a + 1; b < pts.length; b++) {
+      const A = pts[a], B = pts[b];
+      let dx = B.x - A.x, dy = B.y - A.y, dz = B.z - A.z;
+      const dist = Math.sqrt(dx * dx + dy * dy + dz * dz) || 0.001, min = A.r + B.r + 7;
+      if (dist < min) {
+        const push = (min - dist) / 2 / dist;
+        dx *= push; dy *= push; dz *= push;
+        A.x -= dx; A.y -= dy; A.z -= dz; B.x += dx; B.y += dy; B.z += dz;
+      }
+    }
+  }
+  pts.forEach(p => {
+    const col = GALAXY_RAG[p.d.status] || GALAXY_RAG.na;
+    const mesh = new THREE.Mesh(new THREE.SphereGeometry(p.r, 22, 22), new THREE.MeshBasicMaterial({ color: col }));
+    mesh.position.set(p.x, p.y, p.z);
+    const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: g.glowTex, color: col, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0.6 }));
+    halo.position.set(p.x, p.y, p.z); halo.scale.setScalar(p.r * 3.2);       // tighter glow = distinct orbs
     g.group.add(mesh); g.group.add(halo);
-    g.orbs.push({ mesh, halo, r, key: d.key, name: d.name, score: d.score, status: d.status, rows: d.rows, stage });
+    g.orbs.push({ mesh, halo, r: p.r, key: p.d.key, name: p.d.name, score: p.d.score, status: p.d.status, rows: p.d.rows, stage: p.stage });
   });
 }
 
