@@ -71,7 +71,17 @@
   }
   .card h2 { font-size: 12.5px; text-transform: uppercase; letter-spacing: .05em;
     color: var(--muted); margin: 0 0 14px; display: flex; align-items: center; font-weight: 700; }
-  input[type=file] { width: 100%; margin: 4px 0 10px; }
+  input[type=file] { width: 100%; margin: 4px 0 10px; font-size: 13px; color: var(--muted);
+    border: 1px dashed #2c3959; border-radius: 10px; padding: 14px; background: var(--card-2);
+    cursor: pointer; transition: border-color .15s, background .15s; box-sizing: border-box; }
+  input[type=file]:hover { border-color: color-mix(in srgb, var(--accent) 55%, transparent); background: #0f1728; }
+  input[type=file]::file-selector-button {
+    font: inherit; font-weight: 600; font-size: 13px; margin-right: 14px; padding: 9px 18px;
+    border: 0; border-radius: 8px; cursor: pointer; color: #fff;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    box-shadow: 0 4px 14px rgba(91,140,255,.28); transition: filter .15s, transform .05s; }
+  input[type=file]::file-selector-button:hover { filter: brightness(1.1); }
+  input[type=file]::file-selector-button:active { transform: translateY(1px); }
   label { font-size: 13px; font-weight: 600; display: block; margin-bottom: 4px; }
   input[type=number] { width: 100%; padding: 9px 11px; border: 1px solid var(--border);
     border-radius: 8px; background: var(--bg); color: var(--text); font: inherit; }
@@ -747,7 +757,7 @@
   .medal-cmp-table td.down { color: var(--err); font-weight: 700; }
   .medal-cmp-table tr.overall td { font-weight: 800; background: var(--idle-bg); }
   /* Quality Space 3D galaxy */
-  .galaxy-card { background: radial-gradient(120% 130% at 30% 0%, #131a2e 0%, #0a0e1a 55%, #070a12 100%);
+  .galaxy-card { position: relative; background: radial-gradient(120% 130% at 30% 0%, #131a2e 0%, #0a0e1a 55%, #070a12 100%);
     border-color: #1e2740; }
   .galaxy-card h2 { color: #aab4c8; }
   #galaxyWrap { position: relative; height: 420px; border-radius: 10px; overflow: hidden; cursor: grab; }
@@ -800,31 +810,34 @@
   .dq-loader.compact { gap: 12px; padding: 26px 16px; }
   .dq-loader.compact .dq-orbit { transform: scale(.62); }
   .dq-loader.compact .msg { font-size: 13px; }
-  /* Galaxy search + filter tools (top-right, over the canvas) */
-  .galaxy-tools { position: absolute; top: 12px; right: 12px; z-index: 4; display: flex; gap: 8px; align-items: flex-start; }
-  .gx-btn { position: relative; width: 32px; height: 32px; border-radius: 8px; border: 1px solid #2a3552;
-    background: rgba(15,21,38,.72); color: #cdd6ea; font-size: 14px; cursor: pointer; display: flex;
+  /* Galaxy search + filter tools (sit in the card's top-right corner, level with the title) */
+  .galaxy-tools { position: absolute; top: 18px; right: 18px; z-index: 6; display: flex; gap: 8px; align-items: flex-start; }
+  .gx-btn { position: relative; width: 34px; height: 34px; border-radius: 9px; border: 1px solid #2a3552;
+    background: rgba(15,21,38,.72); color: #cdd6ea; font-size: 15px; cursor: pointer; display: flex;
     align-items: center; justify-content: center; transition: background .15s, border-color .15s; }
   .gx-btn:hover { background: rgba(40,60,110,.75); color: #fff; }
   .gx-btn.active { background: color-mix(in srgb, var(--accent) 32%, rgba(15,21,38,.72)); border-color: color-mix(in srgb, var(--accent) 55%, transparent); color: #fff; }
-  .gx-badge { position: absolute; top: -5px; right: -5px; min-width: 15px; height: 15px; padding: 0 3px;
-    border-radius: 8px; background: var(--accent2); color: #fff; font-size: 9px; font-weight: 700;
+  .gx-badge { position: absolute; top: -5px; right: -5px; min-width: 16px; height: 16px; padding: 0 3px;
+    border-radius: 8px; background: var(--accent2); color: #fff; font-size: 9.5px; font-weight: 700;
     display: flex; align-items: center; justify-content: center; }
-  .gx-search { width: 190px; padding: 6px 10px; border-radius: 8px; border: 1px solid #2a3552;
-    background: rgba(13,19,35,.92); color: #e8ebf3; font: inherit; font-size: 12.5px; height: 32px; box-sizing: border-box; }
+  .gx-search { width: 200px; padding: 7px 11px; border-radius: 9px; border: 1px solid #2a3552;
+    background: rgba(13,19,35,.92); color: #e8ebf3; font: inherit; font-size: 13px; height: 34px; box-sizing: border-box; }
   .gx-search:focus { outline: none; border-color: color-mix(in srgb, var(--accent) 60%, transparent); }
-  .gx-filter-pop { position: absolute; top: 40px; right: 0; width: 236px; max-height: 340px; overflow-y: auto;
-    background: rgba(13,19,35,.98); border: 1px solid #2a3552; border-radius: 10px; padding: 12px 13px;
-    box-shadow: 0 14px 34px rgba(0,0,0,.55); }
-  .gx-filter-pop h4 { margin: 0 0 7px; font-size: 10px; text-transform: uppercase; letter-spacing: .07em; color: #8792a6; }
-  .gx-chip { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; font-size: 11px; padding: 4px 9px;
-    border-radius: 999px; border: 1px solid #2a3552; background: transparent; color: #aab4c8; margin: 0 5px 5px 0; }
-  .gx-chip:hover { border-color: #3a4a72; color: #d6deee; }
+  .gx-filter-pop { position: absolute; top: 44px; right: 0; width: 320px; max-height: 380px; overflow-y: auto;
+    background: rgba(13,19,35,.98); border: 1px solid #2a3552; border-radius: 12px; padding: 18px 20px;
+    box-shadow: 0 18px 44px rgba(0,0,0,.6); }
+  .gx-filter-pop h4 { margin: 0 0 11px; font-size: 10.5px; text-transform: uppercase; letter-spacing: .09em; color: #8792a6; }
+  .gx-filter-sec + .gx-filter-sec { margin-top: 18px; padding-top: 16px; border-top: 1px solid #1c2740; }
+  .gx-filter-sec .gx-none { font-size: 12px; color: #6f7c94; font-style: italic; }
+  .gx-chip { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; font-size: 12.5px; padding: 7px 14px;
+    border-radius: 999px; border: 1px solid #2a3552; background: transparent; color: #b8c2d8; margin: 0 8px 8px 0; }
+  .gx-chip:hover { border-color: #3a4a72; color: #eaf0fb; }
   .gx-chip.on { background: color-mix(in srgb, var(--accent) 26%, transparent); color: #fff;
-    border-color: color-mix(in srgb, var(--accent2) 50%, transparent); }
-  .gx-filter-pop .gx-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 6px;
-    padding-top: 9px; border-top: 1px solid #223052; }
-  .gx-filter-pop .gx-actions .hint { font-size: 10.5px; color: #8792a6; }
+    border-color: color-mix(in srgb, var(--accent2) 55%, transparent); box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent2) 30%, transparent) inset; }
+  .gx-filter-pop .gx-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 16px;
+    padding-top: 14px; border-top: 1px solid #223052; }
+  .gx-filter-pop .gx-actions .hint { font-size: 11px; color: #8792a6; }
+  .gx-filter-pop .gx-actions .linkbtn { font-size: 13px; }
 </style>
 <script id="three-inline">
 /**
@@ -1186,15 +1199,15 @@
         <span class="hint" style="margin-left:10px;text-transform:none;letter-spacing:0;font-weight:400;color:#8792a6;">
           drag to orbit · scroll to zoom · click an orb to open it</span>
       </h2>
+      <div class="galaxy-tools">
+        <input id="gxSearchInput" class="gx-search" type="search" placeholder="Search datasets…" style="display:none;" autocomplete="off">
+        <button type="button" class="gx-btn" id="gxSearchBtn" data-tip="Search datasets" aria-label="Search datasets">🔍</button>
+        <button type="button" class="gx-btn" id="gxFilterBtn" data-tip="Filter datasets" aria-label="Filter datasets">⚑<span class="gx-badge" id="gxFilterBadge" style="display:none;"></span></button>
+        <div id="gxFilterPop" class="gx-filter-pop" style="display:none;"></div>
+      </div>
       <div id="galaxyWrap">
         <div id="galaxyMsg" class="galaxy-msg">Loading 3D view…</div>
         <div id="galaxyTip" class="galaxy-tip" style="display:none;"></div>
-        <div class="galaxy-tools">
-          <input id="gxSearchInput" class="gx-search" type="search" placeholder="Search datasets…" style="display:none;" autocomplete="off">
-          <button type="button" class="gx-btn" id="gxSearchBtn" data-tip="Search datasets" aria-label="Search datasets">🔍</button>
-          <button type="button" class="gx-btn" id="gxFilterBtn" data-tip="Filter datasets" aria-label="Filter datasets">⚑<span class="gx-badge" id="gxFilterBadge" style="display:none;"></span></button>
-          <div id="gxFilterPop" class="gx-filter-pop" style="display:none;"></div>
-        </div>
         <div id="galaxyLegend" class="galaxy-legend"></div>
       </div>
     </div>
@@ -5278,12 +5291,15 @@ function renderGxFilterPop() {
   const allTags = [...new Set(GALAXY.orbs.flatMap(o => o.tags || []))].sort((a, b) => a.localeCompare(b));
   const allSrc = [...new Set(GALAXY.orbs.map(o => o.sourceFormat).filter(s => s && s !== 'qlik'))].sort();
   const chip = (attr, val, label, on) => `<button type="button" class="gx-chip${on ? ' on' : ''}" ${attr}="${esc(val)}">${label}</button>`;
-  let h = `<h4>Medallion stage</h4><div>` +
-    MEDALLIONS.map(m => chip('data-gxstage', m, esc(MEDAL_LABEL[m]), f.stages.has(m))).join('') + `</div>`;
-  if (allTags.length) h += `<h4 style="margin-top:11px;">Tag</h4><div>` +
-    allTags.map(t => chip('data-gxtag', t, esc(t), f.tags.has(t))).join('') + `</div>`;
-  if (dashScope === 'source' && allSrc.length) h += `<h4 style="margin-top:11px;">Data source</h4><div>` +
-    allSrc.map(s => chip('data-gxsrc', s, (SOURCE_FMT_ICON[s] || '🗄️') + ' ' + esc(sourceLabel(s)), f.sources.has(s))).join('') + `</div>`;
+  const sec = (title, inner) => `<div class="gx-filter-sec"><h4>${title}</h4><div>${inner}</div></div>`;
+  const none = msg => `<span class="gx-none">${msg}</span>`;
+  let h = sec('Medallion stage', MEDALLIONS.map(m => chip('data-gxstage', m, esc(MEDAL_LABEL[m]), f.stages.has(m))).join(''));
+  h += sec('Tag', allTags.length
+    ? allTags.map(t => chip('data-gxtag', t, esc(t), f.tags.has(t))).join('')
+    : none('No custom tags yet — add them on the Dashboard.'));
+  if (dashScope === 'source') h += sec('Data source', allSrc.length
+    ? allSrc.map(s => chip('data-gxsrc', s, (SOURCE_FMT_ICON[s] || '🗄️') + ' ' + esc(sourceLabel(s)), f.sources.has(s))).join('')
+    : none('No source datasets to filter.'));
   h += `<div class="gx-actions"><button type="button" class="linkbtn" id="gxFilterClear">Clear all</button><span class="hint" id="gxFilterCount"></span></div>`;
   pop.innerHTML = h;
   applyGalaxyFilter();   // refresh the "N of M shown" line
