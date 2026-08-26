@@ -1204,6 +1204,7 @@
       <div class="galaxy-tools">
         <input id="gxSearchInput" class="gx-search" type="search" placeholder="Search datasets…" style="display:none;" autocomplete="off">
         <button type="button" class="gx-btn" id="gxSearchBtn" data-tip="Search datasets" aria-label="Search datasets">🔍</button>
+        <button type="button" class="gx-btn" id="gxWallsBtn" data-tip="Show medallion stage walls" aria-label="Toggle stage walls">▤</button>
         <button type="button" class="gx-btn" id="gxFilterBtn" data-tip="Filter datasets" aria-label="Filter datasets">⚑<span class="gx-badge" id="gxFilterBadge" style="display:none;"></span></button>
         <div id="gxFilterPop" class="gx-filter-pop" style="display:none;"></div>
       </div>
@@ -5259,7 +5260,8 @@ function renderMedalCompare() {
 // open the dataset. Three.js is loaded on demand; if it can't load, the dataset list still works.
 const GALAXY = { loaded: false, loading: null, renderer: null, scene: null, camera: null, group: null,
   orbs: [], raf: null, ray: null, mouse: null, glowTex: null, ringTex: null, selRing: null, wrap: null, onResize: null,
-  rot: { x: -0.32, y: 0.55 }, dist: 200, auto: true, lastInteract: 0, hovered: null, selected: null };
+  rot: { x: -0.32, y: 0.55 }, dist: 200, auto: true, lastInteract: 0, hovered: null, selected: null,
+  shelves: [], wallsOn: false };
 const GALAXY_RAG = { green: 0x30d67f, amber: 0xf5b73d, red: 0xff5d5d, na: 0x8aa0c0 };
 // Stage → depth shelf + medal-ring colour. Colour = RAG status (fill); stage = ring outline + z-layer.
 const GALAXY_STAGE_Z = { bronze: -72, silver: 0, gold: 72 };
@@ -5312,7 +5314,12 @@ function renderGxFilterPop() {
 }
 function wireGalaxyTools() {
   if (GALAXY.toolsWired) return; GALAXY.toolsWired = true;
-  const sBtn = $('#gxSearchBtn'), sInp = $('#gxSearchInput'), fBtn = $('#gxFilterBtn'), pop = $('#gxFilterPop');
+  const sBtn = $('#gxSearchBtn'), sInp = $('#gxSearchInput'), fBtn = $('#gxFilterBtn'), pop = $('#gxFilterPop'), wBtn = $('#gxWallsBtn');
+  if (wBtn) wBtn.addEventListener('click', () => {
+    GALAXY.wallsOn = !GALAXY.wallsOn;
+    GALAXY.shelves.forEach(o => o.visible = GALAXY.wallsOn);
+    wBtn.classList.toggle('active', GALAXY.wallsOn);
+  });
   if (sBtn) sBtn.addEventListener('click', () => {
     const open = sInp.style.display === 'none';
     sInp.style.display = open ? '' : 'none'; sBtn.classList.toggle('active', open);
@@ -5406,20 +5413,23 @@ function initGalaxyScene(wrap) {
   const lblVol = _galaxyTextSprite('Volume ↑'); lblVol.position.set(0, 66, 0); g.group.add(lblVol);
   const lblStage = _galaxyTextSprite('Stage'); lblStage.position.set(0, 0, 92); g.group.add(lblStage);
   // Stage shelves: a tinted plane + outline + label at each medallion z-depth, so bronze/silver/gold
-  // read as three distinct layers. Colour = RAG (orb fill); this gives stage its own visual channel.
+  // read as three distinct layers. Off by default (they can be busy) — toggled via the ▤ button.
   const SW = 168, SH = 118;
+  g.shelves = [];
   ['bronze', 'silver', 'gold'].forEach(st => {
     const z = GALAXY_STAGE_Z[st], col = MEDAL_COLOR[st];
     const plane = new THREE.Mesh(new THREE.PlaneGeometry(SW, SH),
       new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.05, side: THREE.DoubleSide, depthWrite: false }));
-    plane.position.set(0, 0, z); g.group.add(plane);
+    plane.position.set(0, 0, z); g.group.add(plane); g.shelves.push(plane);
     const rim = [[-SW / 2, -SH / 2], [SW / 2, -SH / 2], [SW / 2, SH / 2], [-SW / 2, SH / 2], [-SW / 2, -SH / 2]]
       .map(([px, py]) => new THREE.Vector3(px, py, z));
-    g.group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(rim),
-      new THREE.LineBasicMaterial({ color: col, transparent: true, opacity: 0.32 })));
+    const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(rim),
+      new THREE.LineBasicMaterial({ color: col, transparent: true, opacity: 0.32 }));
+    g.group.add(line); g.shelves.push(line);
     const lbl = _galaxyTextSprite(st.toUpperCase(), MEDAL_CSS[st], 7.5);
-    lbl.position.set(-SW / 2 + 20, SH / 2 - 8, z); g.group.add(lbl);
+    lbl.position.set(-SW / 2 + 20, SH / 2 - 8, z); g.group.add(lbl); g.shelves.push(lbl);
   });
+  g.shelves.forEach(o => o.visible = g.wallsOn);          // hidden until the user toggles them on
   g.medalRingTex = _galaxyMedalRingTexture();
   // Persistent selection ring (billboard) — shown at the currently-selected orb.
   g.ringTex = _galaxyRingTexture();
