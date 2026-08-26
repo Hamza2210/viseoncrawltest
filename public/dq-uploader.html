@@ -22,6 +22,12 @@
     --cat-3: #A78BFA; --cat-4: #F472B6; --cat-5: #38BDF8;
   }
   * { box-sizing: border-box; }
+  * { scrollbar-width: thin; scrollbar-color: #2c3c62 transparent; }        /* Firefox */
+  ::-webkit-scrollbar { width: 11px; height: 11px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #2c3c62; border-radius: 7px; border: 2px solid transparent; background-clip: padding-box; }
+  ::-webkit-scrollbar-thumb:hover { background: #3c5286; }
+  ::-webkit-scrollbar-corner { background: transparent; }
   body {
     margin: 0; background: var(--bg); color: var(--text);
     font: 15px/1.5 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
@@ -745,8 +751,15 @@
     border-color: #1e2740; }
   .galaxy-card h2 { color: #aab4c8; }
   #galaxyWrap { position: relative; height: 420px; border-radius: 10px; overflow: hidden; cursor: grab; }
-  /* Clicking an orb scrolls to the detail but leaves the lower galaxy visible, so it never fully leaves. */
-  #dashDetail { scroll-margin-top: 240px; }
+  /* Galaxy (left) + selected-dataset detail (right), side by side; stacks on narrow screens. */
+  /* Galaxy is full-width until a dataset is selected, then it splits: galaxy | detail. */
+  .overview-top { display: grid; grid-template-columns: 1fr; gap: 16px; align-items: start; }
+  .overview-top.split { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); }
+  .overview-top:not(.split) > #dashDetail { display: none; }
+  .overview-top > * { margin-bottom: 0; }
+  #dashDetail { max-height: 496px; overflow-y: auto; scroll-margin-top: 240px; }
+  #dashDetail .trend-cols { grid-template-columns: 1fr; }   /* stack charts in the narrow side panel */
+  @media (max-width: 1100px) { .overview-top.split { grid-template-columns: 1fr; } #dashDetail { max-height: none; } }
   #galaxyWrap.grabbing { cursor: grabbing; }
   #galaxyWrap canvas { display: block; }
   .galaxy-msg { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
@@ -1113,6 +1126,8 @@
       <div class="dash-tiles" id="dashTiles"></div>
     </div>
 
+    <!-- Galaxy (left) + selected-dataset detail (right), side by side. -->
+    <div class="overview-top">
     <!-- Quality Space: interactive 3D galaxy of every dataset -->
     <div class="card galaxy-card">
       <h2 style="color:#aab4c8;">Quality space
@@ -1133,6 +1148,7 @@
       <div id="dashTrends"></div>
       <div id="dashRunDetail"></div>
     </div>
+    </div><!-- /overview-top -->
 
     <div class="dash-cols">
       <div class="card">
@@ -2898,6 +2914,7 @@ function applyDashScope() {
   document.querySelectorAll('#dashScopeToggle .scope-btn')
     .forEach(b => b.classList.toggle('active', b.dataset.scope === dashScope));
   dashDatasets = dashDatasetsAll.filter(ds => dashScope === 'source' ? isSourceDataset(ds) : !isSourceDataset(ds));
+  dashSelected = null; GALAXY.selected = null; setOverviewSplit(false);   // (re)load / scope switch → full-width galaxy
   const noun = dashScope === 'source' ? 'source dataset' : 'app table';
   renderTiles(computeScopeTiles(dashDatasets));
   wireDashControls();
@@ -3067,6 +3084,8 @@ const DS_TABS = [['scores', 'Scores'], ['trends', 'Trends'], ['rules', 'Rules'],
 async function selectDataset(key, name) {
   const ds = dashDatasets.find(x => x.key === key);
   dashSelected = { key, name, prefix: ds && ds.resultPrefix };
+  if (GALAXY.orbs && GALAXY.orbs.length) GALAXY.selected = GALAXY.orbs.find(o => o.key === key) || null;
+  setOverviewSplit(true);                                        // reveal the detail beside the galaxy
   dsTrends = null; dsTab = 'scores';
   $('#dashDetailTitle').textContent = name;
   $('#dashDetailHint').textContent = '';
@@ -3077,13 +3096,7 @@ async function selectDataset(key, name) {
     `<div id="dsPanel"><p><span class="spin"></span> Loading…</p></div>`;
   $('#dashRunDetail').innerHTML = '';
   const back = $('#dsBack');
-  if (back) back.addEventListener('click', async () => {
-    dashSelected = null;
-    $('#dashTableWrap').querySelectorAll('.dash-row').forEach(x => x.classList.remove('sel'));
-    $('#dashDetailTitle').textContent = 'All tables — 30-day trend';
-    $('#dashRunDetail').innerHTML = '';
-    await trendsOut(); renderAppOverview(dashDatasets); trendsIn();
-  });
+  if (back) back.addEventListener('click', () => deselectDataset());   // collapse back to the full-width galaxy
   $('#dsSubtabs').querySelectorAll('[data-dstab]').forEach(b =>
     b.addEventListener('click', () => { dsTab = b.dataset.dstab; selectDsTab(); }));
   try { dsTrends = await postJSON(`${API_BASE}/data-quality/trends`, HEADERS, { dataset_key: key, window_days: 30 }); }
@@ -5162,8 +5175,8 @@ function renderMedalCompare() {
 // colour = RAG status, size = rows. Drag to orbit, scroll to zoom, hover for a tooltip, click to
 // open the dataset. Three.js is loaded on demand; if it can't load, the dataset list still works.
 const GALAXY = { loaded: false, loading: null, renderer: null, scene: null, camera: null, group: null,
-  orbs: [], raf: null, ray: null, mouse: null, glowTex: null, wrap: null, onResize: null,
-  rot: { x: -0.32, y: 0.55 }, dist: 200, auto: true, lastInteract: 0, hovered: null };
+  orbs: [], raf: null, ray: null, mouse: null, glowTex: null, ringTex: null, selRing: null, wrap: null, onResize: null,
+  rot: { x: -0.32, y: 0.55 }, dist: 200, auto: true, lastInteract: 0, hovered: null, selected: null };
 const GALAXY_RAG = { green: 0x30d67f, amber: 0xf5b73d, red: 0xff5d5d, na: 0x8aa0c0 };
 
 function loadThree() {
@@ -5184,6 +5197,12 @@ function _galaxyGlowTexture() {
   const x = c.getContext('2d'), g = x.createRadialGradient(32, 32, 0, 32, 32, 32);
   g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(0.25, 'rgba(255,255,255,0.6)'); g.addColorStop(1, 'rgba(255,255,255,0)');
   x.fillStyle = g; x.fillRect(0, 0, 64, 64);
+  return new window.THREE.CanvasTexture(c);
+}
+function _galaxyRingTexture() {
+  const c = document.createElement('canvas'); c.width = c.height = 128; const x = c.getContext('2d');
+  x.strokeStyle = 'rgba(140,190,255,0.55)'; x.lineWidth = 16; x.beginPath(); x.arc(64, 64, 50, 0, Math.PI * 2); x.stroke();
+  x.strokeStyle = 'rgba(255,255,255,0.98)'; x.lineWidth = 6; x.beginPath(); x.arc(64, 64, 50, 0, Math.PI * 2); x.stroke();
   return new window.THREE.CanvasTexture(c);
 }
 function _galaxyTextSprite(text) {
@@ -5221,6 +5240,10 @@ function initGalaxyScene(wrap) {
   const lblScore = _galaxyTextSprite('Score →'); lblScore.position.set(92, 0, 0); g.group.add(lblScore);
   const lblVol = _galaxyTextSprite('Volume ↑'); lblVol.position.set(0, 66, 0); g.group.add(lblVol);
   const lblStage = _galaxyTextSprite('Stage'); lblStage.position.set(0, 0, 74); g.group.add(lblStage);
+  // Persistent selection ring (billboard) — shown at the currently-selected orb.
+  g.ringTex = _galaxyRingTexture();
+  g.selRing = new THREE.Sprite(new THREE.SpriteMaterial({ map: g.ringTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
+  g.selRing.visible = false; g.group.add(g.selRing);
   g.ray = new THREE.Raycaster(); g.mouse = new THREE.Vector2();
   _wireGalaxyControls(wrap);
   g.onResize = () => { const w = wrap.clientWidth || 600, h = wrap.clientHeight || 460; g.camera.aspect = w / h; g.camera.updateProjectionMatrix(); g.renderer.setSize(w, h); };
@@ -5230,7 +5253,9 @@ function initGalaxyScene(wrap) {
 function buildGalaxyOrbs(datasets) {
   const THREE = window.THREE, g = GALAXY;
   g.orbs.forEach(o => { g.group.remove(o.mesh); g.group.remove(o.halo); });
-  g.orbs = [];
+  g.orbs = []; g.selected = null; g.hovered = null;      // stale refs — cleared on rebuild
+  // keep the current selection highlighted if that dataset is still present
+  const keepKey = dashSelected && dashSelected.key;
   // Relative normalisation: spread the actual value RANGE across the space, so a set of similar
   // (e.g. all-high) scores still separates instead of clumping in one corner.
   const scores = datasets.map(d => typeof d.score === 'number' ? d.score : 50);
@@ -5267,6 +5292,7 @@ function buildGalaxyOrbs(datasets) {
     g.group.add(mesh); g.group.add(halo);
     g.orbs.push({ mesh, halo, r: p.r, key: p.d.key, name: p.d.name, score: p.d.score, status: p.d.status, rows: p.d.rows, stage: p.stage });
   });
+  if (keepKey) g.selected = g.orbs.find(o => o.key === keepKey) || null;   // re-highlight the open dataset
 }
 
 function _wireGalaxyControls(wrap) {
@@ -5316,18 +5342,40 @@ function startGalaxyLoop() {
     if (g.auto) g.rot.y += 0.0016;
     g.group.rotation.x = g.rot.x; g.group.rotation.y = g.rot.y;
     g.camera.position.z = g.dist;
-    g.orbs.forEach(o => { const s = (g.hovered === o) ? 1.35 : 1; o.mesh.scale.setScalar(s); });
+    const sel = g.selected, t = performance.now();
+    if (sel) {
+      g.selRing.visible = true;
+      g.selRing.position.copy(sel.mesh.position);
+      g.selRing.scale.setScalar(sel.r * (5.4 + Math.sin(t * 0.005) * 0.8));   // gentle pulse
+    } else if (g.selRing) g.selRing.visible = false;
+    g.orbs.forEach(o => {
+      o.mesh.scale.setScalar(o === sel ? 1.85 : (o === g.hovered ? 1.35 : 1));
+      o.halo.material.opacity = o === sel ? 0.95 : (sel ? 0.35 : 0.6);        // dim the rest when one is selected
+    });
     g.renderer.render(g.scene, g.camera);
   };
   loop();
 }
 
+// Split the Overview (galaxy | detail) when a dataset is picked; full-width galaxy otherwise.
+function setOverviewSplit(on) {
+  const top = document.querySelector('.overview-top');
+  if (top) top.classList.toggle('split', !!on);
+  requestAnimationFrame(() => { if (GALAXY.onResize) GALAXY.onResize(); });   // refit canvas to the new width
+}
+function deselectDataset() {
+  dashSelected = null; GALAXY.selected = null;
+  const wrap = $('#dashTableWrap');
+  if (wrap) wrap.querySelectorAll('.dash-row').forEach(x => x.classList.remove('sel'));
+  setOverviewSplit(false);                                       // galaxy back to full width
+}
 function openGalaxyDataset(key, name) {
   const ds = dashDatasets.find(d => d.key === key); if (!ds) return;
+  if (GALAXY.selected && GALAXY.selected.key === key) { deselectDataset(); return; }   // re-click the selected orb to close
   const wrap = $('#dashTableWrap');
   if (wrap) wrap.querySelectorAll('.dash-row').forEach(x => x.classList.toggle('sel', x.getAttribute('data-key') === key));
   selectDataset(key, name);
-  const det = $('#dashDetail'); if (det) det.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const det = $('#dashDetail'); if (det) det.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
 function renderGalaxyLegend() {
