@@ -699,6 +699,25 @@
   .ds-tag-add { cursor: pointer; font: inherit; font-size: 11px; color: var(--muted); background: transparent;
     border: 1px dashed var(--border); border-radius: 999px; padding: 1px 8px; }
   .ds-tag-add:hover { color: var(--text); border-color: var(--accent2); }
+  /* Medallion comparison view */
+  .medal-cols { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  @media (max-width: 1100px) { .medal-cols { grid-template-columns: 1fr; } }
+  .medal-col { border: 1px solid var(--border); border-radius: 10px; padding: 14px; background: var(--card); }
+  .medal-col.bronze { border-top: 3px solid #d9a978; }
+  .medal-col.silver { border-top: 3px solid #b9c0c8; }
+  .medal-col.gold   { border-top: 3px solid #e0c65a; }
+  .medal-col-hd { font-weight: 800; text-align: center; letter-spacing: .5px; margin-bottom: 10px; font-size: 15px; }
+  .medal-col.bronze .medal-col-hd { color: #8a4b1f; }
+  .medal-col.silver .medal-col-hd { color: #556; }
+  .medal-col.gold   .medal-col-hd { color: #7a5c00; }
+  .medal-picker { width: 100%; margin-bottom: 12px; padding: 7px 10px; border: 1px solid var(--border);
+    border-radius: 8px; background: var(--card); color: var(--text); font: inherit; font-size: 13px; }
+  .medal-cmp-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .medal-cmp-table th, .medal-cmp-table td { padding: 7px 10px; border-bottom: 1px solid var(--border); text-align: right; }
+  .medal-cmp-table th:first-child, .medal-cmp-table td:first-child { text-align: left; font-weight: 600; }
+  .medal-cmp-table td.up { color: var(--ok); font-weight: 700; }
+  .medal-cmp-table td.down { color: var(--err); font-weight: 700; }
+  .medal-cmp-table tr.overall td { font-weight: 800; background: var(--idle-bg); }
 </style>
 </head>
 <body>
@@ -711,6 +730,7 @@
 
   <div class="tabs">
     <button class="tab active" data-tab="dashboard"><span class="tab-ico">📊</span>Dashboard</button>
+    <button class="tab" data-tab="medallion"><span class="tab-ico">🏅</span>Medallion</button>
     <button class="tab" data-tab="incidents"><span class="tab-ico">🚨</span>Incidents <span class="tab-badge" id="incBadge" style="display:none;"></span></button>
     <button class="tab" data-tab="upload"><span class="tab-ico">📥</span>Data from Source</button>
     <button class="tab" data-tab="appdata"><span class="tab-ico">🧮</span>Assess app</button>
@@ -1058,6 +1078,22 @@
       <p class="dash-muted" id="dashDetailHint">Select a dataset above to see its score, volume and per-dimension trends.</p>
       <div id="dashTrends"></div>
       <div id="dashRunDetail"></div>
+    </div>
+  </div>
+
+  <!-- ============ MEDALLION COMPARISON ============ -->
+  <div id="medallionPanel" style="display:none;">
+    <div class="tab-intro">
+      <h2>Medallion comparison</h2>
+      <p>Pick a bronze, silver and gold dataset to see, side by side, how data quality improves as it's refined through the stages. Tag datasets with a stage on the Dashboard first.</p>
+    </div>
+    <div class="card">
+      <p class="dash-muted" id="medalCtx">Loading…</p>
+      <div id="medalCols" class="medal-cols"></div>
+    </div>
+    <div class="card" id="medalCompareCard" style="display:none;">
+      <h2>Stage-to-stage progression</h2>
+      <div id="medalCompare"></div>
     </div>
   </div>
 
@@ -4787,6 +4823,124 @@ function annotateSourceFields() {
 }
 annotateSourceFields();
 
+// ===================== Medallion (bronze → silver → gold) comparison =====================
+let medalSel = { bronze: '', silver: '', gold: '' };        // selected dataset key per stage
+let medalRuns = { bronze: null, silver: null, gold: null };  // fetched latest-run result per stage
+
+function datasetsForStage(stage) { return dashDatasetsAll.filter(d => entryFor(d.key).stage === stage); }
+
+async function loadMedallion() {
+  const ctx = $('#medalCtx');
+  if (!APP_ID) { $('#medalCols').innerHTML = ''; $('#medalCompareCard').style.display = 'none'; if (ctx) ctx.textContent = 'Open this from inside a Qlik app to compare stages.'; return; }
+  if (ctx) ctx.textContent = 'Loading…';
+  try {
+    const d = await postJSON(`${API_BASE}/data-quality/dashboard`, HEADERS, { window_days: 30, app_id: APP_ID });
+    dashDatasetsAll = d.datasets || [];
+  } catch (e) { /* keep whatever we had */ }
+  await loadDashEntries();
+  if (ctx) ctx.textContent = 'Each list shows only datasets tagged with that stage (tag them on the Dashboard). Pick one per stage to compare their latest runs.';
+  renderMedallionCols();
+}
+
+function renderMedallionCols() {
+  const wrap = $('#medalCols'); if (!wrap) return;
+  wrap.innerHTML = MEDALLIONS.map(stage => {
+    const opts = datasetsForStage(stage);
+    if (medalSel[stage] && !opts.some(d => d.key === medalSel[stage])) { medalSel[stage] = ''; medalRuns[stage] = null; }
+    const options = ['<option value="">— select a dataset —</option>']
+      .concat(opts.map(d => `<option value="${esc(d.key)}"${medalSel[stage] === d.key ? ' selected' : ''}>${esc(d.name)}</option>`)).join('');
+    let body;
+    if (medalRuns[stage]) body = renderMedalScorecard(medalRuns[stage]);
+    else if (!opts.length) body = `<p class="dash-muted" style="text-align:center;padding:24px 0;">No datasets tagged <strong>${MEDAL_LABEL[stage]}</strong> yet.<br>Tag one on the Dashboard.</p>`;
+    else body = `<p class="dash-muted" style="text-align:center;padding:24px 0;">Select a ${stage} dataset above.</p>`;
+    return `<div class="medal-col ${stage}">
+        <div class="medal-col-hd">${MEDAL_LABEL[stage].toUpperCase()}</div>
+        <select class="medal-picker" data-medstage="${stage}">${options}</select>
+        <div class="medal-col-body">${body}</div>
+      </div>`;
+  }).join('');
+  wrap.querySelectorAll('.medal-picker').forEach(sel =>
+    sel.addEventListener('change', () => selectMedalDataset(sel.dataset.medstage, sel.value)));
+  renderMedalCompare();
+}
+
+async function selectMedalDataset(stage, key) {
+  medalSel[stage] = key;
+  if (!key) { medalRuns[stage] = null; renderMedallionCols(); return; }
+  const ds = dashDatasetsAll.find(d => d.key === key);
+  const body = document.querySelector(`.medal-col.${stage} .medal-col-body`);
+  if (body) body.innerHTML = `<p style="text-align:center;padding:24px 0;"><span class="spin"></span></p>`;
+  const prefix = ds && ds.resultPrefix;
+  if (!prefix) { medalRuns[stage] = { _error: 'No completed run found for this dataset.', _name: ds ? ds.name : key }; renderMedallionCols(); return; }
+  try {
+    const r = await postJSON(`${API_BASE}/data-quality/result`, HEADERS, { result_prefix: prefix });
+    medalRuns[stage] = Object.assign({}, r, { _name: ds.name });
+  } catch (e) { medalRuns[stage] = { _error: e.message, _name: ds.name }; }
+  renderMedallionCols();
+}
+
+function medalOverall(r) {
+  const sum = r.summary || {}, st = r.status || {}, o = (sum.overall || {}).score;
+  return o != null ? o : (st.overall_score != null ? st.overall_score : null);
+}
+
+function renderMedalScorecard(r) {
+  if (r._error) return `<p class="dash-muted" style="color:var(--err);text-align:center;padding:16px 0;">${esc(r._error)}</p>`;
+  const sum = r.summary || {}, overall = sum.overall || {}, st = r.status || {};
+  const score = medalOverall(r), status = overall.status || st.overall_status || '';
+  const gatePass = st.gate ? st.gate.passed : (r.state === 'SUCCEEDED');
+  const crit = sum.criteria || [];
+  const rows = crit.filter(c => c.status !== 'not_assessed' && c.score != null)
+    .map(c => `<tr><td>${esc(c.label || c.criterion)}</td><td style="text-align:right;font-variant-numeric:tabular-nums;">${fmtScore(c.score)}</td><td><span class="tag ${tagClass(c.status)}">${c.status}</span></td></tr>`).join('');
+  return `<div style="text-align:center;margin-bottom:6px;"><span style="font-size:30px;font-weight:800;">${fmtScore(score)}</span> ${status ? `<span class="tag ${tagClass(status)}">${status}</span>` : ''} <span class="tag ${gatePass ? 'green' : 'red'}">Gate ${gatePass ? 'pass' : 'fail'}</span></div>
+    ${renderDimRadar(crit)}
+    <table class="assess" style="margin-top:8px;width:100%;"><tr><td class="k">Criterion</td><td class="k">Score</td><td class="k">Status</td></tr>${rows}</table>`;
+}
+
+function renderMedalCompare() {
+  const card = $('#medalCompareCard'), out = $('#medalCompare');
+  if (!card || !out) return;
+  const order = MEDALLIONS.filter(s => medalRuns[s] && !medalRuns[s]._error);
+  if (order.length < 2) { card.style.display = 'none'; return; }
+  card.style.display = '';
+  const dims = [], per = {};
+  order.forEach(s => {
+    const byDim = {};
+    (medalRuns[s].summary || {}).criteria?.forEach(c => {
+      if (c.score != null && c.status !== 'not_assessed') {
+        byDim[c.criterion] = c.score;
+        if (!dims.some(d => d.k === c.criterion)) dims.push({ k: c.criterion, l: c.label || c.criterion });
+      }
+    });
+    per[s] = { overall: medalOverall(medalRuns[s]), byDim };
+  });
+  const first = order[0], last = order[order.length - 1];
+  const cell = v => v == null ? '—' : fmtScore(v);
+  const deltaCell = (a, b) => {
+    if (a == null || b == null) return '<td>—</td>';
+    const d = Math.round((b - a) * 100) / 100;
+    if (d === 0) return `<td>0</td>`;
+    return `<td class="${d > 0 ? 'up' : 'down'}">${d > 0 ? '▲ +' : '▼ '}${d}</td>`;
+  };
+  const overallRow = `<tr class="overall"><td>Overall score</td>${order.map(s => `<td>${cell(per[s].overall)}</td>`).join('')}${deltaCell(per[first].overall, per[last].overall)}</tr>`;
+  const dimRows = dims.map(dm =>
+    `<tr><td>${esc(dm.l)}</td>${order.map(s => `<td>${cell(per[s].byDim[dm.k])}</td>`).join('')}${deltaCell(per[first].byDim[dm.k], per[last].byDim[dm.k])}</tr>`).join('');
+  const delta = dm => (per[first].byDim[dm.k] != null && per[last].byDim[dm.k] != null) ? per[last].byDim[dm.k] - per[first].byDim[dm.k] : null;
+  const improved = dims.map(dm => ({ l: dm.l, d: delta(dm) })).filter(x => x.d != null && x.d > 0).sort((a, b) => b.d - a.d);
+  const worsened = dims.map(dm => ({ l: dm.l, d: delta(dm) })).filter(x => x.d != null && x.d < 0).sort((a, b) => a.d - b.d);
+  const gain = (per[first].overall != null && per[last].overall != null) ? Math.round((per[last].overall - per[first].overall) * 100) / 100 : null;
+  let narrative = '';
+  if (gain != null) {
+    narrative = `<p style="margin:0 0 12px;">From <strong>${MEDAL_LABEL[first]}</strong> to <strong>${MEDAL_LABEL[last]}</strong>, the overall score ${gain > 0 ? `improved by <strong style="color:var(--ok);">+${gain}</strong>` : gain < 0 ? `dropped by <strong style="color:var(--err);">${gain}</strong>` : 'was unchanged'}`;
+    if (improved.length) narrative += `. Biggest gains: ${improved.slice(0, 3).map(x => `${esc(x.l)} (+${Math.round(x.d * 100) / 100})`).join(', ')}`;
+    if (worsened.length) narrative += `. Regressions: ${worsened.slice(0, 3).map(x => `${esc(x.l)} (${Math.round(x.d * 100) / 100})`).join(', ')}`;
+    narrative += '.</p>';
+  }
+  out.innerHTML = narrative +
+    `<table class="medal-cmp-table"><tr><th>Metric</th>${order.map(s => `<th>${MEDAL_LABEL[s]}</th>`).join('')}<th>Δ ${MEDAL_LABEL[first].split(' ')[1]}→${MEDAL_LABEL[last].split(' ')[1]}</th></tr>${overallRow}${dimRows}</table>` +
+    `<p class="hint" style="margin-top:8px;">Δ compares the first and last selected stages. Dimensions not assessed in a run show “—”.</p>`;
+}
+
 function switchTab(name) {
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
   $('#uploadPanel').style.display = name === 'upload' ? 'block' : 'none';
@@ -4795,6 +4949,7 @@ function switchTab(name) {
   $('#schedulePanel').style.display = name === 'schedules' ? 'block' : 'none';
   $('#modelPanel').style.display = name === 'model' ? 'block' : 'none';
   $('#dashboardPanel').style.display = name === 'dashboard' ? 'block' : 'none';
+  $('#medallionPanel').style.display = name === 'medallion' ? 'block' : 'none';
   $('#incidentsPanel').style.display = name === 'incidents' ? 'block' : 'none';
   $('#lineagePanel').style.display = name === 'lineage' ? 'block' : 'none';
   // Wide, full-width tabs vs the narrow centered form column.
@@ -4808,6 +4963,7 @@ function switchTab(name) {
   if (name === 'model') loadModel();
   if (name === 'history') setHistorySub('app');   // Full app assessments is the default subtab
   if (name === 'dashboard') { loadDashboard(); refreshIncBadge(); }
+  if (name === 'medallion') loadMedallion();
   if (name === 'schedules') {
     $('#schCtx').textContent = APP_ID
       ? ('App: ' + APP_ID) : 'Open from inside a Qlik app to schedule its checks.';
