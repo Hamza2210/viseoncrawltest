@@ -797,6 +797,34 @@
   @keyframes dqpulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.2); opacity: .82; } }
   @keyframes dqspin { to { transform: rotate(360deg); } }
   @keyframes dqbounce { 0%, 70%, 100% { opacity: .25; transform: translateY(0); } 35% { opacity: 1; transform: translateY(-5px); } }
+  .dq-loader.compact { gap: 12px; padding: 26px 16px; }
+  .dq-loader.compact .dq-orbit { transform: scale(.62); }
+  .dq-loader.compact .msg { font-size: 13px; }
+  /* Galaxy search + filter tools (top-right, over the canvas) */
+  .galaxy-tools { position: absolute; top: 12px; right: 12px; z-index: 4; display: flex; gap: 8px; align-items: flex-start; }
+  .gx-btn { position: relative; width: 32px; height: 32px; border-radius: 8px; border: 1px solid #2a3552;
+    background: rgba(15,21,38,.72); color: #cdd6ea; font-size: 14px; cursor: pointer; display: flex;
+    align-items: center; justify-content: center; transition: background .15s, border-color .15s; }
+  .gx-btn:hover { background: rgba(40,60,110,.75); color: #fff; }
+  .gx-btn.active { background: color-mix(in srgb, var(--accent) 32%, rgba(15,21,38,.72)); border-color: color-mix(in srgb, var(--accent) 55%, transparent); color: #fff; }
+  .gx-badge { position: absolute; top: -5px; right: -5px; min-width: 15px; height: 15px; padding: 0 3px;
+    border-radius: 8px; background: var(--accent2); color: #fff; font-size: 9px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center; }
+  .gx-search { width: 190px; padding: 6px 10px; border-radius: 8px; border: 1px solid #2a3552;
+    background: rgba(13,19,35,.92); color: #e8ebf3; font: inherit; font-size: 12.5px; height: 32px; box-sizing: border-box; }
+  .gx-search:focus { outline: none; border-color: color-mix(in srgb, var(--accent) 60%, transparent); }
+  .gx-filter-pop { position: absolute; top: 40px; right: 0; width: 236px; max-height: 340px; overflow-y: auto;
+    background: rgba(13,19,35,.98); border: 1px solid #2a3552; border-radius: 10px; padding: 12px 13px;
+    box-shadow: 0 14px 34px rgba(0,0,0,.55); }
+  .gx-filter-pop h4 { margin: 0 0 7px; font-size: 10px; text-transform: uppercase; letter-spacing: .07em; color: #8792a6; }
+  .gx-chip { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; font-size: 11px; padding: 4px 9px;
+    border-radius: 999px; border: 1px solid #2a3552; background: transparent; color: #aab4c8; margin: 0 5px 5px 0; }
+  .gx-chip:hover { border-color: #3a4a72; color: #d6deee; }
+  .gx-chip.on { background: color-mix(in srgb, var(--accent) 26%, transparent); color: #fff;
+    border-color: color-mix(in srgb, var(--accent2) 50%, transparent); }
+  .gx-filter-pop .gx-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 6px;
+    padding-top: 9px; border-top: 1px solid #223052; }
+  .gx-filter-pop .gx-actions .hint { font-size: 10.5px; color: #8792a6; }
 </style>
 <script id="three-inline">
 /**
@@ -1161,6 +1189,12 @@
       <div id="galaxyWrap">
         <div id="galaxyMsg" class="galaxy-msg">Loading 3D view…</div>
         <div id="galaxyTip" class="galaxy-tip" style="display:none;"></div>
+        <div class="galaxy-tools">
+          <input id="gxSearchInput" class="gx-search" type="search" placeholder="Search datasets…" style="display:none;" autocomplete="off">
+          <button type="button" class="gx-btn" id="gxSearchBtn" data-tip="Search datasets" aria-label="Search datasets">🔍</button>
+          <button type="button" class="gx-btn" id="gxFilterBtn" data-tip="Filter datasets" aria-label="Filter datasets">⚑<span class="gx-badge" id="gxFilterBadge" style="display:none;"></span></button>
+          <div id="gxFilterPop" class="gx-filter-pop" style="display:none;"></div>
+        </div>
         <div id="galaxyLegend" class="galaxy-legend"></div>
       </div>
     </div>
@@ -1883,7 +1917,7 @@ function renderAssessment(r, bodyEl, opts) {
   const frEl = body.querySelector('.assess-failed');
   if (frEl) {
     const loadFR = async () => {
-      frEl.innerHTML = `<p class="dash-muted"><span class="spin"></span> Loading failed records…</p>`;
+      frEl.innerHTML = dqLoader('Loading failed records', null, true);
       try {
         const data = await postJSON(`${API_BASE}/data-quality/failed-records`, HEADERS,
           { result_prefix: frEl.dataset.prefix, limit: 500 });
@@ -1954,7 +1988,7 @@ if ($('#pinRulesModal')) $('#pinRulesModal').addEventListener('click', e => { if
 
 // ---- Edit active rules (the ruleset currently pinned / in effect for a dataset) --------
 async function editActiveRules(prefix, outEl) {
-  outEl.innerHTML = `<p><span class="spin"></span> Loading the active ruleset…</p>`;
+  outEl.innerHTML = dqLoader('Loading the active ruleset', null, true);
   let data;
   try {
     data = await postJSON(`${API_BASE}/data-quality/active-ruleset`, HEADERS, { result_prefix: prefix });
@@ -2202,11 +2236,12 @@ function pollDelay(start) {
   return elapsed < 30000 ? 2000 : elapsed < 120000 ? 5000 : 15000;
 }
 
-// A themed "assessment running" loader (glowing orbital system) matching the galaxy aesthetic.
-function dqLoader(msg, sub) {
-  return `<div class="dq-loader">
+// A themed loader (glowing orbital system) matching the galaxy aesthetic. `compact` = smaller,
+// for quick panel loads; full size for a running assessment.
+function dqLoader(msg, sub, compact) {
+  return `<div class="dq-loader${compact ? ' compact' : ''}">
       <div class="dq-orbit"><div class="ring r1"></div><div class="ring r2"></div><div class="core"></div><div class="sat"></div><div class="sat s2"></div></div>
-      <div><div class="msg">${esc(msg || 'Assessing')}<span class="dq-dots"><i></i><i></i><i></i></span></div>
+      <div><div class="msg">${esc(msg || 'Loading')}<span class="dq-dots"><i></i><i></i><i></i></span></div>
         ${sub ? `<div class="sub">${esc(sub)}</div>` : ''}</div>
     </div>`;
 }
@@ -2455,7 +2490,7 @@ async function openHistoryRun(prefix) {
   $('#historyListCard').style.display = 'none';
   const detail = $('#historyDetail'), body = $('#historyDetailBody');
   detail.style.display = 'block';
-  body.innerHTML = `<p><span class="spin"></span>Loading result…</p>`;
+  body.innerHTML = dqLoader('Loading result', null, true);
   window.scrollTo({ top: 0, behavior: 'smooth' });
   try {
     const r = await postJSON(`${API_BASE}/data-quality/result`, HEADERS, { result_prefix: prefix });
@@ -3126,7 +3161,7 @@ async function selectDataset(key, name) {
   $('#dashTrends').innerHTML =
     `<div class="actions" style="margin-bottom:12px;"><button class="btn-sm" id="dsBack">← All datasets</button></div>` +
     `<div class="rd-tabs" id="dsSubtabs">${bar}</div>` +
-    `<div id="dsPanel"><p><span class="spin"></span> Loading…</p></div>`;
+    `<div id="dsPanel">${dqLoader('Loading dataset', null, true)}</div>`;
   $('#dashRunDetail').innerHTML = '';
   const back = $('#dsBack');
   if (back) back.addEventListener('click', () => deselectDataset());   // collapse back to the full-width galaxy
@@ -3149,9 +3184,9 @@ function selectDsTab() {
   }
   if (dsTab === 'history') { renderDatasetHistory(panel); return; }
   if (!prefix) { panel.innerHTML = `<p class="dash-muted">No completed run yet for this dataset — run an assessment to populate this.</p>`; return; }
-  if (dsTab === 'scores') { panel.innerHTML = `<p><span class="spin"></span> Loading run…</p>`; loadDsScores(panel, prefix); }
+  if (dsTab === 'scores') { panel.innerHTML = dqLoader('Loading run', null, true); loadDsScores(panel, prefix); }
   else if (dsTab === 'rules') { loadDsRules(panel, prefix); }
-  else if (dsTab === 'failed') { panel.innerHTML = `<p><span class="spin"></span> Loading failed records…</p>`; loadDsFailed(panel, prefix); }
+  else if (dsTab === 'failed') { panel.innerHTML = dqLoader('Loading failed records', null, true); loadDsFailed(panel, prefix); }
 }
 
 async function loadDsScores(panel, prefix) {
@@ -3171,7 +3206,7 @@ async function loadDsRules(panel, prefix) {
   panel.innerHTML =
     `<div class="actions" style="margin-bottom:12px;"><button class="btn-sm" id="dsReviewRules">✨ Review rules with AI</button>` +
     `<span id="dashQueued" style="display:none;align-items:center;gap:8px;"></span></div>` +
-    `<div id="dsRulesBody"><p><span class="spin"></span> Loading the active ruleset…</p></div>`;
+    `<div id="dsRulesBody">${dqLoader('Loading the active ruleset', null, true)}</div>`;
   editActiveRules(prefix, $('#dsRulesBody'));
   const rev = $('#dsReviewRules');
   if (rev) rev.addEventListener('click', () => reviewRuleset(prefix, $('#dsRulesBody'), false));
@@ -3548,9 +3583,9 @@ async function viewLatestRun() {
     `<button type="button" class="rd-tab" data-rdtab="profile">Column profile</button>` +
     `<button type="button" class="rd-tab" data-rdtab="failed">Failed records</button>` +
     `</div>` +
-    `<div id="dashRunScores" data-rdpanel="scores"><p><span class="spin"></span>Loading run…</p></div>` +
-    `<div id="dashRunProfile" data-rdpanel="profile" style="display:none;"><p><span class="spin"></span>Loading profile…</p></div>` +
-    `<div id="dashRunFailed" data-rdpanel="failed" style="display:none;"><p><span class="spin"></span>Loading failed records…</p></div>` +
+    `<div id="dashRunScores" data-rdpanel="scores">${dqLoader('Loading run', null, true)}</div>` +
+    `<div id="dashRunProfile" data-rdpanel="profile" style="display:none;">${dqLoader('Loading profile', null, true)}</div>` +
+    `<div id="dashRunFailed" data-rdpanel="failed" style="display:none;">${dqLoader('Loading failed records', null, true)}</div>` +
     `</div>`;
   box.querySelectorAll('.rd-tab').forEach(t => t.addEventListener('click', () => {
     box.querySelectorAll('.rd-tab').forEach(x => x.classList.toggle('active', x === t));
@@ -5212,6 +5247,75 @@ const GALAXY = { loaded: false, loading: null, renderer: null, scene: null, came
   rot: { x: -0.32, y: 0.55 }, dist: 200, auto: true, lastInteract: 0, hovered: null, selected: null };
 const GALAXY_RAG = { green: 0x30d67f, amber: 0xf5b73d, red: 0xff5d5d, na: 0x8aa0c0 };
 
+// Galaxy-only search + filter (hides orbs without rebuilding the layout).
+const GX_FILTER = { q: '', stages: new Set(), tags: new Set(), sources: new Set() };
+function _gxActiveCount() { const f = GX_FILTER; return f.stages.size + f.tags.size + f.sources.size + (f.q.trim() ? 1 : 0); }
+function resetGalaxyFilter() {
+  GX_FILTER.q = ''; GX_FILTER.stages.clear(); GX_FILTER.tags.clear(); GX_FILTER.sources.clear();
+  const inp = $('#gxSearchInput'); if (inp) { inp.value = ''; inp.style.display = 'none'; }
+  const sb = $('#gxSearchBtn'); if (sb) sb.classList.remove('active');
+  const fb = $('#gxFilterBtn'); if (fb) fb.classList.remove('active');
+  const pop = $('#gxFilterPop'); if (pop) pop.style.display = 'none';
+}
+function applyGalaxyFilter() {
+  const f = GX_FILTER, q = f.q.trim().toLowerCase(); let shown = 0;
+  GALAXY.orbs.forEach(o => {
+    const hay = ((o.name || '') + ' ' + (o.tags || []).join(' ')).toLowerCase();
+    const ok = (!q || hay.includes(q))
+      && (!f.stages.size || f.stages.has(o.stage))
+      && (!f.tags.size || (o.tags || []).some(t => f.tags.has(t)))
+      && (!f.sources.size || f.sources.has(o.sourceFormat));
+    o.mesh.visible = ok; o.halo.visible = ok; if (ok) shown++;
+  });
+  const n = _gxActiveCount(), badge = $('#gxFilterBadge');
+  if (badge) { badge.textContent = n || ''; badge.style.display = n ? '' : 'none'; }
+  const cnt = $('#gxFilterCount');
+  if (cnt) cnt.textContent = (n && GALAXY.orbs.length) ? `${shown} of ${GALAXY.orbs.length} shown` : '';
+}
+function renderGxFilterPop() {
+  const pop = $('#gxFilterPop'); if (!pop) return;
+  const f = GX_FILTER;
+  const allTags = [...new Set(GALAXY.orbs.flatMap(o => o.tags || []))].sort((a, b) => a.localeCompare(b));
+  const allSrc = [...new Set(GALAXY.orbs.map(o => o.sourceFormat).filter(s => s && s !== 'qlik'))].sort();
+  const chip = (attr, val, label, on) => `<button type="button" class="gx-chip${on ? ' on' : ''}" ${attr}="${esc(val)}">${label}</button>`;
+  let h = `<h4>Medallion stage</h4><div>` +
+    MEDALLIONS.map(m => chip('data-gxstage', m, esc(MEDAL_LABEL[m]), f.stages.has(m))).join('') + `</div>`;
+  if (allTags.length) h += `<h4 style="margin-top:11px;">Tag</h4><div>` +
+    allTags.map(t => chip('data-gxtag', t, esc(t), f.tags.has(t))).join('') + `</div>`;
+  if (dashScope === 'source' && allSrc.length) h += `<h4 style="margin-top:11px;">Data source</h4><div>` +
+    allSrc.map(s => chip('data-gxsrc', s, (SOURCE_FMT_ICON[s] || '🗄️') + ' ' + esc(sourceLabel(s)), f.sources.has(s))).join('') + `</div>`;
+  h += `<div class="gx-actions"><button type="button" class="linkbtn" id="gxFilterClear">Clear all</button><span class="hint" id="gxFilterCount"></span></div>`;
+  pop.innerHTML = h;
+  applyGalaxyFilter();   // refresh the "N of M shown" line
+}
+function wireGalaxyTools() {
+  if (GALAXY.toolsWired) return; GALAXY.toolsWired = true;
+  const sBtn = $('#gxSearchBtn'), sInp = $('#gxSearchInput'), fBtn = $('#gxFilterBtn'), pop = $('#gxFilterPop');
+  if (sBtn) sBtn.addEventListener('click', () => {
+    const open = sInp.style.display === 'none';
+    sInp.style.display = open ? '' : 'none'; sBtn.classList.toggle('active', open);
+    if (open) sInp.focus(); else { sInp.value = ''; GX_FILTER.q = ''; applyGalaxyFilter(); }
+  });
+  if (sInp) sInp.addEventListener('input', () => { GX_FILTER.q = sInp.value; applyGalaxyFilter(); });
+  if (fBtn) fBtn.addEventListener('click', () => {
+    const open = pop.style.display === 'none';
+    pop.style.display = open ? '' : 'none'; fBtn.classList.toggle('active', open);
+    if (open) renderGxFilterPop();
+  });
+  if (pop) pop.addEventListener('click', e => {
+    const b = e.target.closest('[data-gxstage],[data-gxtag],[data-gxsrc]');
+    if (b) {
+      const set = b.hasAttribute('data-gxstage') ? GX_FILTER.stages : b.hasAttribute('data-gxtag') ? GX_FILTER.tags : GX_FILTER.sources;
+      const val = b.getAttribute('data-gxstage') || b.getAttribute('data-gxtag') || b.getAttribute('data-gxsrc');
+      if (set.has(val)) set.delete(val); else set.add(val);
+      renderGxFilterPop();
+    } else if (e.target.id === 'gxFilterClear') {
+      GX_FILTER.stages.clear(); GX_FILTER.tags.clear(); GX_FILTER.sources.clear();
+      renderGxFilterPop();
+    }
+  });
+}
+
 function loadThree() {
   if (window.THREE) return Promise.resolve();
   if (GALAXY.loading) return GALAXY.loading;
@@ -5323,9 +5427,12 @@ function buildGalaxyOrbs(datasets) {
     const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: g.glowTex, color: col, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0.6 }));
     halo.position.set(p.x, p.y, p.z); halo.scale.setScalar(p.r * 3.2);       // tighter glow = distinct orbs
     g.group.add(mesh); g.group.add(halo);
-    g.orbs.push({ mesh, halo, r: p.r, key: p.d.key, name: p.d.name, score: p.d.score, status: p.d.status, rows: p.d.rows, stage: p.stage });
+    g.orbs.push({ mesh, halo, r: p.r, key: p.d.key, name: p.d.name, score: p.d.score, status: p.d.status,
+      rows: p.d.rows, stage: p.stage, tags: (dashEntries[p.d.key] || {}).tags || [], sourceFormat: p.d.sourceFormat || '' });
   });
   if (keepKey) g.selected = g.orbs.find(o => o.key === keepKey) || null;   // re-highlight the open dataset
+  resetGalaxyFilter();                                     // clear search/filter so every orb shows on rebuild
+  applyGalaxyFilter();
 }
 
 function _wireGalaxyControls(wrap) {
@@ -5352,7 +5459,7 @@ function _wireGalaxyControls(wrap) {
 function _galaxyHover(e) {
   const g = GALAXY, dom = g.renderer.domElement, tip = $('#galaxyTip'), wr = g.wrap.getBoundingClientRect();
   g.ray.setFromCamera(g.mouse, g.camera);
-  const hit = g.ray.intersectObjects(g.orbs.map(o => o.mesh));
+  const hit = g.ray.intersectObjects(g.orbs.filter(o => o.mesh.visible).map(o => o.mesh));
   const orb = hit.length ? g.orbs.find(o => o.mesh === hit[0].object) : null;
   g.hovered = orb;
   if (!orb) { tip.style.display = 'none'; dom.style.cursor = ''; return; }
@@ -5376,7 +5483,7 @@ function startGalaxyLoop() {
     g.group.rotation.x = g.rot.x; g.group.rotation.y = g.rot.y;
     g.camera.position.z = g.dist;
     const sel = g.selected, t = performance.now();
-    if (sel) {
+    if (sel && sel.mesh.visible) {
       g.selRing.visible = true;
       g.selRing.position.copy(sel.mesh.position);
       g.selRing.scale.setScalar(sel.r * (5.4 + Math.sin(t * 0.005) * 0.8));   // gentle pulse
@@ -5427,6 +5534,7 @@ async function renderGalaxy(datasets) {
   catch (e) { if (msg) { msg.textContent = e.message + ' The dataset list below still works.'; msg.style.display = ''; } return; }
   if (msg) msg.style.display = 'none';
   initGalaxyScene(wrap);
+  wireGalaxyTools();
   buildGalaxyOrbs(datasets);
   startGalaxyLoop();
   requestAnimationFrame(() => GALAXY.onResize && GALAXY.onResize());
