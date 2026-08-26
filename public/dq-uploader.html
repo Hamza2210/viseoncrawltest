@@ -1204,7 +1204,7 @@
       <div class="galaxy-tools">
         <input id="gxSearchInput" class="gx-search" type="search" placeholder="Search datasets…" style="display:none;" autocomplete="off">
         <button type="button" class="gx-btn" id="gxSearchBtn" data-tip="Search datasets" aria-label="Search datasets">🔍</button>
-        <button type="button" class="gx-btn" id="gxWallsBtn" data-tip="Show medallion stage walls" aria-label="Toggle stage walls">▤</button>
+        <button type="button" class="gx-btn" id="gxWallsBtn" data-tip="Show medallion walls & rings" aria-label="Toggle medallion walls and rings">▤</button>
         <button type="button" class="gx-btn" id="gxFilterBtn" data-tip="Filter datasets" aria-label="Filter datasets">⚑<span class="gx-badge" id="gxFilterBadge" style="display:none;"></span></button>
         <div id="gxFilterPop" class="gx-filter-pop" style="display:none;"></div>
       </div>
@@ -5286,7 +5286,7 @@ function applyGalaxyFilter() {
       && (!f.stages.size || f.stages.has(o.stage))
       && (!f.tags.size || (o.tags || []).some(t => f.tags.has(t)))
       && (!f.sources.size || f.sources.has(o.sourceFormat));
-    o.mesh.visible = ok; o.halo.visible = ok; if (o.ring) o.ring.visible = ok; if (ok) shown++;
+    o.mesh.visible = ok; o.halo.visible = ok; if (o.ring) o.ring.visible = ok && GALAXY.wallsOn; if (ok) shown++;
   });
   const n = _gxActiveCount(), badge = $('#gxFilterBadge');
   if (badge) { badge.textContent = n || ''; badge.style.display = n ? '' : 'none'; }
@@ -5319,6 +5319,7 @@ function wireGalaxyTools() {
     GALAXY.wallsOn = !GALAXY.wallsOn;
     GALAXY.shelves.forEach(o => o.visible = GALAXY.wallsOn);
     wBtn.classList.toggle('active', GALAXY.wallsOn);
+    applyGalaxyFilter();                                   // medal rings follow the walls toggle
   });
   if (sBtn) sBtn.addEventListener('click', () => {
     const open = sInp.style.display === 'none';
