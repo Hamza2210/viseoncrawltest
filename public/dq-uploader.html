@@ -783,6 +783,8 @@
     padding: 7px 11px; font-size: 11px; color: #aab4c8; pointer-events: none; }
   .galaxy-legend .gl-item { display: inline-flex; align-items: center; gap: 6px; }
   .galaxy-legend .gl-dot { width: 9px; height: 9px; border-radius: 50%; box-shadow: 0 0 8px currentColor; }
+  .galaxy-legend .gl-ring { width: 9px; height: 9px; border-radius: 50%; border: 2px solid currentColor; box-sizing: border-box; }
+  .galaxy-legend .gl-sep { width: 1px; height: 13px; background: #2a3552; margin: 0 2px; }
   /* Assessment-running loader — a small glowing orbital system matching the galaxy aesthetic */
   .dq-loader { display: flex; flex-direction: column; align-items: center; justify-content: center;
     gap: 18px; padding: 46px 20px; text-align: center; }
@@ -5259,6 +5261,10 @@ const GALAXY = { loaded: false, loading: null, renderer: null, scene: null, came
   orbs: [], raf: null, ray: null, mouse: null, glowTex: null, ringTex: null, selRing: null, wrap: null, onResize: null,
   rot: { x: -0.32, y: 0.55 }, dist: 200, auto: true, lastInteract: 0, hovered: null, selected: null };
 const GALAXY_RAG = { green: 0x30d67f, amber: 0xf5b73d, red: 0xff5d5d, na: 0x8aa0c0 };
+// Stage → depth shelf + medal-ring colour. Colour = RAG status (fill); stage = ring outline + z-layer.
+const GALAXY_STAGE_Z = { bronze: -72, silver: 0, gold: 72 };
+const MEDAL_COLOR = { bronze: 0xcd7f32, silver: 0xc8d0dc, gold: 0xffcf4d };
+const MEDAL_CSS = { bronze: '#cd7f32', silver: '#c8d0dc', gold: '#ffcf4d' };
 
 // Galaxy-only search + filter (hides orbs without rebuilding the layout).
 const GX_FILTER = { q: '', stages: new Set(), tags: new Set(), sources: new Set() };
@@ -5278,7 +5284,7 @@ function applyGalaxyFilter() {
       && (!f.stages.size || f.stages.has(o.stage))
       && (!f.tags.size || (o.tags || []).some(t => f.tags.has(t)))
       && (!f.sources.size || f.sources.has(o.sourceFormat));
-    o.mesh.visible = ok; o.halo.visible = ok; if (ok) shown++;
+    o.mesh.visible = ok; o.halo.visible = ok; if (o.ring) o.ring.visible = ok; if (ok) shown++;
   });
   const n = _gxActiveCount(), badge = $('#gxFilterBadge');
   if (badge) { badge.textContent = n || ''; badge.style.display = n ? '' : 'none'; }
@@ -5358,12 +5364,18 @@ function _galaxyRingTexture() {
   x.strokeStyle = 'rgba(255,255,255,0.98)'; x.lineWidth = 6; x.beginPath(); x.arc(64, 64, 50, 0, Math.PI * 2); x.stroke();
   return new window.THREE.CanvasTexture(c);
 }
-function _galaxyTextSprite(text) {
+function _galaxyTextSprite(text, colour, scale) {
   const THREE = window.THREE, c = document.createElement('canvas'), x = c.getContext('2d'), fs = 44;
   x.font = `700 ${fs}px system-ui`; c.width = x.measureText(text).width + 16; c.height = fs + 16;
-  x.font = `700 ${fs}px system-ui`; x.fillStyle = '#aab4c8'; x.textBaseline = 'middle'; x.fillText(text, 8, c.height / 2);
+  x.font = `700 ${fs}px system-ui`; x.fillStyle = colour || '#aab4c8'; x.textBaseline = 'middle'; x.fillText(text, 8, c.height / 2);
   const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), transparent: true, depthWrite: false }));
-  spr.scale.set(c.width / c.height * 9, 9, 1); return spr;
+  const s = scale || 9; spr.scale.set(c.width / c.height * s, s, 1); return spr;
+}
+// Crisp white annulus (tinted per-medal via SpriteMaterial.color) drawn as a ring around staged orbs.
+function _galaxyMedalRingTexture() {
+  const c = document.createElement('canvas'); c.width = c.height = 128; const x = c.getContext('2d');
+  x.strokeStyle = '#fff'; x.lineWidth = 11; x.beginPath(); x.arc(64, 64, 52, 0, Math.PI * 2); x.stroke();
+  return new window.THREE.CanvasTexture(c);
 }
 
 function initGalaxyScene(wrap) {
@@ -5389,10 +5401,26 @@ function initGalaxyScene(wrap) {
   const axis = (a, b) => { const geo = new THREE.BufferGeometry().setFromPoints([a, b]); return new THREE.Line(geo, new THREE.LineBasicMaterial({ color: 0x33405e, transparent: true, opacity: 0.4 })); };
   g.group.add(axis(new THREE.Vector3(-82, 0, 0), new THREE.Vector3(82, 0, 0)));
   g.group.add(axis(new THREE.Vector3(0, -58, 0), new THREE.Vector3(0, 58, 0)));
-  g.group.add(axis(new THREE.Vector3(0, 0, -66), new THREE.Vector3(0, 0, 66)));
+  g.group.add(axis(new THREE.Vector3(0, 0, -84), new THREE.Vector3(0, 0, 84)));
   const lblScore = _galaxyTextSprite('Score →'); lblScore.position.set(92, 0, 0); g.group.add(lblScore);
   const lblVol = _galaxyTextSprite('Volume ↑'); lblVol.position.set(0, 66, 0); g.group.add(lblVol);
-  const lblStage = _galaxyTextSprite('Stage'); lblStage.position.set(0, 0, 74); g.group.add(lblStage);
+  const lblStage = _galaxyTextSprite('Stage'); lblStage.position.set(0, 0, 92); g.group.add(lblStage);
+  // Stage shelves: a tinted plane + outline + label at each medallion z-depth, so bronze/silver/gold
+  // read as three distinct layers. Colour = RAG (orb fill); this gives stage its own visual channel.
+  const SW = 168, SH = 118;
+  ['bronze', 'silver', 'gold'].forEach(st => {
+    const z = GALAXY_STAGE_Z[st], col = MEDAL_COLOR[st];
+    const plane = new THREE.Mesh(new THREE.PlaneGeometry(SW, SH),
+      new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.05, side: THREE.DoubleSide, depthWrite: false }));
+    plane.position.set(0, 0, z); g.group.add(plane);
+    const rim = [[-SW / 2, -SH / 2], [SW / 2, -SH / 2], [SW / 2, SH / 2], [-SW / 2, SH / 2], [-SW / 2, -SH / 2]]
+      .map(([px, py]) => new THREE.Vector3(px, py, z));
+    g.group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(rim),
+      new THREE.LineBasicMaterial({ color: col, transparent: true, opacity: 0.32 })));
+    const lbl = _galaxyTextSprite(st.toUpperCase(), MEDAL_CSS[st], 7.5);
+    lbl.position.set(-SW / 2 + 20, SH / 2 - 8, z); g.group.add(lbl);
+  });
+  g.medalRingTex = _galaxyMedalRingTexture();
   // Persistent selection ring (billboard) — shown at the currently-selected orb.
   g.ringTex = _galaxyRingTexture();
   g.selRing = new THREE.Sprite(new THREE.SpriteMaterial({ map: g.ringTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
@@ -5405,7 +5433,7 @@ function initGalaxyScene(wrap) {
 
 function buildGalaxyOrbs(datasets) {
   const THREE = window.THREE, g = GALAXY;
-  g.orbs.forEach(o => { g.group.remove(o.mesh); g.group.remove(o.halo); });
+  g.orbs.forEach(o => { g.group.remove(o.mesh); g.group.remove(o.halo); if (o.ring) g.group.remove(o.ring); });
   g.orbs = []; g.selected = null; g.hovered = null;      // stale refs — cleared on rebuild
   // keep the current selection highlighted if that dataset is still present
   const keepKey = dashSelected && dashSelected.key;
@@ -5415,12 +5443,11 @@ function buildGalaxyOrbs(datasets) {
   const smin = Math.min(...scores), sspan = (Math.max(...scores) - smin) || 1;
   const logs = datasets.map(d => Math.log10(Math.max(1, d.rows || 1)));
   const lmin = Math.min(...logs), lspan = (Math.max(...logs) - lmin) || 1;
-  const STAGE_Z = { bronze: -50, silver: 0, gold: 50 };
   const pts = datasets.map((d, i) => {
     const nx = (scores[i] - smin) / sspan, ny = (logs[i] - lmin) / lspan;   // 0..1
     const stage = (dashEntries[d.key] || {}).stage;
-    // Unstaged datasets fan out along z (golden angle) instead of stacking on one plane.
-    const z = STAGE_Z[stage] != null ? STAGE_Z[stage] : Math.sin(i * 2.399963) * 26;
+    // Staged datasets snap to their medallion shelf; unstaged fan out along z (golden angle).
+    const z = GALAXY_STAGE_Z[stage] != null ? GALAXY_STAGE_Z[stage] + Math.sin(i * 2.399963) * 10 : Math.sin(i * 2.399963) * 20;
     return { d, x: (nx - 0.5) * 130, y: (ny - 0.5) * 92, z, r: 2.4 + ny * 3.2, stage };
   });
   // De-clump: a few repulsion passes so no two orbs overlap — makes every one hoverable/clickable.
@@ -5443,7 +5470,14 @@ function buildGalaxyOrbs(datasets) {
     const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: g.glowTex, color: col, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0.6 }));
     halo.position.set(p.x, p.y, p.z); halo.scale.setScalar(p.r * 3.2);       // tighter glow = distinct orbs
     g.group.add(mesh); g.group.add(halo);
-    g.orbs.push({ mesh, halo, r: p.r, key: p.d.key, name: p.d.name, score: p.d.score, status: p.d.status,
+    // Medal ring: stage as an outline around the orb (bronze/silver/gold), keeping RAG as the fill.
+    let ring = null;
+    if (p.stage && MEDAL_COLOR[p.stage] != null) {
+      ring = new THREE.Sprite(new THREE.SpriteMaterial({ map: g.medalRingTex, color: MEDAL_COLOR[p.stage], transparent: true, depthWrite: false }));
+      ring.position.set(p.x, p.y, p.z); ring.scale.setScalar(p.r * 3.0);
+      g.group.add(ring);
+    }
+    g.orbs.push({ mesh, halo, ring, r: p.r, key: p.d.key, name: p.d.name, score: p.d.score, status: p.d.status,
       rows: p.d.rows, stage: p.stage, tags: (dashEntries[p.d.key] || {}).tags || [], sourceFormat: p.d.sourceFormat || '' });
   });
   if (keepKey) g.selected = g.orbs.find(o => o.key === keepKey) || null;   // re-highlight the open dataset
@@ -5505,8 +5539,10 @@ function startGalaxyLoop() {
       g.selRing.scale.setScalar(sel.r * (5.4 + Math.sin(t * 0.005) * 0.8));   // gentle pulse
     } else if (g.selRing) g.selRing.visible = false;
     g.orbs.forEach(o => {
-      o.mesh.scale.setScalar(o === sel ? 1.85 : (o === g.hovered ? 1.35 : 1));
+      const s = o === sel ? 1.85 : (o === g.hovered ? 1.35 : 1);
+      o.mesh.scale.setScalar(s);
       o.halo.material.opacity = o === sel ? 0.95 : (sel ? 0.35 : 0.6);        // dim the rest when one is selected
+      if (o.ring) { o.ring.scale.setScalar(o.r * 3.0 * s); o.ring.material.opacity = sel && o !== sel ? 0.45 : 1; }
     });
     g.renderer.render(g.scene, g.camera);
   };
@@ -5536,9 +5572,13 @@ function openGalaxyDataset(key, name) {
 
 function renderGalaxyLegend() {
   const el = $('#galaxyLegend'); if (!el) return;
-  el.innerHTML = [['#30d67f', 'Green'], ['#f5b73d', 'Amber'], ['#ff5d5d', 'Red']]
-    .map(([c, l]) => `<span class="gl-item"><span class="gl-dot" style="color:${c};background:${c};"></span>${l}</span>`).join('') +
-    `<span class="gl-item" style="color:#8792a6;">x: score · y: volume · z: stage · size: rows</span>`;
+  el.innerHTML = `<span class="gl-item" style="color:#8792a6;">Fill</span>` +
+    [['#30d67f', 'Green'], ['#f5b73d', 'Amber'], ['#ff5d5d', 'Red']]
+      .map(([c, l]) => `<span class="gl-item"><span class="gl-dot" style="color:${c};background:${c};"></span>${l}</span>`).join('') +
+    `<span class="gl-sep"></span><span class="gl-item" style="color:#8792a6;">Ring</span>` +
+    [['#cd7f32', 'Bronze'], ['#c8d0dc', 'Silver'], ['#ffcf4d', 'Gold']]
+      .map(([c, l]) => `<span class="gl-item"><span class="gl-ring" style="border-color:${c};"></span>${l}</span>`).join('') +
+    `<span class="gl-sep"></span><span class="gl-item" style="color:#8792a6;">size: rows</span>`;
 }
 
 async function renderGalaxy(datasets) {
