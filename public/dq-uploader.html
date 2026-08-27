@@ -5571,7 +5571,7 @@ function applyGalaxyFilter() {
       && (!f.stages.size || f.stages.has(o.stage))
       && (!f.tags.size || (o.tags || []).some(t => f.tags.has(t)))
       && (!f.sources.size || f.sources.has(o.sourceFormat));
-    o.mesh.visible = ok; o.halo.visible = ok; if (o.ring) o.ring.visible = ok && GALAXY.wallsOn; if (ok) shown++;
+    o.mesh.visible = ok; o.halo.visible = ok; if (ok) shown++;   // ring visibility is owned by the render loop (selected-orb only)
   });
   const n = _gxActiveCount(), badge = $('#gxFilterBadge');
   if (badge) { badge.textContent = n || ''; badge.style.display = n ? '' : 'none'; }
@@ -5770,7 +5770,7 @@ function buildGalaxyOrbs(datasets) {
     let ring = null;
     if (p.stage && MEDAL_COLOR[p.stage] != null) {
       ring = new THREE.Sprite(new THREE.SpriteMaterial({ map: g.medalRingTex, color: MEDAL_COLOR[p.stage], transparent: true, depthWrite: false }));
-      ring.position.set(p.x, p.y, p.z); ring.scale.setScalar(p.r * 3.0);
+      ring.position.set(p.x, p.y, p.z); ring.scale.setScalar(p.r * 3.0); ring.visible = false;   // shown only for the selected orb
       g.group.add(ring);
     }
     g.orbs.push({ mesh, halo, ring, r: p.r, key: p.d.key, name: p.d.name, score: p.d.score, status: p.d.status,
@@ -5841,7 +5841,8 @@ function startGalaxyLoop() {
       const s = o === sel ? 1.85 : (o === g.hovered ? 1.35 : 1);
       o.mesh.scale.setScalar(s);
       o.halo.material.opacity = o === sel ? 0.95 : (sel ? 0.35 : 0.6);        // dim the rest when one is selected
-      if (o.ring) { o.ring.scale.setScalar(o.r * 3.0 * s); o.ring.material.opacity = sel && o !== sel ? 0.45 : 1; }
+      // Medal ring shows ONLY on the selected orb (when walls are on) — a clear selection cue.
+      if (o.ring) { o.ring.scale.setScalar(o.r * 3.0 * s); o.ring.visible = GALAXY.wallsOn && o.mesh.visible && o === sel; o.ring.material.opacity = 1; }
     });
     g.renderer.render(g.scene, g.camera);
   };
