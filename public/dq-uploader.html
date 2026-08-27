@@ -174,8 +174,17 @@
     border-top-color: transparent; border-radius: 50%; animation: sp .8s linear infinite; vertical-align: -2px; margin-right: 8px; }
   @keyframes sp { to { transform: rotate(360deg); } }
   /* App table picker: scroll instead of growing into a long list when an app has many tables */
-  #tableList { max-height: 320px; overflow-y: auto; margin: 6px 0 4px; padding: 4px 12px;
-    border: 1px solid var(--border); border-radius: 8px; background: var(--card-2); }
+  #tableList { max-height: 340px; overflow-y: auto; margin: 6px 0 4px; padding: 6px;
+    border: 1px solid var(--border); border-radius: 10px; background: var(--card-2); }
+  .trow-pick { display: flex; align-items: center; gap: 11px; padding: 8px 11px; border-radius: 8px;
+    cursor: pointer; user-select: none; border: 1px solid transparent; transition: background .12s, border-color .12s; }
+  .trow-pick + .trow-pick { margin-top: 2px; }
+  .trow-pick:hover { background: rgba(40, 60, 110, .32); }
+  .trow-pick.checked { background: color-mix(in srgb, var(--accent) 15%, transparent);
+    border-color: color-mix(in srgb, var(--accent) 34%, transparent); }
+  .trow-pick .tablecb { width: 15px; height: 15px; flex: none; cursor: pointer; accent-color: var(--accent); }
+  .trow-pick .tp-name { font-size: 13px; font-weight: 500; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .trow-pick .tp-meta { font-size: 11px; color: var(--muted); margin-left: auto; padding-left: 12px; white-space: nowrap; flex: none; }
   /* Assess-app tab locked while an assessment is in flight (no second run / no re-select) */
   .app-busy .app-choose, .app-busy #tablePickerCard { opacity: .55; }
   .app-busy #scheduleThisApp { pointer-events: none; opacity: .5; }
@@ -1567,6 +1576,7 @@
         <button class="linkbtn" id="selectAllTables">Select all</button>
         <button class="linkbtn" id="selectNoneTables">Clear</button>
       </h2>
+      <p class="hint" style="margin:-6px 0 10px;">Tick a table, then <strong>shift-click</strong> another to select everything in between.</p>
       <div id="tableList"></div>
       <button id="assessTablesBtn" style="margin-top: 12px;" disabled>Assess selected tables</button>
     </div>
@@ -5973,22 +5983,43 @@ async function listAppTables() {
   }
 }
 
+let _lastTableIdx = null;   // anchor for shift-click range selection
 function renderTableList(tables) {
   appTables = tables;
+  _lastTableIdx = null;
   const el = $('#tableList');
-  if (!tables.length) { el.innerHTML = '<p class="hint">No tables found in this app.</p>'; return; }
+  if (!tables.length) { el.innerHTML = '<p class="hint" style="padding:6px 4px;">No tables found in this app.</p>'; return; }
   el.innerHTML = tables.map((t, i) =>
-    `<label class="tablerow" style="display:block;padding:4px 0;">
-       <input type="checkbox" class="tablecb" value="${i}"> <span class="tname"></span>
-       <span class="hint tmeta"></span>
+    `<label class="trow-pick" data-i="${i}">
+       <input type="checkbox" class="tablecb" value="${i}">
+       <span class="tp-name"></span><span class="tp-meta"></span>
      </label>`).join('');
-  [...el.querySelectorAll('.tablerow')].forEach((row, i) => {
-    row.querySelector('.tname').textContent = tables[i].name;      // textContent = no injection
-    row.querySelector('.tmeta').textContent =
-      ` (${Number(tables[i].rows).toLocaleString()} rows, ${tables[i].fieldCount} fields)`;
+  [...el.querySelectorAll('.trow-pick')].forEach((row, i) => {
+    row.querySelector('.tp-name').textContent = tables[i].name;      // textContent = no injection
+    row.querySelector('.tp-meta').textContent =
+      `${Number(tables[i].rows).toLocaleString()} rows · ${tables[i].fieldCount} fields`;
   });
-  el.querySelectorAll('.tablecb').forEach(cb => cb.addEventListener('change', updateAssessBtn));
+  const cbs = [...el.querySelectorAll('.tablecb')];
+  cbs.forEach(cb => {
+    // click carries shiftKey; on shift-click, fill the range from the last-clicked row to this one.
+    cb.addEventListener('click', e => {
+      const idx = +cb.value;
+      if (e.shiftKey && _lastTableIdx !== null && _lastTableIdx !== idx) {
+        const lo = Math.min(_lastTableIdx, idx), hi = Math.max(_lastTableIdx, idx), state = cb.checked;
+        cbs.forEach(c => { if (+c.value >= lo && +c.value <= hi) c.checked = state; });
+      }
+      _lastTableIdx = idx;
+      syncTableRows(); updateAssessBtn();
+    });
+    cb.addEventListener('change', () => { syncTableRows(); updateAssessBtn(); });
+  });
+  syncTableRows();
   updateAssessBtn();
+}
+// Reflect each checkbox's state on its row (highlight selected rows).
+function syncTableRows() {
+  document.querySelectorAll('#tableList .trow-pick').forEach(row =>
+    row.classList.toggle('checked', !!row.querySelector('.tablecb').checked));
 }
 
 function selectedTables() {
@@ -6266,10 +6297,10 @@ $('#assessAllBtn').addEventListener('click', assessEntireApp);
 $('#scheduleThisApp').addEventListener('click', e => { e.preventDefault(); switchTab('schedules'); });
 $('#assessTablesBtn').addEventListener('click', assessSelectedTables);
 $('#selectAllTables').addEventListener('click', () => {
-  document.querySelectorAll('.tablecb').forEach(cb => cb.checked = true); updateAssessBtn();
+  document.querySelectorAll('.tablecb').forEach(cb => cb.checked = true); _lastTableIdx = null; syncTableRows(); updateAssessBtn();
 });
 $('#selectNoneTables').addEventListener('click', () => {
-  document.querySelectorAll('.tablecb').forEach(cb => cb.checked = false); updateAssessBtn();
+  document.querySelectorAll('.tablecb').forEach(cb => cb.checked = false); _lastTableIdx = null; syncTableRows(); updateAssessBtn();
   // also clear any previous run's results still on screen
   $('#appResults').style.display = 'none';
   $('#appResultsBody').innerHTML = '';
