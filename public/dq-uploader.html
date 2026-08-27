@@ -765,6 +765,17 @@
   .owner-add { cursor: pointer; font: inherit; font-size: 11px; color: var(--muted); background: transparent;
     border: 1px dashed var(--border); border-radius: 999px; padding: 2px 9px; }
   .owner-add:hover { color: var(--text); border-color: var(--accent2); }
+  /* Read-only stage medal chip in the dataset name cell (picker lives in the detail) */
+  .ds-stage-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600;
+    padding: 3px 9px; border-radius: 999px; border: 1px solid var(--border); background: var(--card-2); color: #b8c2d8; }
+  .ds-stage-badge.bronze { border-color: color-mix(in srgb, #cd7f32 45%, transparent); color: #e0975a; }
+  .ds-stage-badge.silver { border-color: color-mix(in srgb, #c8d0dc 45%, transparent); color: #d6dde8; }
+  .ds-stage-badge.gold   { border-color: color-mix(in srgb, #ffcf4d 45%, transparent); color: #ffcf4d; }
+  /* Governance controls in the dataset detail header (Trust / Owner / Stage), tidy labelled groups */
+  .detail-gov { display: inline-flex; align-items: center; gap: 6px; margin: 0 18px 6px 0; }
+  .detail-gov .hint { margin-right: 1px; }
+  /* Keep the Re-run action on one line */
+  .dash-table td:last-child { white-space: nowrap; }
   /* Medallion comparison view */
   .medal-cols { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; position: relative; }
   /* Flow chevrons between the three stages — dim by default, light up as adjacent stages are picked. */
@@ -3012,11 +3023,18 @@ function wireTrust(container, onChange) {
 function updateDetailTrust(key) {
   const el = $('#dashDetailHint'); if (!el) return;
   const badge = trustBadge(key);
-  el.innerHTML = `<span class="detail-trust"><span class="hint" style="margin-right:2px;">Trust:</span>${trustMenu(key)}${badge ? ' ' + badge : ''}</span>` +
-    `<span class="detail-trust" style="margin-left:14px;"><span class="hint" style="margin-right:2px;">Owner:</span>${ownerChip(key)}</span>`;
+  el.innerHTML = `<span class="detail-gov"><span class="hint">Trust</span>${trustMenu(key)}${badge ? ' ' + badge : ''}</span>` +
+    `<span class="detail-gov"><span class="hint">Owner</span>${ownerChip(key)}</span>` +
+    `<span class="detail-gov"><span class="hint">Stage</span>${medalCell(key)}</span>`;
   wireTrust(el, () => updateDetailTrust(key));
   el.querySelectorAll('[data-ownerset]').forEach(b =>
     b.addEventListener('click', e => { e.stopPropagation(); setOwner(key); updateDetailTrust(key); refreshDatasetsTable(); }));
+  el.querySelectorAll('.medal[data-medal]').forEach(b =>
+    b.addEventListener('click', e => {
+      e.stopPropagation(); const m = b.dataset.medal;
+      setStage(key, entryFor(key).stage === m ? '' : m);
+      updateDetailTrust(key); refreshDatasetsTable();
+    }));
 }
 
 // The list, narrowed by search (name + tags) + source + stage + a clicked custom-tag.
@@ -3114,6 +3132,12 @@ function removeTagFrom(key, t) {
   dashEntries[key] = e; saveEntry(key); refreshDatasetsTable();
 }
 
+// A small read-only stage medal chip for the name cell (shown only when a stage is set; the
+// picker itself lives in the dataset detail, since stage rarely changes).
+function stageBadge(key) {
+  const s = entryFor(key).stage; if (!s) return '';
+  return `<span class="ds-stage-badge ${s}" data-tip="${esc(MEDAL_LABEL[s])} stage — change it in the dataset detail">${MEDAL_LABEL[s]}</span>`;
+}
 // The bronze/silver/gold picker for one row (click a stage to set; click the active one to clear).
 function medalCell(key) {
   const cur = entryFor(key).stage;
@@ -3231,21 +3255,20 @@ function renderHealthTable(datasets) {
     const srcChip = sourceChip(d.sourceFormat);
     const tb = trustBadge(d.key);
     return `<tr class="dash-row" data-key="${esc(d.key)}" data-name="${esc(d.name)}">
-        <td class="ds-cell"><div class="ds-name-line">${esc(d.name)}</div><div class="ds-meta">${srcChip}${tb}${ownerChip(d.key)}${tagChips(d.key)}</div></td>
+        <td class="ds-cell"><div class="ds-name-line">${esc(d.name)}</div><div class="ds-meta">${srcChip}${stageBadge(d.key)}${tb}${ownerChip(d.key)}${tagChips(d.key)}</div></td>
         <td><strong>${num1(d.score)}</strong> ${statusChip(d.status)}</td>
         <td>${gateChip(d.gate)}</td>
         <td>${numInt(d.rows)}</td>
         <td class="dash-muted">${esc(age)}</td>
         <td>${spark}</td>
         <td>${trustMenu(d.key)}</td>
-        <td>${medalCell(d.key)}</td>
         <td><button class="btn-sm" data-rerun="${esc(d.name)}" data-fmt="${esc(d.sourceFormat || '')}" data-prefix="${esc(d.resultPrefix || '')}" data-tip="Re-assess this dataset">↻ Re-run</button></td>
       </tr>`;
   }).join('');
   $('#dashTableWrap').innerHTML =
     `<table class="dash-table"><tr><th>Dataset</th><th>Score</th><th>Gate</th>` +
     `<th>Rows</th><th>Last run</th><th>Trend (30d)</th><th data-tip="Certification: endorse, caution or deprecate this dataset for consumers">Trust</th>` +
-    `<th data-tip="Data stage: bronze (raw) → silver (cleaned) → gold (curated)">Stage</th><th></th></tr>${rows}</table>`;
+    `<th></th></tr>${rows}</table>`;
   $('#dashTableWrap').querySelectorAll('.dash-row').forEach(tr =>
     tr.addEventListener('click', () => {
       $('#dashTableWrap').querySelectorAll('.dash-row').forEach(x => x.classList.remove('sel'));
@@ -3254,14 +3277,6 @@ function renderHealthTable(datasets) {
     }));
   $('#dashTableWrap').querySelectorAll('button[data-rerun]').forEach(b =>
     b.addEventListener('click', e => { e.stopPropagation(); reRunTable(b.dataset.rerun, b.dataset.fmt, b.dataset.prefix); }));
-  // Medallion stage: click a stage to set it (click the active one to clear); saved per app.
-  $('#dashTableWrap').querySelectorAll('.medal[data-medal]').forEach(b =>
-    b.addEventListener('click', e => {
-      e.stopPropagation();
-      const key = b.dataset.key, m = b.dataset.medal;
-      setStage(key, entryFor(key).stage === m ? '' : m);   // updates entry now, persists async
-      refreshDatasetsTable();
-    }));
   // Trust / certification: endorse, caution or deprecate (click active to clear) + note.
   wireTrust($('#dashTableWrap'), () => refreshDatasetsTable());
   // Ownership: assign/change owner (＋/✎) or click an owner chip to filter by it.
