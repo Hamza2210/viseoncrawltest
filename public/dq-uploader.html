@@ -2732,11 +2732,13 @@ function heatCell(score) {
   if (typeof score !== 'number' || !isFinite(score))
     return { bg: 'var(--idle-bg)', fg: 'var(--muted)', txt: '—' };
   // RAG: green = good, amber = warning, red = poor (deepens as the score falls).
+  // Thresholds match the platform's dimension status (green_at=95, amber_at=85) so a cell's
+  // colour agrees with the RED/AMBER/GREEN badge shown in the assessment result.
   // The number is shown in every cell, so colour is never the only signal.
   let rgb, a;
-  if (score >= 90) { rgb = '22,163,74'; a = 0.14 + ((score - 90) / 10) * 0.14; }        // green
-  else if (score >= 75) { rgb = '217,119,6'; a = 0.16 + ((90 - score) / 15) * 0.14; }   // amber
-  else { rgb = '220,38,38'; a = 0.26 + ((75 - score) / 75) * 0.58; }                    // red
+  if (score >= 95) { rgb = '22,163,74'; a = 0.14 + ((score - 95) / 5) * 0.14; }         // green
+  else if (score >= 85) { rgb = '217,119,6'; a = 0.16 + ((95 - score) / 10) * 0.14; }   // amber
+  else { rgb = '220,38,38'; a = 0.26 + ((85 - score) / 85) * 0.58; }                    // red
   a = Math.min(0.88, a);
   return { bg: `rgba(${rgb},${a.toFixed(2)})`, fg: a > 0.5 ? '#fff' : 'var(--text)', txt: Math.round(score) };
 }
