@@ -727,6 +727,10 @@
   .medal.gold   { background: rgba(224,198,90,.16); color: #ecd873; border-color: rgba(224,198,90,.5); }
   .medal-menu { display: inline-flex; gap: 4px; align-items: center; }
   .dash-filtgrp { display: inline-flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  /* Dataset name cell: name on top, one wrapping row of attribute chips beneath (source/trust/owner/tags). */
+  .ds-cell { vertical-align: top; }
+  .ds-name-line { font-weight: 600; font-size: 13.5px; color: var(--text); padding-top: 2px; }
+  .ds-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 7px; }
   .ds-tags { display: inline-flex; gap: 5px; align-items: center; flex-wrap: wrap; }
   .ds-tag { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; font-size: 11px;
     padding: 1px 6px 1px 7px; border-radius: 999px; background: var(--idle-bg); color: var(--muted);
@@ -3227,7 +3231,7 @@ function renderHealthTable(datasets) {
     const srcChip = sourceChip(d.sourceFormat);
     const tb = trustBadge(d.key);
     return `<tr class="dash-row" data-key="${esc(d.key)}" data-name="${esc(d.name)}">
-        <td>${esc(d.name)}${srcChip ? `<div style="margin-top:3px;">${srcChip}</div>` : ''}${tb ? `<div style="margin-top:4px;">${tb}</div>` : ''}<div style="margin-top:4px;">${ownerChip(d.key)}</div><div style="margin-top:4px;">${tagChips(d.key)}</div></td>
+        <td class="ds-cell"><div class="ds-name-line">${esc(d.name)}</div><div class="ds-meta">${srcChip}${tb}${ownerChip(d.key)}${tagChips(d.key)}</div></td>
         <td><strong>${num1(d.score)}</strong> ${statusChip(d.status)}</td>
         <td>${gateChip(d.gate)}</td>
         <td>${numInt(d.rows)}</td>
