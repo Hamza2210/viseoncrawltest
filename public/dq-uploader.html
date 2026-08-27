@@ -765,6 +765,30 @@
     border-radius: 8px; background: var(--card); color: var(--text); font: inherit; font-size: 13px;
     transition: border-color .15s ease; cursor: pointer; }
   .medal-picker:hover, .medal-picker:focus { border-color: var(--accent); outline: none; }
+  .medal-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 14px; }
+  /* Searchable dataset picker (replaces the native select). */
+  .medal-combo { position: relative; margin-bottom: 12px; }
+  .medal-combo-btn { width: 100%; text-align: left; padding: 8px 11px; border: 1px solid var(--border);
+    border-radius: 8px; background: var(--card); color: var(--text); font: inherit; font-size: 13px; cursor: pointer;
+    display: flex; justify-content: space-between; align-items: center; gap: 8px; transition: border-color .15s ease; }
+  .medal-combo-btn:hover, .medal-combo.open .medal-combo-btn { border-color: var(--accent); }
+  .medal-combo-btn .csel { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .medal-combo-btn.placeholder .csel { color: var(--muted); }
+  .medal-combo-caret { color: var(--muted); flex: none; font-size: 11px; transition: transform .15s ease; }
+  .medal-combo.open .medal-combo-caret { transform: rotate(180deg); }
+  .medal-combo-pop { position: absolute; z-index: 20; top: calc(100% + 4px); left: 0; right: 0;
+    background: rgba(13,19,35,.98); border: 1px solid #2a3552; border-radius: 10px;
+    box-shadow: 0 14px 34px rgba(0,0,0,.55); padding: 8px; }
+  .medal-combo-search { width: 100%; box-sizing: border-box; padding: 7px 10px; border: 1px solid var(--border);
+    border-radius: 7px; background: var(--card-2); color: var(--text); font: inherit; font-size: 12.5px; margin-bottom: 6px; }
+  .medal-combo-search:focus { outline: none; border-color: var(--accent); }
+  .medal-combo-list { max-height: 210px; overflow-y: auto; }
+  .medal-combo-opt { padding: 7px 10px; border-radius: 6px; font-size: 13px; color: var(--text); cursor: pointer;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .medal-combo-opt:hover { background: rgba(40,60,110,.6); }
+  .medal-combo-opt.sel { color: #fff; background: color-mix(in srgb, var(--accent) 28%, transparent); }
+  .medal-combo-opt.clear { color: var(--muted); font-style: italic; }
+  .medal-combo-none { padding: 8px 10px; color: var(--muted); font-size: 12px; }
   /* Empty-state: a soft pulsing medal ring inviting a pick. */
   .medal-empty { text-align: center; padding: 20px 0 24px; color: var(--muted); }
   .medal-empty p { margin: 0; font-size: 12.5px; }
@@ -1282,7 +1306,10 @@
       <p>Pick a bronze, silver and gold dataset to see, side by side, how data quality improves as it's refined through the stages. Tag datasets with a stage on the Dashboard first.</p>
     </div>
     <div class="card">
-      <p class="dash-muted" id="medalCtx">Loading…</p>
+      <div class="medal-head">
+        <p class="dash-muted" id="medalCtx" style="margin:0;flex:1;">Loading…</p>
+        <button type="button" class="linkbtn" id="medalClearAll" style="display:none;">✕ Clear all</button>
+      </div>
       <div id="medalCols" class="medal-cols"></div>
     </div>
     <div class="card" id="medalCompareCard" style="display:none;">
@@ -5151,8 +5178,7 @@ function renderMedallionCols() {
   wrap.innerHTML = MEDALLIONS.map(stage => {
     const opts = datasetsForStage(stage);
     if (medalSel[stage] && !opts.some(d => d.key === medalSel[stage])) { medalSel[stage] = ''; medalRuns[stage] = null; }
-    const options = ['<option value="">— select a dataset —</option>']
-      .concat(opts.map(d => `<option value="${esc(d.key)}"${medalSel[stage] === d.key ? ' selected' : ''}>${esc(d.name)}</option>`)).join('');
+    const cur = opts.find(d => d.key === medalSel[stage]);
     const loaded = medalRuns[stage] && !medalRuns[stage]._error;
     const glyph = MEDAL_LABEL[stage].split(' ')[0];
     let body;
@@ -5161,17 +5187,68 @@ function renderMedallionCols() {
     else body = `<div class="medal-empty"><div class="medal-ring ${stage}">${glyph}</div><p>Pick a ${stage} dataset above to see its latest run.</p></div>`;
     return `<div class="medal-col ${stage}${loaded ? ' sel' : ''}">
         <div class="medal-col-hd">${MEDAL_LABEL[stage].toUpperCase()}</div>
-        <select class="medal-picker" data-medstage="${stage}">${options}</select>
+        <div class="medal-combo" data-medstage="${stage}">
+          <button type="button" class="medal-combo-btn${cur ? '' : ' placeholder'}">
+            <span class="csel">${cur ? esc(cur.name) : '— select a dataset —'}</span><span class="medal-combo-caret">▾</span></button>
+          <div class="medal-combo-pop" style="display:none;">
+            <input type="text" class="medal-combo-search" placeholder="Search ${stage} datasets…" autocomplete="off">
+            <div class="medal-combo-list">${medalComboOptions(stage, opts, '')}</div>
+          </div>
+        </div>
         <div class="medal-col-body">${body}</div>
       </div>`;
   }).join('');
+  const anySel = MEDALLIONS.some(s => medalSel[s]);
+  const clr = $('#medalClearAll'); if (clr) clr.style.display = anySel ? '' : 'none';
   // Light the flow chevrons between stages as adjacent pairs get picked.
   wrap.classList.toggle('f1', !!(medalSel.bronze && medalSel.silver));
   wrap.classList.toggle('f2', !!(medalSel.silver && medalSel.gold));
-  wrap.querySelectorAll('.medal-picker').forEach(sel =>
-    sel.addEventListener('change', () => selectMedalDataset(sel.dataset.medstage, sel.value)));
+  wrap.querySelectorAll('.medal-combo').forEach(combo => {
+    const stage = combo.dataset.medstage, opts = datasetsForStage(stage);
+    const btn = combo.querySelector('.medal-combo-btn'), pop = combo.querySelector('.medal-combo-pop');
+    const search = combo.querySelector('.medal-combo-search'), list = combo.querySelector('.medal-combo-list');
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const open = pop.style.display === 'none';
+      closeMedalCombos();
+      if (open) {
+        pop.style.display = ''; combo.classList.add('open');
+        search.value = ''; list.innerHTML = medalComboOptions(stage, opts, '');
+        search.focus();
+      }
+    });
+    pop.addEventListener('click', e => e.stopPropagation());
+    search.addEventListener('input', () => { list.innerHTML = medalComboOptions(stage, opts, search.value); });
+    list.addEventListener('click', e => {
+      const opt = e.target.closest('.medal-combo-opt'); if (!opt) return;
+      selectMedalDataset(stage, opt.getAttribute('data-optkey'));   // '' clears this stage
+    });
+  });
   renderMedalCompare();
 }
+
+// One row per stage-eligible dataset, filtered by the search text; plus a Clear row when one is picked.
+function medalComboOptions(stage, opts, q) {
+  q = (q || '').trim().toLowerCase();
+  const cur = medalSel[stage];
+  const filtered = opts.filter(d => !q || (d.name || '').toLowerCase().includes(q));
+  const clearRow = cur ? `<div class="medal-combo-opt clear" data-optkey="">✕ Clear selection</div>` : '';
+  if (!filtered.length) return clearRow + `<div class="medal-combo-none">No matches.</div>`;
+  return clearRow + filtered.map(d =>
+    `<div class="medal-combo-opt${d.key === cur ? ' sel' : ''}" data-optkey="${esc(d.key)}">${esc(d.name)}</div>`).join('');
+}
+function closeMedalCombos() {
+  document.querySelectorAll('.medal-combo.open').forEach(c => {
+    c.classList.remove('open'); const p = c.querySelector('.medal-combo-pop'); if (p) p.style.display = 'none';
+  });
+}
+function clearAllMedals() {
+  MEDALLIONS.forEach(s => { medalSel[s] = ''; medalRuns[s] = null; });
+  medalAi = { sig: '', text: '', at: '' };
+  renderMedallionCols();
+}
+{ const c = $('#medalClearAll'); if (c) c.addEventListener('click', clearAllMedals); }
+document.addEventListener('click', closeMedalCombos);   // click outside an open picker closes it
 
 async function selectMedalDataset(stage, key) {
   medalSel[stage] = key;
