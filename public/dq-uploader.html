@@ -2905,56 +2905,6 @@ function lineChart(points, opts) {
   </svg>`;
 }
 
-// Quality wheel: a radial gauge of the latest run's 9 dimension scores. Each spoke's coloured arc
-// extends outward with its score (RAG-coloured); a full even ring = balanced high quality, short
-// spokes = weak dimensions. The previous run is ghosted (dashed) so movement is visible.
-function qualityWheel(runs) {
-  const labelOf = {}, order = DAMA_DIMS.map(d => d[0]);
-  DAMA_DIMS.forEach(([k, l]) => labelOf[k] = l);
-  const withDims = (runs || []).filter(r => r.dims && Object.values(r.dims).some(v => typeof v === 'number' && isFinite(v)));
-  if (!withDims.length) return `<p class="dash-muted">No dimension data yet.</p>`;
-  const latest = withDims[withDims.length - 1], prev = withDims.length > 1 ? withDims[withDims.length - 2] : null;
-  const dims = order.filter(k => typeof latest.dims[k] === 'number' && isFinite(latest.dims[k]));
-  if (!dims.length) return `<p class="dash-muted">No dimension data yet.</p>`;
-  const N = dims.length, W = 340, H = 300, cx = W / 2, cy = H / 2 + 4, outerR = 104, innerR = 34;
-  const rOf = s => innerR + (Math.max(0, Math.min(100, s)) / 100) * (outerR - innerR);
-  const ragOf = s => s >= 95 ? 'var(--ok)' : s >= 85 ? 'var(--run)' : 'var(--err)';
-  const rad = d => d * Math.PI / 180, A = i => -90 + i * (360 / N);
-  const pt = (r, deg) => [cx + r * Math.cos(rad(deg)), cy + r * Math.sin(rad(deg))];
-  const gap = Math.min(6, 360 / N * 0.18), half = 360 / N / 2 - gap;
-  const sector = (r0, r1, deg) => {
-    const a0 = deg - half, a1 = deg + half;
-    const [x0, y0] = pt(r1, a0), [x1, y1] = pt(r1, a1), [x2, y2] = pt(r0, a1), [x3, y3] = pt(r0, a0);
-    return `M ${x0.toFixed(1)} ${y0.toFixed(1)} A ${r1} ${r1} 0 0 1 ${x1.toFixed(1)} ${y1.toFixed(1)} ` +
-      `L ${x2.toFixed(1)} ${y2.toFixed(1)} A ${r0} ${r0} 0 0 0 ${x3.toFixed(1)} ${y3.toFixed(1)} Z`;
-  };
-  let grid = '';
-  [25, 50, 75, 100].forEach(g => { grid += `<circle cx="${cx}" cy="${cy}" r="${rOf(g).toFixed(1)}" fill="none" stroke="var(--border)" stroke-width="1" opacity="${g === 100 ? 0.6 : 0.33}"/>`; });
-  grid += `<circle cx="${cx}" cy="${cy}" r="${innerR}" fill="none" stroke="var(--border)" stroke-width="1" opacity="0.4"/>`;
-  let ghosts = '', wedges = '', hits = '', labels = '';
-  dims.forEach((k, i) => {
-    const s = latest.dims[k], deg = A(i);
-    if (prev && typeof prev.dims[k] === 'number' && isFinite(prev.dims[k]))
-      ghosts += `<path d="${sector(innerR, rOf(prev.dims[k]), deg)}" fill="none" stroke="var(--muted)" stroke-width="1" opacity="0.4" stroke-dasharray="2 2"/>`;
-    wedges += `<path d="${sector(innerR, rOf(s), deg)}" fill="${ragOf(s)}" opacity="0.85"/>`;
-    const dv = (prev && typeof prev.dims[k] === 'number' && isFinite(prev.dims[k])) ? s - prev.dims[k] : null;
-    const dtxt = dv == null ? '' : ` (${dv > 0 ? '▲ +' : dv < 0 ? '▼ ' : '· '}${num1(Math.abs(dv))} vs prev)`;
-    hits += `<path d="${sector(innerR, outerR, deg)}" fill="transparent" data-tip="${esc(labelOf[k] || k)}: ${num1(s)}${dtxt}"></path>`;
-    const [lx, ly] = pt(outerR + 13, deg);
-    const anchor = Math.abs(Math.cos(rad(deg))) < 0.35 ? 'middle' : (Math.cos(rad(deg)) > 0 ? 'start' : 'end');
-    labels += `<text x="${lx.toFixed(1)}" y="${(ly + 3).toFixed(1)}" text-anchor="${anchor}" font-size="9" fill="var(--muted)">${esc(labelOf[k] || k)}</text>`;
-  });
-  const ov = typeof latest.score === 'number' ? num1(latest.score) : '—';
-  const center = `<text x="${cx}" y="${cy - 1}" text-anchor="middle" font-size="22" font-weight="800" fill="var(--text)">${ov}</text>` +
-    `<text x="${cx}" y="${(cy + 13).toFixed(1)}" text-anchor="middle" font-size="7.5" letter-spacing="1" fill="var(--muted)">OVERALL</text>`;
-  const legend = `<div class="legend" style="margin-top:6px;justify-content:center;">` +
-    `<span><span class="sev-dot" style="background:var(--ok)"></span>≥95</span>` +
-    `<span><span class="sev-dot" style="background:var(--run)"></span>85–95</span>` +
-    `<span><span class="sev-dot" style="background:var(--err)"></span>&lt;85</span>` +
-    (prev ? `<span style="color:var(--muted)">╌ previous run</span>` : '') + `</div>`;
-  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;max-width:400px;display:block;margin:0 auto" role="img">` +
-    `${grid}${ghosts}${wedges}${hits}${center}${labels}</svg>${legend}`;
-}
 
 // multi-series line chart (time-scaled x), for overlaying every table's trend.
 function multiLine(series, opts) {
@@ -3553,7 +3503,6 @@ function renderTrendCharts(d) {
   }).join('');
   return whatChanged(runs) +
     `<div><div class="chart-title">Overall score</div>${lineChart(scorePts, { ymin: 0, ymax: 100, ragBands: true, band: base.overall })}</div>` + bandNote +
-    `<div class="chart-title" style="margin-top:16px;">Quality profile<span class="hint" style="font-weight:400;margin-left:8px;">latest run — each spoke is a dimension; a full even ring means balanced quality</span></div>${qualityWheel(runs)}` +
     `<div class="chart-title" style="margin-top:16px;">Quality gate (each run)</div>${gate}` +
     `<div class="chart-title" style="margin-top:16px;">Per-dimension score (30d)</div><div class="small-mults">${mults}</div>`;
 }
@@ -4015,7 +3964,6 @@ function renderTrends(d) {
     `<div id="dashDatasetRules" style="display:none;margin:0 0 14px;"></div>` +
     whatChanged(runs) +
     `<div><div class="chart-title">Overall score</div>${lineChart(scorePts, { ymin: 0, ymax: 100, ragBands: true, band: base.overall })}</div>` + bandNote +
-    `<div class="chart-title" style="margin-top:16px;">Quality profile<span class="hint" style="font-weight:400;margin-left:8px;">latest run — each spoke is a dimension; a full even ring means balanced quality</span></div>${qualityWheel(runs)}` +
     `<div class="chart-title" style="margin-top:16px;">Quality gate (each run)</div>${gate}` +
     `<div class="chart-title" style="margin-top:16px;">Per-dimension score (30d)</div><div class="small-mults">${mults}</div>`;
   const back = $('#dashBack');
