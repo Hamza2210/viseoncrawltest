@@ -1665,7 +1665,7 @@ const fmtScore = n => (n == null ? '—' : Number(Number(n).toFixed(2)));
 function tagClass(s) { return ({ green: 'green', amber: 'amber', red: 'red' })[s] || ''; }
 // A friendly label + chip for the dataset's origin (source_format on the run).
 const SOURCE_FMT_LABEL = {
-  qlik: 'Qlik app', redshift: 'Amazon Redshift', snowflake: 'Snowflake', databricks: 'Databricks',
+  qlik: 'Qlik Table', redshift: 'Amazon Redshift', snowflake: 'Snowflake', databricks: 'Databricks',
   s3: 'Amazon S3', parquet: 'Parquet file', csv: 'CSV file', tsv: 'TSV file',
   json: 'JSON file', ndjson: 'JSON file', qvd: 'QVD file',
 };
@@ -1673,11 +1673,18 @@ const SOURCE_FMT_ICON = {
   qlik: '📊', redshift: '🟥', snowflake: '❄️', databricks: '🧱', s3: '🪣',
   parquet: '📦', csv: '📄', tsv: '📄', json: '📄', ndjson: '📄', qvd: '📄',
 };
+// Qlik "Q" mark (transparent, two-tone) for the Qlik Table chip: grey lower-left arc, green
+// top/right arc + tail — recreated as inline SVG so it needs no external asset or background removal.
+const QLIK_ICON = '<svg viewBox="0 0 24 24" width="13" height="13" style="vertical-align:-2px" aria-hidden="true">' +
+  '<circle cx="10.5" cy="10.5" r="7" fill="none" stroke="#58595b" stroke-width="3.2"/>' +
+  '<path d="M6.49 4.77 A7 7 0 1 1 14.0 16.56" fill="none" stroke="#1a9f42" stroke-width="3.2"/>' +
+  '<line x1="14.0" y1="16.56" x2="16.2" y2="20.4" stroke="#1a9f42" stroke-width="3.2"/></svg>';
 function sourceLabel(fmt) { const f = (fmt || '').toLowerCase(); return SOURCE_FMT_LABEL[f] || (f ? f.toUpperCase() : ''); }
 function sourceChip(fmt) {
   const f = (fmt || '').toLowerCase(), label = sourceLabel(f);
   if (!label) return '';
-  return `<span class="source-chip" data-tip="Data source for this assessment">${SOURCE_FMT_ICON[f] || '🗄️'} ${esc(label)}</span>`;
+  const icon = f === 'qlik' ? QLIK_ICON : (SOURCE_FMT_ICON[f] || '🗄️');
+  return `<span class="source-chip" data-tip="Data source for this assessment">${icon} ${esc(label)}</span>`;
 }
 function fmtWhen(runId) {
   // run_id is a timestamp, optionally with a "-<token>" collision suffix; match the
