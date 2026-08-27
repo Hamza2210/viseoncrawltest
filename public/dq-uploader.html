@@ -3279,7 +3279,10 @@ function renderHealthTable(datasets) {
     const spark = svgSpark((d.spark || []).map(p => p.score));
     const age = d.ageDays == null ? '—'
       : (d.ageDays < 1 ? 'today' : `${Math.round(d.ageDays)}d ago`);
-    const srcChip = sourceChip(d.sourceFormat);
+    // In the app-data scope every row is a Qlik table, so the "Qlik app" chip is redundant here —
+    // only show a source chip for actual source datasets (parquet/redshift/…). The Qlik-app marker
+    // lives in the dataset detail instead.
+    const srcChip = isSourceDataset(d) ? sourceChip(d.sourceFormat) : '';
     const tb = trustBadge(d.key);
     return `<tr class="dash-row" data-key="${esc(d.key)}" data-name="${esc(d.name)}">
         <td class="ds-cell"><div class="ds-name-line">${esc(d.name)}</div><div class="ds-meta">${srcChip}${stageBadge(d.key)}${tb}${ownerChip(d.key)}${tagChips(d.key)}</div></td>
@@ -3407,7 +3410,10 @@ async function selectDataset(key, name) {
   if (GALAXY.orbs && GALAXY.orbs.length) GALAXY.selected = GALAXY.orbs.find(o => o.key === key) || null;
   setOverviewSplit(true);                                        // reveal the detail beside the galaxy
   dsTrends = null; dsTab = 'scores';
-  $('#dashDetailTitle').textContent = name;
+  // Source marker lives here (not in the list): the actual source chip for source datasets,
+  // or a "Qlik app" chip for every app table (regardless of whether its run recorded the format).
+  const srcChip = ds ? (isSourceDataset(ds) ? sourceChip(ds.sourceFormat) : sourceChip('qlik')) : '';
+  $('#dashDetailTitle').innerHTML = `${esc(name)}${srcChip ? ` <span style="vertical-align:middle;margin-left:6px;">${srcChip}</span>` : ''}`;
   updateDetailTrust(key);
   const bar = DS_TABS.map(([k, l]) => `<button type="button" class="rd-tab${k === dsTab ? ' active' : ''}" data-dstab="${k}">${l}</button>`).join('');
   $('#dashTrends').innerHTML =
