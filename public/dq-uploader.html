@@ -995,11 +995,11 @@
     <!-- Source picker: file upload today; connectors (Redshift, S3, warehouses) in preview -->
     <div class="source-picker" id="sourcePicker">
       <button type="button" class="source-card active" data-source="file">📄 File upload <span class="src-tag">Ready</span></button>
-      <button type="button" class="source-card" data-source="redshift">📊 Amazon Redshift <span class="src-tag betatag">Beta</span></button>
-      <button type="button" class="source-card" data-source="s3">🗄️ Amazon S3 file <span class="src-tag betatag">Beta</span></button>
-      <button type="button" class="source-card" data-source="snowflake">❄️ Snowflake <span class="src-tag betatag">Beta</span></button>
-      <button type="button" class="source-card" data-source="databricks">🧱 Databricks <span class="src-tag betatag">Beta</span></button>
-      <button type="button" class="source-card" data-source="postgres">🐘 PostgreSQL <span class="src-tag beta">Preview</span></button>
+      <button type="button" class="source-card" data-source="redshift"><span class="src-ico" data-ico="redshift"></span> Amazon Redshift <span class="src-tag betatag">Beta</span></button>
+      <button type="button" class="source-card" data-source="s3"><span class="src-ico" data-ico="s3"></span> Amazon S3 file <span class="src-tag betatag">Beta</span></button>
+      <button type="button" class="source-card" data-source="snowflake"><span class="src-ico" data-ico="snowflake"></span> Snowflake <span class="src-tag betatag">Beta</span></button>
+      <button type="button" class="source-card" data-source="databricks"><span class="src-ico" data-ico="databricks"></span> Databricks <span class="src-tag betatag">Beta</span></button>
+      <button type="button" class="source-card" data-source="postgres"><span class="src-ico" data-ico="postgres"></span> PostgreSQL <span class="src-tag beta">Preview</span></button>
     </div>
 
     <!-- ===== Source: File upload (existing flow) ===== -->
@@ -1673,18 +1673,39 @@ const SOURCE_FMT_ICON = {
   qlik: '📊', redshift: '🟥', snowflake: '❄️', databricks: '🧱', s3: '🪣',
   parquet: '📦', csv: '📄', tsv: '📄', json: '📄', ndjson: '📄', qvd: '📄',
 };
-// Qlik "Q" mark (transparent, two-tone) for the Qlik Table chip: grey lower-left arc, green
-// top/right arc + tail — recreated as inline SVG so it needs no external asset or background removal.
-const QLIK_ICON = '<svg viewBox="0 0 24 24" width="13" height="13" style="vertical-align:-2px" aria-hidden="true">' +
-  '<circle cx="10.5" cy="10.5" r="7" fill="none" stroke="#58595b" stroke-width="3.2"/>' +
-  '<path d="M6.49 4.77 A7 7 0 1 1 14.0 16.56" fill="none" stroke="#1a9f42" stroke-width="3.2"/>' +
-  '<line x1="14.0" y1="16.56" x2="16.2" y2="20.4" stroke="#1a9f42" stroke-width="3.2"/></svg>';
+// Brand marks recreated as inline SVG (transparent, tuned to read at chip size). To use the
+// official artwork instead, replace an entry below with that logo's <svg>…</svg> (or an
+// <img src="data:image/…"> pointing at a background-removed asset) — one line per source.
+const _svg = inner => `<svg viewBox="0 0 24 24" width="13" height="13" style="vertical-align:-2px" aria-hidden="true">${inner}</svg>`;
+const SOURCE_FMT_SVG = {
+  // Qlik: grey lower-left arc, green top/right arc + tail
+  qlik: _svg('<circle cx="10.5" cy="10.5" r="7" fill="none" stroke="#58595b" stroke-width="3.2"/>' +
+    '<path d="M6.49 4.77 A7 7 0 1 1 14.0 16.56" fill="none" stroke="#1a9f42" stroke-width="3.2"/>' +
+    '<line x1="14.0" y1="16.56" x2="16.2" y2="20.4" stroke="#1a9f42" stroke-width="3.2"/>'),
+  // Redshift: three two-tone blue prisms
+  redshift: _svg('<rect x="3" y="9" width="2.1" height="7.5" fill="#1f5b96"/><rect x="5.1" y="9" width="2.1" height="7.5" fill="#4184c7"/>' +
+    '<rect x="9.7" y="5.2" width="2.3" height="13.6" fill="#1f5b96"/><rect x="12" y="5.2" width="2.3" height="13.6" fill="#4184c7"/>' +
+    '<rect x="16.8" y="9" width="2.1" height="7.5" fill="#1f5b96"/><rect x="18.9" y="9" width="2.1" height="7.5" fill="#4184c7"/>'),
+  // Snowflake: six-spoke mark + centre diamond
+  snowflake: _svg('<g stroke="#29b5e8" stroke-width="1.7" stroke-linecap="round" fill="none">' +
+    '<line x1="12" y1="2.6" x2="12" y2="21.4"/><line x1="3.86" y1="7.3" x2="20.14" y2="16.7"/><line x1="20.14" y1="7.3" x2="3.86" y2="16.7"/></g>' +
+    '<rect x="9.6" y="9.6" width="4.8" height="4.8" rx="1" transform="rotate(45 12 12)" fill="#29b5e8"/><circle cx="12" cy="12" r="1.05" fill="#0e1526"/>'),
+  // Databricks: red stacked layers
+  databricks: _svg('<g stroke="#ff3621" stroke-width="1.7" fill="none" stroke-linejoin="round">' +
+    '<path d="M4 8 L12 3.6 L20 8 L12 12.4 Z"/><polyline points="4,11.6 12,16 20,11.6"/><polyline points="4,15.4 12,19.8 20,15.4"/></g>'),
+  // S3: green bucket
+  s3: _svg('<g stroke="#3f9a2e" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round">' +
+    '<ellipse cx="12" cy="6.4" rx="6.4" ry="1.9"/><path d="M5.6 6.4 L7.6 18.4 Q12 19.8 16.4 18.4 L18.4 6.4"/><path d="M12.6 10.5 Q16.4 11.8 15.6 15"/></g>'),
+  // PostgreSQL: simplified blue elephant silhouette
+  postgres: _svg('<g fill="#336791"><ellipse cx="7.6" cy="8" rx="3.1" ry="3.6"/><ellipse cx="16.4" cy="8" rx="3.1" ry="3.6"/>' +
+    '<path d="M6.8 8.5 Q12 5.5 17.2 8.5 Q18.4 14 14.4 16.5 Q13.6 21 11.6 21 Q11.2 17 10 16 Q6 14.5 6.8 8.5 Z"/></g>'),
+};
+function srcIcon(fmt) { const f = (fmt || '').toLowerCase(); return SOURCE_FMT_SVG[f] || SOURCE_FMT_ICON[f] || '🗄️'; }
 function sourceLabel(fmt) { const f = (fmt || '').toLowerCase(); return SOURCE_FMT_LABEL[f] || (f ? f.toUpperCase() : ''); }
 function sourceChip(fmt) {
   const f = (fmt || '').toLowerCase(), label = sourceLabel(f);
   if (!label) return '';
-  const icon = f === 'qlik' ? QLIK_ICON : (SOURCE_FMT_ICON[f] || '🗄️');
-  return `<span class="source-chip" data-tip="Data source for this assessment">${icon} ${esc(label)}</span>`;
+  return `<span class="source-chip" data-tip="Data source for this assessment">${srcIcon(f)} ${esc(label)}</span>`;
 }
 function fmtWhen(runId) {
   // run_id is a timestamp, optionally with a "-<token>" collision suffix; match the
@@ -3103,7 +3124,7 @@ function renderDashFilters() {
     if (dashSourceSel && !sources.includes(dashSourceSel)) dashSourceSel = '';
     html += `<span class="dash-filtgrp"><span class="hint">Source:</span>` +
       chip('data-srcf', '', 'All', !dashSourceSel) +
-      sources.map(s => chip('data-srcf', s, sourceLabel(s), dashSourceSel === s, (SOURCE_FMT_ICON[s] || '🗄️') + ' ')).join('') + `</span>`;
+      sources.map(s => chip('data-srcf', s, sourceLabel(s), dashSourceSel === s, srcIcon(s) + ' ')).join('') + `</span>`;
   } else dashSourceSel = '';
   html += `<span class="dash-filtgrp"><span class="hint">Stage:</span>` +
     chip('data-stagef', '', 'All', !dashStageSel) +
@@ -5270,6 +5291,7 @@ async function runDatabricks(cfg, statusEl) {
   } else if (btn) { btn.disabled = false; }
 }
 
+document.querySelectorAll('.src-ico[data-ico]').forEach(el => el.innerHTML = srcIcon(el.dataset.ico));   // brand marks on the source cards
 document.querySelectorAll('.source-card').forEach(c => c.addEventListener('click', () => selectSource(c.dataset.source)));
 document.querySelectorAll('[data-runsource]').forEach(b => b.addEventListener('click', () => runSource(b.dataset.runsource)));
 // Live-validate each source's Run button as its fields change (disable + hover tooltip).
@@ -5604,7 +5626,7 @@ function renderGxFilterPop() {
     ? allTags.map(t => chip('data-gxtag', t, esc(t), f.tags.has(t))).join('')
     : none('No custom tags yet — add them on the Dashboard.'));
   if (dashScope === 'source') h += sec('Data source', allSrc.length
-    ? allSrc.map(s => chip('data-gxsrc', s, (SOURCE_FMT_ICON[s] || '🗄️') + ' ' + esc(sourceLabel(s)), f.sources.has(s))).join('')
+    ? allSrc.map(s => chip('data-gxsrc', s, srcIcon(s) + ' ' + esc(sourceLabel(s)), f.sources.has(s))).join('')
     : none('No source datasets to filter.'));
   h += `<div class="gx-actions"><button type="button" class="linkbtn" id="gxFilterClear">Clear all</button><span class="hint" id="gxFilterCount"></span></div>`;
   pop.innerHTML = h;
