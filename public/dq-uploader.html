@@ -3089,10 +3089,11 @@ async function loadDashEntries() {
     else if (r && r.tags) for (const k in r.tags) dashEntries[k] = { stage: r.tags[k], tags: [] };  // legacy
   } catch (e) { /* non-fatal */ }
 }
+function dsNameFor(key) { const d = (dashDatasetsAll || []).find(x => x.key === key); return d ? (d.name || '') : ''; }
 async function saveEntry(key) {
   const e = entryFor(key);
   try { await postJSON(`${API_BASE}/data-quality/dataset-tags`, HEADERS, { app_id: APP_ID, action: 'set', key,
-    stage: e.stage || '', tags: e.tags, owner: e.owner || '',
+    name: dsNameFor(key), stage: e.stage || '', tags: e.tags, owner: e.owner || '',
     trust: e.trust || '', trust_note: e.trustNote || '', trust_by: e.trustBy || '', trust_at: e.trustAt || '' }); }
   catch (err) { /* non-fatal; local state already updated */ }
 }
