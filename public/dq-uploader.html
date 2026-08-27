@@ -3037,14 +3037,15 @@ function isSourceDataset(ds) { return ds && ds.sourceFormat && ds.sourceFormat !
 
 // Tiles for just the datasets in the active scope (server tiles cover everything).
 function computeScopeTiles(datasets) {
-  let green = 0, amber = 0, red = 0, gate = 0, stale = 0;
+  let green = 0, amber = 0, red = 0, gate = 0, stale = 0, runs = 0;
   datasets.forEach(d => {
     if (d.status === 'green') green++; else if (d.status === 'amber') amber++; else if (d.status === 'red') red++;
     if (d.gate === false) gate++;
     if (d.ageDays != null && d.ageDays > 7) stale++;
+    // Per-dataset window run count (falls back to the sparkline length until the API exposes runsWindow).
+    runs += (d.runsWindow != null ? d.runsWindow : (d.spark ? d.spark.length : 0));
   });
-  return { datasets: datasets.length, green, amber, red, gateFailures: gate, stale,
-           runsWindow: (dashServerTiles && dashServerTiles.runsWindow) || 0 };
+  return { datasets: datasets.length, green, amber, red, gateFailures: gate, stale, runsWindow: runs };
 }
 
 // Re-render every dashboard chart for the current App-data / Source-data scope.
