@@ -752,6 +752,15 @@
   .trust-btn.on.trust-warning   { color: #fff; background: color-mix(in srgb, #f5b73d 32%, transparent); border-color: #f5b73d; }
   .trust-btn.on.trust-deprecated{ color: #fff; background: color-mix(in srgb, #ff5d5d 32%, transparent); border-color: #ff5d5d; }
   .detail-trust { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  /* Ownership chip */
+  .owner-chip { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; cursor: pointer;
+    padding: 3px 9px; border-radius: 999px; border: 1px solid var(--border); background: var(--card-2); color: #b8c2d8; }
+  .owner-chip:hover { border-color: var(--accent); color: var(--text); }
+  .owner-chip .owner-edit { color: var(--muted); padding: 0 2px; border-radius: 4px; }
+  .owner-chip .owner-edit:hover { color: var(--text); background: rgba(120,140,200,.18); }
+  .owner-add { cursor: pointer; font: inherit; font-size: 11px; color: var(--muted); background: transparent;
+    border: 1px dashed var(--border); border-radius: 999px; padding: 2px 9px; }
+  .owner-add:hover { color: var(--text); border-color: var(--accent2); }
   /* Medallion comparison view */
   .medal-cols { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; position: relative; }
   /* Flow chevrons between the three stages — dim by default, light up as adjacent stages are picked. */
@@ -2917,6 +2926,7 @@ let dashSearch = '';                             // matches dataset name + custo
 let dashSourceSel = '';                          // '' = all sources (source scope only)
 let dashStageSel = '';                           // '' = all medallion stages
 let dashTrustSel = '';                            // '' = all trust flags
+let dashOwnerSel = '';                            // '' = all · '__none__' = unowned · else a specific owner email
 let dashTagSel = '';                             // '' = no custom-tag filter
 let dashEntries = {};                            // key -> { stage: '', tags: [] }
 let _dashControlsWired = false;
@@ -2925,8 +2935,25 @@ const MEDAL_LABEL = { bronze: '🥉 Bronze', silver: '🥈 Silver', gold: '🥇 
 
 function entryFor(key) {
   const e = dashEntries[key] || {};
-  return { stage: e.stage || '', tags: (e.tags || []).slice(),
+  return { stage: e.stage || '', tags: (e.tags || []).slice(), owner: e.owner || '',
            trust: e.trust || '', trustNote: e.trustNote || '', trustBy: e.trustBy || '', trustAt: e.trustAt || '' };
+}
+
+// ---- Ownership ---------------------------------------------------------------------------
+// A dataset's owner (email). Alerts route here (falls back to the submitter when unset).
+function ownerChip(key) {
+  const o = entryFor(key).owner;
+  if (!o) return `<button type="button" class="owner-add" data-ownerset="1" data-key="${esc(key)}" data-tip="Assign an owner — alerts for this dataset route to them">👤 ＋ Owner</button>`;
+  return `<span class="owner-chip" data-ownerfilter="${esc(o)}" data-tip="Owner (alerts route here) — click to filter by this owner">👤 ${esc(o)}<span class="owner-edit" data-ownerset="1" data-key="${esc(key)}" title="Change / clear owner">✎</span></span>`;
+}
+function setOwner(key) {
+  const e = entryFor(key);
+  const v = prompt('Owner email — alerts for this dataset route to them (leave blank to clear):', e.owner || '');
+  if (v === null) return;                                    // cancelled
+  const t = v.trim();
+  if (t && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(t)) { alert('Please enter a valid email address (or leave blank to clear).'); return; }
+  e.owner = t.slice(0, 160);
+  dashEntries[key] = e; saveEntry(key);
 }
 
 // ---- Trust / certification flags ---------------------------------------------------------
@@ -2981,8 +3008,11 @@ function wireTrust(container, onChange) {
 function updateDetailTrust(key) {
   const el = $('#dashDetailHint'); if (!el) return;
   const badge = trustBadge(key);
-  el.innerHTML = `<span class="detail-trust"><span class="hint" style="margin-right:2px;">Trust:</span>${trustMenu(key)}${badge ? ' ' + badge : ''}</span>`;
+  el.innerHTML = `<span class="detail-trust"><span class="hint" style="margin-right:2px;">Trust:</span>${trustMenu(key)}${badge ? ' ' + badge : ''}</span>` +
+    `<span class="detail-trust" style="margin-left:14px;"><span class="hint" style="margin-right:2px;">Owner:</span>${ownerChip(key)}</span>`;
   wireTrust(el, () => updateDetailTrust(key));
+  el.querySelectorAll('[data-ownerset]').forEach(b =>
+    b.addEventListener('click', e => { e.stopPropagation(); setOwner(key); updateDetailTrust(key); refreshDatasetsTable(); }));
 }
 
 // The list, narrowed by search (name + tags) + source + stage + a clicked custom-tag.
@@ -2995,6 +3025,7 @@ function datasetsFiltered() {
       && (!dashSourceSel || (d.sourceFormat || '') === dashSourceSel)
       && (!dashStageSel || e.stage === dashStageSel)
       && (!dashTrustSel || e.trust === dashTrustSel)
+      && (!dashOwnerSel || (dashOwnerSel === '__none__' ? !e.owner : e.owner === dashOwnerSel))
       && (!dashTagSel || e.tags.includes(dashTagSel));
   });
 }
@@ -3024,6 +3055,10 @@ function renderDashFilters() {
   html += `<span class="dash-filtgrp"><span class="hint">Trust:</span>` +
     chip('data-trustf', '', 'All', !dashTrustSel) +
     TRUST_LEVELS.map(t => chip('data-trustf', t, TRUST_META[t].label, dashTrustSel === t, TRUST_META[t].icon + ' ')).join('') + `</span>`;
+  html += `<span class="dash-filtgrp"><span class="hint">Owner:</span>` +
+    chip('data-ownerf', '', 'All', !dashOwnerSel) +
+    chip('data-ownerf', '__none__', 'Unowned', dashOwnerSel === '__none__', '⚠ ') +
+    (dashOwnerSel && dashOwnerSel !== '__none__' ? `<button type="button" class="src-filter-chip active" data-ownerf="">👤 ${esc(dashOwnerSel)} ✕</button>` : '') + `</span>`;
   if (dashTagSel)
     html += `<span class="dash-filtgrp"><span class="hint">Tag:</span>` +
       `<button type="button" class="src-filter-chip active" data-tagclear="1">🏷️ ${esc(dashTagSel)} ✕</button></span>`;
@@ -3032,6 +3067,7 @@ function renderDashFilters() {
   wrap.querySelectorAll('[data-srcf]').forEach(b => b.addEventListener('click', () => { dashSourceSel = b.dataset.srcf; renderDashFilters(); refreshDatasetsTable(); }));
   wrap.querySelectorAll('[data-stagef]').forEach(b => b.addEventListener('click', () => { dashStageSel = b.dataset.stagef; renderDashFilters(); refreshDatasetsTable(); }));
   wrap.querySelectorAll('[data-trustf]').forEach(b => b.addEventListener('click', () => { dashTrustSel = b.dataset.trustf; renderDashFilters(); refreshDatasetsTable(); }));
+  wrap.querySelectorAll('[data-ownerf]').forEach(b => b.addEventListener('click', () => { dashOwnerSel = b.dataset.ownerf; renderDashFilters(); refreshDatasetsTable(); }));
   const tc = wrap.querySelector('[data-tagclear]');
   if (tc) tc.addEventListener('click', () => { dashTagSel = ''; renderDashFilters(); refreshDatasetsTable(); });
 }
@@ -3056,7 +3092,7 @@ async function loadDashEntries() {
 async function saveEntry(key) {
   const e = entryFor(key);
   try { await postJSON(`${API_BASE}/data-quality/dataset-tags`, HEADERS, { app_id: APP_ID, action: 'set', key,
-    stage: e.stage || '', tags: e.tags,
+    stage: e.stage || '', tags: e.tags, owner: e.owner || '',
     trust: e.trust || '', trust_note: e.trustNote || '', trust_by: e.trustBy || '', trust_at: e.trustAt || '' }); }
   catch (err) { /* non-fatal; local state already updated */ }
 }
@@ -3190,7 +3226,7 @@ function renderHealthTable(datasets) {
     const srcChip = sourceChip(d.sourceFormat);
     const tb = trustBadge(d.key);
     return `<tr class="dash-row" data-key="${esc(d.key)}" data-name="${esc(d.name)}">
-        <td>${esc(d.name)}${srcChip ? `<div style="margin-top:3px;">${srcChip}</div>` : ''}${tb ? `<div style="margin-top:4px;">${tb}</div>` : ''}<div style="margin-top:4px;">${tagChips(d.key)}</div></td>
+        <td>${esc(d.name)}${srcChip ? `<div style="margin-top:3px;">${srcChip}</div>` : ''}${tb ? `<div style="margin-top:4px;">${tb}</div>` : ''}<div style="margin-top:4px;">${ownerChip(d.key)}</div><div style="margin-top:4px;">${tagChips(d.key)}</div></td>
         <td><strong>${num1(d.score)}</strong> ${statusChip(d.status)}</td>
         <td>${gateChip(d.gate)}</td>
         <td>${numInt(d.rows)}</td>
@@ -3223,6 +3259,14 @@ function renderHealthTable(datasets) {
     }));
   // Trust / certification: endorse, caution or deprecate (click active to clear) + note.
   wireTrust($('#dashTableWrap'), () => refreshDatasetsTable());
+  // Ownership: assign/change owner (＋/✎) or click an owner chip to filter by it.
+  $('#dashTableWrap').querySelectorAll('[data-ownerset]').forEach(b =>
+    b.addEventListener('click', e => { e.stopPropagation(); setOwner(b.dataset.key); refreshDatasetsTable(); }));
+  $('#dashTableWrap').querySelectorAll('[data-ownerfilter]').forEach(el =>
+    el.addEventListener('click', e => {
+      if (e.target.closest('[data-ownerset]')) return;       // the ✎ edits, doesn't filter
+      e.stopPropagation(); dashOwnerSel = el.dataset.ownerfilter; renderDashFilters(); refreshDatasetsTable();
+    }));
   // Custom tags: add (＋), remove (✕), or click a tag to group the list by it.
   $('#dashTableWrap').querySelectorAll('[data-tagadd]').forEach(b =>
     b.addEventListener('click', e => { e.stopPropagation(); addTagTo(b.dataset.key); }));
@@ -5690,7 +5734,7 @@ function buildGalaxyOrbs(datasets) {
     }
     g.orbs.push({ mesh, halo, ring, r: p.r, key: p.d.key, name: p.d.name, score: p.d.score, status: p.d.status,
       rows: p.d.rows, stage: p.stage, tags: (dashEntries[p.d.key] || {}).tags || [], sourceFormat: p.d.sourceFormat || '',
-      trust: (dashEntries[p.d.key] || {}).trust || '' });
+      trust: (dashEntries[p.d.key] || {}).trust || '', owner: (dashEntries[p.d.key] || {}).owner || '' });
   });
   if (keepKey) g.selected = g.orbs.find(o => o.key === keepKey) || null;   // re-highlight the open dataset
   resetGalaxyFilter();                                     // clear search/filter so every orb shows on rebuild
@@ -5728,7 +5772,8 @@ function _galaxyHover(e) {
   dom.style.cursor = 'pointer';
   tip.innerHTML = `<div class="gt-name">${esc(orb.name)}</div>Score ${orb.score == null ? '—' : num1(orb.score)} · ${esc(orb.status || '—')}` +
     `${orb.stage ? ` · ${esc(MEDAL_LABEL[orb.stage] || orb.stage)}` : ''}<br>${numInt(orb.rows)} rows` +
-    `${orb.trust && TRUST_META[orb.trust] ? `<br>${TRUST_META[orb.trust].icon} ${TRUST_META[orb.trust].label}` : ''}`;
+    `${orb.trust && TRUST_META[orb.trust] ? `<br>${TRUST_META[orb.trust].icon} ${TRUST_META[orb.trust].label}` : ''}` +
+    `${orb.owner ? `<br>👤 ${esc(orb.owner)}` : ''}`;
   tip.style.display = '';
   let lx = e.clientX - wr.left + 14, ly = e.clientY - wr.top + 14;
   if (lx + tip.offsetWidth > wr.width) lx = e.clientX - wr.left - tip.offsetWidth - 14;
