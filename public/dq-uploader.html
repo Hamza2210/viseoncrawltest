@@ -738,18 +738,45 @@
     border: 1px dashed var(--border); border-radius: 999px; padding: 1px 8px; }
   .ds-tag-add:hover { color: var(--text); border-color: var(--accent2); }
   /* Medallion comparison view */
-  .medal-cols { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
-  @media (max-width: 1100px) { .medal-cols { grid-template-columns: 1fr; } }
-  .medal-col { border: 1px solid var(--border); border-radius: 10px; padding: 14px; background: var(--card); }
-  .medal-col.bronze { border-top: 3px solid #d9a978; }
-  .medal-col.silver { border-top: 3px solid #b9c0c8; }
-  .medal-col.gold   { border-top: 3px solid #e0c65a; }
-  .medal-col-hd { font-weight: 800; text-align: center; letter-spacing: .5px; margin-bottom: 10px; font-size: 15px; }
-  .medal-col.bronze .medal-col-hd { color: #8a4b1f; }
-  .medal-col.silver .medal-col-hd { color: #556; }
-  .medal-col.gold   .medal-col-hd { color: #7a5c00; }
-  .medal-picker { width: 100%; margin-bottom: 12px; padding: 7px 10px; border: 1px solid var(--border);
-    border-radius: 8px; background: var(--card); color: var(--text); font: inherit; font-size: 13px; }
+  .medal-cols { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; position: relative; }
+  /* Flow chevrons between the three stages — dim by default, light up as adjacent stages are picked. */
+  .medal-cols::before, .medal-cols::after { content: '→'; position: absolute; top: 78px; font-size: 22px;
+    color: #33405e; transform: translateX(-50%); pointer-events: none; z-index: 2;
+    transition: color .35s ease, text-shadow .35s ease; }
+  .medal-cols::before { left: 33.33%; }
+  .medal-cols::after  { left: 66.66%; }
+  .medal-cols.f1::before { color: #c8d0dc; text-shadow: 0 0 12px rgba(200,208,220,.6); }
+  .medal-cols.f2::after  { color: #ffcf4d; text-shadow: 0 0 12px rgba(255,207,77,.6); }
+  @media (max-width: 1100px) { .medal-cols { grid-template-columns: 1fr; } .medal-cols::before, .medal-cols::after { display: none; } }
+  .medal-col { border: 1px solid var(--border); border-radius: 12px; padding: 16px; background: var(--card-2);
+    transition: transform .18s ease, box-shadow .2s ease, border-color .2s ease; }
+  .medal-col:hover { transform: translateY(-3px); }
+  .medal-col.bronze { border-top: 3px solid #cd7f32; background: linear-gradient(180deg, rgba(205,127,50,.08), var(--card-2) 62%); }
+  .medal-col.silver { border-top: 3px solid #c8d0dc; background: linear-gradient(180deg, rgba(200,208,220,.08), var(--card-2) 62%); }
+  .medal-col.gold   { border-top: 3px solid #ffcf4d; background: linear-gradient(180deg, rgba(255,207,77,.08), var(--card-2) 62%); }
+  .medal-col.bronze:hover, .medal-col.bronze.sel { border-color: #cd7f32; box-shadow: 0 10px 30px rgba(205,127,50,.16); }
+  .medal-col.silver:hover, .medal-col.silver.sel { border-color: #c8d0dc; box-shadow: 0 10px 30px rgba(200,208,220,.14); }
+  .medal-col.gold:hover,   .medal-col.gold.sel   { border-color: #ffcf4d; box-shadow: 0 10px 30px rgba(255,207,77,.16); }
+  .medal-col-hd { font-weight: 800; text-align: center; letter-spacing: .5px; margin-bottom: 12px; font-size: 15px; }
+  .medal-col.bronze .medal-col-hd { color: #e0975a; text-shadow: 0 0 14px rgba(205,127,50,.35); }
+  .medal-col.silver .medal-col-hd { color: #d6dde8; text-shadow: 0 0 14px rgba(200,208,220,.3); }
+  .medal-col.gold   .medal-col-hd { color: #ffcf4d; text-shadow: 0 0 14px rgba(255,207,77,.35); }
+  .medal-picker { width: 100%; margin-bottom: 12px; padding: 8px 11px; border: 1px solid var(--border);
+    border-radius: 8px; background: var(--card); color: var(--text); font: inherit; font-size: 13px;
+    transition: border-color .15s ease; cursor: pointer; }
+  .medal-picker:hover, .medal-picker:focus { border-color: var(--accent); outline: none; }
+  /* Empty-state: a soft pulsing medal ring inviting a pick. */
+  .medal-empty { text-align: center; padding: 20px 0 24px; color: var(--muted); }
+  .medal-empty p { margin: 0; font-size: 12.5px; }
+  .medal-ring { width: 62px; height: 62px; margin: 0 auto 14px; border-radius: 50%; display: flex;
+    align-items: center; justify-content: center; font-size: 27px; border: 2px solid;
+    animation: medalpulse 2.8s ease-in-out infinite; }
+  .medal-ring.bronze { border-color: #cd7f32; box-shadow: 0 0 20px rgba(205,127,50,.32); }
+  .medal-ring.silver { border-color: #c8d0dc; box-shadow: 0 0 20px rgba(200,208,220,.28); }
+  .medal-ring.gold   { border-color: #ffcf4d; box-shadow: 0 0 20px rgba(255,207,77,.32); }
+  @keyframes medalpulse { 0%, 100% { transform: scale(1); opacity: .82; } 50% { transform: scale(1.06); opacity: 1; } }
+  .medal-card-in { animation: medalin .34s ease both; }
+  @keyframes medalin { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
   .medal-cmp-table { width: 100%; border-collapse: collapse; font-size: 13px; }
   .medal-cmp-table th, .medal-cmp-table td { padding: 7px 10px; border-bottom: 1px solid var(--border); text-align: right; }
   .medal-cmp-table th:first-child, .medal-cmp-table td:first-child { text-align: left; font-weight: 600; }
@@ -5126,16 +5153,21 @@ function renderMedallionCols() {
     if (medalSel[stage] && !opts.some(d => d.key === medalSel[stage])) { medalSel[stage] = ''; medalRuns[stage] = null; }
     const options = ['<option value="">— select a dataset —</option>']
       .concat(opts.map(d => `<option value="${esc(d.key)}"${medalSel[stage] === d.key ? ' selected' : ''}>${esc(d.name)}</option>`)).join('');
+    const loaded = medalRuns[stage] && !medalRuns[stage]._error;
+    const glyph = MEDAL_LABEL[stage].split(' ')[0];
     let body;
-    if (medalRuns[stage]) body = renderMedalScorecard(medalRuns[stage]);
-    else if (!opts.length) body = `<p class="dash-muted" style="text-align:center;padding:24px 0;">No datasets tagged <strong>${MEDAL_LABEL[stage]}</strong> yet.<br>Tag one on the Dashboard.</p>`;
-    else body = `<p class="dash-muted" style="text-align:center;padding:24px 0;">Select a ${stage} dataset above.</p>`;
-    return `<div class="medal-col ${stage}">
+    if (medalRuns[stage]) body = `<div class="medal-card-in">${renderMedalScorecard(medalRuns[stage])}</div>`;
+    else if (!opts.length) body = `<div class="medal-empty"><div class="medal-ring ${stage}">${glyph}</div><p>No datasets tagged <strong>${MEDAL_LABEL[stage]}</strong> yet — tag one on the Dashboard.</p></div>`;
+    else body = `<div class="medal-empty"><div class="medal-ring ${stage}">${glyph}</div><p>Pick a ${stage} dataset above to see its latest run.</p></div>`;
+    return `<div class="medal-col ${stage}${loaded ? ' sel' : ''}">
         <div class="medal-col-hd">${MEDAL_LABEL[stage].toUpperCase()}</div>
         <select class="medal-picker" data-medstage="${stage}">${options}</select>
         <div class="medal-col-body">${body}</div>
       </div>`;
   }).join('');
+  // Light the flow chevrons between stages as adjacent pairs get picked.
+  wrap.classList.toggle('f1', !!(medalSel.bronze && medalSel.silver));
+  wrap.classList.toggle('f2', !!(medalSel.silver && medalSel.gold));
   wrap.querySelectorAll('.medal-picker').forEach(sel =>
     sel.addEventListener('change', () => selectMedalDataset(sel.dataset.medstage, sel.value)));
   renderMedalCompare();
@@ -5146,7 +5178,7 @@ async function selectMedalDataset(stage, key) {
   if (!key) { medalRuns[stage] = null; renderMedallionCols(); return; }
   const ds = dashDatasetsAll.find(d => d.key === key);
   const body = document.querySelector(`.medal-col.${stage} .medal-col-body`);
-  if (body) body.innerHTML = `<p style="text-align:center;padding:24px 0;"><span class="spin"></span></p>`;
+  if (body) body.innerHTML = dqLoader('Loading run', null, true);
   const prefix = ds && ds.resultPrefix;
   if (!prefix) { medalRuns[stage] = { _error: 'No completed run found for this dataset.', _name: ds ? ds.name : key }; renderMedallionCols(); return; }
   try {
