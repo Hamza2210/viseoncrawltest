@@ -3534,9 +3534,8 @@ function renderTrendCharts(d) {
   const runs = d.runs || [];
   if (runs.length < 1) return '<p class="dash-muted">No runs for this dataset in the last 30 days.</p>';
   const scorePts = runs.map(r => ({ t: r.t, y: r.score }));
-  const volPts = runs.map(r => ({ t: r.t, y: r.rows }));
   const base = d.baseline || {};
-  const bandNote = (base.overall || base.volume)
+  const bandNote = base.overall
     ? `<p class="dash-muted" style="margin:8px 0 0;font-size:12px;">Shaded band = this dataset's expected range (median ± normal variation); points outside it are unusual. Hover a point for its change vs the previous run.</p>` : '';
   const gate = `<div class="gate-strip">` + runs.map(r =>
     `<span class="gate-cell ${r.gate === false ? 'fail' : 'pass'}" data-tip="${esc(dateShort(r.t))}: gate ${r.gate === false ? 'FAIL' : 'pass'}"></span>`).join('') + `</div>` +
@@ -3548,8 +3547,7 @@ function renderTrendCharts(d) {
     return `<div class="sm"><div class="h"><span>${esc(dim[1])}</span><span class="v">${latest == null ? '—' : num1(latest)}</span></div>${svgSpark(series)}</div>`;
   }).join('');
   return whatChanged(runs) +
-    `<div class="trend-cols"><div><div class="chart-title">Overall score</div>${lineChart(scorePts, { ymin: 0, ymax: 100, ragBands: true, band: base.overall })}</div>` +
-    `<div><div class="chart-title">Row volume</div>${lineChart(volPts, { fmt: numInt, pct: true, band: base.volume })}</div></div>` + bandNote +
+    `<div><div class="chart-title">Overall score</div>${lineChart(scorePts, { ymin: 0, ymax: 100, ragBands: true, band: base.overall })}</div>` + bandNote +
     `<div class="chart-title" style="margin-top:16px;">Failing records (30d)<span class="hint" style="font-weight:400;margin-left:8px;">records that failed one or more checks, by severity</span></div>${failingChart(runs)}` +
     `<div class="chart-title" style="margin-top:16px;">Quality gate (each run)</div>${gate}` +
     `<div class="chart-title" style="margin-top:16px;">Per-dimension score (30d)</div><div class="small-mults">${mults}</div>`;
@@ -3982,9 +3980,8 @@ function renderTrends(d) {
     return;
   }
   const scorePts = runs.map(r => ({ t: r.t, y: r.score }));
-  const volPts = runs.map(r => ({ t: r.t, y: r.rows }));
   const base = d.baseline || {};
-  const bandNote = (base.overall || base.volume)
+  const bandNote = base.overall
     ? `<p class="dash-muted" style="margin:8px 0 0;font-size:12px;">Shaded band = this dataset's expected range ` +
       `(median ± normal variation over recent runs); points outside it are unusual. Hover a point for its change vs the previous run.</p>`
     : '';
@@ -4012,10 +4009,7 @@ function renderTrends(d) {
     // Rules apply to the DATASET (not one run), so they're reachable here without opening a run.
     `<div id="dashDatasetRules" style="display:none;margin:0 0 14px;"></div>` +
     whatChanged(runs) +
-    `<div class="trend-cols">` +
-      `<div><div class="chart-title">Overall score</div>${lineChart(scorePts, { ymin: 0, ymax: 100, ragBands: true, band: base.overall })}</div>` +
-      `<div><div class="chart-title">Row volume</div>${lineChart(volPts, { fmt: numInt, pct: true, band: base.volume })}</div>` +
-    `</div>` + bandNote +
+    `<div><div class="chart-title">Overall score</div>${lineChart(scorePts, { ymin: 0, ymax: 100, ragBands: true, band: base.overall })}</div>` + bandNote +
     `<div class="chart-title" style="margin-top:16px;">Failing records (30d)<span class="hint" style="font-weight:400;margin-left:8px;">records that failed one or more checks, by severity</span></div>${failingChart(runs)}` +
     `<div class="chart-title" style="margin-top:16px;">Quality gate (each run)</div>${gate}` +
     `<div class="chart-title" style="margin-top:16px;">Per-dimension score (30d)</div><div class="small-mults">${mults}</div>`;
@@ -6214,8 +6208,8 @@ async function renderAppResults(tables, isFullApp) {
   // view (Overall Quality + each table) only appears once every table has finished.
   const total = tables.length, noun = total > 1 ? 'app assessment' : 'assessment';
   let done = 0;
-  const showRunning = () => { body.innerHTML =
-    `<p style="padding:10px 2px;font-size:15px;"><span class="spin"></span> Running ${noun} — ${done} of ${total} table(s) assessed…</p>`; };
+  const showRunning = () => { body.innerHTML = dqLoader(`Running ${noun}`,
+    `${done} of ${total} table${total === 1 ? '' : 's'} assessed — scoring against the 9 DAMA quality dimensions.`); };
   showRunning();
 
   const results = await Promise.all(tables.map(t =>
@@ -6326,7 +6320,7 @@ function renderOverall(panelEl, results, total) {
       + `</table>`;
   }
   if (!scores.length) {
-    html += `<p><span class="spin"></span>Waiting for the first table to finish…</p>`;
+    html += dqLoader('Waiting for the first table', 'Scoring against the 9 DAMA quality dimensions.', true);
   }
   panelEl.innerHTML = html;
 }
