@@ -737,6 +737,21 @@
   .ds-tag-add { cursor: pointer; font: inherit; font-size: 11px; color: var(--muted); background: transparent;
     border: 1px dashed var(--border); border-radius: 999px; padding: 1px 8px; }
   .ds-tag-add:hover { color: var(--text); border-color: var(--accent2); }
+  /* Trust / certification flags */
+  .trust-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 700;
+    padding: 3px 9px; border-radius: 999px; border: 1px solid; white-space: nowrap; }
+  .trust-endorsed  { color: #5fd39b; border-color: color-mix(in srgb, #30d67f 45%, transparent); background: color-mix(in srgb, #30d67f 13%, transparent); }
+  .trust-warning   { color: #f5c451; border-color: color-mix(in srgb, #f5b73d 45%, transparent); background: color-mix(in srgb, #f5b73d 13%, transparent); }
+  .trust-deprecated{ color: #ff9090; border-color: color-mix(in srgb, #ff5d5d 45%, transparent); background: color-mix(in srgb, #ff5d5d 12%, transparent); }
+  .trust-menu { display: inline-flex; gap: 4px; align-items: center; }
+  .trust-btn, .trust-note-btn { width: 27px; height: 24px; border-radius: 7px; border: 1px solid var(--border);
+    background: var(--card-2); color: var(--muted); cursor: pointer; font-size: 12px; display: inline-flex;
+    align-items: center; justify-content: center; padding: 0; transition: border-color .12s, color .12s, background .12s; }
+  .trust-btn:hover, .trust-note-btn:hover { border-color: var(--accent); color: var(--text); }
+  .trust-btn.on.trust-endorsed  { color: #fff; background: color-mix(in srgb, #30d67f 32%, transparent); border-color: #30d67f; }
+  .trust-btn.on.trust-warning   { color: #fff; background: color-mix(in srgb, #f5b73d 32%, transparent); border-color: #f5b73d; }
+  .trust-btn.on.trust-deprecated{ color: #fff; background: color-mix(in srgb, #ff5d5d 32%, transparent); border-color: #ff5d5d; }
+  .detail-trust { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
   /* Medallion comparison view */
   .medal-cols { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; position: relative; }
   /* Flow chevrons between the three stages — dim by default, light up as adjacent stages are picked. */
@@ -2901,13 +2916,74 @@ let dashSelected = null;
 let dashSearch = '';                             // matches dataset name + custom tags
 let dashSourceSel = '';                          // '' = all sources (source scope only)
 let dashStageSel = '';                           // '' = all medallion stages
+let dashTrustSel = '';                            // '' = all trust flags
 let dashTagSel = '';                             // '' = no custom-tag filter
 let dashEntries = {};                            // key -> { stage: '', tags: [] }
 let _dashControlsWired = false;
 const MEDALLIONS = ['bronze', 'silver', 'gold'];
 const MEDAL_LABEL = { bronze: '🥉 Bronze', silver: '🥈 Silver', gold: '🥇 Gold' };
 
-function entryFor(key) { const e = dashEntries[key] || {}; return { stage: e.stage || '', tags: (e.tags || []).slice() }; }
+function entryFor(key) {
+  const e = dashEntries[key] || {};
+  return { stage: e.stage || '', tags: (e.tags || []).slice(),
+           trust: e.trust || '', trustNote: e.trustNote || '', trustBy: e.trustBy || '', trustAt: e.trustAt || '' };
+}
+
+// ---- Trust / certification flags ---------------------------------------------------------
+const TRUST_LEVELS = ['endorsed', 'warning', 'deprecated'];
+const TRUST_META = {
+  endorsed:   { icon: '✓', label: 'Endorsed',   cls: 'trust-endorsed',   tip: 'Endorsed — reviewed and trusted for use' },
+  warning:    { icon: '⚠', label: 'Caution',    cls: 'trust-warning',    tip: 'Caution — usable but has known caveats' },
+  deprecated: { icon: '⛔', label: 'Deprecated', cls: 'trust-deprecated', tip: "Deprecated — don't rely on this dataset" },
+};
+function _nowIso() { return new Date().toISOString(); }
+// A read-only badge (empty when no flag) — carries the note + who/when in its tooltip.
+function trustBadge(key) {
+  const e = entryFor(key), m = TRUST_META[e.trust]; if (!m) return '';
+  const who = e.trustBy ? ` by ${e.trustBy}` : '', when = e.trustAt ? ` · ${fmtWhen(e.trustAt)}` : '';
+  const note = e.trustNote ? ` — “${e.trustNote}”` : '';
+  return `<span class="trust-badge ${m.cls}" data-tip="${esc(m.tip + note + (who || when ? `\n(set${who}${when})` : ''))}">${m.icon} ${m.label}${e.trustNote ? ' 📝' : ''}</span>`;
+}
+// The 3-flag picker (click a flag to set, click the active one to clear) + a note button.
+function trustMenu(key) {
+  const cur = entryFor(key).trust;
+  return `<span class="trust-menu">` + TRUST_LEVELS.map(t => {
+    const m = TRUST_META[t];
+    return `<button type="button" class="trust-btn ${m.cls}${cur === t ? ' on' : ''}" data-trust="${t}" data-key="${esc(key)}" data-tip="${esc(m.tip + (cur === t ? ' (click to clear)' : ''))}">${m.icon}</button>`;
+  }).join('') + `<button type="button" class="trust-note-btn" data-trustnote="1" data-key="${esc(key)}" data-tip="Add or edit a note / reason">📝</button></span>`;
+}
+function setTrust(key, level) {
+  const e = entryFor(key);
+  if (level) { e.trust = level; e.trustBy = EMAIL || e.trustBy || ''; e.trustAt = _nowIso(); }
+  else { e.trust = ''; e.trustNote = ''; e.trustBy = ''; e.trustAt = ''; }
+  dashEntries[key] = e; saveEntry(key);
+}
+function editTrustNote(key) {
+  const e = entryFor(key);
+  const note = (prompt('Add a note / reason for this trust flag (shown on hover):', e.trustNote || '') || '').trim().slice(0, 280);
+  e.trustNote = note;
+  if (note && !e.trust) { e.trust = 'warning'; e.trustBy = EMAIL || ''; e.trustAt = _nowIso(); }   // a note implies at least a caution
+  dashEntries[key] = e; saveEntry(key);
+}
+// Wire a container's trust buttons; onChange(key) re-renders whatever shows them.
+function wireTrust(container, onChange) {
+  if (!container) return;
+  container.querySelectorAll('.trust-btn[data-trust]').forEach(b =>
+    b.addEventListener('click', e => {
+      e.stopPropagation(); const k = b.dataset.key;
+      setTrust(k, entryFor(k).trust === b.dataset.trust ? '' : b.dataset.trust);
+      onChange && onChange(k);
+    }));
+  container.querySelectorAll('[data-trustnote]').forEach(b =>
+    b.addEventListener('click', e => { e.stopPropagation(); editTrustNote(b.dataset.key); onChange && onChange(b.dataset.key); }));
+}
+// The trust controls shown in the selected-dataset detail header; re-renders itself on change.
+function updateDetailTrust(key) {
+  const el = $('#dashDetailHint'); if (!el) return;
+  const badge = trustBadge(key);
+  el.innerHTML = `<span class="detail-trust"><span class="hint" style="margin-right:2px;">Trust:</span>${trustMenu(key)}${badge ? ' ' + badge : ''}</span>`;
+  wireTrust(el, () => updateDetailTrust(key));
+}
 
 // The list, narrowed by search (name + tags) + source + stage + a clicked custom-tag.
 function datasetsFiltered() {
@@ -2918,6 +2994,7 @@ function datasetsFiltered() {
     return (!q || hay.includes(q))
       && (!dashSourceSel || (d.sourceFormat || '') === dashSourceSel)
       && (!dashStageSel || e.stage === dashStageSel)
+      && (!dashTrustSel || e.trust === dashTrustSel)
       && (!dashTagSel || e.tags.includes(dashTagSel));
   });
 }
@@ -2944,6 +3021,9 @@ function renderDashFilters() {
   html += `<span class="dash-filtgrp"><span class="hint">Stage:</span>` +
     chip('data-stagef', '', 'All', !dashStageSel) +
     MEDALLIONS.map(m => chip('data-stagef', m, MEDAL_LABEL[m], dashStageSel === m)).join('') + `</span>`;
+  html += `<span class="dash-filtgrp"><span class="hint">Trust:</span>` +
+    chip('data-trustf', '', 'All', !dashTrustSel) +
+    TRUST_LEVELS.map(t => chip('data-trustf', t, TRUST_META[t].label, dashTrustSel === t, TRUST_META[t].icon + ' ')).join('') + `</span>`;
   if (dashTagSel)
     html += `<span class="dash-filtgrp"><span class="hint">Tag:</span>` +
       `<button type="button" class="src-filter-chip active" data-tagclear="1">🏷️ ${esc(dashTagSel)} ✕</button></span>`;
@@ -2951,6 +3031,7 @@ function renderDashFilters() {
   wrap.style.display = 'flex';
   wrap.querySelectorAll('[data-srcf]').forEach(b => b.addEventListener('click', () => { dashSourceSel = b.dataset.srcf; renderDashFilters(); refreshDatasetsTable(); }));
   wrap.querySelectorAll('[data-stagef]').forEach(b => b.addEventListener('click', () => { dashStageSel = b.dataset.stagef; renderDashFilters(); refreshDatasetsTable(); }));
+  wrap.querySelectorAll('[data-trustf]').forEach(b => b.addEventListener('click', () => { dashTrustSel = b.dataset.trustf; renderDashFilters(); refreshDatasetsTable(); }));
   const tc = wrap.querySelector('[data-tagclear]');
   if (tc) tc.addEventListener('click', () => { dashTagSel = ''; renderDashFilters(); refreshDatasetsTable(); });
 }
@@ -2974,7 +3055,9 @@ async function loadDashEntries() {
 }
 async function saveEntry(key) {
   const e = entryFor(key);
-  try { await postJSON(`${API_BASE}/data-quality/dataset-tags`, HEADERS, { app_id: APP_ID, action: 'set', key, stage: e.stage || '', tags: e.tags }); }
+  try { await postJSON(`${API_BASE}/data-quality/dataset-tags`, HEADERS, { app_id: APP_ID, action: 'set', key,
+    stage: e.stage || '', tags: e.tags,
+    trust: e.trust || '', trust_note: e.trustNote || '', trust_by: e.trustBy || '', trust_at: e.trustAt || '' }); }
   catch (err) { /* non-fatal; local state already updated */ }
 }
 function setStage(key, stage) { const e = entryFor(key); e.stage = stage; dashEntries[key] = e; saveEntry(key); }
@@ -3105,20 +3188,23 @@ function renderHealthTable(datasets) {
     const age = d.ageDays == null ? '—'
       : (d.ageDays < 1 ? 'today' : `${Math.round(d.ageDays)}d ago`);
     const srcChip = sourceChip(d.sourceFormat);
+    const tb = trustBadge(d.key);
     return `<tr class="dash-row" data-key="${esc(d.key)}" data-name="${esc(d.name)}">
-        <td>${esc(d.name)}${srcChip ? `<div style="margin-top:3px;">${srcChip}</div>` : ''}<div style="margin-top:4px;">${tagChips(d.key)}</div></td>
+        <td>${esc(d.name)}${srcChip ? `<div style="margin-top:3px;">${srcChip}</div>` : ''}${tb ? `<div style="margin-top:4px;">${tb}</div>` : ''}<div style="margin-top:4px;">${tagChips(d.key)}</div></td>
         <td><strong>${num1(d.score)}</strong> ${statusChip(d.status)}</td>
         <td>${gateChip(d.gate)}</td>
         <td>${numInt(d.rows)}</td>
         <td class="dash-muted">${esc(age)}</td>
         <td>${spark}</td>
+        <td>${trustMenu(d.key)}</td>
         <td>${medalCell(d.key)}</td>
         <td><button class="btn-sm" data-rerun="${esc(d.name)}" data-fmt="${esc(d.sourceFormat || '')}" data-prefix="${esc(d.resultPrefix || '')}" data-tip="Re-assess this dataset">↻ Re-run</button></td>
       </tr>`;
   }).join('');
   $('#dashTableWrap').innerHTML =
     `<table class="dash-table"><tr><th>Dataset</th><th>Score</th><th>Gate</th>` +
-    `<th>Rows</th><th>Last run</th><th>Trend (30d)</th><th data-tip="Data stage: bronze (raw) → silver (cleaned) → gold (curated)">Stage</th><th></th></tr>${rows}</table>`;
+    `<th>Rows</th><th>Last run</th><th>Trend (30d)</th><th data-tip="Certification: endorse, caution or deprecate this dataset for consumers">Trust</th>` +
+    `<th data-tip="Data stage: bronze (raw) → silver (cleaned) → gold (curated)">Stage</th><th></th></tr>${rows}</table>`;
   $('#dashTableWrap').querySelectorAll('.dash-row').forEach(tr =>
     tr.addEventListener('click', () => {
       $('#dashTableWrap').querySelectorAll('.dash-row').forEach(x => x.classList.remove('sel'));
@@ -3135,6 +3221,8 @@ function renderHealthTable(datasets) {
       setStage(key, entryFor(key).stage === m ? '' : m);   // updates entry now, persists async
       refreshDatasetsTable();
     }));
+  // Trust / certification: endorse, caution or deprecate (click active to clear) + note.
+  wireTrust($('#dashTableWrap'), () => refreshDatasetsTable());
   // Custom tags: add (＋), remove (✕), or click a tag to group the list by it.
   $('#dashTableWrap').querySelectorAll('[data-tagadd]').forEach(b =>
     b.addEventListener('click', e => { e.stopPropagation(); addTagTo(b.dataset.key); }));
@@ -3229,7 +3317,7 @@ async function selectDataset(key, name) {
   setOverviewSplit(true);                                        // reveal the detail beside the galaxy
   dsTrends = null; dsTab = 'scores';
   $('#dashDetailTitle').textContent = name;
-  $('#dashDetailHint').textContent = '';
+  updateDetailTrust(key);
   const bar = DS_TABS.map(([k, l]) => `<button type="button" class="rd-tab${k === dsTab ? ' active' : ''}" data-dstab="${k}">${l}</button>`).join('');
   $('#dashTrends').innerHTML =
     `<div class="actions" style="margin-bottom:12px;"><button class="btn-sm" id="dsBack">← All datasets</button></div>` +
@@ -5601,7 +5689,8 @@ function buildGalaxyOrbs(datasets) {
       g.group.add(ring);
     }
     g.orbs.push({ mesh, halo, ring, r: p.r, key: p.d.key, name: p.d.name, score: p.d.score, status: p.d.status,
-      rows: p.d.rows, stage: p.stage, tags: (dashEntries[p.d.key] || {}).tags || [], sourceFormat: p.d.sourceFormat || '' });
+      rows: p.d.rows, stage: p.stage, tags: (dashEntries[p.d.key] || {}).tags || [], sourceFormat: p.d.sourceFormat || '',
+      trust: (dashEntries[p.d.key] || {}).trust || '' });
   });
   if (keepKey) g.selected = g.orbs.find(o => o.key === keepKey) || null;   // re-highlight the open dataset
   resetGalaxyFilter();                                     // clear search/filter so every orb shows on rebuild
@@ -5638,7 +5727,8 @@ function _galaxyHover(e) {
   if (!orb) { tip.style.display = 'none'; dom.style.cursor = ''; return; }
   dom.style.cursor = 'pointer';
   tip.innerHTML = `<div class="gt-name">${esc(orb.name)}</div>Score ${orb.score == null ? '—' : num1(orb.score)} · ${esc(orb.status || '—')}` +
-    `${orb.stage ? ` · ${esc(MEDAL_LABEL[orb.stage] || orb.stage)}` : ''}<br>${numInt(orb.rows)} rows`;
+    `${orb.stage ? ` · ${esc(MEDAL_LABEL[orb.stage] || orb.stage)}` : ''}<br>${numInt(orb.rows)} rows` +
+    `${orb.trust && TRUST_META[orb.trust] ? `<br>${TRUST_META[orb.trust].icon} ${TRUST_META[orb.trust].label}` : ''}`;
   tip.style.display = '';
   let lx = e.clientX - wr.left + 14, ly = e.clientY - wr.top + 14;
   if (lx + tip.offsetWidth > wr.width) lx = e.clientX - wr.left - tip.offsetWidth - 14;
