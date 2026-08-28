@@ -777,6 +777,21 @@
   .owner-add { cursor: pointer; font: inherit; font-size: 11px; color: var(--muted); background: transparent;
     border: 1px dashed var(--border); border-radius: 999px; padding: 2px 9px; }
   .owner-add:hover { color: var(--text); border-color: var(--accent2); }
+  /* Dataset notes (durable free-text context) */
+  .ds-note-badge { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; font-weight: 600;
+    padding: 3px 9px; border-radius: 999px; border: 1px solid var(--border); background: var(--card-2); color: #b8c2d8; }
+  .ds-notes { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border); }
+  .ds-notes-hd { font-size: 11px; font-weight: 700; letter-spacing: .04em; color: var(--muted); margin-bottom: 8px; }
+  .ds-note { background: var(--card-2); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; margin-bottom: 6px; }
+  .ds-note-body { font-size: 12.5px; color: var(--text); line-height: 1.45; white-space: pre-wrap; word-break: break-word; }
+  .ds-note-meta { font-size: 10.5px; color: var(--muted); margin-top: 4px; display: flex; align-items: center; gap: 6px; }
+  .ds-note-del { margin-left: auto; cursor: pointer; border: 0; background: transparent; color: var(--muted); font-size: 12px; padding: 0 3px; border-radius: 4px; }
+  .ds-note-del:hover { color: var(--err); background: color-mix(in srgb, var(--err) 14%, transparent); }
+  .ds-note-add { display: flex; gap: 8px; margin-top: 8px; }
+  .ds-note-input { flex: 1; padding: 7px 10px; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--card); color: var(--text); font: inherit; font-size: 12.5px; }
+  .ds-note-input:focus { outline: none; border-color: var(--accent); }
+  .ds-note-save { flex: none; }
   /* Read-only stage medal chip in the dataset name cell (picker lives in the detail) */
   .ds-stage-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600;
     padding: 3px 9px; border-radius: 999px; border: 1px solid var(--border); background: var(--card-2); color: #b8c2d8; }
@@ -3005,8 +3020,50 @@ const MEDAL_LABEL = { bronze: '🥉 Bronze', silver: '🥈 Silver', gold: '🥇 
 
 function entryFor(key) {
   const e = dashEntries[key] || {};
-  return { stage: e.stage || '', tags: (e.tags || []).slice(), owner: e.owner || '',
+  return { stage: e.stage || '', tags: (e.tags || []).slice(), owner: e.owner || '', notes: (e.notes || []).slice(),
            trust: e.trust || '', trustNote: e.trustNote || '', trustBy: e.trustBy || '', trustAt: e.trustAt || '' };
+}
+
+// ---- Dataset notes (durable, free-text context — the "why a red is acceptable") -----------
+function notesBadge(key) {
+  const n = (entryFor(key).notes || []).length;
+  return n ? `<span class="ds-note-badge" data-tip="${n} note${n === 1 ? '' : 's'} — open the dataset to read">📝 ${n}</span>` : '';
+}
+function notesSection(key) {
+  const notes = entryFor(key).notes || [];
+  const items = notes.length ? notes.map(n =>
+    `<div class="ds-note"><div class="ds-note-body">${esc(n.text)}</div>` +
+    `<div class="ds-note-meta">${n.by ? esc(n.by) + ' · ' : ''}${esc(fmtWhen(n.at))}` +
+    `<button type="button" class="ds-note-del" data-noteid="${esc(n.id)}" data-key="${esc(key)}" title="Delete note">✕</button></div></div>`).join('')
+    : `<p class="hint" style="margin:2px 0 8px;">No notes yet — capture why a red is acceptable, a known issue, or context for the team.</p>`;
+  return `<div class="ds-notes"><div class="ds-notes-hd">📝 Notes</div>${items}` +
+    `<div class="ds-note-add"><input type="text" class="ds-note-input" maxlength="1000" placeholder="Add a note…" data-key="${esc(key)}">` +
+    `<button type="button" class="btn-sm ds-note-save" data-key="${esc(key)}">Add</button></div></div>`;
+}
+function wireNotes(container, key) {
+  container.querySelectorAll('.ds-note-del[data-noteid]').forEach(b =>
+    b.addEventListener('click', e => { e.stopPropagation(); delNote(b.dataset.key, b.dataset.noteid); }));
+  const inp = container.querySelector('.ds-note-input'), save = container.querySelector('.ds-note-save');
+  const doAdd = () => { const t = (inp.value || '').trim(); if (t) addNote(key, t); };
+  if (save) save.addEventListener('click', e => { e.stopPropagation(); doAdd(); });
+  if (inp) inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); doAdd(); } });
+}
+async function addNote(key, text) {
+  try {
+    const r = await postJSON(`${API_BASE}/data-quality/dataset-tags`, HEADERS,
+      { app_id: APP_ID, action: 'note-add', key, note_text: text, note_by: EMAIL || '' });
+    if (r && r.entries) dashEntries = r.entries;
+  } catch (e) { alert('Could not save note: ' + e.message); return; }
+  updateDetailTrust(key); refreshDatasetsTable();
+}
+async function delNote(key, id) {
+  if (!confirm('Delete this note?')) return;
+  try {
+    const r = await postJSON(`${API_BASE}/data-quality/dataset-tags`, HEADERS,
+      { app_id: APP_ID, action: 'note-del', key, note_id: id });
+    if (r && r.entries) dashEntries = r.entries;
+  } catch (e) { alert('Could not delete note: ' + e.message); return; }
+  updateDetailTrust(key); refreshDatasetsTable();
 }
 
 // ---- Ownership ---------------------------------------------------------------------------
@@ -3080,7 +3137,8 @@ function updateDetailTrust(key) {
   const badge = trustBadge(key);
   el.innerHTML = `<span class="detail-gov"><span class="hint">Trust</span>${trustMenu(key)}${badge ? ' ' + badge : ''}</span>` +
     `<span class="detail-gov"><span class="hint">Owner</span>${ownerChip(key)}</span>` +
-    `<span class="detail-gov"><span class="hint">Stage</span>${medalCell(key)}</span>`;
+    `<span class="detail-gov"><span class="hint">Stage</span>${medalCell(key)}</span>` +
+    notesSection(key);
   wireTrust(el, () => updateDetailTrust(key));
   el.querySelectorAll('[data-ownerset]').forEach(b =>
     b.addEventListener('click', e => { e.stopPropagation(); setOwner(key); updateDetailTrust(key); refreshDatasetsTable(); }));
@@ -3090,6 +3148,7 @@ function updateDetailTrust(key) {
       setStage(key, entryFor(key).stage === m ? '' : m);
       updateDetailTrust(key); refreshDatasetsTable();
     }));
+  wireNotes(el, key);
 }
 
 // The list, narrowed by search (name + tags) + source + stage + a clicked custom-tag.
@@ -3313,7 +3372,7 @@ function renderHealthTable(datasets) {
     const srcChip = isSourceDataset(d) ? sourceChip(d.sourceFormat) : '';
     const tb = trustBadge(d.key);
     return `<tr class="dash-row" data-key="${esc(d.key)}" data-name="${esc(d.name)}">
-        <td class="ds-cell"><div class="ds-name-line">${esc(d.name)}</div><div class="ds-meta">${srcChip}${stageBadge(d.key)}${tb}${ownerChip(d.key)}${tagChips(d.key)}</div></td>
+        <td class="ds-cell"><div class="ds-name-line">${esc(d.name)}</div><div class="ds-meta">${srcChip}${stageBadge(d.key)}${tb}${notesBadge(d.key)}${ownerChip(d.key)}${tagChips(d.key)}</div></td>
         <td><strong>${num1(d.score)}</strong> ${statusChip(d.status)}</td>
         <td>${gateChip(d.gate)}</td>
         <td>${numInt(d.rows)}</td>
