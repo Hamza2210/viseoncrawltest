@@ -806,6 +806,8 @@
   .mq-find { margin: 3px 0 2px; padding-left: 132px; list-style: none; }
   .mq-find li { font-size: 11.5px; color: var(--muted); line-height: 1.5; }
   .mq-find li strong { color: #cdd6ea; font-weight: 600; }
+  .mq-detail { padding-left: 132px; font-size: 11px; color: var(--muted); margin: 2px 0 1px; }
+  @media (max-width: 620px) { .mq-detail { padding-left: 0; } }
   .mq-clean { padding-left: 132px; font-size: 11.5px; color: color-mix(in srgb, var(--ok) 80%, var(--muted)); }
   @media (max-width: 620px) { .mq-find, .mq-clean { padding-left: 0; } }
   .mq-pii { margin-top: 16px; padding: 12px 14px; border-radius: 10px;
@@ -4016,20 +4018,23 @@ function metadataQuality(profile) {
   const isDate = v => /^\d{4}-\d{1,2}-\d{1,2}([ T]|$)/.test(String(v).trim()) || /^\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4}$/.test(String(v).trim());
 
   // --- Naming ---
-  const cryptic = /^(col|column|field|fld|f|c|var|val|v|x|y|z|tmp|temp|unnamed|untitled|test|data|value)_?\d*$/i;
+  const trulyCryptic = /^(col|column|fld|tmp|temp|unnamed|untitled|f|c|v|x|y|z|q)_?\d*$/i;   // col1, x3, tmp…
+  const genericName = /^(value|val|data|test|item|misc|info|result|output|input|field|thing|foo|bar)$/i;   // real words, but non-specific
   const conv = new Set(), namingFindings = [];
   names.forEach(nm => {
-    if (nm !== nm.trim()) namingFindings.push({ col: nm || '(blank)', msg: 'leading / trailing whitespace' });
-    else if (cryptic.test(nm) || nm.replace(/[^a-zA-Z]/g, '').length <= 1) namingFindings.push({ col: nm, msg: 'cryptic / non-descriptive name' });
-    else if (/[^a-zA-Z0-9_ .-]/.test(nm)) namingFindings.push({ col: nm, msg: 'unusual characters in name' });
-    if (/^[a-z0-9]+(_[a-z0-9]+)+$/.test(nm)) conv.add('snake');
+    if (nm !== nm.trim()) namingFindings.push({ col: nm || '(blank)', msg: 'has leading / trailing whitespace' });
+    else if (trulyCryptic.test(nm) || nm.replace(/[^a-zA-Z]/g, '').length <= 1) namingFindings.push({ col: nm, msg: 'cryptic / abbreviated — not human-readable' });
+    else if (genericName.test(nm)) namingFindings.push({ col: nm, msg: "generic — too non-specific to tell what it holds" });
+    else if (/[^a-zA-Z0-9_ .-]/.test(nm)) namingFindings.push({ col: nm, msg: 'contains unusual characters' });
+    if (/^[a-z0-9]+(_[a-z0-9]+)+$/.test(nm)) conv.add('snake_case');
     else if (/^[a-z][a-z0-9]*[A-Z]/.test(nm)) conv.add('camelCase');
     else if (/^[A-Z][a-z0-9]*[A-Z]/.test(nm)) conv.add('PascalCase');
     else if (/\s/.test(nm)) conv.add('spaced');
   });
-  const mixed = conv.size > 1;
-  let namingScore = Math.max(0, Math.min(100, Math.round(100 * (1 - namingFindings.length / N)) - (mixed ? 8 : 0)));
-  if (mixed) namingFindings.push({ col: '(whole table)', msg: `mixed naming conventions: ${[...conv].join(', ')}` });
+  const mixed = conv.size > 1, namingColIssues = namingFindings.length;   // column-level issues (before the table note)
+  const namingScore = Math.max(0, Math.min(100, Math.round(100 * (1 - namingColIssues / N)) - (mixed ? 8 : 0)));
+  if (mixed) namingFindings.push({ col: '(whole table)', msg: `mixed naming conventions in use: ${[...conv].join(', ')}` });
+  const namingDetail = `${N - namingColIssues} of ${N} columns clearly named` + (mixed ? ' · mixed conventions (−8)' : '');
 
   // --- Typing --- (uses the source's DECLARED type when Phase-2 catalog metadata is present,
   // else falls back to the sample-inferred type)
@@ -4047,19 +4052,23 @@ function metadataQuality(profile) {
     else if (isText && tv.length >= 2 && tv.every(isNum)) typingFindings.push({ col: nm, msg: `${pre} values are numeric` });
     else if (isText && tv.length >= 2 && tv.every(isDate)) typingFindings.push({ col: nm, msg: `${pre} values are dates` });
     else if (isText && tv.length >= 2 && uniqLower.size <= 2 && tv.every(v => /^(true|false|yes|no|y|n|t|f|0|1)$/i.test(v.trim()))) typingFindings.push({ col: nm, msg: `${pre} is boolean` });
-    else if (c.char_max_length != null && c.char_max_length >= 256 && typeof c.max_length === 'number' && c.max_length < Math.max(64, c.char_max_length * 0.2))
-      typingFindings.push({ col: nm, msg: `over-wide type: ${c.declared_type || ('VARCHAR(' + c.char_max_length + ')')} but longest value is ${c.max_length} chars` });
+    else if (c.char_max_length != null && c.char_max_length >= 256 && typeof c.max_length === 'number' && c.max_length < Math.max(64, c.char_max_length * 0.2)) {
+      const ts = /\d/.test(String(c.declared_type || '')) ? c.declared_type : `${c.declared_type || 'VARCHAR'}(${c.char_max_length})`;
+      typingFindings.push({ col: nm, msg: `over-wide type — declared ${ts} but the longest value is only ${c.max_length} chars` });
+    }
     else if (c.nullable === false && typeof c.null_rate_pct === 'number' && c.null_rate_pct > 0)
       typingFindings.push({ col: nm, msg: `declared NOT NULL but ${num1(c.null_rate_pct)}% of sampled rows are null` });
   });
   const typingScore = Math.max(0, Math.round(100 * (1 - typingFindings.length / N)));
+  const typingDetail = `${N - typingFindings.length} of ${N} columns appropriately typed`;
 
   // --- Documentation --- (assessed only where the source exposes column comments)
   const docAvailable = names.some(nm => typeof cols[nm].comment === 'string');
   const undocumented = docAvailable ? names.filter(nm => !(cols[nm].comment && String(cols[nm].comment).trim())) : [];
   const documentationDim = docAvailable
     ? { key: 'documentation', label: 'Documentation', score: Math.round(100 * (1 - undocumented.length / N)),
-        findings: undocumented.map(nm => ({ col: nm, msg: 'no description' })) }
+        detail: `${N - undocumented.length} of ${N} columns have a description`,
+        findings: undocumented.map(nm => ({ col: nm, msg: 'no description / comment' })) }
     : { key: 'documentation', label: 'Documentation', score: null,
         notAssessed: hasCatalog
           ? "This source's catalog doesn't expose column descriptions (Redshift). Available for Snowflake / Databricks."
@@ -4082,8 +4091,8 @@ function metadataQuality(profile) {
   // quality defect (a reload log holding user emails is correct), so it's advisory — it does NOT
   // lower the overall metadata score. Documentation needs source descriptions (Tier 2).
   const dims = [
-    { key: 'naming', label: 'Naming', score: namingScore, findings: namingFindings },
-    { key: 'typing', label: 'Typing', score: typingScore, findings: typingFindings },
+    { key: 'naming', label: 'Naming', score: namingScore, detail: namingDetail, findings: namingFindings },
+    { key: 'typing', label: 'Typing', score: typingScore, detail: typingDetail, findings: typingFindings },
     documentationDim,
   ];
   const scored = dims.filter(d => d.score != null);
@@ -4104,9 +4113,10 @@ function renderMetadataPanel(profile) {
       ? `<ul class="mq-find">${d.findings.slice(0, 8).map(f => `<li><strong>${esc(f.col)}</strong> — ${esc(f.msg)}</li>`).join('')}` +
         `${d.findings.length > 8 ? `<li class="hint">+${d.findings.length - 8} more</li>` : ''}</ul>`
       : `<div class="mq-clean">✓ no issues found</div>`;
+    const detail = d.detail ? `<div class="mq-detail">${esc(d.detail)}</div>` : '';
     return `<div class="mq-row"><span class="mq-label">${esc(d.label)}</span>` +
       `<span class="mq-bar"><span class="mq-fill" style="width:${Math.round(d.score)}%;background:${col(d.score)}"></span></span>` +
-      `<span class="mq-score">${Math.round(d.score)}</span></div>${find}`;
+      `<span class="mq-score">${Math.round(d.score)}</span></div>${detail}${find}`;
   }).join('');
   const pii = mq.pii || [];
   const piiHtml = pii.length
