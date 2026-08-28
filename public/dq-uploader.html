@@ -376,16 +376,28 @@
   .dim-split-chart { flex: 1 1 360px; min-width: 300px; }
   .dim-split-table { flex: 1 1 460px; min-width: 300px; }
   .dim-split-chart .viz { margin: 0; }
-  /* Data-from-source picker + per-source connector forms */
-  .source-picker { display: flex; flex-wrap: wrap; gap: 10px; margin: 4px 0 18px; }
-  .source-card { display: inline-flex; align-items: center; gap: 8px; padding: 10px 14px; border: 1px solid var(--border);
-    border-radius: 10px; background: var(--card); cursor: pointer; font-size: 14px; font-weight: 600; color: var(--text); }
-  .source-card:hover { border-color: var(--accent); }
+  /* Data-from-source picker: a categorised connector gallery that scales to many sources */
+  #sourcePicker { margin: 4px 0 18px; }
+  .src-search { width: 100%; max-width: 380px; margin: 0 0 16px; padding: 8px 12px; border-radius: 8px;
+    border: 1px solid var(--border); background: var(--card-2); color: var(--text); font: inherit; font-size: 13px; box-sizing: border-box; }
+  .src-search:focus { outline: none; border-color: var(--accent); }
+  .source-gallery { display: flex; flex-direction: column; gap: 18px; }
+  .src-cat-hd { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-bottom: 9px; }
+  .src-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 10px; }
+  .source-card { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border: 1px solid var(--border);
+    border-radius: 10px; background: var(--card); cursor: pointer; color: var(--text); text-align: left;
+    transition: border-color .12s, box-shadow .12s, background .12s; }
+  .source-card .src-ico { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 20px; font-size: 16px; }
+  .source-card .sc-name { flex: 1; font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .source-card:hover { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 6%, var(--card)); }
   .source-card.active { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent); }
-  .src-tag { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; padding: 2px 6px;
+  .source-card.soon { cursor: default; opacity: .58; }
+  .source-card.soon:hover { border-color: var(--border); background: var(--card); }
+  .src-tag { flex: none; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; padding: 2px 6px;
     border-radius: 5px; background: var(--ok-bg); color: var(--ok); }
   .src-tag.beta { background: var(--run-bg); color: var(--run); }
   .src-tag.betatag { background: color-mix(in srgb, var(--accent2) 16%, var(--card)); color: var(--accent2); }
+  .src-tag.soon-tag { background: color-mix(in srgb, var(--muted) 18%, transparent); color: var(--muted); }
   .src-form { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px 16px; margin: 12px 0 16px; }
   .src-field { display: flex; flex-direction: column; gap: 4px; }
   .src-field.full { grid-column: 1 / -1; }
@@ -1077,14 +1089,44 @@
       <p>Pick where your data lives, point us at it, and score it against the DAMA data-quality dimensions. The run report, scores and failed records are saved and appear in History.</p>
     </div>
 
-    <!-- Source picker: file upload today; connectors (Redshift, S3, warehouses) in preview -->
-    <div class="source-picker" id="sourcePicker">
-      <button type="button" class="source-card active" data-source="file">📄 File upload <span class="src-tag">Ready</span></button>
-      <button type="button" class="source-card" data-source="redshift"><span class="src-ico" data-ico="redshift"></span> Amazon Redshift <span class="src-tag betatag">Beta</span></button>
-      <button type="button" class="source-card" data-source="s3"><span class="src-ico" data-ico="s3"></span> Amazon S3 file <span class="src-tag betatag">Beta</span></button>
-      <button type="button" class="source-card" data-source="snowflake"><span class="src-ico" data-ico="snowflake"></span> Snowflake <span class="src-tag betatag">Beta</span></button>
-      <button type="button" class="source-card" data-source="databricks"><span class="src-ico" data-ico="databricks"></span> Databricks <span class="src-tag betatag">Beta</span></button>
-      <button type="button" class="source-card" data-source="postgres"><span class="src-ico" data-ico="postgres"></span> PostgreSQL <span class="src-tag beta">Preview</span></button>
+    <!-- Source picker: a categorised connector gallery that scales to many sources. -->
+    <div id="sourcePicker">
+      <input type="search" id="srcSearch" class="src-search" placeholder="🔎 Search data sources…" autocomplete="off">
+      <div class="source-gallery">
+        <div class="src-cat">
+          <div class="src-cat-hd">Files</div>
+          <div class="src-grid">
+            <button type="button" class="source-card active" data-source="file"><span class="src-ico">📄</span><span class="sc-name">File upload</span><span class="src-tag">Ready</span></button>
+            <button type="button" class="source-card soon" disabled><span class="src-ico">📊</span><span class="sc-name">Excel (.xlsx)</span><span class="src-tag soon-tag">Soon</span></button>
+          </div>
+        </div>
+        <div class="src-cat">
+          <div class="src-cat-hd">Cloud warehouses</div>
+          <div class="src-grid">
+            <button type="button" class="source-card" data-source="redshift"><span class="src-ico" data-ico="redshift"></span><span class="sc-name">Amazon Redshift</span><span class="src-tag betatag">Beta</span></button>
+            <button type="button" class="source-card" data-source="snowflake"><span class="src-ico" data-ico="snowflake"></span><span class="sc-name">Snowflake</span><span class="src-tag betatag">Beta</span></button>
+            <button type="button" class="source-card" data-source="databricks"><span class="src-ico" data-ico="databricks"></span><span class="sc-name">Databricks</span><span class="src-tag betatag">Beta</span></button>
+            <button type="button" class="source-card soon" disabled><span class="src-ico">🔷</span><span class="sc-name">Google BigQuery</span><span class="src-tag soon-tag">Soon</span></button>
+            <button type="button" class="source-card soon" disabled><span class="src-ico">🟦</span><span class="sc-name">Azure Synapse</span><span class="src-tag soon-tag">Soon</span></button>
+          </div>
+        </div>
+        <div class="src-cat">
+          <div class="src-cat-hd">Databases</div>
+          <div class="src-grid">
+            <button type="button" class="source-card" data-source="postgres"><span class="src-ico" data-ico="postgres"></span><span class="sc-name">PostgreSQL</span><span class="src-tag beta">Preview</span></button>
+            <button type="button" class="source-card soon" disabled><span class="src-ico">🟥</span><span class="sc-name">SQL Server</span><span class="src-tag soon-tag">Soon</span></button>
+            <button type="button" class="source-card soon" disabled><span class="src-ico">🐬</span><span class="sc-name">MySQL</span><span class="src-tag soon-tag">Soon</span></button>
+          </div>
+        </div>
+        <div class="src-cat">
+          <div class="src-cat-hd">Cloud storage</div>
+          <div class="src-grid">
+            <button type="button" class="source-card" data-source="s3"><span class="src-ico" data-ico="s3"></span><span class="sc-name">Amazon S3</span><span class="src-tag betatag">Beta</span></button>
+            <button type="button" class="source-card soon" disabled><span class="src-ico">🪣</span><span class="sc-name">Google Cloud Storage</span><span class="src-tag soon-tag">Soon</span></button>
+            <button type="button" class="source-card soon" disabled><span class="src-ico">🟦</span><span class="sc-name">Azure Blob / ADLS</span><span class="src-tag soon-tag">Soon</span></button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- ===== Source: File upload (existing flow) ===== -->
@@ -5777,7 +5819,18 @@ async function runDatabricks(cfg, statusEl) {
 }
 
 document.querySelectorAll('.src-ico[data-ico]').forEach(el => el.innerHTML = srcIcon(el.dataset.ico));   // brand marks on the source cards
-document.querySelectorAll('.source-card').forEach(c => c.addEventListener('click', () => selectSource(c.dataset.source)));
+document.querySelectorAll('.source-card:not(.soon)').forEach(c => c.addEventListener('click', () => selectSource(c.dataset.source)));
+{ const s = $('#srcSearch'); if (s) s.addEventListener('input', () => {
+    const q = (s.value || '').trim().toLowerCase();
+    document.querySelectorAll('#sourcePicker .source-card').forEach(c => {
+      const nm = (c.querySelector('.sc-name') ? c.querySelector('.sc-name').textContent : '').toLowerCase();
+      c.style.display = (!q || nm.includes(q)) ? '' : 'none';
+    });
+    document.querySelectorAll('#sourcePicker .src-cat').forEach(cat => {   // hide categories with no matches
+      const any = [...cat.querySelectorAll('.source-card')].some(c => c.style.display !== 'none');
+      cat.style.display = any ? '' : 'none';
+    });
+  }); }
 document.querySelectorAll('[data-runsource]').forEach(b => b.addEventListener('click', () => runSource(b.dataset.runsource)));
 // Live-validate each source's Run button as its fields change (disable + hover tooltip).
 document.querySelectorAll('.source-body').forEach(b => {
