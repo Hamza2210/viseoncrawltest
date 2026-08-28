@@ -1123,9 +1123,9 @@
         <div class="src-cat">
           <div class="src-cat-hd">Databases</div>
           <div class="src-grid">
-            <button type="button" class="source-card" data-source="postgres"><span class="src-ico" data-ico="postgres"></span><span class="sc-name">PostgreSQL</span><span class="src-tag beta">Preview</span></button>
-            <button type="button" class="source-card soon" disabled><span class="src-ico">🟥</span><span class="sc-name">SQL Server</span><span class="src-tag soon-tag">Soon</span></button>
-            <button type="button" class="source-card soon" disabled><span class="src-ico">🐬</span><span class="sc-name">MySQL</span><span class="src-tag soon-tag">Soon</span></button>
+            <button type="button" class="source-card" data-source="postgres"><span class="src-ico" data-ico="postgres"></span><span class="sc-name">PostgreSQL</span><span class="src-tag betatag">Beta</span></button>
+            <button type="button" class="source-card" data-source="sqlserver"><span class="src-ico" data-ico="sqlserver"></span><span class="sc-name">SQL Server</span><span class="src-tag betatag">Beta</span></button>
+            <button type="button" class="source-card" data-source="mysql"><span class="src-ico" data-ico="mysql"></span><span class="sc-name">MySQL</span><span class="src-tag betatag">Beta</span></button>
           </div>
         </div>
         <div class="src-cat">
@@ -1295,7 +1295,7 @@
     <!-- ===== Source: PostgreSQL ===== -->
     <div id="src-postgres" class="source-body" style="display:none;">
       <div class="card">
-        <h2>PostgreSQL <span class="src-tag beta">Preview</span></h2>
+        <h2>PostgreSQL <span class="src-tag betatag">Beta</span></h2>
         <p class="src-note">Read a Postgres table with a read-only user. The endpoint must be reachable from our worker.</p>
         <div class="src-form">
           <div class="src-field"><label>Host</label><input data-f="host" placeholder="db.example.com"></div>
@@ -1312,6 +1312,50 @@
         <button type="button" class="src-run" data-runsource="postgres">Run assessment</button>
         <div class="src-status" data-status="postgres"></div>
       </div>
+      <div class="card" id="postgresResult" style="display:none;"><h2>Assessment</h2><div id="postgresResultBody"></div></div>
+    </div>
+
+    <!-- ===== Source: MySQL ===== -->
+    <div id="src-mysql" class="source-body" style="display:none;">
+      <div class="card">
+        <h2>MySQL <span class="src-tag betatag">Beta</span></h2>
+        <p class="src-note">Read a MySQL table with a read-only user. In MySQL the database <em>is</em> the schema. The endpoint must be reachable from our worker.</p>
+        <div class="src-form">
+          <div class="src-field"><label>Host</label><input data-f="host" placeholder="db.example.com"></div>
+          <div class="src-field"><label>Port</label><input data-f="port" placeholder="3306" value="3306"></div>
+          <div class="src-field"><label>Database</label><input data-f="database" placeholder="analytics"></div>
+          <div class="src-field"><label>User</label><input data-f="user" placeholder="dq_reader"></div>
+          <div class="src-field"><label>Password</label><input data-f="password" type="password"></div>
+          <div class="src-field"><label>Table</label><input data-f="table" placeholder="orders"></div>
+          <div class="src-field"><label>SSL mode <span class="hint">(optional)</span></label>
+            <select data-f="sslmode"><option value="">default</option><option>require</option><option>verify-full</option><option>disable</option></select></div>
+          <div class="src-field"><label>Sample rows <span class="hint">(optional)</span></label><input data-f="sample_rows" type="number" min="1" placeholder="Empty = whole table"></div>
+        </div>
+        <button type="button" class="src-run" data-runsource="mysql">Run assessment</button>
+        <div class="src-status" data-status="mysql"></div>
+      </div>
+      <div class="card" id="mysqlResult" style="display:none;"><h2>Assessment</h2><div id="mysqlResultBody"></div></div>
+    </div>
+
+    <!-- ===== Source: Microsoft SQL Server / Azure SQL ===== -->
+    <div id="src-sqlserver" class="source-body" style="display:none;">
+      <div class="card">
+        <h2>SQL Server <span class="src-tag betatag">Beta</span></h2>
+        <p class="src-note">Read a SQL Server or Azure SQL table with a read-only login. The endpoint must be reachable from our worker. Note: T-SQL has no regex before SQL Server 2025, so pattern/format validity checks are skipped — every other DAMA dimension is assessed in full.</p>
+        <div class="src-form">
+          <div class="src-field"><label>Host</label><input data-f="host" placeholder="sql.example.com"></div>
+          <div class="src-field"><label>Port</label><input data-f="port" placeholder="1433" value="1433"></div>
+          <div class="src-field"><label>Database</label><input data-f="database" placeholder="analytics"></div>
+          <div class="src-field"><label>User</label><input data-f="user" placeholder="dq_reader"></div>
+          <div class="src-field"><label>Password</label><input data-f="password" type="password"></div>
+          <div class="src-field"><label>Schema</label><input data-f="schema" placeholder="dbo" value="dbo"></div>
+          <div class="src-field"><label>Table</label><input data-f="table" placeholder="orders"></div>
+          <div class="src-field"><label>Sample rows <span class="hint">(optional)</span></label><input data-f="sample_rows" type="number" min="1" placeholder="Empty = whole table"></div>
+        </div>
+        <button type="button" class="src-run" data-runsource="sqlserver">Run assessment</button>
+        <div class="src-status" data-status="sqlserver"></div>
+      </div>
+      <div class="card" id="sqlserverResult" style="display:none;"><h2>Assessment</h2><div id="sqlserverResultBody"></div></div>
     </div>
 
     <!-- Saved-credentials note (goes to the TOP of the active card) + save checkbox (stays
@@ -1863,6 +1907,15 @@ const SOURCE_FMT_SVG = {
   // PostgreSQL: simplified blue elephant silhouette
   postgres: _svg('<g fill="#336791"><ellipse cx="7.6" cy="8" rx="3.1" ry="3.6"/><ellipse cx="16.4" cy="8" rx="3.1" ry="3.6"/>' +
     '<path d="M6.8 8.5 Q12 5.5 17.2 8.5 Q18.4 14 14.4 16.5 Q13.6 21 11.6 21 Q11.2 17 10 16 Q6 14.5 6.8 8.5 Z"/></g>'),
+  // MySQL: teal dolphin arc over a wave
+  mysql: _svg('<g fill="none" stroke="#00758f" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">' +
+    '<path d="M3.5 9 Q10 3.5 16.5 7 Q20 8.8 20.5 13 Q18.5 12 17.4 13.4 Q16.6 10.8 14 10 Q9 8.6 6 12 Q4.4 10.2 3.5 9 Z" fill="#00758f"/>' +
+    '<path d="M4 17 Q8 15.4 12 17 Q16 18.6 20 17" stroke="#f29111"/></g>'),
+  // SQL Server: red database cylinder
+  sqlserver: _svg('<g fill="#a4232a" stroke="#a4232a" stroke-width="1.2">' +
+    '<ellipse cx="12" cy="5.4" rx="6.3" ry="2.1" fill="#c9313a"/>' +
+    '<path d="M5.7 5.4 L5.7 18.6 Q12 20.9 18.3 18.6 L18.3 5.4" fill="none"/>' +
+    '<path d="M5.7 11 Q12 13.3 18.3 11" fill="none"/><path d="M5.7 14.8 Q12 17.1 18.3 14.8" fill="none"/></g>'),
 };
 function srcIcon(fmt) { const f = (fmt || '').toLowerCase(); return SOURCE_FMT_SVG[f] || SOURCE_FMT_ICON[f] || '🗄️'; }
 function sourceLabel(fmt) { const f = (fmt || '').toLowerCase(); return SOURCE_FMT_LABEL[f] || (f ? f.toUpperCase() : ''); }
@@ -5369,25 +5422,27 @@ const SOURCE_REQUIRED = {
   snowflake: ['account', 'user', 'database', 'schema', 'table'],
   databricks: ['host', 'http_path', 'token', 'schema', 'table'],
   postgres: ['host', 'database', 'user', 'schema', 'table'],
+  mysql: ['host', 'database', 'user', 'table'],
+  sqlserver: ['host', 'database', 'user', 'schema', 'table'],
 };
 const SOURCE_LABEL = { redshift: 'Amazon Redshift', s3: 'Amazon S3', snowflake: 'Snowflake',
-  databricks: 'Databricks', postgres: 'PostgreSQL' };
+  databricks: 'Databricks', postgres: 'PostgreSQL', mysql: 'MySQL', sqlserver: 'SQL Server' };
 const _SRC_FILE_ONLY = ['assessment', 'resetBar', 'results'];   // cards that belong to the file flow
 
 // Optional Accuracy & Integrity config for a source's FIRST run (sent as a ruleset augment).
 // Lookups apply to every source; reference-table integrity/accuracy apply to warehouses.
 const srcRefsState = { lookups: [], integrity: [], accuracy: {}, warehouse: false };
-const _WAREHOUSE_SRC = new Set(['redshift', 'snowflake', 'databricks']);
+const _WAREHOUSE_SRC = new Set(['redshift', 'snowflake', 'databricks', 'postgres', 'mysql', 'sqlserver']);
 
 function selectSource(key) {
   document.querySelectorAll('.source-card').forEach(c => c.classList.toggle('active', c.dataset.source === key));
   document.querySelectorAll('.source-body').forEach(b => { b.style.display = (b.id === 'src-' + key) ? 'block' : 'none'; });
   // The file-upload assessment/results cards only make sense for the file source.
   _SRC_FILE_ONLY.forEach(id => { const el = document.getElementById(id); if (el) el.classList.toggle('src-hidden', key !== 'file'); });
-  // File has its own inline accuracy/integrity block; postgres is preview-only. For the
-  // other sources, move the shared creds + refs sections INTO the active card, just above
-  // its Run button, so they read as part of the connection config rather than the result.
-  const show = !['file', 'postgres'].includes(key);
+  // File has its own inline accuracy/integrity block. For every connector source, move the
+  // shared creds + refs sections INTO the active card, just above its Run button, so they
+  // read as part of the connection config rather than the result.
+  const show = key !== 'file';
   const runBtn = show ? document.querySelector(`#src-${key} .src-run`) : null;
   // Saved-credentials NOTE sits at the top of the source card (just under the title).
   const note = document.getElementById('srcCredsNote');
@@ -5412,7 +5467,7 @@ function selectSource(key) {
 }
 
 // ---- Per-app credential PROFILES (named connections; secrets applied server-side) -------
-const SRC_SECRET_FIELDS = { redshift: [], s3: ['access_key', 'secret_key'], snowflake: ['password'], databricks: ['token'] };
+const SRC_SECRET_FIELDS = { redshift: [], s3: ['access_key', 'secret_key'], snowflake: ['password'], databricks: ['token'], postgres: ['password'], mysql: ['password'], sqlserver: ['password'] };
 const credProfiles = {};      // key -> [{id,name,config,hasSecrets,savedAt}] from the last list
 const activeProfile = {};     // key -> id of the profile currently applied (sent on the run)
 
@@ -5671,6 +5726,9 @@ function runSource(key) {
   if (key === 's3') { runS3(cfg, statusEl); return; }               // wired end-to-end
   if (key === 'snowflake') { runSnowflake(cfg, statusEl); return; } // wired end-to-end
   if (key === 'databricks') { runDatabricks(cfg, statusEl); return; } // wired end-to-end
+  if (key === 'postgres') { runPostgres(cfg, statusEl); return; }    // wired end-to-end
+  if (key === 'mysql') { runMySQL(cfg, statusEl); return; }          // wired end-to-end
+  if (key === 'sqlserver') { runSQLServer(cfg, statusEl); return; }  // wired end-to-end
   // Remaining connectors are being built source by source; capture + validate for now.
   statusEl.className = 'src-status dev';
   statusEl.innerHTML = `<strong>${esc(SOURCE_LABEL[key] || key)} connector — in development.</strong> ` +
@@ -5824,6 +5882,117 @@ async function runDatabricks(cfg, statusEl) {
     `Inferring the ruleset from a sample, then scoring the whole table in Databricks…`;
   const card = document.getElementById('databricksResult');
   const bodyEl = document.getElementById('databricksResultBody');
+  if (card) card.style.display = 'block';
+  if (bodyEl) bodyEl.innerHTML = `<p><span class="spin"></span> Scoring the dataset — this can take a moment…</p>`;
+  if (res.resultPrefix && bodyEl) {
+    pollInto(res.resultPrefix, bodyEl, {}).finally(() => { if (btn) btn.disabled = false; });
+  } else if (btn) { btn.disabled = false; }
+}
+
+// Launch a full-table PostgreSQL assessment, then poll + render its result.
+async function runPostgres(cfg, statusEl) {
+  const btn = document.querySelector('[data-runsource="postgres"]');
+  const body = {
+    app_id: APP_ID || undefined,
+    host: cfg.host, database: cfg.database, user: cfg.user, table: cfg.table,
+    schema: cfg.schema || undefined, password: cfg.password || undefined,
+    port: cfg.port ? Number(cfg.port) : undefined, sslmode: cfg.sslmode || undefined,
+    sample_rows: cfg.sample_rows ? Number(cfg.sample_rows) : undefined,
+    notify_email: EMAIL || undefined,
+    ruleset_augment: collectSourceRefsAugment() || undefined,
+    credential_profile: cfg._credProfile || undefined,
+  };
+  statusEl.className = 'src-status';
+  statusEl.innerHTML = `<p><span class="spin"></span> Launching PostgreSQL assessment…</p>`;
+  if (btn) btn.disabled = true;
+  let res;
+  try {
+    res = await postJSON(`${API_BASE}/data-quality/postgres-assessment`, HEADERS, body);
+  } catch (e) {
+    statusEl.className = 'src-status err';
+    statusEl.textContent = e.message;
+    if (btn) btn.disabled = false;
+    return;
+  }
+  statusEl.className = 'src-status dev';
+  statusEl.innerHTML = `Assessment started (run <code>${esc(res.runId || '')}</code>). ` +
+    `Inferring the ruleset from a sample, then scoring the whole table in Postgres…`;
+  const card = document.getElementById('postgresResult');
+  const bodyEl = document.getElementById('postgresResultBody');
+  if (card) card.style.display = 'block';
+  if (bodyEl) bodyEl.innerHTML = `<p><span class="spin"></span> Scoring the dataset — this can take a moment…</p>`;
+  if (res.resultPrefix && bodyEl) {
+    pollInto(res.resultPrefix, bodyEl, {}).finally(() => { if (btn) btn.disabled = false; });
+  } else if (btn) { btn.disabled = false; }
+}
+
+// Launch a full-table MySQL assessment, then poll + render its result.
+async function runMySQL(cfg, statusEl) {
+  const btn = document.querySelector('[data-runsource="mysql"]');
+  const body = {
+    app_id: APP_ID || undefined,
+    host: cfg.host, database: cfg.database, user: cfg.user, table: cfg.table,
+    password: cfg.password || undefined,
+    port: cfg.port ? Number(cfg.port) : undefined, sslmode: cfg.sslmode || undefined,
+    sample_rows: cfg.sample_rows ? Number(cfg.sample_rows) : undefined,
+    notify_email: EMAIL || undefined,
+    ruleset_augment: collectSourceRefsAugment() || undefined,
+    credential_profile: cfg._credProfile || undefined,
+  };
+  statusEl.className = 'src-status';
+  statusEl.innerHTML = `<p><span class="spin"></span> Launching MySQL assessment…</p>`;
+  if (btn) btn.disabled = true;
+  let res;
+  try {
+    res = await postJSON(`${API_BASE}/data-quality/mysql-assessment`, HEADERS, body);
+  } catch (e) {
+    statusEl.className = 'src-status err';
+    statusEl.textContent = e.message;
+    if (btn) btn.disabled = false;
+    return;
+  }
+  statusEl.className = 'src-status dev';
+  statusEl.innerHTML = `Assessment started (run <code>${esc(res.runId || '')}</code>). ` +
+    `Inferring the ruleset from a sample, then scoring the whole table in MySQL…`;
+  const card = document.getElementById('mysqlResult');
+  const bodyEl = document.getElementById('mysqlResultBody');
+  if (card) card.style.display = 'block';
+  if (bodyEl) bodyEl.innerHTML = `<p><span class="spin"></span> Scoring the dataset — this can take a moment…</p>`;
+  if (res.resultPrefix && bodyEl) {
+    pollInto(res.resultPrefix, bodyEl, {}).finally(() => { if (btn) btn.disabled = false; });
+  } else if (btn) { btn.disabled = false; }
+}
+
+// Launch a full-table SQL Server assessment, then poll + render its result.
+async function runSQLServer(cfg, statusEl) {
+  const btn = document.querySelector('[data-runsource="sqlserver"]');
+  const body = {
+    app_id: APP_ID || undefined,
+    host: cfg.host, database: cfg.database, user: cfg.user, table: cfg.table,
+    schema: cfg.schema || undefined, password: cfg.password || undefined,
+    port: cfg.port ? Number(cfg.port) : undefined,
+    sample_rows: cfg.sample_rows ? Number(cfg.sample_rows) : undefined,
+    notify_email: EMAIL || undefined,
+    ruleset_augment: collectSourceRefsAugment() || undefined,
+    credential_profile: cfg._credProfile || undefined,
+  };
+  statusEl.className = 'src-status';
+  statusEl.innerHTML = `<p><span class="spin"></span> Launching SQL Server assessment…</p>`;
+  if (btn) btn.disabled = true;
+  let res;
+  try {
+    res = await postJSON(`${API_BASE}/data-quality/sqlserver-assessment`, HEADERS, body);
+  } catch (e) {
+    statusEl.className = 'src-status err';
+    statusEl.textContent = e.message;
+    if (btn) btn.disabled = false;
+    return;
+  }
+  statusEl.className = 'src-status dev';
+  statusEl.innerHTML = `Assessment started (run <code>${esc(res.runId || '')}</code>). ` +
+    `Inferring the ruleset from a sample, then scoring the whole table in SQL Server…`;
+  const card = document.getElementById('sqlserverResult');
+  const bodyEl = document.getElementById('sqlserverResultBody');
   if (card) card.style.display = 'block';
   if (bodyEl) bodyEl.innerHTML = `<p><span class="spin"></span> Scoring the dataset — this can take a moment…</p>`;
   if (res.resultPrefix && bodyEl) {
