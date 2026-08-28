@@ -816,6 +816,33 @@
   .mq-pii-list { margin: 7px 0 4px; padding-left: 18px; }
   .mq-pii-list li { font-size: 11.5px; color: var(--muted); line-height: 1.5; }
   .mq-pii-list li strong { color: #cdd6ea; font-weight: 600; }
+  .mq-pii-list li { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .mq-pii-col { flex: 1 1 auto; }
+  .mq-pii-tag { font-size: 10px; font-weight: 700; padding: 1px 7px; border-radius: 999px; margin-left: 4px; }
+  .mq-pii-tag.pii { color: #7fdcaf; background: color-mix(in srgb, var(--ok) 16%, transparent); }
+  .mq-pii-tag.unl { color: #f5c451; background: color-mix(in srgb, var(--run) 16%, transparent); }
+  .mq-pii-btns { display: inline-flex; gap: 6px; flex: none; }
+  .mq-lab { font-size: 10.5px; padding: 3px 9px; border-radius: 6px; border: 1px solid var(--border);
+    background: var(--card); color: var(--muted); cursor: pointer; }
+  .mq-lab:hover { border-color: var(--accent); color: var(--text); }
+  /* Metadata contract (Mode B conformance) */
+  .mc-panel { border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; background: var(--card-2); }
+  .mc-head { display: flex; align-items: center; justify-content: space-between; }
+  .mc-title { font-size: 14px; font-weight: 700; color: var(--text); }
+  .mc-rules { list-style: none; margin: 6px 0 2px; padding: 0; }
+  .mc-rules li { font-size: 12.5px; line-height: 1.6; }
+  .mc-rules li.ok { color: #7fdcaf; } .mc-rules li.bad { color: #ff9090; }
+  .mc-rules li strong { color: #cdd6ea; font-weight: 600; }
+  .mc-editor { margin-top: 12px; border-top: 1px solid var(--border); padding-top: 10px; }
+  .mc-editor summary { cursor: pointer; font-size: 12px; color: var(--muted); }
+  .mc-editor summary:hover { color: var(--text); }
+  .mc-form { display: flex; flex-direction: column; gap: 9px; margin-top: 10px; }
+  .mc-chk { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--text); cursor: pointer; }
+  .mc-chk input { accent-color: var(--accent); width: 15px; height: 15px; }
+  .mc-col { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
+  .mc-reqcols { padding: 7px 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--card); color: var(--text); font: inherit; font-size: 12.5px; }
+  .mc-reqcols:focus { outline: none; border-color: var(--accent); }
+  .mc-actions { display: flex; align-items: center; gap: 12px; margin-top: 2px; }
   /* Read-only stage medal chip in the dataset name cell (picker lives in the detail) */
   .ds-stage-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600;
     padding: 3px 9px; border-radius: 999px; border: 1px solid var(--border); background: var(--card-2); color: #b8c2d8; }
@@ -3045,7 +3072,17 @@ const MEDAL_LABEL = { bronze: '🥉 Bronze', silver: '🥈 Silver', gold: '🥇 
 function entryFor(key) {
   const e = dashEntries[key] || {};
   return { stage: e.stage || '', tags: (e.tags || []).slice(), owner: e.owner || '', notes: (e.notes || []).slice(),
+           pii: Object.assign({}, e.pii || {}), contract: Object.assign({}, e.contract || {}),
            trust: e.trust || '', trustNote: e.trustNote || '', trustBy: e.trustBy || '', trustAt: e.trustAt || '' };
+}
+async function setPiiLabel(key, column, label) {
+  try {
+    const r = await postJSON(`${API_BASE}/data-quality/dataset-tags`, HEADERS,
+      { app_id: APP_ID, action: 'pii-label', key, pii_column: column, pii_label: label });
+    if (r && r.entries) dashEntries = r.entries;
+  } catch (e) { alert('Could not save PII label: ' + e.message); return; }
+  selectDsTab();                 // re-render the active dataset sub-tab (Metadata or Scores) with the new label
+  refreshDatasetsTable();
 }
 
 // ---- Dataset notes (durable, free-text context — the "why a red is acceptable") -----------
@@ -3566,8 +3603,10 @@ async function loadDsScores(panel, prefix) {
     try {
       const pr = await postJSON(`${API_BASE}/data-quality/profile`, HEADERS, { result_prefix: prefix });
       const md = document.createElement('div'); md.style.marginTop = '16px';
-      md.innerHTML = renderMetadataPanel(pr.profile);      // metadata quality (structure), beside the data-quality result
+      const dsKey = dashSelected && dashSelected.key;
+      md.innerHTML = renderMetadataPanel(pr.profile, dsKey);   // metadata quality (structure), beside the data-quality result
       panel.appendChild(md);
+      wireMetaPanel(md, dsKey);
       const det = document.createElement('details'); det.style.marginTop = '14px';
       det.innerHTML = `<summary class="hint" style="cursor:pointer;">▸ Column profile (types, nulls, distinct, ranges)</summary><div style="margin-top:8px;">${renderColumnProfile(pr.profile)}</div>`;
       panel.appendChild(det);
@@ -4090,17 +4129,28 @@ function metadataQuality(profile) {
   // Naming + Typing are the actual structural-quality dimensions. PII is a SENSITIVITY flag, not a
   // quality defect (a reload log holding user emails is correct), so it's advisory — it does NOT
   // lower the overall metadata score. Documentation needs source descriptions (Tier 2).
+  // --- Keys --- (assessed only where the catalog is available; a declared PK guarantees row identity)
+  const pkCols = (profile && profile.primary_key) || names.filter(nm => cols[nm].is_primary_key);
+  const keysDim = hasCatalog
+    ? (pkCols && pkCols.length
+        ? { key: 'keys', label: 'Keys', score: 100, detail: `primary key declared on ${pkCols.join(', ')}`, findings: [] }
+        : { key: 'keys', label: 'Keys', score: 60, detail: 'no primary key declared',
+            findings: [{ col: '(table)', msg: "no primary key — the schema doesn't guarantee row identity/uniqueness" }] })
+    : { key: 'keys', label: 'Keys', score: null,
+        notAssessed: 'Keys/constraints come from a warehouse catalog — files & Qlik have none.' };
+
   const dims = [
     { key: 'naming', label: 'Naming', score: namingScore, detail: namingDetail, findings: namingFindings },
     { key: 'typing', label: 'Typing', score: typingScore, detail: typingDetail, findings: typingFindings },
     documentationDim,
+    keysDim,
   ];
   const scored = dims.filter(d => d.score != null);
   return { overall: scored.length ? Math.round(scored.reduce((s, d) => s + d.score, 0) / scored.length) : null,
            dims, pii: piiFindings, columns: N, basedOn: hasCatalog ? 'declared' : 'inferred' };
 }
 
-function renderMetadataPanel(profile) {
+function renderMetadataPanel(profile, key) {
   const mq = metadataQuality(profile);
   if (!mq) return '<p class="dash-muted">No column profile available to assess metadata.</p>';
   const cls = s => s >= 90 ? 'green' : s >= 75 ? 'amber' : 'red';
@@ -4118,12 +4168,28 @@ function renderMetadataPanel(profile) {
       `<span class="mq-bar"><span class="mq-fill" style="width:${Math.round(d.score)}%;background:${col(d.score)}"></span></span>` +
       `<span class="mq-score">${Math.round(d.score)}</span></div>${detail}${find}`;
   }).join('');
-  const pii = mq.pii || [];
-  const piiHtml = pii.length
-    ? `<div class="mq-pii"><div class="mq-pii-hd">🔒 Sensitivity — ${pii.length} column${pii.length === 1 ? '' : 's'} likely hold personal data</div>` +
-      `<ul class="mq-pii-list">${pii.map(f => `<li><strong>${esc(f.col)}</strong> — ${esc(f.msg)}</li>`).join('')}</ul>` +
-      `<div class="hint" style="margin-top:2px;">Advisory only — review &amp; label these. Not counted against the score.</div></div>`
-    : '';
+  const labels = key ? entryFor(key).pii : {};
+  const detected = mq.pii || [];
+  const notPii = detected.filter(f => labels[f.col] === 'not_pii');            // dismissed false positives
+  const shown = detected.filter(f => labels[f.col] !== 'not_pii');            // confirmed PII or unlabelled
+  const unlabelled = shown.filter(f => !labels[f.col]);
+  let piiHtml = '';
+  if (shown.length || notPii.length) {
+    const statusTxt = unlabelled.length ? `${unlabelled.length} to review` : (shown.length ? 'all labelled' : '');
+    const rowsHtml = shown.map(f => {
+      const lab = labels[f.col];
+      const tag = lab === 'pii' ? `<span class="mq-pii-tag pii">✓ PII</span>` : `<span class="mq-pii-tag unl">unlabelled</span>`;
+      const btns = key ? `<span class="mq-pii-btns">` +
+        (lab === 'pii' ? '' : `<button type="button" class="mq-lab" data-piiset="pii" data-col="${esc(f.col)}">Confirm PII</button>`) +
+        `<button type="button" class="mq-lab" data-piiset="not_pii" data-col="${esc(f.col)}">Not PII</button>` +
+        (lab ? `<button type="button" class="mq-lab" data-piiset="" data-col="${esc(f.col)}">Clear</button>` : '') + `</span>` : '';
+      return `<li><span class="mq-pii-col"><strong>${esc(f.col)}</strong> — ${esc(f.msg)} ${tag}</span>${btns}</li>`;
+    }).join('');
+    piiHtml = `<div class="mq-pii"><div class="mq-pii-hd">🔒 Sensitivity — ${shown.length} column${shown.length === 1 ? '' : 's'} likely hold personal data${statusTxt ? ` · ${statusTxt}` : ''}</div>` +
+      (shown.length ? `<ul class="mq-pii-list">${rowsHtml}</ul>` : '') +
+      (notPii.length ? `<div class="hint" style="margin-top:2px;">${notPii.length} column${notPii.length === 1 ? '' : 's'} marked “not PII” (hidden).</div>` : '') +
+      `<div class="hint" style="margin-top:4px;">Advisory — labelling is governance, not counted against the structural score.</div></div>`;
+  }
   const ov = mq.overall;
   return `<div class="mq-panel"><div class="mq-head"><span class="mq-title">Metadata quality</span>` +
     `<span class="mq-overall">${ov == null ? '—' : ov}${ov == null ? '' : ` <span class="tag ${cls(ov)}">${ov >= 90 ? 'good' : ov >= 75 ? 'fair' : 'weak'}</span>`}</span></div>` +
@@ -4132,10 +4198,90 @@ function renderMetadataPanel(profile) {
     rows + piiHtml + `</div>`;
 }
 
+function wireMetaPanel(container, key) {
+  if (!container || !key) return;
+  container.querySelectorAll('[data-piiset]').forEach(b =>
+    b.addEventListener('click', e => { e.stopPropagation(); setPiiLabel(key, b.dataset.col, b.dataset.piiset); }));
+}
+
+// ---- Mode B: metadata contract (per-dataset "expected metadata", scored for conformance) --------
+function metadataConformance(profile, contract, labels) {
+  const cols = (profile && profile.columns) || {}, names = Object.keys(cols);
+  labels = labels || {}; const rules = [];
+  if (contract.require_descriptions) {
+    const docAvail = names.some(nm => typeof cols[nm].comment === 'string');
+    if (!docAvail) rules.push({ ok: false, label: 'Descriptions', msg: 'this source exposes no column descriptions' });
+    else { const undoc = names.filter(nm => !(cols[nm].comment && String(cols[nm].comment).trim()));
+      rules.push({ ok: undoc.length === 0, label: 'Descriptions', msg: undoc.length ? `${undoc.length} undocumented: ${undoc.slice(0, 6).join(', ')}${undoc.length > 6 ? '…' : ''}` : `all ${names.length} columns described` }); }
+  }
+  if (contract.require_pk) {
+    const pk = (profile && profile.primary_key) || names.filter(nm => cols[nm].is_primary_key);
+    rules.push({ ok: !!(pk && pk.length), label: 'Primary key', msg: (pk && pk.length) ? `declared on ${pk.join(', ')}` : 'no primary key declared' });
+  }
+  if (contract.require_pii_labelled) {
+    const mq = metadataQuality(profile), detected = (mq && mq.pii) || [];
+    const unl = detected.filter(f => !labels[f.col]);
+    rules.push({ ok: unl.length === 0, label: 'PII labelled', msg: detected.length ? (unl.length ? `${unl.length} unlabelled: ${unl.map(f => f.col).slice(0, 6).join(', ')}` : `all ${detected.length} labelled`) : 'no PII detected' });
+  }
+  if (contract.required_columns && contract.required_columns.length) {
+    const present = new Set(names.map(n => n.toLowerCase()));
+    const missing = contract.required_columns.filter(c => !present.has(String(c).toLowerCase()));
+    rules.push({ ok: missing.length === 0, label: 'Required columns', msg: missing.length ? `missing: ${missing.join(', ')}` : `all ${contract.required_columns.length} present` });
+  }
+  return { score: rules.length ? Math.round(100 * rules.filter(r => r.ok).length / rules.length) : null, rules };
+}
+function contractActive(c) { return !!(c.require_descriptions || c.require_pk || c.require_pii_labelled || (c.required_columns && c.required_columns.length)); }
+function renderContractSection(profile, key) {
+  const c = entryFor(key).contract || {};
+  const cls = s => s >= 100 ? 'green' : s >= 50 ? 'amber' : 'red';
+  let conf = '';
+  if (contractActive(c)) {
+    const r = metadataConformance(profile, c, entryFor(key).pii);
+    conf = `<div class="mc-head"><span class="mc-title">Contract conformance</span>` +
+      `<span class="mq-overall">${r.score}<span class="tag ${cls(r.score)}">${r.score >= 100 ? 'meets' : 'below'}</span></span></div>` +
+      `<p class="hint" style="margin:2px 0 8px;">${r.rules.filter(x => x.ok).length} of ${r.rules.length} contract rule${r.rules.length === 1 ? '' : 's'} met.</p>` +
+      `<ul class="mc-rules">${r.rules.map(x => `<li class="${x.ok ? 'ok' : 'bad'}">${x.ok ? '✓' : '✗'} <strong>${esc(x.label)}</strong> — ${esc(x.msg)}</li>`).join('')}</ul>`;
+  } else {
+    conf = `<div class="mc-head"><span class="mc-title">Metadata contract</span></div>` +
+      `<p class="hint" style="margin:2px 0 8px;">Define the metadata this dataset must meet, then it's scored for conformance.</p>`;
+  }
+  const chk = (k, label) => `<label class="mc-chk"><input type="checkbox" data-cf="${k}"${c[k] ? ' checked' : ''}> ${label}</label>`;
+  const editor = `<details class="mc-editor"${contractActive(c) ? '' : ' open'}><summary>Edit contract</summary><div class="mc-form">` +
+    chk('require_descriptions', 'Every column has a description') +
+    chk('require_pk', 'A primary key is declared') +
+    chk('require_pii_labelled', 'All PII columns are labelled') +
+    `<label class="mc-col">Required columns <input type="text" class="mc-reqcols" placeholder="id, email, created_at" value="${esc((c.required_columns || []).join(', '))}"></label>` +
+    `<div class="mc-actions"><button type="button" class="btn-sm mc-save">Save contract</button>` +
+    (contractActive(c) ? `<button type="button" class="linkbtn mc-clear">Clear</button>` : '') + `</div></div></details>`;
+  return `<div class="mc-panel" style="margin-top:16px;">${conf}${editor}</div>`;
+}
+async function saveContract(key, container, clear) {
+  const body = { app_id: APP_ID, action: 'set-contract', key };
+  if (!clear && container) {
+    container.querySelectorAll('[data-cf]').forEach(cb => { body[cb.dataset.cf] = cb.checked; });
+    const raw = (container.querySelector('.mc-reqcols') || {}).value || '';
+    body.required_columns = raw.split(',').map(s => s.trim()).filter(Boolean);
+  }
+  try {
+    const r = await postJSON(`${API_BASE}/data-quality/dataset-tags`, HEADERS, body);
+    if (r && r.entries) dashEntries = r.entries;
+  } catch (e) { alert('Could not save contract: ' + e.message); return; }
+  selectDsTab();
+}
+function wireContract(container, key) {
+  if (!container || !key) return;
+  const s = container.querySelector('.mc-save'), c = container.querySelector('.mc-clear');
+  const panel = container.querySelector('.mc-panel') || container;
+  if (s) s.addEventListener('click', e => { e.stopPropagation(); saveContract(key, panel, false); });
+  if (c) c.addEventListener('click', e => { e.stopPropagation(); saveContract(key, panel, true); });
+}
 async function loadDsMetadata(panel, prefix) {
+  const key = dashSelected && dashSelected.key;
   try {
     const pr = await postJSON(`${API_BASE}/data-quality/profile`, HEADERS, { result_prefix: prefix });
-    panel.innerHTML = renderMetadataPanel(pr.profile);
+    panel.innerHTML = renderMetadataPanel(pr.profile, key) + (key ? renderContractSection(pr.profile, key) : '');
+    wireMetaPanel(panel, key);
+    wireContract(panel, key);
   } catch (e) { panel.innerHTML = `<p class="dash-muted" style="color:var(--err)">${esc(e.message)}</p>`; }
 }
 
