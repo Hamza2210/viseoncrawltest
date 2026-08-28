@@ -4129,15 +4129,25 @@ function metadataQuality(profile) {
   // Naming + Typing are the actual structural-quality dimensions. PII is a SENSITIVITY flag, not a
   // quality defect (a reload log holding user emails is correct), so it's advisory — it does NOT
   // lower the overall metadata score. Documentation needs source descriptions (Tier 2).
-  // --- Keys --- (assessed only where the catalog is available; a declared PK guarantees row identity)
+  // --- Keys --- checks the DECLARED PRIMARY KEY constraint in the schema/catalog (not the ruleset's
+  // data-inferred key). If none is declared but a column is unique + non-null, it's a natural-key
+  // candidate — softened + surfaced, since row identity is satisfiable, just not formalised.
   const pkCols = (profile && profile.primary_key) || names.filter(nm => cols[nm].is_primary_key);
-  const keysDim = hasCatalog
-    ? (pkCols && pkCols.length
-        ? { key: 'keys', label: 'Keys', score: 100, detail: `primary key declared on ${pkCols.join(', ')}`, findings: [] }
-        : { key: 'keys', label: 'Keys', score: 60, detail: 'no primary key declared',
-            findings: [{ col: '(table)', msg: "no primary key — the schema doesn't guarantee row identity/uniqueness" }] })
-    : { key: 'keys', label: 'Keys', score: null,
-        notAssessed: 'Keys/constraints come from a warehouse catalog — files & Qlik have none.' };
+  let keysDim;
+  if (!hasCatalog) {
+    keysDim = { key: 'keys', label: 'Keys', score: null,
+      notAssessed: 'Keys/constraints come from a warehouse catalog — files & Qlik have none.' };
+  } else if (pkCols && pkCols.length) {
+    keysDim = { key: 'keys', label: 'Keys', score: 100, detail: `PRIMARY KEY constraint declared on ${pkCols.join(', ')}`, findings: [] };
+  } else {
+    const cand = names.filter(nm => cols[nm].null_rate_pct === 0 && typeof cols[nm].distinct_rate_pct === 'number' && cols[nm].distinct_rate_pct >= 99.5);
+    const best = cand.find(nm => /(^id$|_id$|^pk$|key$)/i.test(nm)) || cand[0];
+    keysDim = best
+      ? { key: 'keys', label: 'Keys', score: 80, detail: 'no PRIMARY KEY constraint declared — but a natural key exists',
+          findings: [{ col: '(table)', msg: `no primary key declared in the schema, but "${best}" looks like a natural key (unique, non-null in the sample) — consider declaring it (ALTER TABLE … ADD PRIMARY KEY)` }] }
+      : { key: 'keys', label: 'Keys', score: 60, detail: 'no PRIMARY KEY constraint declared',
+          findings: [{ col: '(table)', msg: "no primary key declared — the schema doesn't guarantee row identity / uniqueness" }] };
+  }
 
   const dims = [
     { key: 'naming', label: 'Naming', score: namingScore, detail: namingDetail, findings: namingFindings },
