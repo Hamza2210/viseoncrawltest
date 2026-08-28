@@ -376,28 +376,36 @@
   .dim-split-chart { flex: 1 1 360px; min-width: 300px; }
   .dim-split-table { flex: 1 1 460px; min-width: 300px; }
   .dim-split-chart .viz { margin: 0; }
-  /* Data-from-source picker: a categorised connector gallery that scales to many sources */
-  #sourcePicker { margin: 4px 0 18px; }
-  .src-search { width: 100%; max-width: 380px; margin: 0 0 16px; padding: 8px 12px; border-radius: 8px;
-    border: 1px solid var(--border); background: var(--card-2); color: var(--text); font: inherit; font-size: 13px; box-sizing: border-box; }
+  /* Data-source picker: a master-detail workspace — a searchable connector rail (left) beside the
+     selected connector's setup form (right), the pattern Fivetran/Airbyte use to scale to many sources. */
+  .src-workspace { display: grid; grid-template-columns: 210px minmax(0, 1fr); gap: 20px; align-items: start; margin: 4px 0 18px; }
+  #sourcePicker { position: sticky; top: 8px; max-height: calc(100vh - 24px); overflow-y: auto; margin: 0; padding-right: 2px; }
+  .src-panel { min-width: 0; }
+  .src-search { width: 100%; margin: 0 0 14px; padding: 8px 11px; border-radius: 8px; box-sizing: border-box;
+    border: 1px solid var(--border); background: var(--card-2); color: var(--text); font: inherit; font-size: 13px; }
   .src-search:focus { outline: none; border-color: var(--accent); }
-  .source-gallery { display: flex; flex-direction: column; gap: 18px; }
-  .src-cat-hd { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-bottom: 9px; }
-  .src-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 10px; }
-  .source-card { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border: 1px solid var(--border);
-    border-radius: 10px; background: var(--card); cursor: pointer; color: var(--text); text-align: left;
+  .source-gallery { display: flex; flex-direction: column; gap: 16px; }
+  .src-cat-hd { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-bottom: 7px; }
+  .src-grid { display: grid; grid-template-columns: 1fr; gap: 6px; }
+  .source-card { display: flex; align-items: center; gap: 9px; padding: 9px 11px; border: 1px solid var(--border); width: 100%;
+    border-radius: 9px; background: var(--card); cursor: pointer; color: var(--text); text-align: left;
     transition: border-color .12s, box-shadow .12s, background .12s; }
-  .source-card .src-ico { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 20px; font-size: 16px; }
-  .source-card .sc-name { flex: 1; font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .source-card .src-ico { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 18px; font-size: 15px; }
+  .source-card .sc-name { flex: 1; min-width: 0; font-size: 12.5px; font-weight: 600; line-height: 1.25; }
   .source-card:hover { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 6%, var(--card)); }
-  .source-card.active { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent); }
-  .source-card.soon { cursor: default; opacity: .58; }
+  .source-card.active { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent);
+    background: color-mix(in srgb, var(--accent) 8%, var(--card)); }
+  .source-card.soon { cursor: default; opacity: .55; }
   .source-card.soon:hover { border-color: var(--border); background: var(--card); }
-  .src-tag { flex: none; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; padding: 2px 6px;
+  .src-tag { flex: none; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .02em; padding: 2px 5px;
     border-radius: 5px; background: var(--ok-bg); color: var(--ok); }
   .src-tag.beta { background: var(--run-bg); color: var(--run); }
   .src-tag.betatag { background: color-mix(in srgb, var(--accent2) 16%, var(--card)); color: var(--accent2); }
   .src-tag.soon-tag { background: color-mix(in srgb, var(--muted) 18%, transparent); color: var(--muted); }
+  /* Inside the narrower detail pane, stack the file source's own two-column layout. */
+  .src-panel .up-top { grid-template-columns: 1fr; }
+  @media (max-width: 820px) { .src-workspace { grid-template-columns: 1fr; }
+    #sourcePicker { position: static; max-height: none; overflow: visible; } }
   .src-form { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px 16px; margin: 12px 0 16px; }
   .src-field { display: flex; flex-direction: column; gap: 4px; }
   .src-field.full { grid-column: 1 / -1; }
@@ -1089,7 +1097,9 @@
       <p>Pick where your data lives, point us at it, and score it against the DAMA data-quality dimensions. The run report, scores and failed records are saved and appear in History.</p>
     </div>
 
-    <!-- Source picker: a categorised connector gallery that scales to many sources. -->
+    <!-- Source workspace: master-detail — a searchable connector rail (left) beside the selected
+         connector's setup form (right), so adding sources never buries the form below a long grid. -->
+    <div class="src-workspace">
     <div id="sourcePicker">
       <input type="search" id="srcSearch" class="src-search" placeholder="🔎 Search data sources…" autocomplete="off">
       <div class="source-gallery">
@@ -1127,8 +1137,9 @@
           </div>
         </div>
       </div>
-    </div>
+    </div><!-- /#sourcePicker -->
 
+    <div class="src-panel">
     <!-- ===== Source: File upload (existing flow) ===== -->
     <div id="src-file" class="source-body">
     <div class="up-top">
@@ -1317,6 +1328,8 @@
       <p class="hint" style="margin:8px 0 12px;">Added on top of the auto-detected rules for this run — leave empty to skip. Lights up the Accuracy and Referential Integrity dimensions.</p>
       <div id="srcRefsBody"></div>
     </details>
+    </div><!-- /.src-panel -->
+    </div><!-- /.src-workspace -->
 
     <div class="card" id="assessment">
       <h2>Assessment</h2>
