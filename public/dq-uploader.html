@@ -5859,11 +5859,15 @@ function _galaxyHover(e) {
 
 function startGalaxyLoop() {
   const g = GALAXY; if (g.raf) return;
-  const loop = () => {
+  const AUTO_SPEED = 0.096;                                      // rad/sec — framerate-independent (was 0.0016/frame @60fps)
+  let last = performance.now();
+  const loop = (now) => {
     g.raf = requestAnimationFrame(loop);
+    now = now || performance.now();
+    const dt = Math.min(0.05, (now - last) / 1000); last = now;  // seconds since last frame (clamped for tab-switch gaps)
     if (!g.wrap || !g.wrap.offsetParent) return;                 // paused when the Overview isn't visible
     if (performance.now() - g.lastInteract > 4000) { g.auto = true; }
-    if (g.auto) g.rot.y += 0.0016;
+    if (g.auto) g.rot.y += AUTO_SPEED * dt;
     g.group.rotation.x = g.rot.x; g.group.rotation.y = g.rot.y;
     g.camera.position.z = g.dist;
     const sel = g.selected, t = performance.now();
