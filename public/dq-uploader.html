@@ -847,8 +847,12 @@
   .ac-form { display: flex; flex-direction: column; gap: 12px; max-width: 640px; }
   .ac-row { display: flex; flex-direction: column; gap: 4px; }
   .ac-label { font-size: 12px; font-weight: 600; color: var(--muted); }
-  .ac-input { padding: 8px 11px; border-radius: 8px; border: 1px solid var(--border); background: var(--card-2); color: var(--text); font: inherit; font-size: 12.5px; }
+  .ac-inrow { display: flex; align-items: center; gap: 8px; }
+  .ac-input { flex: 1; padding: 8px 11px; border-radius: 8px; border: 1px solid var(--border); background: var(--card-2); color: var(--text); font: inherit; font-size: 12.5px; }
   .ac-input:focus { outline: none; border-color: var(--accent); }
+  .ac-remove { flex: none; cursor: pointer; font-size: 11.5px; padding: 6px 11px; border-radius: 8px;
+    border: 1px solid color-mix(in srgb, var(--err) 40%, var(--border)); background: transparent; color: #ff9090; }
+  .ac-remove:hover { background: color-mix(in srgb, var(--err) 14%, transparent); border-color: var(--err); }
   .ac-events { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
   .ac-chk { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text); cursor: pointer; }
   .ac-chk input { accent-color: var(--accent); width: 15px; height: 15px; }
@@ -1345,9 +1349,11 @@
       <p class="dash-muted" style="margin:-6px 0 12px;">Post this app's failures (opened incidents, recoveries, staleness) to a chat channel — each message shows the app, dataset, score, reasons, owner, and a link. Paste an incoming-webhook URL. (Point multiple apps at the same webhook to share one channel.)</p>
       <div class="ac-form">
         <label class="ac-row"><span class="ac-label">🔷 Slack webhook</span>
-          <input type="text" id="acSlack" class="ac-input" placeholder="https://hooks.slack.com/services/…" autocomplete="off"></label>
+          <span class="ac-inrow"><input type="text" id="acSlack" class="ac-input" placeholder="https://hooks.slack.com/services/…" autocomplete="off">
+          <button type="button" class="ac-remove" id="acRemoveSlack" style="display:none;" data-tip="Stop sending to Slack">✕ Remove</button></span></label>
         <label class="ac-row"><span class="ac-label">🟦 Teams webhook</span>
-          <input type="text" id="acTeams" class="ac-input" placeholder="https://…webhook.office.com/…" autocomplete="off"></label>
+          <span class="ac-inrow"><input type="text" id="acTeams" class="ac-input" placeholder="https://…webhook.office.com/…" autocomplete="off">
+          <button type="button" class="ac-remove" id="acRemoveTeams" style="display:none;" data-tip="Stop sending to Teams">✕ Remove</button></span></label>
         <div class="ac-events"><span class="ac-label">Send on</span>
           <label class="ac-chk"><input type="checkbox" id="acEvOpened" checked> Incident opened</label>
           <label class="ac-chk"><input type="checkbox" id="acEvResolved" checked> Recovered</label>
@@ -4566,10 +4572,22 @@ function _acApply(r) {
   const s = $('#acSlack'), t = $('#acTeams');
   if (s) { s.value = ''; s.placeholder = r.slack_configured ? `Saved (${r.slack_hint}) — leave blank to keep` : 'https://hooks.slack.com/services/…'; }
   if (t) { t.value = ''; t.placeholder = r.teams_configured ? `Saved (${r.teams_hint}) — leave blank to keep` : 'https://…webhook.office.com/…'; }
+  const rs = $('#acRemoveSlack'), rt = $('#acRemoveTeams');
+  if (rs) rs.style.display = r.slack_configured ? '' : 'none';
+  if (rt) rt.style.display = r.teams_configured ? '' : 'none';
   const ev = r.events || {};
   if ($('#acEvOpened')) $('#acEvOpened').checked = ev.opened !== false;
   if ($('#acEvResolved')) $('#acEvResolved').checked = ev.resolved !== false;
   if ($('#acEvStale')) $('#acEvStale').checked = ev.stale !== false;
+}
+async function clearChannel(which) {
+  const label = which === 'slack' ? 'Slack' : 'Teams';
+  if (!confirm(`Stop sending alerts to ${label}? The webhook will be removed for this app.`)) return;
+  const st = $('#acStatus'); if (st) st.textContent = `Removing ${label}…`;
+  const body = { app_id: APP_ID, action: 'set' };
+  body[which === 'slack' ? 'clear_slack' : 'clear_teams'] = true;
+  try { _acApply(await postJSON(`${API_BASE}/data-quality/alert-channels`, HEADERS, body)); if (st) st.textContent = `${label} removed ✓`; }
+  catch (e) { if (st) st.textContent = 'Error: ' + e.message; }
 }
 async function loadAlertChannels() {
   if (!APP_ID) return;
@@ -4599,6 +4617,8 @@ async function testAlertChannels() {
 }
 { const b = $('#acSave'); if (b) b.addEventListener('click', saveAlertChannels); }
 { const b = $('#acTest'); if (b) b.addEventListener('click', testAlertChannels); }
+{ const b = $('#acRemoveSlack'); if (b) b.addEventListener('click', () => clearChannel('slack')); }
+{ const b = $('#acRemoveTeams'); if (b) b.addEventListener('click', () => clearChannel('teams')); }
 
 async function loadIncidents() {
   if (!configOK) return;
