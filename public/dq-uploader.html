@@ -792,6 +792,22 @@
     background: var(--card); color: var(--text); font: inherit; font-size: 12.5px; }
   .ds-note-input:focus { outline: none; border-color: var(--accent); }
   .ds-note-save { flex: none; }
+  /* Metadata quality panel */
+  .mq-panel { border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; background: var(--card-2); }
+  .mq-head { display: flex; align-items: center; justify-content: space-between; }
+  .mq-title { font-size: 14px; font-weight: 700; color: var(--text); }
+  .mq-overall { font-size: 22px; font-weight: 800; color: var(--text); display: inline-flex; align-items: center; gap: 8px; }
+  .mq-row { display: grid; grid-template-columns: 120px 1fr 34px; align-items: center; gap: 12px; margin-top: 12px; }
+  .mq-label { font-size: 12.5px; font-weight: 600; color: var(--text); }
+  .mq-bar { height: 8px; border-radius: 999px; background: color-mix(in srgb, var(--border) 60%, transparent); overflow: hidden; }
+  .mq-fill { display: block; height: 100%; border-radius: 999px; }
+  .mq-score { font-size: 12.5px; font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
+  .mq-na { font-size: 11.5px; color: var(--muted); font-style: italic; grid-column: 2 / 4; }
+  .mq-find { margin: 3px 0 2px; padding-left: 132px; list-style: none; }
+  .mq-find li { font-size: 11.5px; color: var(--muted); line-height: 1.5; }
+  .mq-find li strong { color: #cdd6ea; font-weight: 600; }
+  .mq-clean { padding-left: 132px; font-size: 11.5px; color: color-mix(in srgb, var(--ok) 80%, var(--muted)); }
+  @media (max-width: 620px) { .mq-find, .mq-clean { padding-left: 0; } }
   /* Read-only stage medal chip in the dataset name cell (picker lives in the detail) */
   .ds-stage-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600;
     padding: 3px 9px; border-radius: 999px; border: 1px solid var(--border); background: var(--card-2); color: #b8c2d8; }
@@ -3488,7 +3504,7 @@ function renderAppOverview(datasets) {
 // so rules and everything about a dataset live together instead of behind toggle buttons. ----
 let dsTrends = null;         // cached 30-day trends for the selected dataset
 let dsTab = 'scores';
-const DS_TABS = [['scores', 'Scores'], ['trends', 'Trends'], ['rules', 'Rules'],
+const DS_TABS = [['scores', 'Scores'], ['metadata', 'Metadata'], ['trends', 'Trends'], ['rules', 'Rules'],
                  ['failed', 'Failed records'], ['history', 'History']];
 
 async function selectDataset(key, name) {
@@ -3530,6 +3546,7 @@ function selectDsTab() {
   if (dsTab === 'history') { renderDatasetHistory(panel); return; }
   if (!prefix) { panel.innerHTML = `<p class="dash-muted">No completed run yet for this dataset — run an assessment to populate this.</p>`; return; }
   if (dsTab === 'scores') { panel.innerHTML = dqLoader('Loading run', null, true); loadDsScores(panel, prefix); }
+  else if (dsTab === 'metadata') { panel.innerHTML = dqLoader('Assessing metadata', null, true); loadDsMetadata(panel, prefix); }
   else if (dsTab === 'rules') { loadDsRules(panel, prefix); }
   else if (dsTab === 'failed') { panel.innerHTML = dqLoader('Loading failed records', null, true); loadDsFailed(panel, prefix); }
 }
@@ -3540,6 +3557,9 @@ async function loadDsScores(panel, prefix) {
     renderAssessment(r, panel, { context: 'app', noRecords: true });
     try {
       const pr = await postJSON(`${API_BASE}/data-quality/profile`, HEADERS, { result_prefix: prefix });
+      const md = document.createElement('div'); md.style.marginTop = '16px';
+      md.innerHTML = renderMetadataPanel(pr.profile);      // metadata quality (structure), beside the data-quality result
+      panel.appendChild(md);
       const det = document.createElement('details'); det.style.marginTop = '14px';
       det.innerHTML = `<summary class="hint" style="cursor:pointer;">▸ Column profile (types, nulls, distinct, ranges)</summary><div style="margin-top:8px;">${renderColumnProfile(pr.profile)}</div>`;
       panel.appendChild(det);
@@ -3975,6 +3995,104 @@ function renderColumnProfile(profile) {
   return `<div style="overflow-x:auto;"><table class="dash-table">` +
     `<tr><th>Column</th><th>Type</th><th>Null %</th><th>Distinct</th>` +
     `<th>Range / length</th><th>Mean / top values</th></tr>${rows}</table></div>`;
+}
+
+// ===================== Metadata quality (Phase 1: Naming / Typing / PII) =====================
+// Scores the dataset's STRUCTURE (schema/names/types/sensitivity), separately from the 9 DAMA
+// data-quality dimensions. Computed client-side from the column profile already fetched per run.
+function metadataQuality(profile) {
+  const cols = (profile && profile.columns) || {};
+  const names = Object.keys(cols);
+  if (!names.length) return null;
+  const N = names.length;
+  const sampleVals = c => (c.top_values || []).map(x => (x && x.value != null) ? String(x.value) : '').filter(v => v !== '');
+  const isNum = v => /^-?\d+(\.\d+)?$/.test(String(v).trim());
+  const isDate = v => /^\d{4}-\d{1,2}-\d{1,2}([ T]|$)/.test(String(v).trim()) || /^\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4}$/.test(String(v).trim());
+
+  // --- Naming ---
+  const cryptic = /^(col|column|field|fld|f|c|var|val|v|x|y|z|tmp|temp|unnamed|untitled|test|data|value)_?\d*$/i;
+  const conv = new Set(), namingFindings = [];
+  names.forEach(nm => {
+    if (nm !== nm.trim()) namingFindings.push({ col: nm || '(blank)', msg: 'leading / trailing whitespace' });
+    else if (cryptic.test(nm) || nm.replace(/[^a-zA-Z]/g, '').length <= 1) namingFindings.push({ col: nm, msg: 'cryptic / non-descriptive name' });
+    else if (/[^a-zA-Z0-9_ .-]/.test(nm)) namingFindings.push({ col: nm, msg: 'unusual characters in name' });
+    if (/^[a-z0-9]+(_[a-z0-9]+)+$/.test(nm)) conv.add('snake');
+    else if (/^[a-z][a-z0-9]*[A-Z]/.test(nm)) conv.add('camelCase');
+    else if (/^[A-Z][a-z0-9]*[A-Z]/.test(nm)) conv.add('PascalCase');
+    else if (/\s/.test(nm)) conv.add('spaced');
+  });
+  const mixed = conv.size > 1;
+  let namingScore = Math.max(0, Math.min(100, Math.round(100 * (1 - namingFindings.length / N)) - (mixed ? 8 : 0)));
+  if (mixed) namingFindings.push({ col: '(whole table)', msg: `mixed naming conventions: ${[...conv].join(', ')}` });
+
+  // --- Typing ---
+  const typingFindings = [];
+  names.forEach(nm => {
+    const c = cols[nm], t = String(c.inferred_dtype || '').toLowerCase();
+    const isText = !t || /(str|text|char|object|mixed|categor|unknown|utf|varchar)/.test(t);
+    const tv = sampleVals(c), uniqLower = new Set(tv.map(v => v.toLowerCase()));
+    if (c.null_rate_pct === 100) typingFindings.push({ col: nm, msg: 'entirely null — no usable type or data' });
+    else if (c.distinct_count === 1) typingFindings.push({ col: nm, msg: 'constant (single value) — redundant column' });
+    else if (isText && tv.length >= 2 && tv.every(isNum)) typingFindings.push({ col: nm, msg: 'stored as text but values are numeric' });
+    else if (isText && tv.length >= 2 && tv.every(isDate)) typingFindings.push({ col: nm, msg: 'stored as text but values are dates' });
+    else if (isText && tv.length >= 2 && uniqLower.size <= 2 && tv.every(v => /^(true|false|yes|no|y|n|t|f|0|1)$/i.test(v.trim()))) typingFindings.push({ col: nm, msg: 'stored as text but is boolean' });
+  });
+  const typingScore = Math.max(0, Math.round(100 * (1 - typingFindings.length / N)));
+
+  // --- PII exposure ---
+  const piiName = /(e[-_ ]?mail|phone|mobile|(^|_)tel(_|$)|dob|birth|ssn|nino|national.?insurance|passport|iban|sort.?code|(^|_)pan(_|$)|card|credit|first.?name|last.?name|sur.?name|full.?name|(^|_)name(_|$)|address|post.?code|(^|_)zip|latitude|longitude|gender|ethnic|salary)/i;
+  const emailRe = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+  // Phone-ish: not a date, mostly digits/()+-/space, and ≥10 actual digits (excludes 8-digit dates).
+  const isPhone = v => { const s = String(v).trim(); return !isDate(s) && /^\+?[\d()\s-]{9,}$/.test(s) && s.replace(/\D/g, '').length >= 10; };
+  const piiFindings = [];
+  names.forEach(nm => {
+    const tv = sampleVals(cols[nm]);
+    const valHit = tv.some(v => emailRe.test(v.trim())) ? 'sample values look like emails'
+      : (tv.length >= 2 && tv.every(isPhone) ? 'sample values look like phone numbers' : '');
+    if (piiName.test(nm) || valHit) piiFindings.push({ col: nm, msg: valHit || 'name suggests personal data' });
+  });
+  const piiScore = piiFindings.length ? 55 : 100;
+
+  const dims = [
+    { key: 'naming', label: 'Naming', score: namingScore, findings: namingFindings },
+    { key: 'typing', label: 'Typing', score: typingScore, findings: typingFindings },
+    { key: 'pii', label: 'PII exposure', score: piiScore, findings: piiFindings },
+    { key: 'documentation', label: 'Documentation', score: null,
+      notAssessed: "Column descriptions aren't exposed by this source's profile — comes with the warehouse metadata catalog (Tier 2)." },
+  ];
+  const scored = dims.filter(d => d.score != null);
+  return { overall: scored.length ? Math.round(scored.reduce((s, d) => s + d.score, 0) / scored.length) : null, dims, columns: N };
+}
+
+function renderMetadataPanel(profile) {
+  const mq = metadataQuality(profile);
+  if (!mq) return '<p class="dash-muted">No column profile available to assess metadata.</p>';
+  const cls = s => s >= 90 ? 'green' : s >= 75 ? 'amber' : 'red';
+  const col = s => s >= 90 ? 'var(--ok)' : s >= 75 ? 'var(--run)' : 'var(--err)';
+  const rows = mq.dims.map(d => {
+    if (d.score == null)
+      return `<div class="mq-row"><span class="mq-label">${esc(d.label)}</span>` +
+        `<span class="mq-na" data-tip="${esc(d.notAssessed || '')}">not assessed</span></div>`;
+    const find = (d.findings || []).length
+      ? `<ul class="mq-find">${d.findings.slice(0, 8).map(f => `<li><strong>${esc(f.col)}</strong> — ${esc(f.msg)}</li>`).join('')}` +
+        `${d.findings.length > 8 ? `<li class="hint">+${d.findings.length - 8} more</li>` : ''}</ul>`
+      : `<div class="mq-clean">✓ no issues found</div>`;
+    return `<div class="mq-row"><span class="mq-label">${esc(d.label)}</span>` +
+      `<span class="mq-bar"><span class="mq-fill" style="width:${Math.round(d.score)}%;background:${col(d.score)}"></span></span>` +
+      `<span class="mq-score">${Math.round(d.score)}</span></div>${find}`;
+  }).join('');
+  const ov = mq.overall;
+  return `<div class="mq-panel"><div class="mq-head"><span class="mq-title">Metadata quality</span>` +
+    `<span class="mq-overall">${ov == null ? '—' : ov}${ov == null ? '' : ` <span class="tag ${cls(ov)}">${ov >= 90 ? 'good' : ov >= 75 ? 'fair' : 'weak'}</span>`}</span></div>` +
+    `<p class="hint" style="margin:2px 0 14px;">Scores the dataset's <em>structure</em> — names, types &amp; sensitivity of the ${mq.columns} column${mq.columns === 1 ? '' : 's'} — separately from the 9 data-quality dimensions.</p>` +
+    rows + `</div>`;
+}
+
+async function loadDsMetadata(panel, prefix) {
+  try {
+    const pr = await postJSON(`${API_BASE}/data-quality/profile`, HEADERS, { result_prefix: prefix });
+    panel.innerHTML = renderMetadataPanel(pr.profile);
+  } catch (e) { panel.innerHTML = `<p class="dash-muted" style="color:var(--err)">${esc(e.message)}</p>`; }
 }
 
 function _chgItem(label, p, c, d) {
