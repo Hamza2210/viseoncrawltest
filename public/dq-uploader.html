@@ -843,6 +843,17 @@
   .mc-reqcols { padding: 7px 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--card); color: var(--text); font: inherit; font-size: 12.5px; }
   .mc-reqcols:focus { outline: none; border-color: var(--accent); }
   .mc-actions { display: flex; align-items: center; gap: 12px; margin-top: 2px; }
+  /* Alert channels (Slack / Teams) */
+  .ac-form { display: flex; flex-direction: column; gap: 12px; max-width: 640px; }
+  .ac-row { display: flex; flex-direction: column; gap: 4px; }
+  .ac-label { font-size: 12px; font-weight: 600; color: var(--muted); }
+  .ac-input { padding: 8px 11px; border-radius: 8px; border: 1px solid var(--border); background: var(--card-2); color: var(--text); font: inherit; font-size: 12.5px; }
+  .ac-input:focus { outline: none; border-color: var(--accent); }
+  .ac-events { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .ac-chk { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text); cursor: pointer; }
+  .ac-chk input { accent-color: var(--accent); width: 15px; height: 15px; }
+  .ac-actions { display: flex; align-items: center; gap: 12px; margin-top: 2px; }
+  #acStatus { font-size: 11.5px; }
   /* Read-only stage medal chip in the dataset name cell (picker lives in the detail) */
   .ds-stage-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600;
     padding: 3px 9px; border-radius: 999px; border: 1px solid var(--border); background: var(--card-2); color: #b8c2d8; }
@@ -1328,6 +1339,27 @@
       <div id="incList"><p class="dash-muted">Loading…</p></div>
     </div>
     <div id="incDetail" style="display:none;"></div>
+
+    <div class="card">
+      <h2>Alert channels <span class="hint" style="text-transform:none;letter-spacing:0;font-weight:400;">Slack / Teams</span></h2>
+      <p class="dash-muted" style="margin:-6px 0 12px;">Post this app's failures (opened incidents, recoveries, staleness) to a chat channel — each message shows the app, dataset, score, reasons, owner, and a link. Paste an incoming-webhook URL. (Point multiple apps at the same webhook to share one channel.)</p>
+      <div class="ac-form">
+        <label class="ac-row"><span class="ac-label">🔷 Slack webhook</span>
+          <input type="text" id="acSlack" class="ac-input" placeholder="https://hooks.slack.com/services/…" autocomplete="off"></label>
+        <label class="ac-row"><span class="ac-label">🟦 Teams webhook</span>
+          <input type="text" id="acTeams" class="ac-input" placeholder="https://…webhook.office.com/…" autocomplete="off"></label>
+        <div class="ac-events"><span class="ac-label">Send on</span>
+          <label class="ac-chk"><input type="checkbox" id="acEvOpened" checked> Incident opened</label>
+          <label class="ac-chk"><input type="checkbox" id="acEvResolved" checked> Recovered</label>
+          <label class="ac-chk"><input type="checkbox" id="acEvStale" checked> Staleness</label>
+        </div>
+        <div class="ac-actions">
+          <button type="button" id="acSave">Save</button>
+          <button type="button" class="btn-sm" id="acTest">Send test</button>
+          <span class="hint" id="acStatus"></span>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- ============ LINEAGE ============ -->
@@ -4528,8 +4560,49 @@ function applyIncScope() {
 document.querySelectorAll('#incScopeToggle .scope-btn').forEach(b =>
   b.addEventListener('click', () => { incScope = b.dataset.scope; applyIncScope(); }));
 
+// ---- Alert channels (Slack / Teams) — tenant-wide ---------------------------------------
+function _acApply(r) {
+  if (!r) return;
+  const s = $('#acSlack'), t = $('#acTeams');
+  if (s) { s.value = ''; s.placeholder = r.slack_configured ? `Saved (${r.slack_hint}) — leave blank to keep` : 'https://hooks.slack.com/services/…'; }
+  if (t) { t.value = ''; t.placeholder = r.teams_configured ? `Saved (${r.teams_hint}) — leave blank to keep` : 'https://…webhook.office.com/…'; }
+  const ev = r.events || {};
+  if ($('#acEvOpened')) $('#acEvOpened').checked = ev.opened !== false;
+  if ($('#acEvResolved')) $('#acEvResolved').checked = ev.resolved !== false;
+  if ($('#acEvStale')) $('#acEvStale').checked = ev.stale !== false;
+}
+async function loadAlertChannels() {
+  if (!APP_ID) return;
+  try { _acApply(await postJSON(`${API_BASE}/data-quality/alert-channels`, HEADERS, { app_id: APP_ID, action: 'get' })); }
+  catch (e) { /* non-fatal */ }
+}
+function _acBody(action) {
+  const body = { app_id: APP_ID, action, events: { opened: $('#acEvOpened').checked, resolved: $('#acEvResolved').checked, stale: $('#acEvStale').checked } };
+  const s = ($('#acSlack').value || '').trim(), t = ($('#acTeams').value || '').trim();
+  if (s) body.slack_url = s;
+  if (t) body.teams_url = t;
+  return body;
+}
+async function saveAlertChannels() {
+  const st = $('#acStatus'); if (st) st.textContent = 'Saving…';
+  try { _acApply(await postJSON(`${API_BASE}/data-quality/alert-channels`, HEADERS, _acBody('set'))); if (st) st.textContent = 'Saved ✓'; }
+  catch (e) { if (st) st.textContent = 'Error: ' + e.message; }
+}
+async function testAlertChannels() {
+  const st = $('#acStatus'); if (st) st.textContent = 'Sending test…';
+  try {
+    const r = await postJSON(`${API_BASE}/data-quality/alert-channels`, HEADERS, _acBody('test'));
+    const res = r.results || {};
+    const parts = Object.entries(res).map(([k, v]) => `${k}: ${v ? 'sent ✓' : 'failed ✗'}`);
+    if (st) st.textContent = parts.length ? parts.join(' · ') : 'No webhook configured';
+  } catch (e) { if (st) st.textContent = 'Error: ' + e.message; }
+}
+{ const b = $('#acSave'); if (b) b.addEventListener('click', saveAlertChannels); }
+{ const b = $('#acTest'); if (b) b.addEventListener('click', testAlertChannels); }
+
 async function loadIncidents() {
   if (!configOK) return;
+  loadAlertChannels();
   const list = $('#incList');
   $('#incDetail').style.display = 'none'; $('#incDetail').innerHTML = '';
   if (!APP_ID) {
