@@ -2176,11 +2176,16 @@ function cmpMd(t) {   // minimal markdown for the AI explanation: **bold**, numb
     .replace(/\n{2,}/g, '<br><br>')
     .replace(/\n/g, '<br>');
 }
-function cmpRegrade(counts, dismissed) {
-  const c = Object.assign({}, counts || {});
-  Object.values(dismissed || {}).forEach(d => {
-    const s = d && d.severity;
-    if ((s === 'critical' || s === 'high' || s === 'medium') && c[s]) { c[s] = Math.max(0, c[s] - 1); if (c.fail) c.fail = Math.max(0, c.fail - 1); }
+// Re-tally exposure counts + grade DIRECTLY from the active (non-dismissed) controls — correct by
+// construction. Quality-class controls (§5.6 data-quality) are tallied separately and never drive
+// the exposure grade. (Blind severity subtraction could decrement a same-severity FAIL owned by a
+// different, undismissed control and hide it.)
+function cmpRegrade(activeControls) {
+  const c = { critical: 0, high: 0, medium: 0, low: 0, pass: 0, fail: 0, quality_fail: 0, quality_pass: 0 };
+  (activeControls || []).forEach(ct => {
+    if (ct.class === 'quality') { c[ct.status === 'FAIL' ? 'quality_fail' : 'quality_pass']++; return; }
+    if (ct.status === 'FAIL') { c.fail++; c[ct.severity] = (c[ct.severity] || 0) + 1; }
+    else if (ct.status === 'PASS') c.pass++;
   });
   return { counts: c, grade: c.critical ? 'CRITICAL' : c.high ? 'AT_RISK' : c.medium ? 'REVIEW' : 'OK' };
 }
@@ -2236,7 +2241,7 @@ function compliancePanel(comp, prefix) {
   const all = comp.controls || [];
   const active = all.filter(c => !dismissed[c.id]);
   const dropped = all.filter(c => dismissed[c.id]);
-  const rg = cmpRegrade(comp.counts, dismissed);
+  const rg = cmpRegrade(active);   // re-tally from the non-dismissed controls (correct by construction)
   const gm = CMP_GRADE[rg.grade] || { cls: 'amber', label: rg.grade || '—' };
   const c = rg.counts;
   const chips = [];
@@ -2244,6 +2249,9 @@ function compliancePanel(comp, prefix) {
   if (c.high) chips.push(`<span class="tag red">${c.high} high</span>`);
   if (c.medium) chips.push(`<span class="tag amber">${c.medium} medium</span>`);
   if (c.pass) chips.push(`<span class="tag green">${c.pass} protected</span>`);
+  // Data-quality (§5.6) is a separate, lower-weight signal — shown distinctly, not in the exposure grade.
+  if (c.quality_fail) chips.push(`<span class="tag amber" data-tip="Data-quality accuracy signal (GDPR Art. 5(1)(d)) — separate from exposure risk.">DQ accuracy: attention</span>`);
+  else if (c.quality_pass) chips.push(`<span class="tag green" data-tip="Data-quality accuracy signal (GDPR Art. 5(1)(d)).">DQ accuracy: ok</span>`);
   const opts = { key, prefix };
   const controls = active.map(ct => cmpCtrlHtml(ct, opts)).join('');
   const droppedHtml = dropped.length
