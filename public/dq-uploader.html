@@ -2274,9 +2274,11 @@ function compliancePanel(comp, prefix) {
   const droppedHtml = dropped.length
     ? `<details class="cmp-adv"><summary>${dropped.length} dismissed — marked “not a compliance issue”</summary>` +
       dropped.map(ct => cmpCtrlHtml(ct, { key, prefix, dismissedView: true, dismissMeta: dismissed[ct.id] })).join('') + `</details>` : '';
-  const adv = (comp.advisory || []).length
-    ? `<details class="cmp-adv"><summary>${comp.advisory.length} column(s) to review — matched by name, unconfirmed</summary>` +
-      comp.advisory.map(a => `<div class="cmp-advitem"><strong>${esc(a.column)}</strong> — ${esc(a.note)}</div>`).join('') +
+  const advs = comp.advisory || [];
+  const hasSpecial = advs.some(a => a.kind === 'special_category');
+  const adv = advs.length
+    ? `<details class="cmp-adv"${hasSpecial ? ' open' : ''}><summary>${advs.length} item(s) to review${hasSpecial ? ' — incl. sensitive-category data (GDPR Art. 9 / Art. 10)' : ' — matched by name, unconfirmed'}</summary>` +
+      advs.map(a => `<div class="cmp-advitem"><strong>${esc(a.column)}</strong>${a.kind_label ? ` <span class="cmp-cite">${esc(a.kind_label)}</span>` : ''} — ${esc(a.note)}</div>`).join('') +
       `</details>` : '';
   return `<div class="cmp-panel" data-prefix="${esc(prefix || '')}">
     <div class="cmp-title"><h3>Compliance</h3>
