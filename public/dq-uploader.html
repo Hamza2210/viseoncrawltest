@@ -407,6 +407,30 @@
   .src-panel .up-top { grid-template-columns: 1fr; }
   @media (max-width: 820px) { .src-workspace { grid-template-columns: 1fr; }
     #sourcePicker { position: static; max-height: none; overflow: visible; } }
+
+  /* Compliance lens (ISO/IEC 29100) */
+  .cmp-panel { margin: 18px 0 4px; padding: 14px 16px; border: 1px solid var(--border); border-radius: 12px; background: var(--card-2); }
+  .cmp-title { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+  .cmp-title h3 { margin: 0; font-size: 16px; }
+  .cmp-fw { font-size: 11px; color: var(--muted); font-weight: 600; }
+  .cmp-ctrl { border: 1px solid var(--border); border-radius: 9px; padding: 10px 12px; margin: 8px 0; background: var(--card); }
+  .cmp-ctrl.fail { border-left: 4px solid var(--err); }
+  .cmp-ctrl.pass { border-left: 4px solid var(--ok); }
+  .cmp-hd { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .cmp-col { font-weight: 700; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; }
+  .cmp-kind { font-size: 12px; color: var(--muted); }
+  .cmp-conf { font-size: 10px; text-transform: uppercase; letter-spacing: .03em; color: var(--muted); border: 1px solid var(--border); border-radius: 5px; padding: 1px 5px; }
+  .cmp-why { font-size: 13px; margin: 7px 0 4px; line-height: 1.45; }
+  .cmp-ev { font-size: 12px; color: var(--muted); margin: 3px 0; }
+  .cmp-ev code { background: color-mix(in srgb, var(--muted) 14%, transparent); padding: 1px 5px; border-radius: 4px; }
+  .cmp-fix { font-size: 12.5px; margin: 5px 0; }
+  .cmp-meta { margin-top: 7px; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .cmp-ref { font-size: 11px; color: var(--muted); font-weight: 600; }
+  .cmp-cite { font-size: 10px; background: color-mix(in srgb, var(--accent2) 14%, transparent); color: var(--accent2); border-radius: 5px; padding: 1px 6px; font-weight: 600; }
+  .cmp-adv { margin: 10px 0 4px; font-size: 12.5px; }
+  .cmp-adv summary { cursor: pointer; color: var(--muted); }
+  .cmp-advitem { margin: 6px 0; padding-left: 8px; border-left: 2px solid var(--border); }
+  .cmp-note { font-style: italic; margin-top: 10px; }
   .src-form { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px 16px; margin: 12px 0 16px; }
   .src-field { display: flex; flex-direction: column; gap: 4px; }
   .src-field.full { grid-column: 1 / -1; }
@@ -2081,6 +2105,61 @@ function filesHtml(files) {
       `<span class="sz">${humanSize(f.sizeBytes)}</span></a>`).join('') + `</div></details>`;
 }
 
+// ---- Compliance lens (ISO/IEC 29100) --------------------------------------- //
+const CMP_GRADE = {
+  CRITICAL: { cls: 'red', label: 'Critical exposure' },
+  AT_RISK: { cls: 'amber', label: 'At risk' },
+  REVIEW: { cls: 'amber', label: 'Review' },
+  OK: { cls: 'green', label: 'No exposure found' },
+};
+const CMP_SEV = { critical: 'red', high: 'red', medium: 'amber' };
+function compliancePanel(comp) {
+  if (!comp || (!(comp.controls || []).length && !(comp.advisory || []).length)) return '';
+  const gm = CMP_GRADE[comp.grade] || { cls: 'amber', label: comp.grade || '—' };
+  const c = comp.counts || {};
+  const chips = [];
+  if (c.critical) chips.push(`<span class="tag red">${c.critical} critical</span>`);
+  if (c.high) chips.push(`<span class="tag red">${c.high} high</span>`);
+  if (c.medium) chips.push(`<span class="tag amber">${c.medium} medium</span>`);
+  if (c.pass) chips.push(`<span class="tag green">${c.pass} protected</span>`);
+  const controls = (comp.controls || []).map(ct => {
+    const ev = ct.evidence || {};
+    const statusTag = ct.status === 'FAIL'
+      ? `<span class="tag ${CMP_SEV[ct.severity] || 'amber'}">${esc((ct.severity || '').toUpperCase())} · FAIL</span>`
+      : `<span class="tag green">PASS</span>`;
+    const exposure = (ct.status === 'FAIL' && ev.cleartext != null && ev.evaluated != null)
+      ? `<div class="cmp-ev">${Number(ev.cleartext).toLocaleString()} of ${Number(ev.evaluated).toLocaleString()} scanned values in cleartext · basis: ${esc(ev.basis || 'sample')}</div>` : '';
+    const samples = (ev.samples || []).length
+      ? `<div class="cmp-ev">Value shapes (masked): ${ev.samples.map(s => `<code>${esc(s)}</code>`).join(' ')}</div>` : '';
+    const cites = (ct.citations || []).map(x => `<span class="cmp-cite">${esc(x)}</span>`).join(' ');
+    return `<div class="cmp-ctrl ${ct.status === 'FAIL' ? 'fail' : 'pass'}">
+      <div class="cmp-hd">${statusTag}
+        <span class="cmp-col">${esc(ct.column || '')}</span>
+        <span class="cmp-kind">${esc(ct.kind_label || ct.kind || '')}</span>
+        <span class="cmp-conf" data-tip="Detection confidence — high = checksum-verified.">${esc(ct.confidence || '')}</span>
+      </div>
+      <div class="cmp-why">${esc(ct.why || ct.control || '')}</div>
+      ${exposure}${samples}
+      ${ct.remediation ? `<div class="cmp-fix">↪ ${esc(ct.remediation)}</div>` : ''}
+      <div class="cmp-meta"><span class="cmp-ref">${esc(ct.principle_ref || '')}</span> ${cites}</div>
+    </div>`;
+  }).join('');
+  const adv = (comp.advisory || []).length
+    ? `<details class="cmp-adv"><summary>${comp.advisory.length} column(s) to review — matched by name, unconfirmed</summary>` +
+      comp.advisory.map(a => `<div class="cmp-advitem"><strong>${esc(a.column)}</strong> — ${esc(a.note)}</div>`).join('') +
+      `</details>` : '';
+  return `<div class="cmp-panel">
+    <div class="cmp-title"><h3>Compliance</h3>
+      <span class="tag ${gm.cls}">${esc(gm.label)}</span>
+      <span class="cmp-fw" data-tip="The compliance lens is anchored on the ISO/IEC 29100 privacy principles, with GDPR &amp; PCI DSS clause citations.">${esc(comp.framework || 'ISO/IEC 29100')}</span>
+      ${chips.join(' ')}
+    </div>
+    ${controls || '<p class="hint">No sensitive-data exposure detected in the scanned values.</p>'}
+    ${adv}
+    <p class="hint cmp-note">${esc(comp.note || '')}</p>
+  </div>`;
+}
+
 function renderAssessment(r, bodyEl, opts) {
   const isApp = !!(opts && opts.context === 'app');
   const body = bodyEl || $('#assessBody');
@@ -2257,6 +2336,7 @@ function renderAssessment(r, bodyEl, opts) {
     : '';
   html += `<div class="dim-split"><div class="dim-split-table">${tableHtml}${explainBtn}</div><div class="dim-split-chart">${radarHtml}</div></div>`;
   if (canAI) html += `<div class="score-ai-out" style="margin-top:12px;"></div>`;
+  html += compliancePanel(r.compliance);      // ISO 29100 privacy/compliance lens
   // Failed records surfaced INLINE here (not just on the dashboard), so the offending
   // rows are visible wherever a run is shown — upload result, incident view, history,
   // app tables. Blockers auto-load (gate fail); an otherwise-clean run offers a lazy
