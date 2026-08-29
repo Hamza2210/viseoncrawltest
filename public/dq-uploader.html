@@ -2337,9 +2337,10 @@ function renderAssessment(r, bodyEl, opts) {
     : '';
   html += `<div class="dim-split"><div class="dim-split-table">${tableHtml}${explainBtn}</div><div class="dim-split-chart">${radarHtml}</div></div>`;
   if (canAI) html += `<div class="score-ai-out" style="margin-top:12px;"></div>`;
-  // Metadata scores inline on single-run result screens (upload/source/dashboard); skipped in the
-  // multi-table app grid (opts.lazyRecords) so we don't fire one profile fetch per table on render.
-  if (r.resultPrefix && !(opts && opts.lazyRecords)) html += `<div class="assess-metadata" data-prefix="${esc(r.resultPrefix)}"></div>`;
+  // Metadata scores inline on run-result screens (upload/source/incident). Skipped where the
+  // caller renders its own metadata (opts.noMetadata — the dashboard views) or in the multi-table
+  // app grid (opts.lazyRecords, which would fire one profile fetch per table on render).
+  if (r.resultPrefix && !(opts && (opts.lazyRecords || opts.noMetadata))) html += `<div class="assess-metadata" data-prefix="${esc(r.resultPrefix)}"></div>`;
   html += compliancePanel(r.compliance);      // ISO 29100 privacy/compliance lens
   // Failed records surfaced INLINE here (not just on the dashboard), so the offending
   // rows are visible wherever a run is shown — upload result, incident view, history,
@@ -3840,7 +3841,7 @@ function selectDsTab() {
 async function loadDsScores(panel, prefix) {
   try {
     const r = await postJSON(`${API_BASE}/data-quality/result`, HEADERS, { result_prefix: prefix });
-    renderAssessment(r, panel, { context: 'app', noRecords: true });
+    renderAssessment(r, panel, { context: 'app', noRecords: true, noMetadata: true });   // this view appends its own metadata panel below
     try {
       const pr = await postJSON(`${API_BASE}/data-quality/profile`, HEADERS, { result_prefix: prefix });
       const md = document.createElement('div'); md.style.marginTop = '16px';
@@ -4245,7 +4246,7 @@ async function viewLatestRun() {
   box.scrollIntoView({ behavior: 'smooth', block: 'start' });
   try {
     const r = await postJSON(`${API_BASE}/data-quality/result`, HEADERS, { result_prefix: prefix });
-    renderAssessment(r, $('#dashRunScores'), { context: 'app', noRecords: true });
+    renderAssessment(r, $('#dashRunScores'), { context: 'app', noRecords: true, noMetadata: true });   // this view has its own Profile panel + Metadata sub-tab
   } catch (e) {
     $('#dashRunScores').innerHTML = `<p class="dash-muted" style="color:var(--err)">${esc(e.message)}</p>`;
   }
