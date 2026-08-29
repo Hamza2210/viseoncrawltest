@@ -4000,12 +4000,14 @@ let dsTab = 'scores';
 const DS_TABS = [['scores', 'Scores'], ['metadata', 'Metadata'], ['compliance', 'Compliance'],
                  ['trends', 'Trends'], ['rules', 'Rules'], ['failed', 'Failed records'], ['history', 'History']];
 
-async function selectDataset(key, name) {
+async function selectDataset(key, name, initialTab) {
   const ds = dashDatasets.find(x => x.key === key);
   dashSelected = { key, name, prefix: ds && ds.resultPrefix };
   if (GALAXY.orbs && GALAXY.orbs.length) GALAXY.selected = GALAXY.orbs.find(o => o.key === key) || null;
   setOverviewSplit(true);                                        // reveal the detail beside the galaxy
-  dsTrends = null; dsTab = 'scores';
+  // Open the requested sub-tab from the START so only ONE panel render happens — otherwise a later
+  // 'scores' fetch can resolve after and clobber a drill-in that wanted the Compliance tab.
+  dsTrends = null; dsTab = (initialTab && DS_TABS.some(([k]) => k === initialTab)) ? initialTab : 'scores';
   // Source marker lives here (not in the list): the actual source chip for source datasets,
   // or a "Qlik app" chip for every app table (regardless of whether its run recorded the format).
   const srcChip = ds ? (isSourceDataset(ds) ? sourceChip(ds.sourceFormat) : sourceChip('qlik')) : '';
@@ -4849,9 +4851,7 @@ async function openDatasetCompliance(key, name) {
   if (ds) dashScope = isSourceDataset(ds) ? 'source' : 'app';   // set scope first so the dataset is in the scoped list
   switchTab('dashboard');
   await loadDashboard();          // await a settled load so the selection sticks (no race with switchTab's own load)
-  await selectDataset(key, name);
-  dsTab = 'compliance';
-  selectDsTab();
+  await selectDataset(key, name, 'compliance');   // open straight on the Compliance tab (single render)
 }
 
 async function loadDsCompliance(panel, prefix) {
