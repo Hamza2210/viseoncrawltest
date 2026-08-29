@@ -4601,6 +4601,21 @@ async function loadComplianceEstate() {
   if (!dashDatasetsAll || !dashDatasetsAll.length) { wrap.innerHTML = dqLoader('Loading compliance posture', null, true); await loadDashboard(); }
   renderComplianceEstate();
 }
+// Pull fresh dashboard data (which carries the compliance grades) and re-render the estate +
+// nav badge. Used by the Refresh button and auto-fired when an assessment finishes.
+async function refreshComplianceData() {
+  if (!APP_ID) return;
+  await loadDashboard();                                   // refreshes dashDatasetsAll + the badge (guarded)
+  const tab = $('#complianceTab');
+  if (tab && tab.style.display !== 'none') renderComplianceEstate();
+}
+// After a run finishes: refresh now, and again shortly after — the estate reads the DynamoDB
+// metrics rows, which the emitter writes a beat after the worker finishes, so a single refresh
+// can just miss it.
+function scheduleComplianceRefresh() {
+  refreshComplianceData();
+  setTimeout(refreshComplianceData, 6000);
+}
 function renderComplianceEstate() {
   const wrap = $('#cmpEstate'); if (!wrap) return;
   // Scope to app-data vs source-data, matching the dashboard's toggle; tiles + rows reflect it.
@@ -4634,15 +4649,16 @@ function renderComplianceEstate() {
     <tr class="cmp-detail-row" id="cmpdet-${i}" style="display:none;"><td colspan="5"><div class="cmp-detail" data-loaded="0"></div></td></tr>`).join('')
     : `<tr><td colspan="5" class="dash-muted">No datasets match this filter.</td></tr>`;
   wrap.innerHTML =
-    `<div style="margin-bottom:14px;"><span class="scope-toggle" id="cmpScopeToggle">
+    `<div style="margin-bottom:14px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;"><span class="scope-toggle" id="cmpScopeToggle">
        <button type="button" class="scope-btn${cmpScope === 'app' ? ' active' : ''}" data-cmpscope="app">App data</button>
        <button type="button" class="scope-btn${cmpScope === 'source' ? ' active' : ''}" data-cmpscope="source">Source data</button>
-     </span></div>` +
+     </span><button type="button" class="linkbtn" id="cmpRefresh">↻ Refresh</button></div>` +
     tiles +
     `<div class="cmp-filters">${filters}</div>` +
     `<table class="cmp-estate"><thead><tr><th>Dataset</th><th>Posture</th><th>Exposures</th><th>Last run</th><th></th></tr></thead><tbody>${body}</tbody></table>` +
     (notAssessed ? `<p class="hint" style="margin-top:10px;">${notAssessed} ${noun}${notAssessed === 1 ? '' : 's'} have no compliance assessment yet — re-run to populate.</p>` : '');
   wrap.querySelectorAll('#cmpScopeToggle .scope-btn').forEach(b => b.addEventListener('click', () => { cmpScope = b.dataset.cmpscope; cmpFilter = 'all'; renderComplianceEstate(); }));
+  { const rb = wrap.querySelector('#cmpRefresh'); if (rb) rb.addEventListener('click', async () => { rb.textContent = '↻ Refreshing…'; rb.disabled = true; await refreshComplianceData(); }); }
   wrap.querySelectorAll('[data-cmpf]').forEach(b => b.addEventListener('click', () => { cmpFilter = b.dataset.cmpf; renderComplianceEstate(); }));
   // Whole row toggles an inline compliance detail (lazy-loaded from the run's report).
   wrap.querySelectorAll('.cmp-row').forEach(row => row.addEventListener('click', () => {
@@ -7180,6 +7196,7 @@ async function renderAppResults(tables, isFullApp) {
 
   renderAppResultsFinal(tables, results, isFullApp);
   appBanner('ok', 'Assessment complete.');
+  scheduleComplianceRefresh();   // reflect the new compliance results in the Compliance tab + badge
 }
 
 // Poll one run to a terminal state and return the result (no rendering).
@@ -7314,6 +7331,7 @@ async function pollInto(resultPrefix, bodyEl, opts) {
     if (r && TERMINAL.includes(r.state)) {
       renderAssessment(r, bodyEl, opts);
       if (opts && opts.onResult) opts.onResult(r);
+      if (!(opts && opts.noComplianceRefresh)) scheduleComplianceRefresh();   // keep the Compliance tab + badge current
       return;
     }
     if (!nudged && Date.now() - start > NUDGE_MS) {
