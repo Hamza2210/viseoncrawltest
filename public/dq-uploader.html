@@ -437,6 +437,8 @@
   .cmp-btn.active { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--card-2)); color: var(--accent2); }
   .cmp-dismiss-btn:hover { border-color: var(--err); color: var(--err); }
   .cmp-records { margin: 8px 0; }
+  .cmp-rec-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; flex-wrap: wrap; }
+  .cmp-rec-raw { background: color-mix(in srgb, var(--err) 12%, transparent) !important; color: var(--text); }
   table.cmp-rec-tbl { width: 100%; border-collapse: collapse; font-size: 12px; }
   table.cmp-rec-tbl th { text-align: left; color: var(--muted); font-weight: 600; padding: 4px 8px; border-bottom: 1px solid var(--border); }
   table.cmp-rec-tbl td { padding: 4px 8px; border-bottom: 1px solid var(--border); }
@@ -2195,10 +2197,12 @@ function cmpCtrlHtml(ct, opts) {
   // Failing records (masked): a locator (primary key or row) + the masked offending value.
   const recs = ev.records || [];
   const recsBlock = recs.length ? `<div class="cmp-records" style="display:none;">
-      <table class="cmp-rec-tbl"><thead><tr><th>Record</th><th>Value (masked)</th></tr></thead><tbody>${
-        recs.map(r => { const loc = r.key ? Object.entries(r.key).map(([k, v]) => `${esc(k)}=${esc(String(v))}`).join(', ') : ('row ' + esc(String(r.row))); return `<tr><td>${loc}</td><td><code>${esc(r.masked || '')}</code></td></tr>`; }).join('')
-      }</tbody></table>
-      <div class="hint" style="margin-top:4px;">Values are masked — use the locator to find the record in your source.</div></div>` : '';
+      <div class="cmp-rec-bar"><button type="button" class="cmp-btn cmp-reveal-btn">👁 Reveal values</button>
+        <span class="hint">Masked by default — reveal to see the actual offending values (locator finds the record in your source).</span></div>
+      <table class="cmp-rec-tbl"><thead><tr><th>Record</th><th>Value</th></tr></thead><tbody>${
+        recs.map(r => { const loc = r.key ? Object.entries(r.key).map(([k, v]) => `${esc(k)}=${esc(String(v))}`).join(', ') : ('row ' + esc(String(r.row)));
+          return `<tr><td>${loc}</td><td><code class="cmp-rec-masked">${esc(r.masked || '')}</code><code class="cmp-rec-raw" style="display:none;">${esc(r.raw != null ? String(r.raw) : '')}</code></td></tr>`; }).join('')
+      }</tbody></table></div>` : '';
   // Action buttons only on FAIL controls (nothing to view/dismiss on a PASS).
   let actions = '';
   if (ct.status === 'FAIL' && !opts.dismissedView) {
@@ -2264,7 +2268,7 @@ function compliancePanel(comp, prefix) {
 // One delegated handler for every compliance panel, wherever it's inserted (result screen,
 // dataset sub-tab, estate detail). Reads the panel's data-prefix + the button's data-cid.
 document.addEventListener('click', async (e) => {
-  const btn = e.target && e.target.closest ? e.target.closest('.cmp-records-btn, .cmp-explain-btn, .cmp-dismiss-btn, .cmp-restore-btn') : null;
+  const btn = e.target && e.target.closest ? e.target.closest('.cmp-records-btn, .cmp-explain-btn, .cmp-dismiss-btn, .cmp-restore-btn, .cmp-reveal-btn') : null;
   if (!btn) return;
   const panel = btn.closest('.cmp-panel'); const ctrl = btn.closest('.cmp-ctrl');
   if (!panel || !ctrl) return;
@@ -2272,6 +2276,14 @@ document.addEventListener('click', async (e) => {
   if (btn.classList.contains('cmp-records-btn')) {
     const rec = ctrl.querySelector('.cmp-records');
     if (rec) { const open = rec.style.display !== 'none'; rec.style.display = open ? 'none' : ''; btn.classList.toggle('active', !open); }
+    return;
+  }
+  if (btn.classList.contains('cmp-reveal-btn')) {
+    const block = btn.closest('.cmp-records'); if (!block) return;
+    const revealed = btn.classList.toggle('active');
+    block.querySelectorAll('.cmp-rec-masked').forEach(el => el.style.display = revealed ? 'none' : '');
+    block.querySelectorAll('.cmp-rec-raw').forEach(el => el.style.display = revealed ? '' : 'none');
+    btn.textContent = revealed ? '🙈 Mask values' : '👁 Reveal values';
     return;
   }
   if (btn.classList.contains('cmp-explain-btn')) {
