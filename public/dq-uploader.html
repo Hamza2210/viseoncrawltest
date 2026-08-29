@@ -7199,13 +7199,27 @@ function _gatePassOf(r) {
 function renderOverall(panelEl, results, total) {
   const scored = results.filter(r => r && _overallScoreOf(r) != null);
   const scores = scored.map(_overallScoreOf);
-  const worst = scored.map(_overallStatusOf).filter(Boolean)
-    .sort((a, b) => (_STATUS_RANK[b] || 0) - (_STATUS_RANK[a] || 0))[0] || '';
+  const avg = scores.length ? _avg(scores) : null;
+  // The headline number is the app-wide AVERAGE, coloured by the average's own band so a healthy
+  // average reads green. A weak table can't hide behind it, though: a separate callout chip flags
+  // any red/amber tables + gate failures, so "why is this flagged" stays explicit and honest.
+  const avgStatus = avg == null ? '' : (avg >= 95 ? 'green' : avg >= 85 ? 'amber' : 'red');
+  const statusCounts = { red: 0, amber: 0, green: 0 };
+  scored.forEach(r => { const s = _overallStatusOf(r); if (statusCounts[s] != null) statusCounts[s]++; });
   const gatePass = results.filter(_gatePassOf).length;
+  const gateFails = Math.max(0, results.length - gatePass);
+  const callout = [];
+  if (statusCounts.red) callout.push(`${statusCounts.red} table${statusCounts.red > 1 ? 's' : ''} red`);
+  if (statusCounts.amber) callout.push(`${statusCounts.amber} amber`);
+  if (gateFails) callout.push(`${gateFails} gate fail${gateFails > 1 ? 's' : ''}`);
+  const calloutChip = callout.length
+    ? `<span class="tag ${statusCounts.red || gateFails ? 'red' : 'amber'}" data-tip="The app-wide average can mask a single weak table. This flags tables scoring below the healthy band, or failing the pass/fail gate — open those tables' tabs to see why.">⚠ ${callout.join(' · ')}</span>`
+    : '';
 
   let html = `<div class="headline">
-      <span class="score">${scores.length ? fmtScore(_avg(scores)) : '—'}</span>
-      ${worst ? `<span class="tag ${tagClass(worst)}">${worst}</span>` : ''}
+      <span class="score">${avg == null ? '—' : fmtScore(avg)}</span>
+      ${avgStatus ? `<span class="tag ${tagClass(avgStatus)}" data-tip="Status of the app-wide average score (green ≥ 95, amber ≥ 85, red below).">${avgStatus}</span>` : ''}
+      ${calloutChip}
     </div>`;
   html += `<p class="hint">App-wide average across ${scores.length} of ${total} table(s)`
     + `${results.length < total ? ' — still assessing…' : ''}.`
