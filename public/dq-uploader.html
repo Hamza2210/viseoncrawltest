@@ -4861,7 +4861,7 @@ async function loadDsCompliance(panel, prefix) {
     const settings = key ? complianceSettingsHtml(key) : '';
     panel.innerHTML = settings + (compliancePanel(r.compliance, prefix) ||
       `<p class="dash-muted">No compliance assessment recorded for this run yet — re-run the dataset to generate the ISO/IEC 29100 lens.</p>`);
-    if (key) wireComplianceSettings(panel, key);
+    if (key) wireComplianceSettings(panel, key, prefix);
   } catch (e) { panel.innerHTML = `<p class="dash-muted" style="color:var(--err)">${esc(e.message)}</p>`; }
 }
 
@@ -4881,16 +4881,34 @@ function complianceSettingsHtml(key) {
       <label>Data-subject id column (DSARs)<input id="cmpSubjectCol" value="${v(cols.subject_id)}" placeholder="customer_id"></label>
       <label>Audit-trail columns (comma-separated)<input id="cmpAuditCols" value="${v((cols.audit || []).join(', '))}" placeholder="created_at, created_by, updated_at"></label>
     </div>
-    <div class="cmp-set-actions"><button type="button" class="btn-sm" id="cmpSaveSettings">Save policy</button>
+    <div class="cmp-set-actions"><button type="button" class="btn-sm" id="cmpSuggest">✨ Suggest with AI</button>
+      <button type="button" class="btn-sm" id="cmpSaveSettings">Save policy</button>
       <span class="hint" id="cmpSetMsg"></span></div>
   </details>`;
 }
-function wireComplianceSettings(panel, key) {
-  const btn = panel.querySelector('#cmpSaveSettings'); if (!btn) return;
+function wireComplianceSettings(panel, key, prefix) {
   const val = id => { const el = panel.querySelector(id); return el ? el.value.trim() : ''; };
+  const setMsg = (t, err) => { const m = panel.querySelector('#cmpSetMsg'); if (m) { m.textContent = t; m.style.color = err ? 'var(--err)' : ''; } };
+  // AI-assist: review the schema and fill in the fields it can (user reviews + Saves — nothing auto-applies).
+  const sbtn = panel.querySelector('#cmpSuggest');
+  if (sbtn && prefix) sbtn.addEventListener('click', async () => {
+    const orig = sbtn.textContent; sbtn.disabled = true; sbtn.textContent = '✨ Reviewing…'; setMsg('');
+    try {
+      const r = await postJSON(`${API_BASE}/data-quality/compliance/suggest-policy`, HEADERS, { result_prefix: prefix, actor: EMAIL || undefined });
+      const s = (r && r.suggestion) || {};
+      const put = (id, v) => { const el = panel.querySelector(id); if (el && v != null && v !== '') el.value = v; };
+      put('#cmpDateCol', s.date_column); put('#cmpConsentCol', s.consent_column);
+      put('#cmpErasureCol', s.erasure_column); put('#cmpSubjectCol', s.subject_id_column);
+      if (s.audit_columns && s.audit_columns.length) put('#cmpAuditCols', s.audit_columns.join(', '));
+      if (s.retention_days) put('#cmpRetDays', s.retention_days);
+      const any = s.date_column || s.consent_column || s.erasure_column || s.subject_id_column || (s.audit_columns || []).length || s.retention_days;
+      setMsg(any ? `Suggestions filled in — review, edit, then Save. ${s.reasoning || ''}` : 'The AI found no confident policy-field matches in this dataset’s columns.');
+    } catch (e) { setMsg(e.message, true); }
+    sbtn.textContent = orig; sbtn.disabled = false;
+  });
+  const btn = panel.querySelector('#cmpSaveSettings'); if (!btn) return;
   btn.addEventListener('click', async () => {
     btn.disabled = true;
-    const msg = panel.querySelector('#cmpSetMsg');
     try {
       const r = await postJSON(`${API_BASE}/data-quality/dataset-tags`, HEADERS, {
         app_id: APP_ID, action: 'set-compliance-contract', key,
@@ -4900,8 +4918,9 @@ function wireComplianceSettings(panel, key) {
         audit_columns: val('#cmpAuditCols').split(',').map(s => s.trim()).filter(Boolean),
       });
       if (r && r.entries) dashEntries = r.entries;
-      if (msg) { msg.textContent = 'Saved — applies on the next assessment of this dataset.'; msg.style.color = 'var(--ok)'; }
-    } catch (e) { if (msg) { msg.textContent = e.message; msg.style.color = 'var(--err)'; } }
+      setMsg('Saved — applies on the next assessment of this dataset.');
+      const m = panel.querySelector('#cmpSetMsg'); if (m) m.style.color = 'var(--ok)';
+    } catch (e) { setMsg(e.message, true); }
     btn.disabled = false;
   });
 }
