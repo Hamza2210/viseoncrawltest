@@ -454,6 +454,8 @@
   .cmp-set-grid input { padding: 7px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--card); color: var(--text); font: inherit; font-size: 13px; }
   .cmp-set-grid input:focus { outline: none; border-color: var(--accent); }
   .cmp-set-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .cmp-exempt { display: flex; align-items: center; gap: 8px; font-size: 13px; margin: 0 0 12px; cursor: pointer; }
+  .tag.muted { background: color-mix(in srgb, var(--muted) 16%, transparent); color: var(--muted); }
   /* Estate-wide compliance view */
   .cmp-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: 6px 0 16px; }
   .cmp-tile { border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; background: var(--card); }
@@ -2169,6 +2171,7 @@ const CMP_GRADE = {
   AT_RISK: { cls: 'amber', label: 'At risk' },
   REVIEW: { cls: 'amber', label: 'Review' },
   OK: { cls: 'green', label: 'No exposure found' },
+  EXEMPT: { cls: 'muted', label: 'Out of scope' },
 };
 const CMP_SEV = { critical: 'red', high: 'red', medium: 'amber' };
 function datasetKeyFromPrefix(p) {
@@ -2246,6 +2249,10 @@ function cmpCtrlHtml(ct, opts) {
 function compliancePanel(comp, prefix) {
   if (!comp) return '';   // no block at all (a run from before the lens shipped) — show nothing;
                           // a clean run still has a block and renders the green "no exposure" state
+  if (comp.exempt) return `<div class="cmp-panel" data-prefix="${esc(prefix || '')}">
+    <div class="cmp-title"><h3>Compliance</h3><span class="tag muted">Out of scope</span>
+      <span class="cmp-fw">${esc(comp.framework || 'ISO/IEC 29100')}</span></div>
+    <p class="hint">${esc(comp.note || 'Marked out of scope — no compliance controls are run.')} Toggle this in ⚙ Compliance policy.</p></div>`;
   const key = prefix ? datasetKeyFromPrefix(prefix) : '';
   const dismissed = key ? (entryFor(key).complianceDismissed || {}) : {};
   const all = comp.controls || [];
@@ -2532,10 +2539,11 @@ function renderAssessment(r, bodyEl, opts) {
     : '';
   html += `<div class="dim-split"><div class="dim-split-table">${tableHtml}${explainBtn}</div><div class="dim-split-chart">${radarHtml}</div></div>`;
   if (canAI) html += `<div class="score-ai-out" style="margin-top:12px;"></div>`;
-  // Metadata scores inline on run-result screens (upload/source/incident). Skipped where the
-  // caller renders its own metadata (opts.noMetadata — the dashboard views) or in the multi-table
-  // app grid (opts.lazyRecords, which would fire one profile fetch per table on render).
-  if (r.resultPrefix && !(opts && (opts.lazyRecords || opts.noMetadata))) html += `<div class="assess-metadata" data-prefix="${esc(r.resultPrefix)}"></div>`;
+  // Metadata scores inline on run-result screens. Skipped only where the caller renders its own
+  // metadata (opts.noMetadata — the dashboard views). Lazy-loaded when the placeholder becomes
+  // VISIBLE, so the multi-table app view fetches a table's profile only when its tab is opened
+  // (not one fetch per table on render).
+  if (r.resultPrefix && !(opts && opts.noMetadata)) html += `<div class="assess-metadata" data-prefix="${esc(r.resultPrefix)}"></div>`;
   html += compliancePanel(r.compliance, r.resultPrefix);      // ISO 29100 privacy/compliance lens
   // Failed records surfaced INLINE here (not just on the dashboard), so the offending
   // rows are visible wherever a run is shown — upload result, incident view, history,
@@ -2552,7 +2560,7 @@ function renderAssessment(r, bodyEl, opts) {
   html += filesHtml(r.files);
   body.innerHTML = html;
   const mdEl = body.querySelector('.assess-metadata');
-  if (mdEl) loadInlineMetadata(mdEl, mdEl.dataset.prefix);   // metadata scores, lazy-loaded
+  if (mdEl) observeInlineMetadata(mdEl);   // metadata scores, loaded when the panel becomes visible
   const vpb = body.querySelector('[data-viewpins]');
   if (vpb) vpb.addEventListener('click', () =>
     openPinRulesModal(r.pendingPinRules, { by: r.pendingPinBy, at: r.pendingPinAt }));
@@ -4662,6 +4670,17 @@ function renderMetadataPanel(profile, key) {
 // Metadata-quality (structure) shown inline on the result screen. Read-only: PII labelling +
 // contract editing stay in the dedicated Metadata tab (which has the dataset key). Lazy-fetches
 // the profile so it never blocks the quality result; hides itself if there's nothing to show.
+// Load the inline metadata only once its placeholder is actually visible — so a hidden app-result
+// tab defers its profile fetch until opened. Falls back to an immediate load without IO support.
+function observeInlineMetadata(el) {
+  if (!el || el.dataset.mdObserved) return;
+  el.dataset.mdObserved = '1';
+  if (!('IntersectionObserver' in window)) { loadInlineMetadata(el, el.dataset.prefix); return; }
+  const io = new IntersectionObserver((entries, obs) => {
+    entries.forEach(e => { if (e.isIntersecting) { obs.disconnect(); loadInlineMetadata(el, el.dataset.prefix); } });
+  }, { rootMargin: '120px' });
+  io.observe(el);
+}
 async function loadInlineMetadata(container, prefix) {
   if (!container || !prefix) return;
   container.innerHTML = dqLoader('Assessing metadata', null, true);
@@ -4753,7 +4772,7 @@ function wireContract(container, key) {
 // ---- Estate-wide Compliance view (top-level tab) --------------------------- //
 let cmpFilter = 'all';
 let cmpScope = 'app';                          // 'app' (Qlik tables) | 'source' (Data-from-Source)
-const CMP_GRADE_RANK = { CRITICAL: 4, AT_RISK: 3, REVIEW: 2, OK: 1 };
+const CMP_GRADE_RANK = { CRITICAL: 5, AT_RISK: 4, REVIEW: 3, OK: 2, EXEMPT: 1 };   // exempt sorts last
 function refreshCmpBadge() {
   const b = $('#cmpBadge'); if (!b) return;
   const n = (dashDatasetsAll || []).filter(d => d.complianceGrade === 'CRITICAL').length;
@@ -4784,29 +4803,31 @@ function renderComplianceEstate() {
   const wrap = $('#cmpEstate'); if (!wrap) return;
   // Scope to app-data vs source-data, matching the dashboard's toggle; tiles + rows reflect it.
   const all = (dashDatasetsAll || []).filter(d => cmpScope === 'source' ? isSourceDataset(d) : !isSourceDataset(d));
-  const assessed = all.filter(d => d.complianceGrade);
+  const exempt = all.filter(d => d.complianceGrade === 'EXEMPT');           // out of scope — no personal data
+  const assessed = all.filter(d => d.complianceGrade && d.complianceGrade !== 'EXEMPT');
   const gc = { CRITICAL: 0, AT_RISK: 0, REVIEW: 0, OK: 0 };
   assessed.forEach(d => { gc[d.complianceGrade] = (gc[d.complianceGrade] || 0) + 1; });
   // REVIEW (medium-only exposure) counts as at-risk, not clean — Clean is OK (zero exposure) only.
   const critical = gc.CRITICAL, atRisk = gc.AT_RISK + gc.REVIEW, clean = gc.OK;
-  const notAssessed = all.length - assessed.length;
+  const notAssessed = all.length - assessed.length - exempt.length;
   const noun = cmpScope === 'source' ? 'source dataset' : 'app table';
   const tile = (n, label, cls) => `<div class="cmp-tile ${cls}"><div class="cmp-tile-n">${n}</div><div class="cmp-tile-l">${label}</div></div>`;
-  const tiles = `<div class="cmp-tiles">${tile(critical, 'Critical exposure', 'red')}${tile(atRisk, 'At risk', 'amber')}${tile(clean, 'Clean', 'green')}${tile(notAssessed, 'Not assessed', 'muted')}</div>`;
-  const FLABEL = { all: 'All', critical: 'Critical', atrisk: 'At risk', clean: 'Clean' };
+  const tiles = `<div class="cmp-tiles">${tile(critical, 'Critical exposure', 'red')}${tile(atRisk, 'At risk', 'amber')}${tile(clean, 'Clean', 'green')}${tile(exempt.length, 'Out of scope', 'muted')}${tile(notAssessed, 'Not assessed', 'muted')}</div>`;
+  const FLABEL = { all: 'All', critical: 'Critical', atrisk: 'At risk', clean: 'Clean', exempt: 'Out of scope' };
   const filters = Object.keys(FLABEL).map(f => `<button type="button" class="cmp-filter${cmpFilter === f ? ' active' : ''}" data-cmpf="${f}">${FLABEL[f]}</button>`).join('');
-  let rows = assessed.slice().sort((a, b) =>
-    (CMP_GRADE_RANK[b.complianceGrade] - CMP_GRADE_RANK[a.complianceGrade]) ||
+  let rows = assessed.concat(exempt).sort((a, b) =>
+    ((CMP_GRADE_RANK[b.complianceGrade] || 0) - (CMP_GRADE_RANK[a.complianceGrade] || 0)) ||
     (((b.complianceCounts || {}).critical || 0) - ((a.complianceCounts || {}).critical || 0)));
   if (cmpFilter === 'critical') rows = rows.filter(d => d.complianceGrade === 'CRITICAL');
   else if (cmpFilter === 'atrisk') rows = rows.filter(d => d.complianceGrade === 'AT_RISK' || d.complianceGrade === 'REVIEW');
   else if (cmpFilter === 'clean') rows = rows.filter(d => d.complianceGrade === 'OK');
+  else if (cmpFilter === 'exempt') rows = rows.filter(d => d.complianceGrade === 'EXEMPT');
   const gradeBadge = g => { const m = CMP_GRADE[g] || { cls: 'amber', label: g }; return `<span class="tag ${m.cls}">${esc(m.label)}</span>`; };
-  const cc = c => { c = c || {}; const p = []; if (c.critical) p.push(`<span class="tag red">${c.critical} crit</span>`); if (c.high) p.push(`<span class="tag red">${c.high} high</span>`); if (c.medium) p.push(`<span class="tag amber">${c.medium} med</span>`); if (!p.length) p.push(`<span class="tag green">clean</span>`); return p.join(' '); };
+  const cc = (c, grade) => { if (grade === 'EXEMPT') return `<span class="hint">—</span>`; c = c || {}; const p = []; if (c.critical) p.push(`<span class="tag red">${c.critical} crit</span>`); if (c.high) p.push(`<span class="tag red">${c.high} high</span>`); if (c.medium) p.push(`<span class="tag amber">${c.medium} med</span>`); if (!p.length) p.push(`<span class="tag green">clean</span>`); return p.join(' '); };
   const body = rows.length ? rows.map((d, i) => `<tr class="cmp-row" data-cmprow="${i}" data-prefix="${esc(d.resultPrefix || '')}">
       <td><span class="cmp-caret">▸</span> ${esc(d.name || d.slug || '')} ${isSourceDataset(d) ? sourceChip(d.sourceFormat) : sourceChip('qlik')}</td>
       <td>${gradeBadge(d.complianceGrade)}</td>
-      <td>${cc(d.complianceCounts)}</td>
+      <td>${cc(d.complianceCounts, d.complianceGrade)}</td>
       <td class="hint">${d.lastSeen ? esc(fmtWhen(d.lastSeen)) : '—'}</td>
       <td class="cmp-actions"><button type="button" class="cmp-open" data-cmpopen="${esc(d.key)}" data-cmpname="${esc(d.name || d.slug || '')}" data-tip="View in dashboard">⧉</button></td>
     </tr>
@@ -4873,6 +4894,7 @@ function complianceSettingsHtml(key) {
   const v = x => esc(x || '');
   return `<details class="cmp-settings"><summary>⚙ Compliance policy</summary>
     <p class="hint" style="margin:6px 0 10px;">Declare your governance policy for this dataset. Each control runs only when its field is set; column names must match the dataset's columns. Applies on the next assessment.</p>
+    <label class="cmp-exempt"><input type="checkbox" id="cmpExempt"${cc.exempt ? ' checked' : ''}> This dataset holds no personal data — exclude from compliance <span class="hint">(out of scope: no controls run, no grade)</span></label>
     <div class="cmp-set-grid">
       <label>Retention limit (days)<input type="number" min="1" id="cmpRetDays" value="${cc.retention_days || ''}" placeholder="e.g. 2555 (7 years)"></label>
       <label>Date column — aged for retention<input id="cmpDateCol" value="${v(cols.date)}" placeholder="created_at"></label>
@@ -4910,8 +4932,10 @@ function wireComplianceSettings(panel, key, prefix) {
   btn.addEventListener('click', async () => {
     btn.disabled = true;
     try {
+      const exEl = panel.querySelector('#cmpExempt');
       const r = await postJSON(`${API_BASE}/data-quality/dataset-tags`, HEADERS, {
         app_id: APP_ID, action: 'set-compliance-contract', key,
+        exempt: !!(exEl && exEl.checked),
         retention_days: parseInt(val('#cmpRetDays'), 10) || 0,
         date_column: val('#cmpDateCol'), consent_column: val('#cmpConsentCol'),
         erasure_column: val('#cmpErasureCol'), subject_id_column: val('#cmpSubjectCol'),
