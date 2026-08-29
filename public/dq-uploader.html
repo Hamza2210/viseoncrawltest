@@ -431,6 +431,20 @@
   .cmp-adv summary { cursor: pointer; color: var(--muted); }
   .cmp-advitem { margin: 6px 0; padding-left: 8px; border-left: 2px solid var(--border); }
   .cmp-note { font-style: italic; margin-top: 10px; }
+  .cmp-btns { display: flex; gap: 7px; flex-wrap: wrap; margin-top: 9px; }
+  .cmp-btn { background: var(--card-2); border: 1px solid var(--border); border-radius: 7px; color: var(--text); cursor: pointer; padding: 4px 10px; font: inherit; font-size: 12px; }
+  .cmp-btn:hover { border-color: var(--accent); }
+  .cmp-btn.active { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--card-2)); color: var(--accent2); }
+  .cmp-dismiss-btn:hover { border-color: var(--err); color: var(--err); }
+  .cmp-records { margin: 8px 0; }
+  table.cmp-rec-tbl { width: 100%; border-collapse: collapse; font-size: 12px; }
+  table.cmp-rec-tbl th { text-align: left; color: var(--muted); font-weight: 600; padding: 4px 8px; border-bottom: 1px solid var(--border); }
+  table.cmp-rec-tbl td { padding: 4px 8px; border-bottom: 1px solid var(--border); }
+  table.cmp-rec-tbl code { background: color-mix(in srgb, var(--muted) 14%, transparent); padding: 1px 5px; border-radius: 4px; }
+  .cmp-explain-out { margin: 8px 0; }
+  .cmp-ai { line-height: 1.55; padding: 11px 14px; border-left: 4px solid var(--accent); border-radius: 4px; background: color-mix(in srgb, var(--accent) 5%, transparent); font-size: 13px; }
+  .cmp-ctrl.dismissed { opacity: .6; }
+  .cmp-ctrl.dismissed .cmp-why { text-decoration: none; }
   /* Estate-wide compliance view */
   .cmp-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: 6px 0 16px; }
   .cmp-tile { border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; background: var(--card); }
@@ -2148,52 +2162,168 @@ const CMP_GRADE = {
   OK: { cls: 'green', label: 'No exposure found' },
 };
 const CMP_SEV = { critical: 'red', high: 'red', medium: 'amber' };
-function compliancePanel(comp) {
+function datasetKeyFromPrefix(p) {
+  const s = (p || '').replace(/^s3:\/\/[^/]+\//, '').replace(/\/+$/, '');
+  if (!s) return '';
+  const parts = s.split('/'); parts.pop();   // drop the runId → the dataset key
+  return parts.join('/');
+}
+function cmpMd(t) {   // minimal markdown for the AI explanation: **bold**, numbered headings, newlines
+  return esc(t || '')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\n{2,}/g, '<br><br>')
+    .replace(/\n/g, '<br>');
+}
+function cmpRegrade(counts, dismissed) {
+  const c = Object.assign({}, counts || {});
+  Object.values(dismissed || {}).forEach(d => {
+    const s = d && d.severity;
+    if ((s === 'critical' || s === 'high' || s === 'medium') && c[s]) { c[s] = Math.max(0, c[s] - 1); if (c.fail) c.fail = Math.max(0, c.fail - 1); }
+  });
+  return { counts: c, grade: c.critical ? 'CRITICAL' : c.high ? 'AT_RISK' : c.medium ? 'REVIEW' : 'OK' };
+}
+function cmpCtrlHtml(ct, opts) {
+  const ev = ct.evidence || {};
+  const statusTag = ct.status === 'FAIL'
+    ? `<span class="tag ${CMP_SEV[ct.severity] || 'amber'}">${esc((ct.severity || '').toUpperCase())} · FAIL</span>`
+    : `<span class="tag green">PASS</span>`;
+  const exposure = (ct.status === 'FAIL' && ev.cleartext != null && ev.evaluated != null)
+    ? `<div class="cmp-ev">${Number(ev.cleartext).toLocaleString()} of ${Number(ev.evaluated).toLocaleString()} scanned values in cleartext · basis: ${esc(ev.basis || 'sample')}</div>` : '';
+  const samples = (ev.samples || []).length
+    ? `<div class="cmp-ev">Value shapes (masked): ${ev.samples.map(s => `<code>${esc(s)}</code>`).join(' ')}</div>` : '';
+  const cites = (ct.citations || []).map(x => `<span class="cmp-cite">${esc(x)}</span>`).join(' ');
+  // Failing records (masked): a locator (primary key or row) + the masked offending value.
+  const recs = ev.records || [];
+  const recsBlock = recs.length ? `<div class="cmp-records" style="display:none;">
+      <table class="cmp-rec-tbl"><thead><tr><th>Record</th><th>Value (masked)</th></tr></thead><tbody>${
+        recs.map(r => { const loc = r.key ? Object.entries(r.key).map(([k, v]) => `${esc(k)}=${esc(String(v))}`).join(', ') : ('row ' + esc(String(r.row))); return `<tr><td>${loc}</td><td><code>${esc(r.masked || '')}</code></td></tr>`; }).join('')
+      }</tbody></table>
+      <div class="hint" style="margin-top:4px;">Values are masked — use the locator to find the record in your source.</div></div>` : '';
+  // Action buttons only on FAIL controls (nothing to view/dismiss on a PASS).
+  let actions = '';
+  if (ct.status === 'FAIL' && !opts.dismissedView) {
+    const btns = [];
+    if (recs.length) btns.push(`<button type="button" class="cmp-btn cmp-records-btn" data-cid="${esc(ct.id)}">View ${recs.length} record${recs.length === 1 ? '' : 's'}</button>`);
+    btns.push(`<button type="button" class="cmp-btn cmp-explain-btn" data-cid="${esc(ct.id)}">✨ Explain (AI)</button>`);
+    if (opts.key) btns.push(`<button type="button" class="cmp-btn cmp-dismiss-btn" data-cid="${esc(ct.id)}" data-sev="${esc(ct.severity || 'medium')}">Not a compliance issue</button>`);
+    actions = `<div class="cmp-btns">${btns.join('')}</div>`;
+  }
+  return `<div class="cmp-ctrl ${ct.status === 'FAIL' ? 'fail' : 'pass'}${opts.dismissedView ? ' dismissed' : ''}" data-cid="${esc(ct.id)}">
+      <div class="cmp-hd">${statusTag}
+        <span class="cmp-col">${esc(ct.column || '')}</span>
+        <span class="cmp-kind">${esc(ct.kind_label || ct.kind || '')}</span>
+        <span class="cmp-conf" data-tip="Detection confidence — high = checksum-verified.">${esc(ct.confidence || '')}</span>
+        ${opts.dismissedView ? `<button type="button" class="cmp-btn cmp-restore-btn" data-cid="${esc(ct.id)}" style="margin-left:auto;">Restore</button>` : ''}
+      </div>
+      <div class="cmp-why">${esc(ct.why || ct.control || '')}</div>
+      ${opts.dismissMeta ? `<div class="cmp-ev">Dismissed${opts.dismissMeta.by ? ' by ' + esc(opts.dismissMeta.by) : ''}${opts.dismissMeta.reason ? ` — “${esc(opts.dismissMeta.reason)}”` : ''}</div>` : ''}
+      ${exposure}${samples}${recsBlock}
+      ${ct.remediation ? `<div class="cmp-fix">↪ ${esc(ct.remediation)}</div>` : ''}
+      <div class="cmp-explain-out" style="display:none;"></div>
+      <div class="cmp-meta"><span class="cmp-ref">${esc(ct.principle_ref || '')}</span> ${cites}</div>
+      ${actions}
+    </div>`;
+}
+function compliancePanel(comp, prefix) {
   if (!comp) return '';   // no block at all (a run from before the lens shipped) — show nothing;
                           // a clean run still has a block and renders the green "no exposure" state
-  const gm = CMP_GRADE[comp.grade] || { cls: 'amber', label: comp.grade || '—' };
-  const c = comp.counts || {};
+  const key = prefix ? datasetKeyFromPrefix(prefix) : '';
+  const dismissed = key ? (entryFor(key).complianceDismissed || {}) : {};
+  const all = comp.controls || [];
+  const active = all.filter(c => !dismissed[c.id]);
+  const dropped = all.filter(c => dismissed[c.id]);
+  const rg = cmpRegrade(comp.counts, dismissed);
+  const gm = CMP_GRADE[rg.grade] || { cls: 'amber', label: rg.grade || '—' };
+  const c = rg.counts;
   const chips = [];
   if (c.critical) chips.push(`<span class="tag red">${c.critical} critical</span>`);
   if (c.high) chips.push(`<span class="tag red">${c.high} high</span>`);
   if (c.medium) chips.push(`<span class="tag amber">${c.medium} medium</span>`);
   if (c.pass) chips.push(`<span class="tag green">${c.pass} protected</span>`);
-  const controls = (comp.controls || []).map(ct => {
-    const ev = ct.evidence || {};
-    const statusTag = ct.status === 'FAIL'
-      ? `<span class="tag ${CMP_SEV[ct.severity] || 'amber'}">${esc((ct.severity || '').toUpperCase())} · FAIL</span>`
-      : `<span class="tag green">PASS</span>`;
-    const exposure = (ct.status === 'FAIL' && ev.cleartext != null && ev.evaluated != null)
-      ? `<div class="cmp-ev">${Number(ev.cleartext).toLocaleString()} of ${Number(ev.evaluated).toLocaleString()} scanned values in cleartext · basis: ${esc(ev.basis || 'sample')}</div>` : '';
-    const samples = (ev.samples || []).length
-      ? `<div class="cmp-ev">Value shapes (masked): ${ev.samples.map(s => `<code>${esc(s)}</code>`).join(' ')}</div>` : '';
-    const cites = (ct.citations || []).map(x => `<span class="cmp-cite">${esc(x)}</span>`).join(' ');
-    return `<div class="cmp-ctrl ${ct.status === 'FAIL' ? 'fail' : 'pass'}">
-      <div class="cmp-hd">${statusTag}
-        <span class="cmp-col">${esc(ct.column || '')}</span>
-        <span class="cmp-kind">${esc(ct.kind_label || ct.kind || '')}</span>
-        <span class="cmp-conf" data-tip="Detection confidence — high = checksum-verified.">${esc(ct.confidence || '')}</span>
-      </div>
-      <div class="cmp-why">${esc(ct.why || ct.control || '')}</div>
-      ${exposure}${samples}
-      ${ct.remediation ? `<div class="cmp-fix">↪ ${esc(ct.remediation)}</div>` : ''}
-      <div class="cmp-meta"><span class="cmp-ref">${esc(ct.principle_ref || '')}</span> ${cites}</div>
-    </div>`;
-  }).join('');
+  const opts = { key, prefix };
+  const controls = active.map(ct => cmpCtrlHtml(ct, opts)).join('');
+  const droppedHtml = dropped.length
+    ? `<details class="cmp-adv"><summary>${dropped.length} dismissed — marked “not a compliance issue”</summary>` +
+      dropped.map(ct => cmpCtrlHtml(ct, { key, prefix, dismissedView: true, dismissMeta: dismissed[ct.id] })).join('') + `</details>` : '';
   const adv = (comp.advisory || []).length
     ? `<details class="cmp-adv"><summary>${comp.advisory.length} column(s) to review — matched by name, unconfirmed</summary>` +
       comp.advisory.map(a => `<div class="cmp-advitem"><strong>${esc(a.column)}</strong> — ${esc(a.note)}</div>`).join('') +
       `</details>` : '';
-  return `<div class="cmp-panel">
+  return `<div class="cmp-panel" data-prefix="${esc(prefix || '')}">
     <div class="cmp-title"><h3>Compliance</h3>
       <span class="tag ${gm.cls}">${esc(gm.label)}</span>
       <span class="cmp-fw" data-tip="The compliance lens is anchored on the ISO/IEC 29100 privacy principles, with GDPR &amp; PCI DSS clause citations.">${esc(comp.framework || 'ISO/IEC 29100')}</span>
       ${chips.join(' ')}
     </div>
-    ${controls || '<p class="hint">No sensitive-data exposure detected in the scanned values.</p>'}
+    ${controls || '<p class="hint">No active sensitive-data exposure in the scanned values.</p>'}
+    ${droppedHtml}
     ${adv}
     <p class="hint cmp-note">${esc(comp.note || '')}</p>
   </div>`;
+}
+// One delegated handler for every compliance panel, wherever it's inserted (result screen,
+// dataset sub-tab, estate detail). Reads the panel's data-prefix + the button's data-cid.
+document.addEventListener('click', async (e) => {
+  const btn = e.target && e.target.closest ? e.target.closest('.cmp-records-btn, .cmp-explain-btn, .cmp-dismiss-btn, .cmp-restore-btn') : null;
+  if (!btn) return;
+  const panel = btn.closest('.cmp-panel'); const ctrl = btn.closest('.cmp-ctrl');
+  if (!panel || !ctrl) return;
+  const prefix = panel.dataset.prefix, cid = btn.dataset.cid;
+  if (btn.classList.contains('cmp-records-btn')) {
+    const rec = ctrl.querySelector('.cmp-records');
+    if (rec) { const open = rec.style.display !== 'none'; rec.style.display = open ? 'none' : ''; btn.classList.toggle('active', !open); }
+    return;
+  }
+  if (btn.classList.contains('cmp-explain-btn')) {
+    const out = ctrl.querySelector('.cmp-explain-out');
+    if (out.style.display !== 'none' && out.innerHTML.trim()) { out.style.display = 'none'; btn.classList.remove('active'); return; }
+    out.style.display = ''; btn.classList.add('active');
+    if (!out.innerHTML.trim()) {
+      out.innerHTML = dqLoader('Explaining the compliance finding', null, true);
+      try {
+        const r = await postJSON(`${API_BASE}/data-quality/compliance/explain`, HEADERS, { result_prefix: prefix, control_id: cid, actor: EMAIL || undefined });
+        const who = (r.generatedBy && r.generatedBy !== 'unknown') ? ` by ${esc(r.generatedBy)}` : '';
+        const tag = r.cached ? ' · saved earlier' : '';
+        out.innerHTML = `<div class="cmp-ai">${cmpMd(r.explanation)}</div>` +
+          `<p class="hint" style="margin-top:8px;">Generated${who} · Claude Haiku 4.5 (Bedrock)${tag}</p>`;
+      } catch (err) { out.innerHTML = `<p class="hint" style="color:var(--err)">${esc(err.message)}</p>`; }
+    }
+    return;
+  }
+  if (btn.classList.contains('cmp-dismiss-btn')) {
+    const reason = prompt('Why is this not a compliance issue? (optional — e.g. “test data”, “already tokenised downstream”)');
+    if (reason === null) return;   // cancelled
+    btn.disabled = true;
+    try {
+      const key = datasetKeyFromPrefix(prefix);
+      const r = await postJSON(`${API_BASE}/data-quality/dataset-tags`, HEADERS,
+        { app_id: APP_ID, action: 'compliance-dismiss', key, control_id: cid, dismiss_severity: btn.dataset.sev, dismiss_reason: reason, dismiss_by: EMAIL || undefined });
+      if (r && r.entries) dashEntries = r.entries;
+      await reloadCompliancePanel(panel);
+      loadDashboard();   // refresh dashDatasetsAll + nav badge (the server applies the dismissal to the grade)
+    } catch (err) { alert('Could not dismiss: ' + err.message); btn.disabled = false; }
+    return;
+  }
+  if (btn.classList.contains('cmp-restore-btn')) {
+    btn.disabled = true;
+    try {
+      const key = datasetKeyFromPrefix(prefix);
+      const r = await postJSON(`${API_BASE}/data-quality/dataset-tags`, HEADERS,
+        { app_id: APP_ID, action: 'compliance-restore', key, control_id: cid });
+      if (r && r.entries) dashEntries = r.entries;
+      await reloadCompliancePanel(panel);
+      loadDashboard();   // refresh dashDatasetsAll + nav badge (the server applies the dismissal to the grade)
+    } catch (err) { alert('Could not restore: ' + err.message); btn.disabled = false; }
+    return;
+  }
+});
+// Re-fetch the run's compliance block and re-render this panel in place (after a dismiss/restore).
+async function reloadCompliancePanel(panelEl) {
+  const prefix = panelEl.dataset.prefix;
+  try {
+    const r = await postJSON(`${API_BASE}/data-quality/result`, HEADERS, { result_prefix: prefix });
+    panelEl.outerHTML = compliancePanel(r.compliance, prefix) || '';
+  } catch (e) { /* leave the panel as-is on a transient error */ }
 }
 
 function renderAssessment(r, bodyEl, opts) {
@@ -2376,7 +2506,7 @@ function renderAssessment(r, bodyEl, opts) {
   // caller renders its own metadata (opts.noMetadata — the dashboard views) or in the multi-table
   // app grid (opts.lazyRecords, which would fire one profile fetch per table on render).
   if (r.resultPrefix && !(opts && (opts.lazyRecords || opts.noMetadata))) html += `<div class="assess-metadata" data-prefix="${esc(r.resultPrefix)}"></div>`;
-  html += compliancePanel(r.compliance);      // ISO 29100 privacy/compliance lens
+  html += compliancePanel(r.compliance, r.resultPrefix);      // ISO 29100 privacy/compliance lens
   // Failed records surfaced INLINE here (not just on the dashboard), so the offending
   // rows are visible wherever a run is shown — upload result, incident view, history,
   // app tables. Blockers auto-load (gate fail); an otherwise-clean run offers a lazy
@@ -3350,6 +3480,7 @@ function entryFor(key) {
   const e = dashEntries[key] || {};
   return { stage: e.stage || '', tags: (e.tags || []).slice(), owner: e.owner || '', notes: (e.notes || []).slice(),
            pii: Object.assign({}, e.pii || {}), contract: Object.assign({}, e.contract || {}),
+           complianceDismissed: Object.assign({}, e.complianceDismissed || {}),
            trust: e.trust || '', trustNote: e.trustNote || '', trustBy: e.trustBy || '', trustAt: e.trustAt || '' };
 }
 async function setPiiLabel(key, column, label) {
@@ -4679,7 +4810,7 @@ async function loadInlineEstateDetail(detailDiv, prefix) {
   detailDiv.innerHTML = dqLoader('Loading compliance controls', null, true);
   try {
     const r = await postJSON(`${API_BASE}/data-quality/result`, HEADERS, { result_prefix: prefix });
-    detailDiv.innerHTML = compliancePanel(r.compliance) || `<p class="dash-muted">No compliance controls recorded for this run.</p>`;
+    detailDiv.innerHTML = compliancePanel(r.compliance, prefix) || `<p class="dash-muted">No compliance controls recorded for this run.</p>`;
   } catch (e) { detailDiv.innerHTML = `<p class="dash-muted" style="color:var(--err)">${esc(e.message)}</p>`; }
 }
 async function openDatasetCompliance(key, name) {
@@ -4695,7 +4826,7 @@ async function openDatasetCompliance(key, name) {
 async function loadDsCompliance(panel, prefix) {
   try {
     const r = await postJSON(`${API_BASE}/data-quality/result`, HEADERS, { result_prefix: prefix });
-    panel.innerHTML = compliancePanel(r.compliance) ||
+    panel.innerHTML = compliancePanel(r.compliance, prefix) ||
       `<p class="dash-muted">No compliance assessment recorded for this run yet — re-run the dataset to generate the ISO/IEC 29100 lens.</p>`;
   } catch (e) { panel.innerHTML = `<p class="dash-muted" style="color:var(--err)">${esc(e.message)}</p>`; }
 }
