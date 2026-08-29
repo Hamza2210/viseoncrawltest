@@ -446,7 +446,16 @@
   table.cmp-estate { width: 100%; border-collapse: collapse; }
   table.cmp-estate th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); padding: 6px 10px; border-bottom: 1px solid var(--border); }
   table.cmp-estate td { padding: 9px 10px; border-bottom: 1px solid var(--border); font-size: 13px; vertical-align: middle; }
-  table.cmp-estate tbody tr:hover { background: color-mix(in srgb, var(--accent) 4%, transparent); }
+  table.cmp-estate tbody tr.cmp-row:hover td { background: color-mix(in srgb, var(--accent) 6%, transparent); }
+  .cmp-row { cursor: pointer; }
+  .cmp-row.open td { background: color-mix(in srgb, var(--accent) 9%, transparent); }
+  .cmp-caret { display: inline-block; color: var(--muted); font-size: 10px; transition: transform .12s; margin-right: 2px; }
+  .cmp-row.open .cmp-caret { transform: rotate(90deg); }
+  .cmp-actions { text-align: right; }
+  .cmp-open { background: none; border: 1px solid var(--border); border-radius: 7px; color: var(--muted); cursor: pointer; padding: 3px 9px; font-size: 13px; line-height: 1; }
+  .cmp-open:hover { border-color: var(--accent); color: var(--accent2); }
+  .cmp-detail-row > td { padding: 0 10px 14px !important; background: color-mix(in srgb, var(--accent) 4%, var(--card-2)); }
+  .cmp-detail-row .cmp-panel { margin-top: 0; }
   .src-form { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px 16px; margin: 12px 0 16px; }
   .src-field { display: flex; flex-direction: column; gap: 4px; }
   .src-field.full { grid-column: 1 / -1; }
@@ -3596,7 +3605,15 @@ function tagChips(key) {
   return `<span class="ds-tags">${chips}<button type="button" class="ds-tag-add" data-tagadd="1" data-key="${esc(key)}">＋ tag</button></span>`;
 }
 
+// Concurrency guard: switchTab('dashboard') and a drill-in can both call loadDashboard at once;
+// sharing one in-flight load prevents a late second load from clobbering a just-made selection.
+let _dashLoadInFlight = null;
 async function loadDashboard() {
+  if (_dashLoadInFlight) return _dashLoadInFlight;
+  _dashLoadInFlight = _loadDashboardImpl();
+  try { return await _dashLoadInFlight; } finally { _dashLoadInFlight = null; }
+}
+async function _loadDashboardImpl() {
   if (!configOK) return;
   // Dashboard is scoped to the current app; needs the app context from the extension.
   if (!APP_ID) {
@@ -4571,6 +4588,7 @@ function wireContract(container, key) {
 }
 // ---- Estate-wide Compliance view (top-level tab) --------------------------- //
 let cmpFilter = 'all';
+let cmpScope = 'app';                          // 'app' (Qlik tables) | 'source' (Data-from-Source)
 const CMP_GRADE_RANK = { CRITICAL: 4, AT_RISK: 3, REVIEW: 2, OK: 1 };
 function refreshCmpBadge() {
   const b = $('#cmpBadge'); if (!b) return;
@@ -4585,13 +4603,17 @@ async function loadComplianceEstate() {
 }
 function renderComplianceEstate() {
   const wrap = $('#cmpEstate'); if (!wrap) return;
-  const all = dashDatasetsAll || [];
+  // Scope to app-data vs source-data, matching the dashboard's toggle; tiles + rows reflect it.
+  const all = (dashDatasetsAll || []).filter(d => cmpScope === 'source' ? isSourceDataset(d) : !isSourceDataset(d));
   const assessed = all.filter(d => d.complianceGrade);
   const gc = { CRITICAL: 0, AT_RISK: 0, REVIEW: 0, OK: 0 };
   assessed.forEach(d => { gc[d.complianceGrade] = (gc[d.complianceGrade] || 0) + 1; });
+  // REVIEW (medium-only exposure) counts as at-risk, not clean — Clean is OK (zero exposure) only.
+  const critical = gc.CRITICAL, atRisk = gc.AT_RISK + gc.REVIEW, clean = gc.OK;
   const notAssessed = all.length - assessed.length;
+  const noun = cmpScope === 'source' ? 'source dataset' : 'app table';
   const tile = (n, label, cls) => `<div class="cmp-tile ${cls}"><div class="cmp-tile-n">${n}</div><div class="cmp-tile-l">${label}</div></div>`;
-  const tiles = `<div class="cmp-tiles">${tile(gc.CRITICAL, 'Critical exposure', 'red')}${tile(gc.AT_RISK, 'At risk', 'amber')}${tile(gc.REVIEW + gc.OK, 'Clean / low', 'green')}${tile(notAssessed, 'Not assessed', 'muted')}</div>`;
+  const tiles = `<div class="cmp-tiles">${tile(critical, 'Critical exposure', 'red')}${tile(atRisk, 'At risk', 'amber')}${tile(clean, 'Clean', 'green')}${tile(notAssessed, 'Not assessed', 'muted')}</div>`;
   const FLABEL = { all: 'All', critical: 'Critical', atrisk: 'At risk', clean: 'Clean' };
   const filters = Object.keys(FLABEL).map(f => `<button type="button" class="cmp-filter${cmpFilter === f ? ' active' : ''}" data-cmpf="${f}">${FLABEL[f]}</button>`).join('');
   let rows = assessed.slice().sort((a, b) =>
@@ -4602,22 +4624,53 @@ function renderComplianceEstate() {
   else if (cmpFilter === 'clean') rows = rows.filter(d => d.complianceGrade === 'OK');
   const gradeBadge = g => { const m = CMP_GRADE[g] || { cls: 'amber', label: g }; return `<span class="tag ${m.cls}">${esc(m.label)}</span>`; };
   const cc = c => { c = c || {}; const p = []; if (c.critical) p.push(`<span class="tag red">${c.critical} crit</span>`); if (c.high) p.push(`<span class="tag red">${c.high} high</span>`); if (c.medium) p.push(`<span class="tag amber">${c.medium} med</span>`); if (!p.length) p.push(`<span class="tag green">clean</span>`); return p.join(' '); };
-  const body = rows.length ? rows.map(d => `<tr>
-      <td>${esc(d.name || d.slug || '')} ${isSourceDataset(d) ? sourceChip(d.sourceFormat) : sourceChip('qlik')}</td>
+  const body = rows.length ? rows.map((d, i) => `<tr class="cmp-row" data-cmprow="${i}" data-prefix="${esc(d.resultPrefix || '')}">
+      <td><span class="cmp-caret">▸</span> ${esc(d.name || d.slug || '')} ${isSourceDataset(d) ? sourceChip(d.sourceFormat) : sourceChip('qlik')}</td>
       <td>${gradeBadge(d.complianceGrade)}</td>
       <td>${cc(d.complianceCounts)}</td>
       <td class="hint">${d.lastSeen ? esc(fmtWhen(d.lastSeen)) : '—'}</td>
-      <td><button type="button" class="btn-sm" data-cmpopen="${esc(d.key)}" data-cmpname="${esc(d.name || d.slug || '')}">Open →</button></td>
-    </tr>`).join('') : `<tr><td colspan="5" class="dash-muted">No datasets match this filter.</td></tr>`;
-  wrap.innerHTML = tiles +
+      <td class="cmp-actions"><button type="button" class="cmp-open" data-cmpopen="${esc(d.key)}" data-cmpname="${esc(d.name || d.slug || '')}" data-tip="View in dashboard">⧉</button></td>
+    </tr>
+    <tr class="cmp-detail-row" id="cmpdet-${i}" style="display:none;"><td colspan="5"><div class="cmp-detail" data-loaded="0"></div></td></tr>`).join('')
+    : `<tr><td colspan="5" class="dash-muted">No datasets match this filter.</td></tr>`;
+  wrap.innerHTML =
+    `<div style="margin-bottom:14px;"><span class="scope-toggle" id="cmpScopeToggle">
+       <button type="button" class="scope-btn${cmpScope === 'app' ? ' active' : ''}" data-cmpscope="app">App data</button>
+       <button type="button" class="scope-btn${cmpScope === 'source' ? ' active' : ''}" data-cmpscope="source">Source data</button>
+     </span></div>` +
+    tiles +
     `<div class="cmp-filters">${filters}</div>` +
     `<table class="cmp-estate"><thead><tr><th>Dataset</th><th>Posture</th><th>Exposures</th><th>Last run</th><th></th></tr></thead><tbody>${body}</tbody></table>` +
-    (notAssessed ? `<p class="hint" style="margin-top:10px;">${notAssessed} dataset(s) have no compliance assessment yet — re-run them to populate this (runs from before the lens shipped won't have it).</p>` : '');
+    (notAssessed ? `<p class="hint" style="margin-top:10px;">${notAssessed} ${noun}${notAssessed === 1 ? '' : 's'} have no compliance assessment yet — re-run to populate.</p>` : '');
+  wrap.querySelectorAll('#cmpScopeToggle .scope-btn').forEach(b => b.addEventListener('click', () => { cmpScope = b.dataset.cmpscope; cmpFilter = 'all'; renderComplianceEstate(); }));
   wrap.querySelectorAll('[data-cmpf]').forEach(b => b.addEventListener('click', () => { cmpFilter = b.dataset.cmpf; renderComplianceEstate(); }));
-  wrap.querySelectorAll('[data-cmpopen]').forEach(b => b.addEventListener('click', () => openDatasetCompliance(b.dataset.cmpopen, b.dataset.cmpname)));
+  // Whole row toggles an inline compliance detail (lazy-loaded from the run's report).
+  wrap.querySelectorAll('.cmp-row').forEach(row => row.addEventListener('click', () => {
+    const det = document.getElementById('cmpdet-' + row.dataset.cmprow);
+    if (!det) return;
+    if (det.style.display !== 'none') { det.style.display = 'none'; row.classList.remove('open'); return; }
+    det.style.display = ''; row.classList.add('open');
+    const dd = det.querySelector('.cmp-detail');
+    if (dd && dd.dataset.loaded !== '1') { dd.dataset.loaded = '1'; loadInlineEstateDetail(dd, row.dataset.prefix); }
+  }));
+  // The ⧉ button opens the dataset in the dashboard instead (doesn't toggle the inline detail).
+  wrap.querySelectorAll('.cmp-open').forEach(b => b.addEventListener('click', e => {
+    e.stopPropagation(); openDatasetCompliance(b.dataset.cmpopen, b.dataset.cmpname);
+  }));
+}
+async function loadInlineEstateDetail(detailDiv, prefix) {
+  if (!prefix) { detailDiv.innerHTML = `<p class="dash-muted">No completed run to show for this dataset.</p>`; return; }
+  detailDiv.innerHTML = dqLoader('Loading compliance controls', null, true);
+  try {
+    const r = await postJSON(`${API_BASE}/data-quality/result`, HEADERS, { result_prefix: prefix });
+    detailDiv.innerHTML = compliancePanel(r.compliance) || `<p class="dash-muted">No compliance controls recorded for this run.</p>`;
+  } catch (e) { detailDiv.innerHTML = `<p class="dash-muted" style="color:var(--err)">${esc(e.message)}</p>`; }
 }
 async function openDatasetCompliance(key, name) {
+  const ds = (dashDatasetsAll || []).find(d => d.key === key);
+  if (ds) dashScope = isSourceDataset(ds) ? 'source' : 'app';   // set scope first so the dataset is in the scoped list
   switchTab('dashboard');
+  await loadDashboard();          // await a settled load so the selection sticks (no race with switchTab's own load)
   await selectDataset(key, name);
   dsTab = 'compliance';
   selectDsTab();
