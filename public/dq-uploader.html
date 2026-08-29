@@ -431,6 +431,22 @@
   .cmp-adv summary { cursor: pointer; color: var(--muted); }
   .cmp-advitem { margin: 6px 0; padding-left: 8px; border-left: 2px solid var(--border); }
   .cmp-note { font-style: italic; margin-top: 10px; }
+  /* Estate-wide compliance view */
+  .cmp-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: 6px 0 16px; }
+  .cmp-tile { border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; background: var(--card); }
+  .cmp-tile.red { border-left: 4px solid var(--err); }
+  .cmp-tile.amber { border-left: 4px solid var(--run); }
+  .cmp-tile.green { border-left: 4px solid var(--ok); }
+  .cmp-tile.muted { border-left: 4px solid var(--muted); }
+  .cmp-tile-n { font-size: 26px; font-weight: 800; letter-spacing: -.02em; }
+  .cmp-tile-l { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .cmp-filters { display: flex; gap: 6px; margin: 4px 0 12px; flex-wrap: wrap; }
+  .cmp-filter { padding: 5px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--card); color: var(--text); font: inherit; font-size: 12.5px; cursor: pointer; }
+  .cmp-filter.active { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--card)); color: var(--accent2); font-weight: 600; }
+  table.cmp-estate { width: 100%; border-collapse: collapse; }
+  table.cmp-estate th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); padding: 6px 10px; border-bottom: 1px solid var(--border); }
+  table.cmp-estate td { padding: 9px 10px; border-bottom: 1px solid var(--border); font-size: 13px; vertical-align: middle; }
+  table.cmp-estate tbody tr:hover { background: color-mix(in srgb, var(--accent) 4%, transparent); }
   .src-form { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px 16px; margin: 12px 0 16px; }
   .src-field { display: flex; flex-direction: column; gap: 4px; }
   .src-field.full { grid-column: 1 / -1; }
@@ -1099,6 +1115,7 @@
 
     <div class="side-group">Monitor</div>
     <button class="side-item sub" data-tab="incidents"><span class="si-ico">🚨</span>Incidents <span class="tab-badge" id="incBadge" style="display:none;"></span></button>
+    <button class="side-item sub" data-tab="compliance"><span class="si-ico">🛡️</span>Compliance <span class="tab-badge" id="cmpBadge" style="display:none;"></span></button>
     <button class="side-item sub" data-tab="schedules"><span class="si-ico">⏰</span>Schedules</button>
 
     <div class="side-group">Explore</div>
@@ -1508,6 +1525,15 @@
       <p class="dash-muted" id="lineageCtx"></p>
       <div id="lineageBody"><p class="dash-muted">Loading…</p></div>
     </div>
+  </div>
+
+  <!-- ============ COMPLIANCE (estate-wide) ============ -->
+  <div id="complianceTab" style="display:none;">
+    <div class="tab-intro">
+      <h2>Compliance</h2>
+      <p>Privacy &amp; regulatory-risk posture across this app's datasets — anchored on the ISO/IEC 29100 principles with GDPR &amp; PCI DSS citations. Ranked by exposure; open a dataset for its full controls.</p>
+    </div>
+    <div id="cmpEstate"></div>
   </div>
 
   <!-- ============ DASHBOARD ============ -->
@@ -3592,6 +3618,7 @@ async function loadDashboard() {
     dashWindowDays = d.windowDays || 30;
     await loadDashEntries();                    // medallion stages + custom tags for this app
     applyDashScope();                          // filter to the active scope + render
+    refreshCmpBadge();                         // estate-wide critical-exposure count on the nav
     trendsIn();                                // gentle grow-in on load/refresh
   } catch (e) {
     $('#dashCtx').textContent = '';
@@ -3791,8 +3818,8 @@ function renderAppOverview(datasets) {
 // so rules and everything about a dataset live together instead of behind toggle buttons. ----
 let dsTrends = null;         // cached 30-day trends for the selected dataset
 let dsTab = 'scores';
-const DS_TABS = [['scores', 'Scores'], ['metadata', 'Metadata'], ['trends', 'Trends'], ['rules', 'Rules'],
-                 ['failed', 'Failed records'], ['history', 'History']];
+const DS_TABS = [['scores', 'Scores'], ['metadata', 'Metadata'], ['compliance', 'Compliance'],
+                 ['trends', 'Trends'], ['rules', 'Rules'], ['failed', 'Failed records'], ['history', 'History']];
 
 async function selectDataset(key, name) {
   const ds = dashDatasets.find(x => x.key === key);
@@ -3834,6 +3861,7 @@ function selectDsTab() {
   if (!prefix) { panel.innerHTML = `<p class="dash-muted">No completed run yet for this dataset — run an assessment to populate this.</p>`; return; }
   if (dsTab === 'scores') { panel.innerHTML = dqLoader('Loading run', null, true); loadDsScores(panel, prefix); }
   else if (dsTab === 'metadata') { panel.innerHTML = dqLoader('Assessing metadata', null, true); loadDsMetadata(panel, prefix); }
+  else if (dsTab === 'compliance') { panel.innerHTML = dqLoader('Loading compliance', null, true); loadDsCompliance(panel, prefix); }
   else if (dsTab === 'rules') { loadDsRules(panel, prefix); }
   else if (dsTab === 'failed') { panel.innerHTML = dqLoader('Loading failed records', null, true); loadDsFailed(panel, prefix); }
 }
@@ -4541,6 +4569,68 @@ function wireContract(container, key) {
   if (s) s.addEventListener('click', e => { e.stopPropagation(); saveContract(key, panel, false); });
   if (c) c.addEventListener('click', e => { e.stopPropagation(); saveContract(key, panel, true); });
 }
+// ---- Estate-wide Compliance view (top-level tab) --------------------------- //
+let cmpFilter = 'all';
+const CMP_GRADE_RANK = { CRITICAL: 4, AT_RISK: 3, REVIEW: 2, OK: 1 };
+function refreshCmpBadge() {
+  const b = $('#cmpBadge'); if (!b) return;
+  const n = (dashDatasetsAll || []).filter(d => d.complianceGrade === 'CRITICAL').length;
+  if (n > 0) { b.textContent = n; b.style.display = ''; } else { b.style.display = 'none'; }
+}
+async function loadComplianceEstate() {
+  const wrap = $('#cmpEstate'); if (!wrap) return;
+  if (!APP_ID) { wrap.innerHTML = `<p class="dash-muted">Open this from inside a Qlik app to see its compliance posture.</p>`; return; }
+  if (!dashDatasetsAll || !dashDatasetsAll.length) { wrap.innerHTML = dqLoader('Loading compliance posture', null, true); await loadDashboard(); }
+  renderComplianceEstate();
+}
+function renderComplianceEstate() {
+  const wrap = $('#cmpEstate'); if (!wrap) return;
+  const all = dashDatasetsAll || [];
+  const assessed = all.filter(d => d.complianceGrade);
+  const gc = { CRITICAL: 0, AT_RISK: 0, REVIEW: 0, OK: 0 };
+  assessed.forEach(d => { gc[d.complianceGrade] = (gc[d.complianceGrade] || 0) + 1; });
+  const notAssessed = all.length - assessed.length;
+  const tile = (n, label, cls) => `<div class="cmp-tile ${cls}"><div class="cmp-tile-n">${n}</div><div class="cmp-tile-l">${label}</div></div>`;
+  const tiles = `<div class="cmp-tiles">${tile(gc.CRITICAL, 'Critical exposure', 'red')}${tile(gc.AT_RISK, 'At risk', 'amber')}${tile(gc.REVIEW + gc.OK, 'Clean / low', 'green')}${tile(notAssessed, 'Not assessed', 'muted')}</div>`;
+  const FLABEL = { all: 'All', critical: 'Critical', atrisk: 'At risk', clean: 'Clean' };
+  const filters = Object.keys(FLABEL).map(f => `<button type="button" class="cmp-filter${cmpFilter === f ? ' active' : ''}" data-cmpf="${f}">${FLABEL[f]}</button>`).join('');
+  let rows = assessed.slice().sort((a, b) =>
+    (CMP_GRADE_RANK[b.complianceGrade] - CMP_GRADE_RANK[a.complianceGrade]) ||
+    (((b.complianceCounts || {}).critical || 0) - ((a.complianceCounts || {}).critical || 0)));
+  if (cmpFilter === 'critical') rows = rows.filter(d => d.complianceGrade === 'CRITICAL');
+  else if (cmpFilter === 'atrisk') rows = rows.filter(d => d.complianceGrade === 'AT_RISK' || d.complianceGrade === 'REVIEW');
+  else if (cmpFilter === 'clean') rows = rows.filter(d => d.complianceGrade === 'OK');
+  const gradeBadge = g => { const m = CMP_GRADE[g] || { cls: 'amber', label: g }; return `<span class="tag ${m.cls}">${esc(m.label)}</span>`; };
+  const cc = c => { c = c || {}; const p = []; if (c.critical) p.push(`<span class="tag red">${c.critical} crit</span>`); if (c.high) p.push(`<span class="tag red">${c.high} high</span>`); if (c.medium) p.push(`<span class="tag amber">${c.medium} med</span>`); if (!p.length) p.push(`<span class="tag green">clean</span>`); return p.join(' '); };
+  const body = rows.length ? rows.map(d => `<tr>
+      <td>${esc(d.name || d.slug || '')} ${isSourceDataset(d) ? sourceChip(d.sourceFormat) : sourceChip('qlik')}</td>
+      <td>${gradeBadge(d.complianceGrade)}</td>
+      <td>${cc(d.complianceCounts)}</td>
+      <td class="hint">${d.lastSeen ? esc(fmtWhen(d.lastSeen)) : '—'}</td>
+      <td><button type="button" class="btn-sm" data-cmpopen="${esc(d.key)}" data-cmpname="${esc(d.name || d.slug || '')}">Open →</button></td>
+    </tr>`).join('') : `<tr><td colspan="5" class="dash-muted">No datasets match this filter.</td></tr>`;
+  wrap.innerHTML = tiles +
+    `<div class="cmp-filters">${filters}</div>` +
+    `<table class="cmp-estate"><thead><tr><th>Dataset</th><th>Posture</th><th>Exposures</th><th>Last run</th><th></th></tr></thead><tbody>${body}</tbody></table>` +
+    (notAssessed ? `<p class="hint" style="margin-top:10px;">${notAssessed} dataset(s) have no compliance assessment yet — re-run them to populate this (runs from before the lens shipped won't have it).</p>` : '');
+  wrap.querySelectorAll('[data-cmpf]').forEach(b => b.addEventListener('click', () => { cmpFilter = b.dataset.cmpf; renderComplianceEstate(); }));
+  wrap.querySelectorAll('[data-cmpopen]').forEach(b => b.addEventListener('click', () => openDatasetCompliance(b.dataset.cmpopen, b.dataset.cmpname)));
+}
+async function openDatasetCompliance(key, name) {
+  switchTab('dashboard');
+  await selectDataset(key, name);
+  dsTab = 'compliance';
+  selectDsTab();
+}
+
+async function loadDsCompliance(panel, prefix) {
+  try {
+    const r = await postJSON(`${API_BASE}/data-quality/result`, HEADERS, { result_prefix: prefix });
+    panel.innerHTML = compliancePanel(r.compliance) ||
+      `<p class="dash-muted">No compliance assessment recorded for this run yet — re-run the dataset to generate the ISO/IEC 29100 lens.</p>`;
+  } catch (e) { panel.innerHTML = `<p class="dash-muted" style="color:var(--err)">${esc(e.message)}</p>`; }
+}
+
 async function loadDsMetadata(panel, prefix) {
   const key = dashSelected && dashSelected.key;
   try {
@@ -6775,6 +6865,7 @@ function switchTab(name) {
   $('#dashboardPanel').style.display = name === 'dashboard' ? 'block' : 'none';
   $('#medallionPanel').style.display = name === 'medallion' ? 'block' : 'none';
   $('#incidentsPanel').style.display = name === 'incidents' ? 'block' : 'none';
+  $('#complianceTab').style.display = name === 'compliance' ? 'block' : 'none';
   $('#lineagePanel').style.display = name === 'lineage' ? 'block' : 'none';
   // Wide, full-width tabs vs the narrow centered form column.
   const wrapEl = document.querySelector('.wrap');
@@ -6783,6 +6874,7 @@ function switchTab(name) {
   const footEl = document.querySelector('.standards');
   if (footEl) footEl.style.display = (name === 'upload' || name === 'appdata') ? 'block' : 'none';
   if (name === 'incidents') loadIncidents();
+  if (name === 'compliance') loadComplianceEstate();
   if (name === 'lineage') loadLineage();
   if (name === 'model') loadModel();
   if (name === 'history') setHistorySub('app');   // Full app assessments is the default subtab
