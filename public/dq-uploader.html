@@ -447,6 +447,13 @@
   .cmp-ai { line-height: 1.55; padding: 11px 14px; border-left: 4px solid var(--accent); border-radius: 4px; background: color-mix(in srgb, var(--accent) 5%, transparent); font-size: 13px; }
   .cmp-ctrl.dismissed { opacity: .6; }
   .cmp-ctrl.dismissed .cmp-why { text-decoration: none; }
+  .cmp-settings { margin: 0 0 14px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--card-2); }
+  .cmp-settings summary { cursor: pointer; font-weight: 600; }
+  .cmp-set-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px 14px; margin: 6px 0 12px; }
+  .cmp-set-grid label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
+  .cmp-set-grid input { padding: 7px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--card); color: var(--text); font: inherit; font-size: 13px; }
+  .cmp-set-grid input:focus { outline: none; border-color: var(--accent); }
+  .cmp-set-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
   /* Estate-wide compliance view */
   .cmp-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: 6px 0 16px; }
   .cmp-tile { border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; background: var(--card); }
@@ -2205,8 +2212,11 @@ function cmpCtrlHtml(ct, opts) {
       <div class="cmp-rec-bar"><button type="button" class="cmp-btn cmp-reveal-btn">👁 Reveal values</button>
         <span class="hint">Masked by default — reveal to see the actual offending values (locator finds the record in your source).</span></div>
       <table class="cmp-rec-tbl"><thead><tr><th>Record</th><th>Value</th></tr></thead><tbody>${
-        recs.map(r => { const loc = r.key ? Object.entries(r.key).map(([k, v]) => `${esc(k)}=${esc(String(v))}`).join(', ') : ('row ' + esc(String(r.row)));
-          return `<tr><td>${loc}</td><td><code class="cmp-rec-masked">${esc(r.masked || '')}</code><code class="cmp-rec-raw" style="display:none;">${esc(r.raw != null ? String(r.raw) : '')}</code></td></tr>`; }).join('')
+        recs.map(r => {
+          const lm = r.key ? Object.entries(r.key).map(([k, v]) => `${esc(k)}=${esc(String(v))}`).join(', ') : ('row ' + esc(String(r.row)));
+          const lr = r.key_raw ? Object.entries(r.key_raw).map(([k, v]) => `${esc(k)}=${esc(String(v))}`).join(', ') : lm;
+          return `<tr><td><span class="cmp-rec-masked">${lm}</span><span class="cmp-rec-raw" style="display:none;">${lr}</span></td>` +
+            `<td><code class="cmp-rec-masked">${esc(r.masked || '')}</code><code class="cmp-rec-raw" style="display:none;">${esc(r.raw != null ? String(r.raw) : '')}</code></td></tr>`; }).join('')
       }</tbody></table></div>` : '';
   // Action buttons only on FAIL controls (nothing to view/dismiss on a PASS).
   let actions = '';
@@ -3501,6 +3511,7 @@ function entryFor(key) {
   return { stage: e.stage || '', tags: (e.tags || []).slice(), owner: e.owner || '', notes: (e.notes || []).slice(),
            pii: Object.assign({}, e.pii || {}), contract: Object.assign({}, e.contract || {}),
            complianceDismissed: Object.assign({}, e.complianceDismissed || {}),
+           complianceContract: Object.assign({}, e.complianceContract || {}),
            trust: e.trust || '', trustNote: e.trustNote || '', trustBy: e.trustBy || '', trustAt: e.trustAt || '' };
 }
 async function setPiiLabel(key, column, label) {
@@ -4844,11 +4855,55 @@ async function openDatasetCompliance(key, name) {
 }
 
 async function loadDsCompliance(panel, prefix) {
+  const key = dashSelected && dashSelected.key;
   try {
     const r = await postJSON(`${API_BASE}/data-quality/result`, HEADERS, { result_prefix: prefix });
-    panel.innerHTML = compliancePanel(r.compliance, prefix) ||
-      `<p class="dash-muted">No compliance assessment recorded for this run yet — re-run the dataset to generate the ISO/IEC 29100 lens.</p>`;
+    const settings = key ? complianceSettingsHtml(key) : '';
+    panel.innerHTML = settings + (compliancePanel(r.compliance, prefix) ||
+      `<p class="dash-muted">No compliance assessment recorded for this run yet — re-run the dataset to generate the ISO/IEC 29100 lens.</p>`);
+    if (key) wireComplianceSettings(panel, key);
   } catch (e) { panel.innerHTML = `<p class="dash-muted" style="color:var(--err)">${esc(e.message)}</p>`; }
+}
+
+// Per-dataset compliance policy (Phase 2): declare a retention window + column mappings; each policy
+// control only runs once its field is set. Stored in the app's dataset-tags (complianceContract).
+function complianceSettingsHtml(key) {
+  const cc = entryFor(key).complianceContract || {};
+  const cols = cc.columns || {};
+  const v = x => esc(x || '');
+  return `<details class="cmp-settings"><summary>⚙ Compliance policy</summary>
+    <p class="hint" style="margin:6px 0 10px;">Declare your governance policy for this dataset. Each control runs only when its field is set; column names must match the dataset's columns. Applies on the next assessment.</p>
+    <div class="cmp-set-grid">
+      <label>Retention limit (days)<input type="number" min="1" id="cmpRetDays" value="${cc.retention_days || ''}" placeholder="e.g. 2555 (7 years)"></label>
+      <label>Date column — aged for retention<input id="cmpDateCol" value="${v(cols.date)}" placeholder="created_at"></label>
+      <label>Consent / lawful-basis flag column<input id="cmpConsentCol" value="${v(cols.consent_flag)}" placeholder="marketing_consent"></label>
+      <label>Erasure / opt-out flag column<input id="cmpErasureCol" value="${v(cols.erasure_flag)}" placeholder="is_erased"></label>
+      <label>Data-subject id column (DSARs)<input id="cmpSubjectCol" value="${v(cols.subject_id)}" placeholder="customer_id"></label>
+      <label>Audit-trail columns (comma-separated)<input id="cmpAuditCols" value="${v((cols.audit || []).join(', '))}" placeholder="created_at, created_by, updated_at"></label>
+    </div>
+    <div class="cmp-set-actions"><button type="button" class="btn-sm" id="cmpSaveSettings">Save policy</button>
+      <span class="hint" id="cmpSetMsg"></span></div>
+  </details>`;
+}
+function wireComplianceSettings(panel, key) {
+  const btn = panel.querySelector('#cmpSaveSettings'); if (!btn) return;
+  const val = id => { const el = panel.querySelector(id); return el ? el.value.trim() : ''; };
+  btn.addEventListener('click', async () => {
+    btn.disabled = true;
+    const msg = panel.querySelector('#cmpSetMsg');
+    try {
+      const r = await postJSON(`${API_BASE}/data-quality/dataset-tags`, HEADERS, {
+        app_id: APP_ID, action: 'set-compliance-contract', key,
+        retention_days: parseInt(val('#cmpRetDays'), 10) || 0,
+        date_column: val('#cmpDateCol'), consent_column: val('#cmpConsentCol'),
+        erasure_column: val('#cmpErasureCol'), subject_id_column: val('#cmpSubjectCol'),
+        audit_columns: val('#cmpAuditCols').split(',').map(s => s.trim()).filter(Boolean),
+      });
+      if (r && r.entries) dashEntries = r.entries;
+      if (msg) { msg.textContent = 'Saved — applies on the next assessment of this dataset.'; msg.style.color = 'var(--ok)'; }
+    } catch (e) { if (msg) { msg.textContent = e.message; msg.style.color = 'var(--err)'; } }
+    btn.disabled = false;
+  });
 }
 
 async function loadDsMetadata(panel, prefix) {
