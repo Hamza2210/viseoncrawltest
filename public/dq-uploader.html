@@ -2114,7 +2114,8 @@ const CMP_GRADE = {
 };
 const CMP_SEV = { critical: 'red', high: 'red', medium: 'amber' };
 function compliancePanel(comp) {
-  if (!comp || (!(comp.controls || []).length && !(comp.advisory || []).length)) return '';
+  if (!comp) return '';   // no block at all (a run from before the lens shipped) — show nothing;
+                          // a clean run still has a block and renders the green "no exposure" state
   const gm = CMP_GRADE[comp.grade] || { cls: 'amber', label: comp.grade || '—' };
   const c = comp.counts || {};
   const chips = [];
@@ -2336,6 +2337,9 @@ function renderAssessment(r, bodyEl, opts) {
     : '';
   html += `<div class="dim-split"><div class="dim-split-table">${tableHtml}${explainBtn}</div><div class="dim-split-chart">${radarHtml}</div></div>`;
   if (canAI) html += `<div class="score-ai-out" style="margin-top:12px;"></div>`;
+  // Metadata scores inline on single-run result screens (upload/source/dashboard); skipped in the
+  // multi-table app grid (opts.lazyRecords) so we don't fire one profile fetch per table on render.
+  if (r.resultPrefix && !(opts && opts.lazyRecords)) html += `<div class="assess-metadata" data-prefix="${esc(r.resultPrefix)}"></div>`;
   html += compliancePanel(r.compliance);      // ISO 29100 privacy/compliance lens
   // Failed records surfaced INLINE here (not just on the dashboard), so the offending
   // rows are visible wherever a run is shown — upload result, incident view, history,
@@ -2351,6 +2355,8 @@ function renderAssessment(r, bodyEl, opts) {
   }
   html += filesHtml(r.files);
   body.innerHTML = html;
+  const mdEl = body.querySelector('.assess-metadata');
+  if (mdEl) loadInlineMetadata(mdEl, mdEl.dataset.prefix);   // metadata scores, lazy-loaded
   const vpb = body.querySelector('[data-viewpins]');
   if (vpb) vpb.addEventListener('click', () =>
     openPinRulesModal(r.pendingPinRules, { by: r.pendingPinBy, at: r.pendingPinAt }));
@@ -4441,6 +4447,20 @@ function renderMetadataPanel(profile, key) {
     `<p class="hint" style="margin:2px 0 14px;">Scores the dataset's <em>structure</em> — names &amp; types of the ${mq.columns} column${mq.columns === 1 ? '' : 's'} — ` +
     `${mq.basedOn === 'declared' ? "from the source's <strong>declared schema</strong>" : 'inferred from sampled values'}, separately from the 9 data-quality dimensions.</p>` +
     rows + piiHtml + `</div>`;
+}
+
+// Metadata-quality (structure) shown inline on the result screen. Read-only: PII labelling +
+// contract editing stay in the dedicated Metadata tab (which has the dataset key). Lazy-fetches
+// the profile so it never blocks the quality result; hides itself if there's nothing to show.
+async function loadInlineMetadata(container, prefix) {
+  if (!container || !prefix) return;
+  container.innerHTML = dqLoader('Assessing metadata', null, true);
+  try {
+    const pr = await postJSON(`${API_BASE}/data-quality/profile`, HEADERS, { result_prefix: prefix });
+    const prof = pr && pr.profile;
+    if (!prof || !prof.columns || !Object.keys(prof.columns).length) { container.remove(); return; }
+    container.innerHTML = renderMetadataPanel(prof, null);
+  } catch (e) { container.remove(); }   // supplementary — a fetch failure must not disturb the result
 }
 
 function wireMetaPanel(container, key) {
