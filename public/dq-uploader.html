@@ -554,6 +554,9 @@
   .inc-card.dismissed { border-left-color: var(--border); opacity: .82; }
   .inc-card-top { display: flex; align-items: center; gap: 8px; }
   .inc-rule { font-weight: 600; flex: 1 1 auto; min-width: 0; }
+  .inc-compliance-badge { flex: 0 0 auto; font-size: 11px; font-weight: 600; white-space: nowrap;
+    color: #6b46c1; background: rgba(107,70,193,.12); border: 1px solid rgba(107,70,193,.35);
+    border-radius: 4px; padding: 1px 7px; }
   .inc-msg { color: var(--muted); font-size: 13px; margin: 7px 0 0; }
   .inc-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px;
     color: var(--muted); font-size: 12px; margin-top: 8px; }
@@ -5112,8 +5115,15 @@ const _RULE_LABEL = {
   VOLUME: 'Row volume drop', SCHEMA: 'Schema changed', QUALITY_DRIFT: 'Dimension drift',
   FRESHNESS: 'Stale — no recent run', BASELINE_VOLUME: 'Volume outside expected range',
   BASELINE_SCORE: 'Score below expected range', BASELINE_DIMENSION: 'Dimension below expected range',
+  // Compliance-driven incidents (ISO/IEC 29100 lens)
+  COMPLIANCE_SECURITY: 'Compliance — cleartext exposure', COMPLIANCE_MINIMIZATION: 'Compliance — prohibited data stored',
+  COMPLIANCE_RETENTION: 'Compliance — retention breach', COMPLIANCE_CONSENT: 'Compliance — consent gap',
+  COMPLIANCE_ERASURE: 'Compliance — erasure gap', COMPLIANCE_ACCOUNTABILITY: 'Compliance — audit-trail gap',
+  COMPLIANCE_COLLECTION: 'Compliance — collection limitation', COMPLIANCE: 'Compliance exposure',
 };
 function ruleLabel(r) { return _RULE_LABEL[r] || r; }
+// A compliance-driven incident (rule starts COMPLIANCE) — used to badge it distinctly in the list.
+function isComplianceRule(r) { return typeof r === 'string' && r.indexOf('COMPLIANCE') === 0; }
 function incidentDuration(it) {
   const start = Date.parse(it.openedAt);
   const end = it.resolvedAt ? Date.parse(it.resolvedAt) : Date.now();
@@ -5330,6 +5340,7 @@ function incCard(it) {
   return `<div class="inc-card ${cls}">
       <div class="inc-card-top">
         ${incSevChip(it.severity)}${statusChip}
+        ${isComplianceRule(it.rule) ? '<span class="inc-compliance-badge" title="ISO/IEC 29100 compliance lens">⚖ Compliance</span>' : ''}
         <span class="inc-rule">${esc(ruleLabel(it.rule))}</span>
         <span class="inc-menu-wrap">
           <button class="inc-kebab" aria-label="Actions">⋯</button>
