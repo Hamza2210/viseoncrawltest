@@ -4607,12 +4607,26 @@ function metadataQuality(profile) {
   // data-inferred key). If none is declared but a column is unique + non-null, it's a natural-key
   // candidate — softened + surfaced, since row identity is satisfiable, just not formalised.
   const pkCols = (profile && profile.primary_key) || names.filter(nm => cols[nm].is_primary_key);
+  // Qlik declares keys in its data model (primary + associations = its foreign-key equivalent),
+  // so the Keys dimension assesses those too — not just a warehouse catalog's constraints.
+  const modelKeys = !!(profile && profile.has_model_keys);
+  const assoc = (profile && profile.associations) || [];
+  const fromModel = (profile && profile.key_source) === 'qlik-model';
+  const srcLabel = fromModel ? 'the Qlik data model' : 'the schema catalog';
+  const pkWord = fromModel ? 'Primary key' : 'PRIMARY KEY constraint';
+  const assocNote = assoc.length ? ` · associations (key links): ${assoc.join(', ')}` : '';
   let keysDim;
-  if (!hasCatalog) {
+  if (!hasCatalog && !modelKeys) {
     keysDim = { key: 'keys', label: 'Keys', score: null,
-      notAssessed: 'Keys/constraints come from a warehouse catalog — files & Qlik have none.' };
+      notAssessed: 'Keys come from a warehouse catalog or a Qlik data model — a flat file exposes none.' };
   } else if (pkCols && pkCols.length) {
-    keysDim = { key: 'keys', label: 'Keys', score: 100, detail: `PRIMARY KEY constraint declared on ${pkCols.join(', ')}`, findings: [] };
+    keysDim = { key: 'keys', label: 'Keys', score: 100,
+      detail: `${pkWord} declared in ${srcLabel} on ${pkCols.join(', ')}${assocNote}`, findings: [] };
+  } else if (modelKeys && assoc.length) {
+    // Qlik: this table links to others via key fields, but has no single unique key of its own.
+    keysDim = { key: 'keys', label: 'Keys', score: 80,
+      detail: `Key links declared in the Qlik data model${assocNote}`,
+      findings: [{ col: '(table)', msg: `associates to other tables via ${assoc.join(', ')}, but no single-field primary key identifies its own rows` }] };
   } else {
     const cand = names.filter(nm => cols[nm].null_rate_pct === 0 && typeof cols[nm].distinct_rate_pct === 'number' && cols[nm].distinct_rate_pct >= 99.5);
     const best = cand.find(nm => /(^id$|_id$|^pk$|key$)/i.test(nm)) || cand[0];
