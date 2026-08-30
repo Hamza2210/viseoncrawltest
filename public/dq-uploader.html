@@ -457,7 +457,45 @@
   .cmp-set-grid input:focus { outline: none; border-color: var(--accent); }
   .cmp-set-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
   .cmp-exempt { display: flex; align-items: center; gap: 8px; font-size: 13px; margin: 0 0 12px; cursor: pointer; }
+  .cmp-fw { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); margin: 0 0 12px; max-width: 460px; }
+  .cmp-fw select { padding: 7px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--card); color: var(--text); font: inherit; font-size: 13px; }
   .tag.muted { background: color-mix(in srgb, var(--muted) 16%, transparent); color: var(--muted); }
+  /* Domain pack: HIPAA Safe Harbor panel */
+  .dm-panel { margin: 14px 0; padding: 14px 16px; border: 1px solid var(--border); border-left: 4px solid #0e7490; border-radius: 10px; background: var(--card); }
+  .dm-hd { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 15px; }
+  .dm-badge { font-size: 12px; font-weight: 700; color: #fff; background: #0e7490; border-radius: 5px; padding: 2px 8px; }
+  .dm-tbl { width: 100%; border-collapse: collapse; font-size: 12.5px; margin-top: 6px; }
+  .dm-tbl th { text-align: left; padding: 6px 8px; color: var(--muted); border-bottom: 1px solid var(--border); font-weight: 600; }
+  .dm-tbl td { padding: 6px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  .dm-sev { font-size: 10px; font-weight: 700; border-radius: 3px; padding: 1px 6px; color: #fff; }
+  .dm-sev.red { background: var(--err); } .dm-sev.amber { background: var(--run); }
+  .dm-sev.green { background: var(--ok); } .dm-sev.muted { background: var(--muted); }
+  .dm-ccpa { border-left-color: #b45309; } .dm-ccpa .dm-badge { background: #b45309; }
+  .dm-bcbs { border-left-color: #4338ca; } .dm-bcbs .dm-badge { background: #4338ca; }
+  /* ISO 27701 PIMS readiness (capstone) */
+  .pims-panel { margin: 14px 0; padding: 14px 16px; border: 1px solid var(--border); border-left: 4px solid #0f766e; border-radius: 10px; background: var(--card); }
+  .pims-hd { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 15px; }
+  .pims-badge { font-size: 12px; font-weight: 700; color: #fff; background: #0f766e; border-radius: 5px; padding: 2px 8px; }
+  .pims-area { margin: 6px 0; border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; background: var(--card-2); }
+  .pims-area summary { cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 13px; }
+  .pims-acount { margin-left: auto; font-size: 12px; color: var(--muted); }
+  .pims-adot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; flex: 0 0 auto; }
+  .pims-adot.green { background: var(--ok); } .pims-adot.red { background: var(--err); }
+  .pims-adot.amber { background: var(--run); } .pims-adot.muted, .pims-adot.not_assessed { background: var(--muted); }
+  .pims-tbl { width: 100%; border-collapse: collapse; font-size: 12.5px; margin-top: 6px; }
+  .pims-tbl td { padding: 5px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  .pims-ref { font-family: Consolas, monospace; font-size: 11px; color: var(--muted); white-space: nowrap; }
+  .pims-chip { font-size: 11px; font-weight: 600; border-radius: 4px; padding: 1px 7px; white-space: nowrap; }
+  .pims-chip.green { background: var(--ok); color: #fff; }
+  .pims-chip.green-out { background: transparent; color: var(--ok); border: 1px solid var(--ok); }
+  .pims-chip.red { background: var(--err); color: #fff; }
+  .pims-chip.red-out { background: transparent; color: var(--err); border: 1px solid var(--err); }
+  .pims-chip.amber { background: var(--run); color: #fff; }
+  .pims-chip.muted { background: var(--muted); color: #fff; }
+  .pims-chip.muted-out { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+  .dm-cols code { font-size: 11px; background: var(--card-2); border-radius: 3px; padding: 1px 5px; margin-right: 3px; }
+  .dm-cite { color: var(--muted); white-space: nowrap; font-family: Consolas, monospace; font-size: 11px; }
+  .dm-conf { color: var(--ok); font-size: 11px; }
   /* Governance attestations */
   .cmp-attest summary .tag { margin-left: 8px; font-size: 11px; }
   .cmp-at-cov { display: flex; align-items: center; gap: 10px; margin: 4px 0 14px; }
@@ -4928,10 +4966,12 @@ async function loadDsCompliance(panel, prefix) {
   try {
     const r = await postJSON(`${API_BASE}/data-quality/result`, HEADERS, { result_prefix: prefix });
     const settings = key ? complianceSettingsHtml(key) : '';
+    const pims = key ? renderIso27701Panel(r.compliance, key) : '';
     const attest = key ? complianceAttestHtml(key, r.compliance) : '';
-    panel.innerHTML = settings + (compliancePanel(r.compliance, prefix) ||
-      `<p class="dash-muted">No compliance assessment recorded for this run yet — re-run the dataset to generate the ISO/IEC 29100 lens.</p>`) + attest;
-    if (key) { wireComplianceSettings(panel, key, prefix); wireComplianceAttest(panel, key); }
+    panel.innerHTML = settings + pims + (compliancePanel(r.compliance, prefix) ||
+      `<p class="dash-muted">No compliance assessment recorded for this run yet — re-run the dataset to generate the ISO/IEC 29100 lens.</p>`)
+      + domainPanelHtml(r.compliance) + attest;
+    if (key) { wireComplianceSettings(panel, key, prefix); wireComplianceAttest(panel, key, r.compliance); }
   } catch (e) { panel.innerHTML = `<p class="dash-muted" style="color:var(--err)">${esc(e.message)}</p>`; }
 }
 
@@ -4941,8 +4981,18 @@ function complianceSettingsHtml(key) {
   const cc = entryFor(key).complianceContract || {};
   const cols = cc.columns || {};
   const v = x => esc(x || '');
+  const fw = (cc.framework || 'gdpr');
   return `<details class="cmp-settings"><summary>⚙ Compliance policy</summary>
     <p class="hint" style="margin:6px 0 10px;">Declare your governance policy for this dataset. Each control runs only when its field is set; column names must match the dataset's columns. Applies on the next assessment.</p>
+    <label class="cmp-fw">Regulatory framework
+      <select id="cmpFramework">
+        <option value="gdpr"${fw === 'gdpr' ? ' selected' : ''}>General — ISO/IEC 29100 · GDPR</option>
+        <option value="hipaa"${fw === 'hipaa' ? ' selected' : ''}>HIPAA — US health (Safe Harbor de-identification)</option>
+        <option value="ccpa"${fw === 'ccpa' ? ' selected' : ''}>CCPA / CPRA — California (PI categories + sensitive PI)</option>
+        <option value="bcbs239"${fw === 'bcbs239' ? ' selected' : ''}>BCBS 239 — banking risk-data aggregation</option>
+      </select>
+      <span class="hint">Adds a domain pack overlay; the generic exposure grade is unchanged.</span>
+    </label>
     <label class="cmp-exempt"><input type="checkbox" id="cmpExempt"${cc.exempt ? ' checked' : ''}> This dataset holds no personal data — exclude from compliance <span class="hint">(out of scope: no controls run, no grade)</span></label>
     <div class="cmp-set-grid">
       <label>Retention limit (days)<input type="number" min="1" id="cmpRetDays" value="${cc.retention_days || ''}" placeholder="e.g. 2555 (7 years)"></label>
@@ -4982,9 +5032,11 @@ function wireComplianceSettings(panel, key, prefix) {
     btn.disabled = true;
     try {
       const exEl = panel.querySelector('#cmpExempt');
+      const fwEl = panel.querySelector('#cmpFramework');
       const r = await postJSON(`${API_BASE}/data-quality/dataset-tags`, HEADERS, {
         app_id: APP_ID, action: 'set-compliance-contract', key,
         exempt: !!(exEl && exEl.checked),
+        framework: fwEl ? fwEl.value : 'gdpr',
         retention_days: parseInt(val('#cmpRetDays'), 10) || 0,
         date_column: val('#cmpDateCol'), consent_column: val('#cmpConsentCol'),
         erasure_column: val('#cmpErasureCol'), subject_id_column: val('#cmpSubjectCol'),
@@ -4998,7 +5050,189 @@ function wireComplianceSettings(panel, key, prefix) {
   });
 }
 
-// ---- Governance attestations (Phase 3) -------------------------------------------------------
+// ---- Domain packs (Phase 3) ------------------------------------------------------------------
+// Renders the report's domain block (comp.domain) — an ADVISORY overlay, deliberately separate from
+// the machine-evidenced exposure grade above. Dispatches by framework.
+function domainPanelHtml(comp) {
+  const d = comp && comp.domain;
+  if (!d) return '';
+  if (d.framework === 'HIPAA') return _hipaaPanelHtml(d);
+  if (d.framework === 'CCPA') return _ccpaPanelHtml(d);
+  if (d.framework === 'BCBS239') return _bcbsPanelHtml(d);
+  return '';
+}
+
+function _hipaaPanelHtml(d) {
+  const cls = d.deidentified ? 'green' : 'red';
+  const verdict = d.deidentified
+    ? 'No Safe Harbor identifiers detected'
+    : `Not de-identified — ${d.identifiers_present} of ${d.identifier_types_total} identifier types present`;
+  const rows = (d.categories || []).map(c =>
+    `<tr>
+      <td><span class="dm-sev ${c.severity === 'high' ? 'red' : 'amber'}">${esc((c.severity || '').toUpperCase())}</span></td>
+      <td>#${esc(String(c.n))} ${esc(c.label)}${c.confirmed ? ' <span class="dm-conf" data-tip="Confirmed by value — checksum or format match">✓ value-confirmed</span>' : ''}</td>
+      <td class="dm-cols">${(c.columns || []).map(x => `<code>${esc(x)}</code>`).join(' ')}</td>
+      <td class="dm-cite">${esc(c.cite)}</td>
+    </tr>`).join('');
+  return `<div class="dm-panel">
+    <div class="dm-hd"><span class="dm-badge">⚕ HIPAA</span> <strong>Safe Harbor de-identification</strong>
+      <span class="tag ${cls}">${esc(verdict)}</span></div>
+    <p class="hint" style="margin:6px 0 8px;">${esc(d.standard)} · advisory inventory — <strong>separate</strong> from the exposure grade above (holding PHI is lawful; the finding is that it is identifiable).</p>
+    ${rows ? `<table class="dm-tbl"><thead><tr><th></th><th>Identifier type</th><th>Column(s)</th><th>Safe Harbor §</th></tr></thead><tbody>${rows}</tbody></table>` : ''}
+    <p class="hint" style="margin:8px 0 0;">${esc(d.note)}</p>
+  </div>`;
+}
+
+function _ccpaPanelHtml(d) {
+  const spi = d.spi_present || 0;
+  const cls = spi ? 'red' : (d.categories_present ? 'amber' : 'green');
+  const verdict = d.categories_present
+    ? `${d.categories_present} PI categor${d.categories_present === 1 ? 'y' : 'ies'}${spi ? ` · ${spi} sensitive (SPI)` : ''}`
+    : 'No PI categories detected';
+  const rows = (d.categories || []).map(c =>
+    `<tr>
+      <td>${c.spi ? '<span class="dm-sev red">SPI</span>' : '<span class="dm-sev amber">PI</span>'}</td>
+      <td>${esc(c.label)}</td>
+      <td class="dm-cols">${(c.columns || []).map(x => `<code>${esc(x)}</code>`).join(' ')}</td>
+      <td class="dm-cite">${esc(c.cite)}</td>
+    </tr>`).join('');
+  return `<div class="dm-panel dm-ccpa">
+    <div class="dm-hd"><span class="dm-badge">🐻 CCPA</span> <strong>Personal-information inventory</strong>
+      <span class="tag ${cls}">${esc(verdict)}</span></div>
+    <p class="hint" style="margin:6px 0 8px;">${esc(d.standard)} · advisory inventory — <strong>separate</strong> from the exposure grade above.</p>
+    ${rows ? `<table class="dm-tbl"><thead><tr><th></th><th>Category</th><th>Column(s)</th><th>Cal. Civ. Code §</th></tr></thead><tbody>${rows}</tbody></table>` : ''}
+    <p class="hint" style="margin:8px 0 0;">${esc(d.note)}</p>
+  </div>`;
+}
+
+function _bcbsPanelHtml(d) {
+  const R = { green: 'green', amber: 'amber', red: 'red', not_assessed: 'muted' };
+  const rows = (d.principles || []).map(p => {
+    if (p.score == null)
+      return `<tr><td><span class="dm-sev muted">—</span></td><td>P${esc(String(p.n))} ${esc(p.name)}</td>
+        <td class="dm-cols" colspan="2"><span class="hint">not assessed — no contributing dimension in this run</span></td></tr>`;
+    const dims = Object.entries(p.dims || {}).map(([k, v]) => `${esc(k)} ${esc(String(v))}`).join(' · ');
+    return `<tr>
+      <td><span class="dm-sev ${R[p.status] || 'muted'}">${esc((p.status || '').toUpperCase())}</span></td>
+      <td>P${esc(String(p.n))} ${esc(p.name)}</td>
+      <td class="dm-cols"><strong>${esc(String(p.score))}</strong></td>
+      <td class="dm-cite">${esc(dims)}</td>
+    </tr>`;
+  }).join('');
+  return `<div class="dm-panel dm-bcbs">
+    <div class="dm-hd"><span class="dm-badge">🏦 BCBS 239</span> <strong>Risk-data aggregation</strong>
+      <span class="tag ${R[d.readiness] || 'muted'}">${esc((d.readiness || 'not assessed').replace('_', ' '))}</span></div>
+    <p class="hint" style="margin:6px 0 8px;">${esc(d.standard)} — the weakest contributing DAMA dimension governs each principle.</p>
+    ${rows ? `<table class="dm-tbl"><thead><tr><th>Status</th><th>Principle</th><th>Score</th><th>Dimensions</th></tr></thead><tbody>${rows}</tbody></table>` : ''}
+    <p class="hint" style="margin:8px 0 0;">${esc(d.note)}</p>
+  </div>`;
+}
+
+// ---- ISO/IEC 27701 PIMS readiness (Phase 3 capstone) -----------------------------------------
+// Projects everything already assessed for this dataset — the machine-evidenced ISO 29100 controls,
+// the exposure grade, and the owner's attestations — onto ISO/IEC 27701 Annex A (PII Controller).
+// A MAPPING, not new detection: it re-expresses existing evidence as certification-readiness, and is
+// explicit about whether each control is machine-evidenced or self-attested.
+const ISO27701_CONTROLS = [
+  { area: 'A.7.2', areaTitle: 'Conditions for collection & processing', ref: 'A.7.2.1', title: 'Identify & document purpose', attest: 'purpose_documented' },
+  { area: 'A.7.2', ref: 'A.7.2.2', title: 'Identify lawful basis for processing', attest: 'purpose_documented' },
+  { area: 'A.7.2', ref: 'A.7.2.3', title: 'Determine when & how consent is obtained', lensKind: 'consent', attest: 'consent_valid' },
+  { area: 'A.7.2', ref: 'A.7.2.4', title: 'Privacy impact assessment (DPIA)', attest: 'dpia' },
+  { area: 'A.7.2', ref: 'A.7.2.5', title: 'Contracts with PII processors', attest: 'processors' },
+  { area: 'A.7.2', ref: 'A.7.2.8', title: 'Records related to processing (ROPA)', lensKind: 'accountability', attest: 'ropa' },
+  { area: 'A.7.3', areaTitle: 'Obligations to PII principals', ref: 'A.7.3.2', title: 'Information provided to PII principals (notice)', attest: 'privacy_notice' },
+  { area: 'A.7.3', ref: 'A.7.3.3', title: 'Notice covers controller, purposes, retention, rights', attest: 'notice_complete' },
+  { area: 'A.7.3', ref: 'A.7.3.5', title: 'Mechanism to modify or withdraw consent', attest: 'consent_valid' },
+  { area: 'A.7.3', ref: 'A.7.3.6', title: 'Access, correction & erasure', lensKind: 'erasure', attest: 'rights_process' },
+  { area: 'A.7.3', ref: 'A.7.3.9', title: 'Handling PII-principal requests', attest: 'rights_process' },
+  { area: 'A.7.4', areaTitle: 'Privacy by design & by default', ref: 'A.7.4.1', title: 'Limit collection', attest: 'collection_minimised' },
+  { area: 'A.7.4', ref: 'A.7.4.3', title: 'Accuracy & quality', lensKind: 'accuracy_quality' },
+  { area: 'A.7.4', ref: 'A.7.4.4', title: 'PII minimization objectives', lensKind: 'cvv', attest: 'collection_minimised' },
+  { area: 'A.7.4', ref: 'A.7.4.7', title: 'Retention & disposal', lensKind: 'retention' },
+  { area: 'A.7.4', ref: 'A.7.4.9', title: 'Security of transmission & storage', lensGrade: true },
+  { area: 'A.7.5', areaTitle: 'PII sharing, transfer & disclosure', ref: 'A.7.5.1', title: 'Identify basis for transfer', attest: 'transfers' },
+  { area: 'A.7.5', ref: 'A.7.5.2', title: 'Countries & international organisations', attest: 'transfers' },
+  { area: 'A.7.5', ref: 'A.7.5.4', title: 'Records of PII disclosure', attest: 'ropa' },
+];
+const _PIMS_META = {
+  evidenced: { cls: 'green', label: '✓ Evidenced' }, attested: { cls: 'green-out', label: '✓ Attested' },
+  gap: { cls: 'red', label: '✗ Gap' }, gap_attested: { cls: 'red-out', label: '✗ Gap (attested “No”)' },
+  review: { cls: 'amber', label: '◐ Review' }, na: { cls: 'muted', label: 'N/A' },
+  not_assessed: { cls: 'muted-out', label: '— Not assessed' },
+};
+
+function _pimsControlStatus(ctrl, comp, att, dismissed) {
+  // 7.4.9 security → the active exposure posture (after dismissals)
+  if (ctrl.lensGrade) {
+    if (!comp || comp.exempt) return 'na';
+    const active = (comp.controls || []).filter(c => c.status === 'FAIL' && c.class !== 'quality' && !dismissed[c.id]);
+    if (active.some(c => c.severity === 'critical' || c.severity === 'high')) return 'gap';
+    if (active.some(c => c.severity === 'medium')) return 'review';
+    return 'evidenced';
+  }
+  // a machine control of the mapped kind, if the lens produced one (not dismissed)
+  if (ctrl.lensKind && comp) {
+    const c = (comp.controls || []).find(x => x.kind === ctrl.lensKind && !dismissed[x.id]);
+    if (c) return c.status === 'PASS' ? 'evidenced' : 'gap';
+  }
+  // else fall back to the owner's attestation
+  if (ctrl.attest && att[ctrl.attest]) {
+    const v = att[ctrl.attest].value;
+    if (v === 'yes') return 'attested';
+    if (v === 'no') return 'gap_attested';
+    if (v === 'na') return 'na';
+  }
+  return 'not_assessed';
+}
+
+function iso27701Posture(comp, key) {
+  const att = ((entryFor(key).complianceAttestations || {}).items) || {};
+  const dismissed = entryFor(key).complianceDismissed || {};
+  const areas = [];
+  let cur = null;
+  ISO27701_CONTROLS.forEach(ctrl => {
+    if (ctrl.areaTitle) { cur = { area: ctrl.area, title: ctrl.areaTitle, controls: [] }; areas.push(cur); }
+    cur.controls.push(Object.assign({}, ctrl, { status: _pimsControlStatus(ctrl, comp, att, dismissed) }));
+  });
+  const flat = areas.flatMap(a => a.controls);
+  const isEvid = s => s === 'evidenced' || s === 'attested';
+  const isGap = s => s === 'gap' || s === 'gap_attested';
+  const assessable = flat.filter(c => c.status !== 'na');
+  const evidenced = flat.filter(c => isEvid(c.status)).length;
+  const gaps = flat.filter(c => isGap(c.status)).length;
+  areas.forEach(a => {
+    const cs = a.controls;
+    a.status = cs.some(c => isGap(c.status)) ? 'gap'
+      : cs.some(c => c.status === 'review') ? 'review'
+      : cs.every(c => isEvid(c.status) || c.status === 'na') ? 'evidenced' : 'not_assessed';
+  });
+  return { areas, evidenced, gaps, assessable: assessable.length, total: flat.length,
+           readiness: assessable.length ? Math.round((evidenced / assessable.length) * 100) : 0 };
+}
+
+function renderIso27701Panel(comp, key) {
+  if (!comp || comp.exempt) return '';   // no PIMS posture for an out-of-scope dataset
+  const p = iso27701Posture(comp, key);
+  const covCls = p.gaps ? 'red' : (p.readiness === 100 ? 'green' : 'amber');
+  const areaRows = p.areas.map(a => {
+    const m = _PIMS_META[a.status] || _PIMS_META.not_assessed;
+    const ctrlRows = a.controls.map(c => {
+      const cm = _PIMS_META[c.status] || _PIMS_META.not_assessed;
+      return `<tr><td class="pims-ref">${esc(c.ref)}</td><td>${esc(c.title)}</td>
+        <td><span class="pims-chip ${cm.cls}">${esc(cm.label)}</span></td></tr>`;
+    }).join('');
+    return `<details class="pims-area"><summary><span class="pims-adot ${m.cls}"></span>
+        <strong>${esc(a.area)}</strong> ${esc(a.title)}
+        <span class="pims-acount">${a.controls.filter(c => c.status === 'evidenced' || c.status === 'attested').length}/${a.controls.filter(c => c.status !== 'na').length}</span></summary>
+      <table class="pims-tbl"><tbody>${ctrlRows}</tbody></table></details>`;
+  }).join('');
+  return `<div class="pims-panel" id="pimsPanel" data-key="${esc(key)}">
+    <div class="pims-hd"><span class="pims-badge">🛡 ISO/IEC 27701</span> <strong>PIMS readiness</strong>
+      <span class="tag ${covCls}">${p.readiness}% · ${p.evidenced}/${p.assessable} evidenced${p.gaps ? ` · ${p.gaps} gap${p.gaps === 1 ? '' : 's'}` : ''}</span></div>
+    <p class="hint" style="margin:6px 0 8px;">Maps this dataset's machine-evidenced controls + your attestations onto ISO/IEC 27701 Annex A (PII Controller). A <span class="pims-chip green" style="padding:0 5px;">✓ Evidenced</span> is machine-verified; <span class="pims-chip green-out" style="padding:0 5px;">✓ Attested</span> is self-declared. Evidence toward certification readiness — not a certification.</p>
+    ${areaRows}
+  </div>`;
+}
 // The ISO/IEC 29100 principles data can't evidence (purpose, notice, individual rights, DPIA/ROPA/
 // governance). SELF-ATTESTED by the owner — recorded with an audit trail, clearly separate from the
 // machine-evidenced exposure grade (attestations never move CRITICAL/AT_RISK/etc). Groups shown in order.
@@ -5029,6 +5263,43 @@ const CMP_ATTESTATIONS = [
     q: 'Processor agreements are in place for any third parties handling this data.' },
   { id: 'breach_process', group: 'Governance', ref: 'ISO 29100 §5.9', cite: 'GDPR Art. 33/34',
     q: 'A personal-data breach detection and 72-hour notification process is in place.' },
+  // HIPAA domain-pack items — shown only when the dataset's framework is HIPAA.
+  { id: 'baa', group: 'HIPAA', ref: 'HIPAA §164.502(e)', cite: '45 CFR §164.308(b)', fw: 'hipaa',
+    q: 'Business Associate Agreements (BAAs) are in place with all vendors handling this PHI.' },
+  { id: 'minimum_necessary', group: 'HIPAA', ref: 'HIPAA §164.502(b)', cite: '45 CFR §164.514(d)', fw: 'hipaa',
+    q: 'Access to this PHI is limited to the minimum necessary for each role.' },
+  { id: 'security_rule_safeguards', group: 'HIPAA', ref: 'HIPAA Security Rule', cite: '45 CFR §164.308/310/312', fw: 'hipaa',
+    q: 'Administrative, physical and technical safeguards are implemented (Security Rule).' },
+  { id: 'breach_notification_hitech', group: 'HIPAA', ref: 'HITECH Breach Rule', cite: '45 CFR §164.400–414', fw: 'hipaa',
+    q: 'A HITECH breach-notification process (individual / HHS / media) is in place.' },
+  { id: 'deid_method', group: 'HIPAA', ref: 'HIPAA §164.514(b)', cite: 'Safe Harbor / Expert Determination', fw: 'hipaa',
+    q: 'If shared as de-identified, the de-identification method is documented.' },
+  // CCPA / CPRA domain-pack items — shown only when framework is CCPA.
+  { id: 'ccpa_notice', group: 'CCPA', ref: 'CCPA §1798.100(b)', cite: 'Notice at collection', fw: 'ccpa',
+    q: 'A notice at collection lists the categories of personal information and the purposes.' },
+  { id: 'ccpa_optout', group: 'CCPA', ref: 'CCPA §1798.135', cite: 'Do Not Sell/Share + GPC', fw: 'ccpa',
+    q: 'A "Do Not Sell or Share My Personal Information" mechanism (and the GPC signal) is honoured.' },
+  { id: 'ccpa_spi_limit', group: 'CCPA', ref: 'CPRA §1798.121', cite: 'Limit use of SPI', fw: 'ccpa',
+    q: 'Consumers can limit the use of sensitive personal information to permitted purposes.' },
+  { id: 'ccpa_rights', group: 'CCPA', ref: 'CCPA §1798.130', cite: 'Know / delete / correct', fw: 'ccpa',
+    q: 'Requests to know / delete / correct are fulfilled within the statutory 45 days.' },
+  { id: 'ccpa_service_providers', group: 'CCPA', ref: 'CCPA §1798.140(ag)', cite: 'Service-provider contracts', fw: 'ccpa',
+    q: 'Service-provider / contractor contracts restrict PI use and prohibit sale.' },
+  { id: 'ccpa_retention', group: 'CCPA', ref: 'CPRA §1798.100(a)(3)', cite: 'Retention disclosure', fw: 'ccpa',
+    q: 'Retention periods are disclosed and enforced for each category of PI.' },
+  // BCBS 239 domain-pack items — shown only when framework is BCBS 239.
+  { id: 'bcbs_governance', group: 'BCBS 239', ref: 'BCBS 239 P1–2', cite: 'Governance & architecture', fw: 'bcbs239',
+    q: 'A board-approved risk-data governance framework with clear ownership is in place.' },
+  { id: 'bcbs_lineage', group: 'BCBS 239', ref: 'BCBS 239 P2', cite: 'Data lineage', fw: 'bcbs239',
+    q: 'Data lineage / a dictionary documents the source of each risk-data element.' },
+  { id: 'bcbs_reconciliation', group: 'BCBS 239', ref: 'BCBS 239 P3', cite: 'Reconciliation controls', fw: 'bcbs239',
+    q: 'Risk data reconciles to source / general ledger with documented controls.' },
+  { id: 'bcbs_adaptability', group: 'BCBS 239', ref: 'BCBS 239 P6', cite: 'Adaptability', fw: 'bcbs239',
+    q: 'Aggregation can meet ad-hoc and stress / scenario data requests.' },
+  { id: 'bcbs_reporting', group: 'BCBS 239', ref: 'BCBS 239 P7–11', cite: 'Risk reporting', fw: 'bcbs239',
+    q: 'Risk reports are accurate, clear and cover all material risk areas.' },
+  { id: 'bcbs_timeliness_sla', group: 'BCBS 239', ref: 'BCBS 239 P5', cite: 'Timeliness SLA', fw: 'bcbs239',
+    q: 'A timeliness SLA for producing risk data (incl. under stress) is defined and met.' },
 ];
 const ATTEST_LABEL = { yes: 'Yes', no: 'No', na: 'N/A' };
 
@@ -5049,13 +5320,16 @@ function complianceAttestHtml(key, comp) {
   const saved = (entryFor(key).complianceAttestations || {}).items || {};
   const meta = entryFor(key).complianceAttestations || {};
   const dpiaReq = _dpiaLikelyRequired(comp, entryFor(key).complianceDismissed || {});
-  const total = CMP_ATTESTATIONS.length;
-  const answered = CMP_ATTESTATIONS.filter(a => saved[a.id] && saved[a.id].value).length;
-  const gaps = CMP_ATTESTATIONS.filter(a => saved[a.id] && saved[a.id].value === 'no').length;
+  // Show universal items always + domain items only for the dataset's selected framework.
+  const fw = (entryFor(key).complianceContract || {}).framework || 'gdpr';
+  const items = CMP_ATTESTATIONS.filter(a => !a.fw || a.fw === fw);
+  const total = items.length;
+  const answered = items.filter(a => saved[a.id] && saved[a.id].value).length;
+  const gaps = items.filter(a => saved[a.id] && saved[a.id].value === 'no').length;
   const covPct = Math.round((answered / total) * 100);
   const covCls = answered === total ? 'green' : (answered ? 'amber' : 'muted');
   let lastGroup = '';
-  const rows = CMP_ATTESTATIONS.map(a => {
+  const rows = items.map(a => {
     const cur = saved[a.id] || {};
     const groupHd = a.group !== lastGroup ? (lastGroup = a.group,
       `<div class="cmp-at-group">${esc(a.group)}</div>`) : '';
@@ -5087,7 +5361,7 @@ function complianceAttestHtml(key, comp) {
   </details>`;
 }
 
-function wireComplianceAttest(panel, key) {
+function wireComplianceAttest(panel, key, comp) {
   const btn = panel.querySelector('#cmpAttestSave');
   if (!btn) return;
   const setMsg = (t, err) => { const m = panel.querySelector('#cmpAttestMsg'); if (m) { m.textContent = t; m.style.color = err ? 'var(--err)' : 'var(--ok)'; } };
@@ -5113,6 +5387,8 @@ function wireComplianceAttest(panel, key) {
         attestations, attest_by: EMAIL || undefined });
       if (r && r.entries) dashEntries = r.entries;
       _updateAttestCoverage(panel, attestations);          // live-refresh the summary badge + bar
+      const pims = panel.querySelector('#pimsPanel');       // attestations feed the PIMS posture
+      if (pims) pims.outerHTML = renderIso27701Panel(comp, key);
       setMsg(orphanContent
         ? `Saved. ${orphanContent} item(s) had a note/link but no Yes/No/N.A. — pick an answer to save those.`
         : 'Saved — attestations recorded.', !!orphanContent);
@@ -5124,7 +5400,7 @@ function wireComplianceAttest(panel, key) {
 // Refresh the attestations <summary> badge + coverage bar in place after a save (no full re-render,
 // so the form's open state and any half-typed input are preserved).
 function _updateAttestCoverage(panel, attestations) {
-  const total = CMP_ATTESTATIONS.length;
+  const total = panel.querySelectorAll('.cmp-at-item').length || CMP_ATTESTATIONS.length;
   const answered = Object.keys(attestations).length;
   const gaps = Object.values(attestations).filter(a => a.value === 'no').length;
   const tag = panel.querySelector('.cmp-attest summary .tag');
