@@ -2848,7 +2848,8 @@ function renderAssessment(r, bodyEl, opts) {
   // VISIBLE, so the multi-table app view fetches a table's profile only when its tab is opened
   // (not one fetch per table on render).
   if (r.resultPrefix && !(opts && opts.noMetadata)) html += `<div class="assess-metadata" data-prefix="${esc(r.resultPrefix)}"></div>`;
-  html += compliancePanel(r.compliance, r.resultPrefix);      // ISO 29100 privacy/compliance lens
+  // ISO 29100 privacy/compliance lens — skipped where the caller has its own Compliance tab (opts.noCompliance).
+  if (!(opts && opts.noCompliance)) html += compliancePanel(r.compliance, r.resultPrefix);
   // Failed records surfaced INLINE here (not just on the dashboard), so the offending
   // rows are visible wherever a run is shown — upload result, incident view, history,
   // app tables. Blockers auto-load (gate fail); an otherwise-clean run offers a lazy
@@ -4365,20 +4366,11 @@ function selectDsTab() {
 }
 
 async function loadDsScores(panel, prefix) {
+  // Scores tab shows ONLY the quality scores — metadata lives in the Metadata tab and the
+  // compliance lens in the Compliance tab (noMetadata + noCompliance suppress them here).
   try {
     const r = await postJSON(`${API_BASE}/data-quality/result`, HEADERS, { result_prefix: prefix });
-    renderAssessment(r, panel, { context: 'app', noRecords: true, noMetadata: true });   // this view appends its own metadata panel below
-    try {
-      const pr = await postJSON(`${API_BASE}/data-quality/profile`, HEADERS, { result_prefix: prefix });
-      const md = document.createElement('div'); md.style.marginTop = '16px';
-      const dsKey = dashSelected && dashSelected.key;
-      md.innerHTML = renderMetadataPanel(pr.profile, dsKey);   // metadata quality (structure), beside the data-quality result
-      panel.appendChild(md);
-      wireMetaPanel(md, dsKey);
-      const det = document.createElement('details'); det.style.marginTop = '14px';
-      det.innerHTML = `<summary class="hint" style="cursor:pointer;">▸ Column profile (types, nulls, distinct, ranges)</summary><div style="margin-top:8px;">${renderColumnProfile(pr.profile)}</div>`;
-      panel.appendChild(det);
-    } catch (e) { /* profile optional */ }
+    renderAssessment(r, panel, { context: 'app', noRecords: true, noMetadata: true, noCompliance: true });
   } catch (e) { panel.innerHTML = `<p class="dash-muted" style="color:var(--err)">${esc(e.message)}</p>`; }
 }
 
@@ -5830,7 +5822,11 @@ async function loadDsMetadata(panel, prefix) {
   const key = dashSelected && dashSelected.key;
   try {
     const pr = await postJSON(`${API_BASE}/data-quality/profile`, HEADERS, { result_prefix: prefix });
-    panel.innerHTML = renderMetadataPanel(pr.profile, key) + (key ? renderContractSection(pr.profile, key) : '');
+    // Metadata quality + data contract + the raw column profile (types/nulls/distinct/ranges) — all
+    // the structural/profile detail lives together here (moved out of the Scores tab).
+    panel.innerHTML = renderMetadataPanel(pr.profile, key) + (key ? renderContractSection(pr.profile, key) : '') +
+      `<details style="margin-top:14px;"><summary class="hint" style="cursor:pointer;">▸ Column profile (types, nulls, distinct, ranges)</summary>` +
+      `<div style="margin-top:8px;">${renderColumnProfile(pr.profile)}</div></details>`;
     wireMetaPanel(panel, key);
     wireContract(panel, key);
   } catch (e) { panel.innerHTML = `<p class="dash-muted" style="color:var(--err)">${esc(e.message)}</p>`; }
