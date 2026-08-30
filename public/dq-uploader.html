@@ -587,8 +587,9 @@
   .src-field { display: flex; flex-direction: column; gap: 4px; }
   .src-field.full { grid-column: 1 / -1; }
   .src-field label { font-size: 12px; font-weight: 600; color: var(--muted); }
-  .src-field input, .src-field select { padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px;
+  .src-field input, .src-field select, .src-field textarea { padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px;
     background: var(--card); color: var(--text); font-size: 13px; }
+  .src-field textarea:focus { outline: none; border-color: var(--accent); }
   .src-field input.src-missing, .src-field select.src-missing { border-color: var(--err); box-shadow: 0 0 0 2px var(--err-bg); }
   .src-run.run-off { opacity: .55; cursor: not-allowed; }
   .src-note { font-size: 13px; color: var(--muted); margin: 0 0 6px; max-width: 760px; line-height: 1.5; }
@@ -1297,7 +1298,7 @@
             <button type="button" class="source-card" data-source="redshift"><span class="src-ico" data-ico="redshift"></span><span class="sc-name">Amazon Redshift</span><span class="src-tag betatag">Beta</span></button>
             <button type="button" class="source-card" data-source="snowflake"><span class="src-ico" data-ico="snowflake"></span><span class="sc-name">Snowflake</span><span class="src-tag betatag">Beta</span></button>
             <button type="button" class="source-card" data-source="databricks"><span class="src-ico" data-ico="databricks"></span><span class="sc-name">Databricks</span><span class="src-tag betatag">Beta</span></button>
-            <button type="button" class="source-card soon" disabled><span class="src-ico">🔷</span><span class="sc-name">Google BigQuery</span><span class="src-tag soon-tag">Soon</span></button>
+            <button type="button" class="source-card" data-source="bigquery"><span class="src-ico">🔷</span><span class="sc-name">Google BigQuery</span><span class="src-tag betatag">Beta</span></button>
             <button type="button" class="source-card soon" disabled><span class="src-ico">🟦</span><span class="sc-name">Azure Synapse</span><span class="src-tag soon-tag">Soon</span></button>
           </div>
         </div>
@@ -1537,6 +1538,26 @@
         <div class="src-status" data-status="sqlserver"></div>
       </div>
       <div class="card" id="sqlserverResult" style="display:none;"><h2>Assessment</h2><div id="sqlserverResultBody"></div></div>
+    </div>
+
+    <!-- ===== Source: Google BigQuery ===== -->
+    <div id="src-bigquery" class="source-body" style="display:none;">
+      <div class="card">
+        <h2>Google BigQuery <span class="src-tag betatag">Beta</span></h2>
+        <p class="src-note">Assess a BigQuery table in place via SQL pushdown. Authenticate with a service-account key JSON that has <em>BigQuery Data Viewer</em> + <em>BigQuery Job User</em> on the project. The key is applied server-side and never stored in the browser.</p>
+        <div class="src-form">
+          <div class="src-field"><label>Project ID</label><input data-f="project" placeholder="my-gcp-project"></div>
+          <div class="src-field"><label>Dataset</label><input data-f="dataset" placeholder="analytics"></div>
+          <div class="src-field"><label>Table</label><input data-f="table" placeholder="orders"></div>
+          <div class="src-field"><label>Location <span class="hint">(optional)</span></label><input data-f="location" placeholder="EU / US / europe-west2"></div>
+          <div class="src-field full"><label>Service-account key JSON</label>
+            <textarea data-f="credentials_json" rows="5" placeholder='{ "type": "service_account", "project_id": "…", "private_key": "…", "client_email": "…" }' style="font-family:ui-monospace,Menlo,monospace;font-size:12px;resize:vertical;"></textarea></div>
+          <div class="src-field"><label>Sample rows <span class="hint">(optional)</span></label><input data-f="sample_rows" type="number" min="1" placeholder="Empty = whole table"></div>
+        </div>
+        <button type="button" class="src-run" data-runsource="bigquery">Run assessment</button>
+        <div class="src-status" data-status="bigquery"></div>
+      </div>
+      <div class="card" id="bigqueryResult" style="display:none;"><h2>Assessment</h2><div id="bigqueryResultBody"></div></div>
     </div>
 
     <!-- Saved-credentials note (goes to the TOP of the active card) + save checkbox (stays
@@ -1861,6 +1882,7 @@
           <option value="postgres">PostgreSQL</option>
           <option value="mysql">MySQL</option>
           <option value="sqlserver">SQL Server</option>
+          <option value="bigquery">Google BigQuery</option>
         </select>
 
         <div id="schQlikFields">
@@ -6562,9 +6584,11 @@ const SOURCE_REQUIRED = {
   postgres: ['host', 'database', 'user', 'schema', 'table'],
   mysql: ['host', 'database', 'user', 'table'],
   sqlserver: ['host', 'database', 'user', 'schema', 'table'],
+  bigquery: ['project', 'dataset', 'table', 'credentials_json'],
 };
 const SOURCE_LABEL = { redshift: 'Amazon Redshift', s3: 'Amazon S3', snowflake: 'Snowflake',
-  databricks: 'Databricks', postgres: 'PostgreSQL', mysql: 'MySQL', sqlserver: 'SQL Server' };
+  databricks: 'Databricks', postgres: 'PostgreSQL', mysql: 'MySQL', sqlserver: 'SQL Server',
+  bigquery: 'Google BigQuery' };
 const _SRC_FILE_ONLY = ['assessment', 'resetBar', 'results'];   // cards that belong to the file flow
 
 // Optional Accuracy & Integrity config for a source's FIRST run (sent as a ruleset augment).
@@ -6605,7 +6629,7 @@ function selectSource(key) {
 }
 
 // ---- Per-app credential PROFILES (named connections; secrets applied server-side) -------
-const SRC_SECRET_FIELDS = { redshift: [], s3: ['access_key', 'secret_key'], snowflake: ['password'], databricks: ['token'], postgres: ['password'], mysql: ['password'], sqlserver: ['password'] };
+const SRC_SECRET_FIELDS = { redshift: [], s3: ['access_key', 'secret_key'], snowflake: ['password'], databricks: ['token'], postgres: ['password'], mysql: ['password'], sqlserver: ['password'], bigquery: ['credentials_json'] };
 const credProfiles = {};      // key -> [{id,name,config,hasSecrets,savedAt}] from the last list
 const activeProfile = {};     // key -> id of the profile currently applied (sent on the run)
 
@@ -6867,6 +6891,7 @@ function runSource(key) {
   if (key === 'postgres') { runPostgres(cfg, statusEl); return; }    // wired end-to-end
   if (key === 'mysql') { runMySQL(cfg, statusEl); return; }          // wired end-to-end
   if (key === 'sqlserver') { runSQLServer(cfg, statusEl); return; }  // wired end-to-end
+  if (key === 'bigquery') { runBigQuery(cfg, statusEl); return; }    // wired end-to-end
   // Remaining connectors are being built source by source; capture + validate for now.
   statusEl.className = 'src-status dev';
   statusEl.innerHTML = `<strong>${esc(SOURCE_LABEL[key] || key)} connector — in development.</strong> ` +
@@ -7131,6 +7156,43 @@ async function runSQLServer(cfg, statusEl) {
     `Inferring the ruleset from a sample, then scoring the whole table in SQL Server…`;
   const card = document.getElementById('sqlserverResult');
   const bodyEl = document.getElementById('sqlserverResultBody');
+  if (card) card.style.display = 'block';
+  if (bodyEl) bodyEl.innerHTML = `<p><span class="spin"></span> Scoring the dataset — this can take a moment…</p>`;
+  if (res.resultPrefix && bodyEl) {
+    pollInto(res.resultPrefix, bodyEl, {}).finally(() => { if (btn) btn.disabled = false; });
+  } else if (btn) { btn.disabled = false; }
+}
+
+// Launch a full-table Google BigQuery assessment, then poll + render its result.
+async function runBigQuery(cfg, statusEl) {
+  const btn = document.querySelector('[data-runsource="bigquery"]');
+  const body = {
+    app_id: APP_ID || undefined,
+    project: cfg.project, dataset: cfg.dataset, table: cfg.table,
+    credentials_json: cfg.credentials_json || undefined,
+    location: cfg.location || undefined,
+    sample_rows: cfg.sample_rows ? Number(cfg.sample_rows) : undefined,
+    notify_email: EMAIL || undefined,
+    ruleset_augment: collectSourceRefsAugment() || undefined,
+    credential_profile: cfg._credProfile || undefined,
+  };
+  statusEl.className = 'src-status';
+  statusEl.innerHTML = `<p><span class="spin"></span> Launching BigQuery assessment…</p>`;
+  if (btn) btn.disabled = true;
+  let res;
+  try {
+    res = await postJSON(`${API_BASE}/data-quality/bigquery-assessment`, HEADERS, body);
+  } catch (e) {
+    statusEl.className = 'src-status err';
+    statusEl.textContent = e.message;
+    if (btn) btn.disabled = false;
+    return;
+  }
+  statusEl.className = 'src-status dev';
+  statusEl.innerHTML = `Assessment started (run <code>${esc(res.runId || '')}</code>). ` +
+    `Inferring the ruleset from a sample, then scoring the whole table in BigQuery…`;
+  const card = document.getElementById('bigqueryResult');
+  const bodyEl = document.getElementById('bigqueryResultBody');
   if (card) card.style.display = 'block';
   if (bodyEl) bodyEl.innerHTML = `<p><span class="spin"></span> Scoring the dataset — this can take a moment…</p>`;
   if (res.resultPrefix && bodyEl) {
@@ -8404,6 +8466,13 @@ const SCHED_SOURCE_FIELDS = {
     { f: 'schema', label: 'Schema', value: 'dbo' }, { f: 'table', label: 'Table' },
     { f: 'sample_rows', label: 'Sample rows', type: 'number' },
   ],
+  bigquery: [
+    { f: 'project', label: 'Project ID' }, { f: 'dataset', label: 'Dataset' },
+    { f: 'table', label: 'Table' }, { f: 'location', label: 'Location' },
+    { f: 'credentials_json', label: 'Service-account key JSON', type: 'textarea', full: true,
+      placeholder: '{ "type": "service_account", … }' },
+    { f: 'sample_rows', label: 'Sample rows', type: 'number' },
+  ],
 };
 
 function _schFieldHelp(kind, f) {
@@ -8454,7 +8523,9 @@ function renderSchedSourceFields(kind) {
     const ic = help ? ` <span class="src-info" data-tip="${esc(help)}">ⓘ</span>` : '';
     const input = fld.type === 'select'
       ? `<select data-f="${fld.f}">` + fld.options.map(o => `<option value="${esc(o[0])}">${esc(o[1])}</option>`).join('') + `</select>`
-      : `<input data-f="${fld.f}"${fld.type ? ` type="${fld.type}"` : ''}${fld.value ? ` value="${esc(fld.value)}"` : ''}>`;
+      : fld.type === 'textarea'
+        ? `<textarea data-f="${fld.f}" rows="4" style="font-family:ui-monospace,Menlo,monospace;font-size:12px;resize:vertical;"${fld.placeholder ? ` placeholder="${esc(fld.placeholder)}"` : ''}></textarea>`
+        : `<input data-f="${fld.f}"${fld.type ? ` type="${fld.type}"` : ''}${fld.value ? ` value="${esc(fld.value)}"` : ''}>`;
     return `<div class="src-field${fld.full ? ' full' : ''}"><label>${esc(fld.label)}${ic}</label>${input}</div>`;
   }).join('');
 }
