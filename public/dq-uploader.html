@@ -404,12 +404,6 @@
   .src-tag.betatag { background: color-mix(in srgb, var(--accent2) 16%, var(--card)); color: var(--accent2); }
   .src-tag.soon-tag { background: color-mix(in srgb, var(--muted) 18%, transparent); color: var(--muted); }
   .src-tag.previewtag { background: color-mix(in srgb, #a855f7 20%, transparent); color: #a855f7; }
-  .excel-intro { margin: 0 0 16px; padding: 12px 14px; border: 1px solid color-mix(in srgb, #21A366 40%, var(--border));
-    border-left: 4px solid #21A366; border-radius: 10px; background: color-mix(in srgb, #21A366 8%, var(--card)); }
-  .excel-intro-hd { display: flex; align-items: center; gap: 8px; font-size: 14px; margin-bottom: 4px; }
-  .excel-intro-ico { display: inline-flex; }
-  .excel-intro p { margin: 0; font-size: 12.5px; line-height: 1.5; color: var(--text); }
-  .excel-intro code { background: color-mix(in srgb, #21A366 16%, transparent); border-radius: 4px; padding: 0 4px; font-size: 11.5px; }
   /* Inside the narrower detail pane, stack the file source's own two-column layout. */
   .src-panel .up-top { grid-template-columns: 1fr; }
   @media (max-width: 820px) { .src-workspace { grid-template-columns: 1fr; }
@@ -1306,7 +1300,7 @@
             <button type="button" class="source-card" data-source="snowflake"><span class="src-ico" data-ico="snowflake"></span><span class="sc-name">Snowflake</span><span class="src-tag betatag">Beta</span></button>
             <button type="button" class="source-card" data-source="databricks"><span class="src-ico" data-ico="databricks"></span><span class="sc-name">Databricks</span><span class="src-tag betatag">Beta</span></button>
             <button type="button" class="source-card" data-source="bigquery"><span class="src-ico" data-ico="bigquery"></span><span class="sc-name">Google BigQuery</span><span class="src-tag betatag">Beta</span></button>
-            <button type="button" class="source-card soon" disabled><span class="src-ico">🟦</span><span class="sc-name">Azure Synapse</span><span class="src-tag soon-tag">Soon</span></button>
+            <button type="button" class="source-card" data-source="synapse"><span class="src-ico" data-ico="synapse"></span><span class="sc-name">Azure Synapse</span><span class="src-tag betatag">Beta</span></button>
           </div>
         </div>
         <div class="src-cat">
@@ -1322,8 +1316,8 @@
           <div class="src-grid">
             <button type="button" class="source-card" data-source="s3"><span class="src-ico" data-ico="s3"></span><span class="sc-name">Amazon S3</span><span class="src-tag betatag">Beta</span></button>
             <button type="button" class="source-card" data-source="sharepoint"><span class="src-ico" data-ico="sharepoint"></span><span class="sc-name">SharePoint / OneDrive</span><span class="src-tag previewtag">Preview</span></button>
-            <button type="button" class="source-card soon" disabled><span class="src-ico">🪣</span><span class="sc-name">Google Cloud Storage</span><span class="src-tag soon-tag">Soon</span></button>
-            <button type="button" class="source-card soon" disabled><span class="src-ico">🟦</span><span class="sc-name">Azure Blob / ADLS</span><span class="src-tag soon-tag">Soon</span></button>
+            <button type="button" class="source-card" data-source="gcs"><span class="src-ico" data-ico="gcs"></span><span class="sc-name">Google Cloud Storage</span><span class="src-tag betatag">Beta</span></button>
+            <button type="button" class="source-card" data-source="azureblob"><span class="src-ico" data-ico="azureblob"></span><span class="sc-name">Azure Blob / ADLS</span><span class="src-tag betatag">Beta</span></button>
           </div>
         </div>
       </div>
@@ -1335,11 +1329,8 @@
     <div class="up-top">
       <div class="up-main">
         <div class="card">
-      <div id="excelIntro" class="excel-intro" style="display:none;">
-        <div class="excel-intro-hd"><span class="excel-intro-ico" id="excelIntroIco"></span><strong>Assess an Excel workbook</strong></div>
-        <p>Upload a spreadsheet (<code>.xlsx</code> / <code>.xlsm</code>) straight from your computer — no SharePoint or database needed. We read <strong>one worksheet</strong> (the first, or one you name), infer data-quality rules from it, and score it across the DAMA dimensions just like any other dataset. If your workbook has several tabs, pick which one to assess below.</p>
-      </div>
       <h2 id="fileCardTitle">Dataset</h2>
+      <p class="src-note" id="excelIntro" style="display:none;">Upload a spreadsheet (<code>.xlsx</code> / <code>.xlsm</code>) straight from your computer — no SharePoint or database needed. We read <strong>one worksheet</strong> (the first, or one you name), infer data-quality rules from it, and score it across the DAMA dimensions just like any other dataset. If your workbook has several tabs, pick which one to assess below.</p>
       <input type="file" id="file" accept=".parquet,.pq,.json,.ndjson,.jsonl,.qvd,.csv,.tsv,.xlsx,.xlsm" />
       <div class="fileinfo" id="fileinfo">No file selected.</div>
       <div id="excelSheetWrap" style="display:none;margin:2px 0 12px;">
@@ -1557,6 +1548,27 @@
       <div class="card" id="sqlserverResult" style="display:none;"><h2>Assessment</h2><div id="sqlserverResultBody"></div></div>
     </div>
 
+    <!-- ===== Source: Azure Synapse Analytics (dedicated SQL pool) ===== -->
+    <div id="src-synapse" class="source-body" style="display:none;">
+      <div class="card">
+        <h2>Azure Synapse <span class="src-tag betatag">Beta</span></h2>
+        <p class="src-note">Read a table from an Azure Synapse <strong>dedicated SQL pool</strong> with a read-only SQL login. The host is your workspace SQL endpoint (<code>&lt;workspace&gt;.sql.azuresynapse.net</code>), reachable from our worker. Synapse speaks T-SQL, so — as with SQL Server — pattern/format validity checks are skipped; every other DAMA dimension is assessed in full.</p>
+        <div class="src-form">
+          <div class="src-field"><label>Workspace SQL endpoint</label><input data-f="host" placeholder="myworkspace.sql.azuresynapse.net"></div>
+          <div class="src-field"><label>Port</label><input data-f="port" placeholder="1433" value="1433"></div>
+          <div class="src-field"><label>SQL pool (database)</label><input data-f="database" placeholder="analytics_pool"></div>
+          <div class="src-field"><label>User</label><input data-f="user" placeholder="dq_reader"></div>
+          <div class="src-field"><label>Password</label><input data-f="password" type="password"></div>
+          <div class="src-field"><label>Schema</label><input data-f="schema" placeholder="dbo" value="dbo"></div>
+          <div class="src-field"><label>Table</label><input data-f="table" placeholder="orders"></div>
+          <div class="src-field"><label>Sample rows <span class="hint">(optional)</span></label><input data-f="sample_rows" type="number" min="1" placeholder="Empty = whole table"></div>
+        </div>
+        <button type="button" class="src-run" data-runsource="synapse">Run assessment</button>
+        <div class="src-status" data-status="synapse"></div>
+      </div>
+      <div class="card" id="synapseResult" style="display:none;"><h2>Assessment</h2><div id="synapseResultBody"></div></div>
+    </div>
+
     <!-- ===== Source: Google BigQuery ===== -->
     <div id="src-bigquery" class="source-body" style="display:none;">
       <div class="card">
@@ -1595,6 +1607,45 @@
         <div class="src-status" data-status="sharepoint"></div>
       </div>
       <div class="card" id="sharepointResult" style="display:none;"><h2>Assessment</h2><div id="sharepointResultBody"></div></div>
+    </div>
+
+    <!-- ===== Source: Google Cloud Storage ===== -->
+    <div id="src-gcs" class="source-body" style="display:none;">
+      <div class="card">
+        <h2>Google Cloud Storage <span class="src-tag betatag">Beta</span></h2>
+        <p class="src-note">Assess a file (Parquet / CSV / JSON / Excel / …) stored in a Google Cloud Storage bucket. Our worker downloads the object using a <strong>service-account key</strong> with read access (<em>Storage Object Viewer</em> on the bucket). The key is applied server-side and never stored in the browser.</p>
+        <div class="src-form">
+          <div class="src-field"><label>Bucket</label><input data-f="bucket" placeholder="my-bucket"></div>
+          <div class="src-field"><label>Object path</label><input data-f="object" placeholder="folder/data.parquet"></div>
+          <div class="src-field full"><label>Service-account key JSON</label>
+            <textarea data-f="credentials_json" rows="5" placeholder='{ "type": "service_account", "project_id": "…", "private_key": "…", "client_email": "…" }' style="font-family:ui-monospace,Menlo,monospace;font-size:12px;resize:vertical;"></textarea></div>
+          <div class="src-field"><label>Worksheet <span class="hint">(Excel, optional)</span></label><input data-f="sheet" placeholder="Sheet name or number — blank = first"></div>
+          <div class="src-field"><label>Display name <span class="hint">(optional)</span></label><input data-f="dataset" placeholder="Defaults to the file name"></div>
+          <div class="src-field"><label>Sample rows <span class="hint">(optional)</span></label><input data-f="sample_rows" type="number" min="1" placeholder="Empty = whole file"></div>
+        </div>
+        <button type="button" class="src-run" data-runsource="gcs">Run assessment</button>
+        <div class="src-status" data-status="gcs"></div>
+      </div>
+      <div class="card" id="gcsResult" style="display:none;"><h2>Assessment</h2><div id="gcsResultBody"></div></div>
+    </div>
+
+    <!-- ===== Source: Azure Blob Storage / ADLS Gen2 ===== -->
+    <div id="src-azureblob" class="source-body" style="display:none;">
+      <div class="card">
+        <h2>Azure Blob / ADLS <span class="src-tag betatag">Beta</span></h2>
+        <p class="src-note">Assess a file (Parquet / CSV / JSON / Excel / …) stored in Azure Blob Storage or ADLS Gen2. Our worker downloads the blob using a <strong>storage connection string</strong> (it carries the account name + key — the single complete credential). It is applied server-side and never stored in the browser.</p>
+        <div class="src-form">
+          <div class="src-field"><label>Container</label><input data-f="container" placeholder="my-container"></div>
+          <div class="src-field"><label>Blob path</label><input data-f="blob" placeholder="folder/data.parquet"></div>
+          <div class="src-field full"><label>Connection string</label><input data-f="connection_string" type="password" placeholder="DefaultEndpointsProtocol=https;AccountName=…;AccountKey=…;EndpointSuffix=core.windows.net"></div>
+          <div class="src-field"><label>Worksheet <span class="hint">(Excel, optional)</span></label><input data-f="sheet" placeholder="Sheet name or number — blank = first"></div>
+          <div class="src-field"><label>Display name <span class="hint">(optional)</span></label><input data-f="dataset" placeholder="Defaults to the file name"></div>
+          <div class="src-field"><label>Sample rows <span class="hint">(optional)</span></label><input data-f="sample_rows" type="number" min="1" placeholder="Empty = whole file"></div>
+        </div>
+        <button type="button" class="src-run" data-runsource="azureblob">Run assessment</button>
+        <div class="src-status" data-status="azureblob"></div>
+      </div>
+      <div class="card" id="azureblobResult" style="display:none;"><h2>Assessment</h2><div id="azureblobResultBody"></div></div>
     </div>
 
     <!-- Saved-credentials note (goes to the TOP of the active card) + save checkbox (stays
@@ -1919,7 +1970,10 @@
           <option value="postgres">PostgreSQL</option>
           <option value="mysql">MySQL</option>
           <option value="sqlserver">SQL Server</option>
+          <option value="synapse">Azure Synapse</option>
           <option value="bigquery">Google BigQuery</option>
+          <option value="gcs">Google Cloud Storage</option>
+          <option value="azureblob">Azure Blob / ADLS</option>
           <option value="sharepoint">SharePoint / OneDrive</option>
         </select>
 
@@ -2127,11 +2181,15 @@ function tagClass(s) { return ({ green: 'green', amber: 'amber', red: 'red' })[s
 // A friendly label + chip for the dataset's origin (source_format on the run).
 const SOURCE_FMT_LABEL = {
   qlik: 'Qlik Table', redshift: 'Amazon Redshift', snowflake: 'Snowflake', databricks: 'Databricks',
+  postgres: 'PostgreSQL', mysql: 'MySQL', sqlserver: 'SQL Server', synapse: 'Azure Synapse',
+  bigquery: 'Google BigQuery', gcs: 'Google Cloud Storage', azureblob: 'Azure Blob',
   s3: 'Amazon S3', parquet: 'Parquet file', csv: 'CSV file', tsv: 'TSV file',
   json: 'JSON file', ndjson: 'JSON file', qvd: 'QVD file', excel: 'Excel file', sharepoint: 'SharePoint',
 };
 const SOURCE_FMT_ICON = {
   qlik: '📊', redshift: '🟥', snowflake: '❄️', databricks: '🧱', s3: '🪣',
+  postgres: '🐘', mysql: '🐬', sqlserver: '🗄️', synapse: '🔷', bigquery: '🔷',
+  gcs: '🪣', azureblob: '🟦',
   parquet: '📦', csv: '📄', tsv: '📄', json: '📄', ndjson: '📄', qvd: '📄', excel: '📊', sharepoint: '📁',
 };
 // Brand marks recreated as inline SVG (transparent, tuned to read at chip size). To use the
@@ -2169,6 +2227,18 @@ const SOURCE_FMT_SVG = {
     '<ellipse cx="12" cy="5.4" rx="6.3" ry="2.1" fill="#c9313a"/>' +
     '<path d="M5.7 5.4 L5.7 18.6 Q12 20.9 18.3 18.6 L18.3 5.4" fill="none"/>' +
     '<path d="M5.7 11 Q12 13.3 18.3 11" fill="none"/><path d="M5.7 14.8 Q12 17.1 18.3 14.8" fill="none"/></g>'),
+  // Azure Synapse: azure-blue hexagon with three connected nodes (a "synapse")
+  synapse: _svg('<path d="M12 2.6 L20 7 L20 17 L12 21.4 L4 17 L4 7 Z" fill="#0f4a8a" stroke="#50e6ff" stroke-width="1.4" stroke-linejoin="round"/>' +
+    '<g stroke="#9cdcff" stroke-width="1.2"><line x1="8.4" y1="9" x2="15.6" y2="9"/><line x1="8.4" y1="9" x2="12" y2="15.4"/><line x1="15.6" y1="9" x2="12" y2="15.4"/></g>' +
+    '<g fill="#50e6ff"><circle cx="8.4" cy="9" r="1.55"/><circle cx="15.6" cy="9" r="1.55"/><circle cx="12" cy="15.4" r="1.55"/></g>'),
+  // Google Cloud Storage: Google-blue bucket with the four-colour dots
+  gcs: _svg('<path d="M4.7 6.2 H19.3 L17.5 18.6 Q12 20.2 6.5 18.6 Z" fill="#4285F4"/>' +
+    '<path d="M4.7 6.2 H19.3 L18.95 8.6 H5.05 Z" fill="#669df6"/>' +
+    '<circle cx="9.2" cy="12.6" r="1.15" fill="#EA4335"/><circle cx="12" cy="12.6" r="1.15" fill="#FBBC04"/><circle cx="14.8" cy="12.6" r="1.15" fill="#34A853"/>'),
+  // Azure Blob / ADLS: azure-blue isometric storage container
+  azureblob: _svg('<path d="M12 3 L20 7 L12 11 L4 7 Z" fill="#50e6ff"/>' +
+    '<path d="M4 7 L4 16 L12 20 L12 11 Z" fill="#0f4a8a"/>' +
+    '<path d="M20 7 L20 16 L12 20 L12 11 Z" fill="#0078d4"/>'),
   // Excel: green sheet (light top-right) + dark tile with a white X
   excel: _svg('<rect x="7" y="3" width="14" height="18" rx="2.4" fill="#21A366"/>' +
     '<path d="M7 12 h14 v6.6 a2.4 2.4 0 0 1 -2.4 2.4 H9.4 A2.4 2.4 0 0 1 7 18.6 Z" fill="#107C41"/>' +
@@ -2212,7 +2282,6 @@ let fileSourceMode = 'file';                         // 'file' (any format) | 'e
 function _applyFileMode(isExcel) {
   fileSourceMode = isExcel ? 'excel' : 'file';
   const intro = $('#excelIntro'); if (intro) intro.style.display = isExcel ? 'block' : 'none';
-  const ico = $('#excelIntroIco'); if (ico && isExcel && !ico.innerHTML) ico.innerHTML = srcIcon('excel');
   const title = $('#fileCardTitle'); if (title) title.textContent = isExcel ? 'Excel workbook' : 'Dataset';
   if (fileInput) fileInput.setAttribute('accept', isExcel ? '.xlsx,.xlsm'
     : '.parquet,.pq,.json,.ndjson,.jsonl,.qvd,.csv,.tsv,.xlsx,.xlsm');
@@ -6660,18 +6729,22 @@ const SOURCE_REQUIRED = {
   postgres: ['host', 'database', 'user', 'schema', 'table'],
   mysql: ['host', 'database', 'user', 'table'],
   sqlserver: ['host', 'database', 'user', 'schema', 'table'],
+  synapse: ['host', 'database', 'user', 'schema', 'table'],
   bigquery: ['project', 'dataset', 'table', 'credentials_json'],
   sharepoint: ['url', 'tenant', 'client_id', 'client_secret'],
+  gcs: ['bucket', 'object', 'credentials_json'],
+  azureblob: ['container', 'blob', 'connection_string'],
 };
 const SOURCE_LABEL = { redshift: 'Amazon Redshift', s3: 'Amazon S3', snowflake: 'Snowflake',
   databricks: 'Databricks', postgres: 'PostgreSQL', mysql: 'MySQL', sqlserver: 'SQL Server',
-  bigquery: 'Google BigQuery', sharepoint: 'SharePoint / OneDrive' };
+  synapse: 'Azure Synapse', bigquery: 'Google BigQuery', sharepoint: 'SharePoint / OneDrive',
+  gcs: 'Google Cloud Storage', azureblob: 'Azure Blob / ADLS' };
 const _SRC_FILE_ONLY = ['assessment', 'resetBar', 'results'];   // cards that belong to the file flow
 
 // Optional Accuracy & Integrity config for a source's FIRST run (sent as a ruleset augment).
 // Lookups apply to every source; reference-table integrity/accuracy apply to warehouses.
 const srcRefsState = { lookups: [], integrity: [], accuracy: {}, warehouse: false };
-const _WAREHOUSE_SRC = new Set(['redshift', 'snowflake', 'databricks', 'postgres', 'mysql', 'sqlserver']);
+const _WAREHOUSE_SRC = new Set(['redshift', 'snowflake', 'databricks', 'postgres', 'mysql', 'sqlserver', 'synapse']);
 
 function selectSource(key) {
   // Excel reuses the file-upload flow (a plain upload with an optional worksheet), so it maps to
@@ -6711,7 +6784,7 @@ function selectSource(key) {
 }
 
 // ---- Per-app credential PROFILES (named connections; secrets applied server-side) -------
-const SRC_SECRET_FIELDS = { redshift: [], s3: ['access_key', 'secret_key'], snowflake: ['password'], databricks: ['token'], postgres: ['password'], mysql: ['password'], sqlserver: ['password'], bigquery: ['credentials_json'], sharepoint: ['client_secret'] };
+const SRC_SECRET_FIELDS = { redshift: [], s3: ['access_key', 'secret_key'], snowflake: ['password'], databricks: ['token'], postgres: ['password'], mysql: ['password'], sqlserver: ['password'], synapse: ['password'], bigquery: ['credentials_json'], sharepoint: ['client_secret'], gcs: ['credentials_json'], azureblob: ['connection_string'] };
 const credProfiles = {};      // key -> [{id,name,config,hasSecrets,savedAt}] from the last list
 const activeProfile = {};     // key -> id of the profile currently applied (sent on the run)
 
@@ -6973,8 +7046,11 @@ function runSource(key) {
   if (key === 'postgres') { runPostgres(cfg, statusEl); return; }    // wired end-to-end
   if (key === 'mysql') { runMySQL(cfg, statusEl); return; }          // wired end-to-end
   if (key === 'sqlserver') { runSQLServer(cfg, statusEl); return; }  // wired end-to-end
+  if (key === 'synapse') { runSynapse(cfg, statusEl); return; }      // wired end-to-end
   if (key === 'bigquery') { runBigQuery(cfg, statusEl); return; }    // wired end-to-end
   if (key === 'sharepoint') { runSharePoint(cfg, statusEl); return; } // wired end-to-end (Preview)
+  if (key === 'gcs') { runGCS(cfg, statusEl); return; }              // wired end-to-end
+  if (key === 'azureblob') { runAzureBlob(cfg, statusEl); return; }  // wired end-to-end
   // Remaining connectors are being built source by source; capture + validate for now.
   statusEl.className = 'src-status dev';
   statusEl.innerHTML = `<strong>${esc(SOURCE_LABEL[key] || key)} connector — in development.</strong> ` +
@@ -7246,6 +7322,43 @@ async function runSQLServer(cfg, statusEl) {
   } else if (btn) { btn.disabled = false; }
 }
 
+// Launch a full-table Azure Synapse assessment, then poll + render its result.
+async function runSynapse(cfg, statusEl) {
+  const btn = document.querySelector('[data-runsource="synapse"]');
+  const body = {
+    app_id: APP_ID || undefined,
+    host: cfg.host, database: cfg.database, user: cfg.user, table: cfg.table,
+    schema: cfg.schema || undefined, password: cfg.password || undefined,
+    port: cfg.port ? Number(cfg.port) : undefined,
+    sample_rows: cfg.sample_rows ? Number(cfg.sample_rows) : undefined,
+    notify_email: EMAIL || undefined,
+    ruleset_augment: collectSourceRefsAugment() || undefined,
+    credential_profile: cfg._credProfile || undefined,
+  };
+  statusEl.className = 'src-status';
+  statusEl.innerHTML = `<p><span class="spin"></span> Launching Synapse assessment…</p>`;
+  if (btn) btn.disabled = true;
+  let res;
+  try {
+    res = await postJSON(`${API_BASE}/data-quality/synapse-assessment`, HEADERS, body);
+  } catch (e) {
+    statusEl.className = 'src-status err';
+    statusEl.textContent = e.message;
+    if (btn) btn.disabled = false;
+    return;
+  }
+  statusEl.className = 'src-status dev';
+  statusEl.innerHTML = `Assessment started (run <code>${esc(res.runId || '')}</code>). ` +
+    `Inferring the ruleset from a sample, then scoring the whole table in Synapse…`;
+  const card = document.getElementById('synapseResult');
+  const bodyEl = document.getElementById('synapseResultBody');
+  if (card) card.style.display = 'block';
+  if (bodyEl) bodyEl.innerHTML = `<p><span class="spin"></span> Scoring the dataset — this can take a moment…</p>`;
+  if (res.resultPrefix && bodyEl) {
+    pollInto(res.resultPrefix, bodyEl, {}).finally(() => { if (btn) btn.disabled = false; });
+  } else if (btn) { btn.disabled = false; }
+}
+
 // Launch a full-table Google BigQuery assessment, then poll + render its result.
 async function runBigQuery(cfg, statusEl) {
   const btn = document.querySelector('[data-runsource="bigquery"]');
@@ -7320,6 +7433,80 @@ async function runSharePoint(cfg, statusEl) {
   } else if (btn) { btn.disabled = false; }
 }
 
+// Download a file from Google Cloud Storage, then poll + render its result.
+async function runGCS(cfg, statusEl) {
+  const btn = document.querySelector('[data-runsource="gcs"]');
+  const body = {
+    app_id: APP_ID || undefined,
+    bucket: cfg.bucket, object: cfg.object,
+    credentials_json: cfg.credentials_json || undefined,
+    sheet: cfg.sheet || undefined, dataset: cfg.dataset || undefined,
+    sample_rows: cfg.sample_rows ? Number(cfg.sample_rows) : undefined,
+    notify_email: EMAIL || undefined,
+    ruleset_augment: collectSourceRefsAugment() || undefined,
+    credential_profile: cfg._credProfile || undefined,
+  };
+  statusEl.className = 'src-status';
+  statusEl.innerHTML = `<p><span class="spin"></span> Fetching the file from Google Cloud Storage…</p>`;
+  if (btn) btn.disabled = true;
+  let res;
+  try {
+    res = await postJSON(`${API_BASE}/data-quality/gcs-assessment`, HEADERS, body);
+  } catch (e) {
+    statusEl.className = 'src-status err';
+    statusEl.textContent = e.message;
+    if (btn) btn.disabled = false;
+    return;
+  }
+  statusEl.className = 'src-status dev';
+  statusEl.innerHTML = `Assessment started (run <code>${esc(res.runId || '')}</code>). ` +
+    `Downloading the object from GCS, then assessing it…`;
+  const card = document.getElementById('gcsResult');
+  const bodyEl = document.getElementById('gcsResultBody');
+  if (card) card.style.display = 'block';
+  if (bodyEl) bodyEl.innerHTML = `<p><span class="spin"></span> Scoring the dataset — this can take a moment…</p>`;
+  if (res.resultPrefix && bodyEl) {
+    pollInto(res.resultPrefix, bodyEl, {}).finally(() => { if (btn) btn.disabled = false; });
+  } else if (btn) { btn.disabled = false; }
+}
+
+// Download a file from Azure Blob Storage / ADLS, then poll + render its result.
+async function runAzureBlob(cfg, statusEl) {
+  const btn = document.querySelector('[data-runsource="azureblob"]');
+  const body = {
+    app_id: APP_ID || undefined,
+    container: cfg.container, blob: cfg.blob,
+    connection_string: cfg.connection_string || undefined,
+    sheet: cfg.sheet || undefined, dataset: cfg.dataset || undefined,
+    sample_rows: cfg.sample_rows ? Number(cfg.sample_rows) : undefined,
+    notify_email: EMAIL || undefined,
+    ruleset_augment: collectSourceRefsAugment() || undefined,
+    credential_profile: cfg._credProfile || undefined,
+  };
+  statusEl.className = 'src-status';
+  statusEl.innerHTML = `<p><span class="spin"></span> Fetching the file from Azure Blob…</p>`;
+  if (btn) btn.disabled = true;
+  let res;
+  try {
+    res = await postJSON(`${API_BASE}/data-quality/azureblob-assessment`, HEADERS, body);
+  } catch (e) {
+    statusEl.className = 'src-status err';
+    statusEl.textContent = e.message;
+    if (btn) btn.disabled = false;
+    return;
+  }
+  statusEl.className = 'src-status dev';
+  statusEl.innerHTML = `Assessment started (run <code>${esc(res.runId || '')}</code>). ` +
+    `Downloading the blob from Azure, then assessing it…`;
+  const card = document.getElementById('azureblobResult');
+  const bodyEl = document.getElementById('azureblobResultBody');
+  if (card) card.style.display = 'block';
+  if (bodyEl) bodyEl.innerHTML = `<p><span class="spin"></span> Scoring the dataset — this can take a moment…</p>`;
+  if (res.resultPrefix && bodyEl) {
+    pollInto(res.resultPrefix, bodyEl, {}).finally(() => { if (btn) btn.disabled = false; });
+  } else if (btn) { btn.disabled = false; }
+}
+
 document.querySelectorAll('.src-ico[data-ico]').forEach(el => el.innerHTML = srcIcon(el.dataset.ico));   // brand marks on the source cards
 document.querySelectorAll('.source-card:not(.soon)').forEach(c => c.addEventListener('click', () => selectSource(c.dataset.source)));
 { const s = $('#srcSearch'); if (s) s.addEventListener('input', () => {
@@ -7385,6 +7572,22 @@ const SOURCE_FIELD_HELP = {
     host: 'Hostname/endpoint of the Postgres server — it must be reachable from our worker.',
     port: 'The port Postgres listens on. Default is 5432.',
     sslmode: 'Optional. TLS mode for the connection; leave default unless your server requires a specific mode.',
+  },
+  synapse: {
+    host: 'Your Synapse workspace SQL endpoint, e.g. myworkspace.sql.azuresynapse.net (the dedicated SQL pool endpoint) — it must be reachable from our worker.',
+    port: 'The port the SQL endpoint listens on. Default is 1433.',
+    database: 'The dedicated SQL pool (database) that holds the table.',
+    user: 'A read-only SQL login (SQL authentication) with SELECT on the table.',
+  },
+  gcs: {
+    bucket: 'The Google Cloud Storage bucket name (no gs:// prefix).',
+    object: 'The object path within the bucket, e.g. folder/data.parquet. The file format is auto-detected from the extension.',
+    credentials_json: 'A service-account key JSON with read access to the bucket (Storage Object Viewer). Applied server-side, never returned.',
+  },
+  azureblob: {
+    container: 'The blob container name.',
+    blob: 'The blob path within the container, e.g. folder/data.parquet. The file format is auto-detected from the extension.',
+    connection_string: 'An Azure Storage connection string (DefaultEndpointsProtocol=…;AccountName=…;AccountKey=…). It carries the account and key. Applied server-side, never returned.',
   },
 };
 
@@ -8190,7 +8393,9 @@ async function assessEntireApp() {
 // Source datasets don't store their credentials, so a run can't be replayed blindly.
 // Qlik app tables re-run in place (the extension holds the bearer); every other source is
 // routed to its Data-from-Source card to re-enter details + run (pinned rules still apply).
-const _SRC_CARD_BY_FMT = { redshift: 'redshift', snowflake: 'snowflake', databricks: 'databricks', s3: 's3' };
+const _SRC_CARD_BY_FMT = { redshift: 'redshift', snowflake: 'snowflake', databricks: 'databricks',
+  postgres: 'postgres', mysql: 'mysql', sqlserver: 'sqlserver', synapse: 'synapse', bigquery: 'bigquery',
+  gcs: 'gcs', azureblob: 'azureblob', sharepoint: 'sharepoint', s3: 's3' };
 async function reRunTable(tableName, sourceFormat, resultPrefix) {
   const fmt = (sourceFormat || '').toLowerCase();
   if (fmt && fmt !== 'qlik') {
@@ -8586,6 +8791,13 @@ const SCHED_SOURCE_FIELDS = {
     { f: 'schema', label: 'Schema', value: 'dbo' }, { f: 'table', label: 'Table' },
     { f: 'sample_rows', label: 'Sample rows', type: 'number' },
   ],
+  synapse: [
+    { f: 'host', label: 'Workspace SQL endpoint', full: true }, { f: 'port', label: 'Port', value: '1433' },
+    { f: 'database', label: 'SQL pool (database)' }, { f: 'user', label: 'User' },
+    { f: 'password', label: 'Password', type: 'password' },
+    { f: 'schema', label: 'Schema', value: 'dbo' }, { f: 'table', label: 'Table' },
+    { f: 'sample_rows', label: 'Sample rows', type: 'number' },
+  ],
   bigquery: [
     { f: 'project', label: 'Project ID' }, { f: 'dataset', label: 'Dataset' },
     { f: 'table', label: 'Table' }, { f: 'location', label: 'Location' },
@@ -8597,6 +8809,19 @@ const SCHED_SOURCE_FIELDS = {
     { f: 'url', label: 'File URL', full: true },
     { f: 'tenant', label: 'Tenant ID' }, { f: 'client_id', label: 'Client (application) ID' },
     { f: 'client_secret', label: 'Client secret', type: 'password' },
+    { f: 'sheet', label: 'Worksheet (Excel)' }, { f: 'dataset', label: 'Display name' },
+    { f: 'sample_rows', label: 'Sample rows', type: 'number' },
+  ],
+  gcs: [
+    { f: 'bucket', label: 'Bucket' }, { f: 'object', label: 'Object path', full: true },
+    { f: 'credentials_json', label: 'Service-account key JSON', type: 'textarea', full: true,
+      placeholder: '{ "type": "service_account", … }' },
+    { f: 'sheet', label: 'Worksheet (Excel)' }, { f: 'dataset', label: 'Display name' },
+    { f: 'sample_rows', label: 'Sample rows', type: 'number' },
+  ],
+  azureblob: [
+    { f: 'container', label: 'Container' }, { f: 'blob', label: 'Blob path', full: true },
+    { f: 'connection_string', label: 'Connection string', type: 'password', full: true },
     { f: 'sheet', label: 'Worksheet (Excel)' }, { f: 'dataset', label: 'Display name' },
     { f: 'sample_rows', label: 'Sample rows', type: 'number' },
   ],
