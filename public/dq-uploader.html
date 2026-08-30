@@ -404,6 +404,12 @@
   .src-tag.betatag { background: color-mix(in srgb, var(--accent2) 16%, var(--card)); color: var(--accent2); }
   .src-tag.soon-tag { background: color-mix(in srgb, var(--muted) 18%, transparent); color: var(--muted); }
   .src-tag.previewtag { background: color-mix(in srgb, #a855f7 20%, transparent); color: #a855f7; }
+  .excel-intro { margin: 0 0 16px; padding: 12px 14px; border: 1px solid color-mix(in srgb, #21A366 40%, var(--border));
+    border-left: 4px solid #21A366; border-radius: 10px; background: color-mix(in srgb, #21A366 8%, var(--card)); }
+  .excel-intro-hd { display: flex; align-items: center; gap: 8px; font-size: 14px; margin-bottom: 4px; }
+  .excel-intro-ico { display: inline-flex; }
+  .excel-intro p { margin: 0; font-size: 12.5px; line-height: 1.5; color: var(--text); }
+  .excel-intro code { background: color-mix(in srgb, #21A366 16%, transparent); border-radius: 4px; padding: 0 4px; font-size: 11.5px; }
   /* Inside the narrower detail pane, stack the file source's own two-column layout. */
   .src-panel .up-top { grid-template-columns: 1fr; }
   @media (max-width: 820px) { .src-workspace { grid-template-columns: 1fr; }
@@ -1329,7 +1335,11 @@
     <div class="up-top">
       <div class="up-main">
         <div class="card">
-      <h2>Dataset</h2>
+      <div id="excelIntro" class="excel-intro" style="display:none;">
+        <div class="excel-intro-hd"><span class="excel-intro-ico" id="excelIntroIco"></span><strong>Assess an Excel workbook</strong></div>
+        <p>Upload a spreadsheet (<code>.xlsx</code> / <code>.xlsm</code>) straight from your computer — no SharePoint or database needed. We read <strong>one worksheet</strong> (the first, or one you name), infer data-quality rules from it, and score it across the DAMA dimensions just like any other dataset. If your workbook has several tabs, pick which one to assess below.</p>
+      </div>
+      <h2 id="fileCardTitle">Dataset</h2>
       <input type="file" id="file" accept=".parquet,.pq,.json,.ndjson,.jsonl,.qvd,.csv,.tsv,.xlsx,.xlsm" />
       <div class="fileinfo" id="fileinfo">No file selected.</div>
       <div id="excelSheetWrap" style="display:none;margin:2px 0 12px;">
@@ -2196,14 +2206,27 @@ function fmtWhen(runId) {
 
 const MAX = 5 * 1024 ** 3;
 const _isExcelName = n => /\.(xlsx|xlsm)$/i.test(n || '');
+let fileSourceMode = 'file';                         // 'file' (any format) | 'excel' (Excel-only view)
+// Recast the shared upload card as generic "Dataset" or a distinct Excel view, so the Excel source
+// doesn't look identical to a plain file upload.
+function _applyFileMode(isExcel) {
+  fileSourceMode = isExcel ? 'excel' : 'file';
+  const intro = $('#excelIntro'); if (intro) intro.style.display = isExcel ? 'block' : 'none';
+  const ico = $('#excelIntroIco'); if (ico && isExcel && !ico.innerHTML) ico.innerHTML = srcIcon('excel');
+  const title = $('#fileCardTitle'); if (title) title.textContent = isExcel ? 'Excel workbook' : 'Dataset';
+  if (fileInput) fileInput.setAttribute('accept', isExcel ? '.xlsx,.xlsm'
+    : '.parquet,.pq,.json,.ndjson,.jsonl,.qvd,.csv,.tsv,.xlsx,.xlsm');
+  refreshFile();
+}
 function refreshFile() {
   const f = fileInput.files[0];
   const sheetWrap = $('#excelSheetWrap');
-  if (!f) { $('#fileinfo').textContent = 'No file selected.'; if (sheetWrap) sheetWrap.style.display = 'none'; goBtn.disabled = true; return; }
+  const wantSheet = fileSourceMode === 'excel' || (f && _isExcelName(f.name));   // Excel view, or an Excel file
+  if (!f) { $('#fileinfo').textContent = 'No file selected.'; if (sheetWrap) sheetWrap.style.display = wantSheet ? 'block' : 'none'; goBtn.disabled = true; return; }
   const over = f.size > MAX;
   $('#fileinfo').innerHTML = `<strong>${f.name}</strong> — ${humanSize(f.size)}` +
     (over ? ` <span style="color:var(--err)">exceeds the 5 GiB upload cap</span>` : '');
-  if (sheetWrap) sheetWrap.style.display = _isExcelName(f.name) ? 'block' : 'none';   // sheet picker only for Excel
+  if (sheetWrap) sheetWrap.style.display = wantSheet ? 'block' : 'none';
   goBtn.disabled = over || !configOK;
 }
 fileInput.addEventListener('change', refreshFile);
@@ -6656,6 +6679,7 @@ function selectSource(key) {
   const bodyKey = key === 'excel' ? 'file' : key;
   document.querySelectorAll('.source-card').forEach(c => c.classList.toggle('active', c.dataset.source === key));
   document.querySelectorAll('.source-body').forEach(b => { b.style.display = (b.id === 'src-' + bodyKey) ? 'block' : 'none'; });
+  if (bodyKey === 'file') _applyFileMode(key === 'excel');   // recast the shared card as Excel vs generic
   if (key === 'excel') { const fi = $('#file'); if (fi && !fi.files.length) fi.focus(); }
   // The file-upload assessment/results cards only make sense for the file source.
   _SRC_FILE_ONLY.forEach(id => { const el = document.getElementById(id); if (el) el.classList.toggle('src-hidden', bodyKey !== 'file'); });
