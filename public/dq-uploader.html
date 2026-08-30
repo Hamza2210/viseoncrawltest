@@ -458,6 +458,24 @@
   .cmp-set-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
   .cmp-exempt { display: flex; align-items: center; gap: 8px; font-size: 13px; margin: 0 0 12px; cursor: pointer; }
   .tag.muted { background: color-mix(in srgb, var(--muted) 16%, transparent); color: var(--muted); }
+  /* Governance attestations */
+  .cmp-attest summary .tag { margin-left: 8px; font-size: 11px; }
+  .cmp-at-cov { display: flex; align-items: center; gap: 10px; margin: 4px 0 14px; }
+  .cmp-at-cov-bar { flex: 0 0 160px; height: 6px; border-radius: 4px; background: var(--border); overflow: hidden; }
+  .cmp-at-cov-fill { display: block; height: 100%; background: var(--accent); }
+  .cmp-at-group { font-weight: 700; font-size: 12px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); margin: 14px 0 6px; }
+  .cmp-at-item { padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--card); margin: 0 0 8px; }
+  .cmp-at-item.cmp-at-gap { border-left: 3px solid var(--err); }
+  .cmp-at-q { font-size: 13px; color: var(--text); }
+  .cmp-at-meta { margin: 3px 0 7px; font-size: 11px; }
+  .cmp-at-req { display: inline-block; margin-left: 6px; font-size: 11px; font-weight: 600; color: var(--err); background: color-mix(in srgb, var(--err) 12%, transparent); border-radius: 4px; padding: 1px 6px; }
+  .cmp-at-opts { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+  .cmp-at-opt { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; padding: 3px 10px; border: 1px solid var(--border); border-radius: 999px; cursor: pointer; }
+  .cmp-at-opt input { margin: 0; }
+  .cmp-at-extra { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .cmp-at-extra input { padding: 6px 9px; border: 1px solid var(--border); border-radius: 8px; background: var(--card-2); color: var(--text); font: inherit; font-size: 12px; }
+  .cmp-at-extra input:focus { outline: none; border-color: var(--accent); }
+  @media (max-width: 560px) { .cmp-at-extra { grid-template-columns: 1fr; } }
   /* Estate-wide compliance view */
   .cmp-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: 6px 0 16px; }
   .cmp-tile { border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; background: var(--card); }
@@ -3535,6 +3553,7 @@ function entryFor(key) {
            pii: Object.assign({}, e.pii || {}), contract: Object.assign({}, e.contract || {}),
            complianceDismissed: Object.assign({}, e.complianceDismissed || {}),
            complianceContract: Object.assign({}, e.complianceContract || {}),
+           complianceAttestations: Object.assign({}, e.complianceAttestations || {}),
            trust: e.trust || '', trustNote: e.trustNote || '', trustBy: e.trustBy || '', trustAt: e.trustAt || '' };
 }
 async function setPiiLabel(key, column, label) {
@@ -4909,9 +4928,10 @@ async function loadDsCompliance(panel, prefix) {
   try {
     const r = await postJSON(`${API_BASE}/data-quality/result`, HEADERS, { result_prefix: prefix });
     const settings = key ? complianceSettingsHtml(key) : '';
+    const attest = key ? complianceAttestHtml(key, r.compliance) : '';
     panel.innerHTML = settings + (compliancePanel(r.compliance, prefix) ||
-      `<p class="dash-muted">No compliance assessment recorded for this run yet — re-run the dataset to generate the ISO/IEC 29100 lens.</p>`);
-    if (key) wireComplianceSettings(panel, key, prefix);
+      `<p class="dash-muted">No compliance assessment recorded for this run yet — re-run the dataset to generate the ISO/IEC 29100 lens.</p>`) + attest;
+    if (key) { wireComplianceSettings(panel, key, prefix); wireComplianceAttest(panel, key); }
   } catch (e) { panel.innerHTML = `<p class="dash-muted" style="color:var(--err)">${esc(e.message)}</p>`; }
 }
 
@@ -4976,6 +4996,146 @@ function wireComplianceSettings(panel, key, prefix) {
     } catch (e) { setMsg(e.message, true); }
     btn.disabled = false;
   });
+}
+
+// ---- Governance attestations (Phase 3) -------------------------------------------------------
+// The ISO/IEC 29100 principles data can't evidence (purpose, notice, individual rights, DPIA/ROPA/
+// governance). SELF-ATTESTED by the owner — recorded with an audit trail, clearly separate from the
+// machine-evidenced exposure grade (attestations never move CRITICAL/AT_RISK/etc). Groups shown in order.
+const CMP_ATTESTATIONS = [
+  { id: 'purpose_documented', group: 'Purpose', ref: 'ISO 29100 §5.2', cite: 'GDPR Art. 5(1)(b), 6',
+    q: 'A documented lawful basis and specified purpose exist for processing this dataset.' },
+  { id: 'purpose_limited', group: 'Purpose', ref: 'ISO 29100 §5.2', cite: 'GDPR Art. 5(1)(b)',
+    q: 'Processing is limited to that purpose — no incompatible secondary use.' },
+  { id: 'consent_valid', group: 'Consent', ref: 'ISO 29100 §5.1', cite: 'GDPR Art. 7',
+    q: 'Where consent is the basis, it is freely given, specific, informed and withdrawable.' },
+  { id: 'collection_minimised', group: 'Collection', ref: 'ISO 29100 §5.3', cite: 'GDPR Art. 5(1)(c)',
+    q: 'Collection is limited to what is necessary for the purpose (data minimisation).' },
+  { id: 'privacy_notice', group: 'Transparency', ref: 'ISO 29100 §5.7', cite: 'GDPR Art. 13/14',
+    q: 'Data subjects have been given a privacy notice covering this data.' },
+  { id: 'notice_complete', group: 'Transparency', ref: 'ISO 29100 §5.7', cite: 'GDPR Art. 13/14',
+    q: 'The notice states controller, purposes, retention and rights.' },
+  { id: 'rights_process', group: 'Individual rights', ref: 'ISO 29100 §5.8', cite: 'GDPR Art. 15–22',
+    q: 'A process handles access / rectification / erasure / portability / objection requests within statutory deadlines.' },
+  { id: 'ropa', group: 'Governance', ref: 'ISO 29100 §5.11', cite: 'GDPR Art. 30',
+    q: 'This processing is recorded in the Records of Processing Activities (ROPA).' },
+  { id: 'dpia', group: 'Governance', ref: 'ISO 29100 §5.11', cite: 'GDPR Art. 35',
+    q: 'A DPIA has been completed where required (high-risk / special-category data).' },
+  { id: 'dpo', group: 'Governance', ref: 'ISO 29100 §5.11', cite: 'GDPR Art. 37',
+    q: 'A DPO or privacy owner is assigned for this data.' },
+  { id: 'transfers', group: 'Governance', ref: 'ISO 29100 §5.11', cite: 'GDPR Ch. V',
+    q: 'Any international transfers have a lawful transfer mechanism (adequacy / SCCs).' },
+  { id: 'processors', group: 'Governance', ref: 'ISO 29100 §5.11', cite: 'GDPR Art. 28',
+    q: 'Processor agreements are in place for any third parties handling this data.' },
+  { id: 'breach_process', group: 'Governance', ref: 'ISO 29100 §5.9', cite: 'GDPR Art. 33/34',
+    q: 'A personal-data breach detection and 72-hour notification process is in place.' },
+];
+const ATTEST_LABEL = { yes: 'Yes', no: 'No', na: 'N/A' };
+
+// Should the DPIA item be flagged as likely-required? Yes when the run detected special-category
+// data (Art. 9) or a critical/high exposure — exactly the Art. 35 high-risk triggers. Uses the
+// ACTIVE (non-dismissed) controls so it agrees with the re-graded panel: a dismissed exposure that
+// no longer shows red must not still demand a DPIA.
+function _dpiaLikelyRequired(comp, dismissed) {
+  if (!comp) return false;
+  dismissed = dismissed || {};
+  const hiExposure = (comp.controls || []).some(c => c && c.status === 'FAIL' &&
+    c.class !== 'quality' && !dismissed[c.id] && (c.severity === 'critical' || c.severity === 'high'));
+  if (hiExposure) return true;
+  return (comp.advisory || []).some(a => a && a.kind === 'special_category');
+}
+
+function complianceAttestHtml(key, comp) {
+  const saved = (entryFor(key).complianceAttestations || {}).items || {};
+  const meta = entryFor(key).complianceAttestations || {};
+  const dpiaReq = _dpiaLikelyRequired(comp, entryFor(key).complianceDismissed || {});
+  const total = CMP_ATTESTATIONS.length;
+  const answered = CMP_ATTESTATIONS.filter(a => saved[a.id] && saved[a.id].value).length;
+  const gaps = CMP_ATTESTATIONS.filter(a => saved[a.id] && saved[a.id].value === 'no').length;
+  const covPct = Math.round((answered / total) * 100);
+  const covCls = answered === total ? 'green' : (answered ? 'amber' : 'muted');
+  let lastGroup = '';
+  const rows = CMP_ATTESTATIONS.map(a => {
+    const cur = saved[a.id] || {};
+    const groupHd = a.group !== lastGroup ? (lastGroup = a.group,
+      `<div class="cmp-at-group">${esc(a.group)}</div>`) : '';
+    const radios = ['yes', 'no', 'na'].map(v =>
+      `<label class="cmp-at-opt cmp-at-${v}"><input type="radio" name="at_${esc(a.id)}" value="${v}"${cur.value === v ? ' checked' : ''}> ${ATTEST_LABEL[v]}</label>`).join('');
+    const flag = (a.id === 'dpia' && dpiaReq)
+      ? ` <span class="cmp-at-req" data-tip="This run detected special-category data or a critical/high exposure — a DPIA is likely required (Art. 35).">DPIA likely required</span>` : '';
+    const gapCls = cur.value === 'no' ? ' cmp-at-gap' : '';
+    return `${groupHd}<div class="cmp-at-item${gapCls}" data-aid="${esc(a.id)}">
+        <div class="cmp-at-q">${esc(a.q)}${flag}</div>
+        <div class="cmp-at-meta"><span class="cmp-ref">${esc(a.ref)}</span> <span class="cmp-cite">${esc(a.cite)}</span></div>
+        <div class="cmp-at-opts">${radios}</div>
+        <div class="cmp-at-extra">
+          <input type="text" class="cmp-at-note" maxlength="600" placeholder="Note / justification (optional)" value="${esc(cur.note || '')}">
+          <input type="url" class="cmp-at-url" maxlength="500" placeholder="Evidence link (https://…)" value="${esc(cur.evidence_url || '')}">
+        </div>
+      </div>`;
+  }).join('');
+  const who = meta.by ? ` · last recorded by ${esc(meta.by)}${meta.at ? ' · ' + esc(fmtWhen(meta.at)) : ''}` : '';
+  return `<details class="cmp-settings cmp-attest"${gaps ? ' open' : ''}><summary>📋 Governance attestations
+      <span class="tag ${covCls}">${answered}/${total} attested${gaps ? ` · ${gaps} gap${gaps === 1 ? '' : 's'}` : ''}</span></summary>
+    <p class="hint" style="margin:6px 0 10px;">The ISO/IEC 29100 principles that data can't evidence — purpose, notice, individual rights and governance.
+      <strong>Self-attested</strong>, recorded with an audit trail. These do <strong>not</strong> change the machine-evidenced exposure grade above${who}.</p>
+    <div class="cmp-at-cov"><span class="cmp-at-cov-bar"><span class="cmp-at-cov-fill" style="width:${covPct}%"></span></span>
+      <span class="hint">${answered} of ${total} attested${gaps ? ` · ${gaps} answered “No” (gap${gaps === 1 ? '' : 's'})` : ''}</span></div>
+    ${rows}
+    <div class="cmp-set-actions"><button type="button" class="btn-sm" id="cmpAttestSave">Save attestations</button>
+      <span class="hint" id="cmpAttestMsg"></span></div>
+  </details>`;
+}
+
+function wireComplianceAttest(panel, key) {
+  const btn = panel.querySelector('#cmpAttestSave');
+  if (!btn) return;
+  const setMsg = (t, err) => { const m = panel.querySelector('#cmpAttestMsg'); if (m) { m.textContent = t; m.style.color = err ? 'var(--err)' : 'var(--ok)'; } };
+  // Live: mark a "No" answer as a gap as the user picks it.
+  panel.querySelectorAll('.cmp-at-item').forEach(it => it.addEventListener('change', e => {
+    if (e.target && e.target.type === 'radio') it.classList.toggle('cmp-at-gap', e.target.value === 'no');
+  }));
+  btn.addEventListener('click', async () => {
+    const attestations = {};
+    let orphanContent = 0;                                 // note/link typed but no Yes/No/N.A. picked
+    panel.querySelectorAll('.cmp-at-item').forEach(it => {
+      const aid = it.dataset.aid;
+      const note = ((it.querySelector('.cmp-at-note') || {}).value || '').trim();
+      const url = ((it.querySelector('.cmp-at-url') || {}).value || '').trim();
+      const sel = it.querySelector(`input[name="at_${aid}"]:checked`);
+      if (!sel) { if (note || url) orphanContent++; return; }   // an attestation needs an answer
+      attestations[aid] = { value: sel.value, note, evidence_url: url };
+    });
+    btn.disabled = true;
+    try {
+      const r = await postJSON(`${API_BASE}/data-quality/dataset-tags`, HEADERS, {
+        app_id: APP_ID, action: 'set-compliance-attestations', key,
+        attestations, attest_by: EMAIL || undefined });
+      if (r && r.entries) dashEntries = r.entries;
+      _updateAttestCoverage(panel, attestations);          // live-refresh the summary badge + bar
+      setMsg(orphanContent
+        ? `Saved. ${orphanContent} item(s) had a note/link but no Yes/No/N.A. — pick an answer to save those.`
+        : 'Saved — attestations recorded.', !!orphanContent);
+    } catch (e) { setMsg(e.message, true); }
+    btn.disabled = false;
+  });
+}
+
+// Refresh the attestations <summary> badge + coverage bar in place after a save (no full re-render,
+// so the form's open state and any half-typed input are preserved).
+function _updateAttestCoverage(panel, attestations) {
+  const total = CMP_ATTESTATIONS.length;
+  const answered = Object.keys(attestations).length;
+  const gaps = Object.values(attestations).filter(a => a.value === 'no').length;
+  const tag = panel.querySelector('.cmp-attest summary .tag');
+  if (tag) {
+    tag.textContent = `${answered}/${total} attested${gaps ? ` · ${gaps} gap${gaps === 1 ? '' : 's'}` : ''}`;
+    tag.className = `tag ${answered === total ? 'green' : (answered ? 'amber' : 'muted')}`;
+  }
+  const fill = panel.querySelector('.cmp-at-cov-fill');
+  if (fill) fill.style.width = Math.round((answered / total) * 100) + '%';
+  const cov = panel.querySelector('.cmp-at-cov .hint');
+  if (cov) cov.textContent = `${answered} of ${total} attested${gaps ? ` · ${gaps} answered “No” (gap${gaps === 1 ? '' : 's'})` : ''}`;
 }
 
 async function loadDsMetadata(panel, prefix) {
