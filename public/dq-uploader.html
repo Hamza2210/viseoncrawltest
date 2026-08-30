@@ -1290,7 +1290,7 @@
           <div class="src-cat-hd">Files</div>
           <div class="src-grid">
             <button type="button" class="source-card active" data-source="file"><span class="src-ico">📄</span><span class="sc-name">File upload</span><span class="src-tag">Ready</span></button>
-            <button type="button" class="source-card" data-source="excel"><span class="src-ico">📊</span><span class="sc-name">Excel (.xlsx)</span><span class="src-tag betatag">Beta</span></button>
+            <button type="button" class="source-card" data-source="excel"><span class="src-ico" data-ico="excel"></span><span class="sc-name">Excel (.xlsx)</span><span class="src-tag betatag">Beta</span></button>
           </div>
         </div>
         <div class="src-cat">
@@ -1299,7 +1299,7 @@
             <button type="button" class="source-card" data-source="redshift"><span class="src-ico" data-ico="redshift"></span><span class="sc-name">Amazon Redshift</span><span class="src-tag betatag">Beta</span></button>
             <button type="button" class="source-card" data-source="snowflake"><span class="src-ico" data-ico="snowflake"></span><span class="sc-name">Snowflake</span><span class="src-tag betatag">Beta</span></button>
             <button type="button" class="source-card" data-source="databricks"><span class="src-ico" data-ico="databricks"></span><span class="sc-name">Databricks</span><span class="src-tag betatag">Beta</span></button>
-            <button type="button" class="source-card" data-source="bigquery"><span class="src-ico">🔷</span><span class="sc-name">Google BigQuery</span><span class="src-tag betatag">Beta</span></button>
+            <button type="button" class="source-card" data-source="bigquery"><span class="src-ico" data-ico="bigquery"></span><span class="sc-name">Google BigQuery</span><span class="src-tag betatag">Beta</span></button>
             <button type="button" class="source-card soon" disabled><span class="src-ico">🟦</span><span class="sc-name">Azure Synapse</span><span class="src-tag soon-tag">Soon</span></button>
           </div>
         </div>
@@ -1315,7 +1315,7 @@
           <div class="src-cat-hd">Cloud storage</div>
           <div class="src-grid">
             <button type="button" class="source-card" data-source="s3"><span class="src-ico" data-ico="s3"></span><span class="sc-name">Amazon S3</span><span class="src-tag betatag">Beta</span></button>
-            <button type="button" class="source-card" data-source="sharepoint"><span class="src-ico">📁</span><span class="sc-name">SharePoint / OneDrive</span><span class="src-tag previewtag">Preview</span></button>
+            <button type="button" class="source-card" data-source="sharepoint"><span class="src-ico" data-ico="sharepoint"></span><span class="sc-name">SharePoint / OneDrive</span><span class="src-tag previewtag">Preview</span></button>
             <button type="button" class="source-card soon" disabled><span class="src-ico">🪣</span><span class="sc-name">Google Cloud Storage</span><span class="src-tag soon-tag">Soon</span></button>
             <button type="button" class="source-card soon" disabled><span class="src-ico">🟦</span><span class="sc-name">Azure Blob / ADLS</span><span class="src-tag soon-tag">Soon</span></button>
           </div>
@@ -2159,6 +2159,24 @@ const SOURCE_FMT_SVG = {
     '<ellipse cx="12" cy="5.4" rx="6.3" ry="2.1" fill="#c9313a"/>' +
     '<path d="M5.7 5.4 L5.7 18.6 Q12 20.9 18.3 18.6 L18.3 5.4" fill="none"/>' +
     '<path d="M5.7 11 Q12 13.3 18.3 11" fill="none"/><path d="M5.7 14.8 Q12 17.1 18.3 14.8" fill="none"/></g>'),
+  // Excel: green sheet (light top-right) + dark tile with a white X
+  excel: _svg('<rect x="7" y="3" width="14" height="18" rx="2.4" fill="#21A366"/>' +
+    '<path d="M7 12 h14 v6.6 a2.4 2.4 0 0 1 -2.4 2.4 H9.4 A2.4 2.4 0 0 1 7 18.6 Z" fill="#107C41"/>' +
+    '<rect x="14.6" y="3" width="6.4" height="8" rx="2" fill="#33C481"/>' +
+    '<rect x="2" y="7" width="11" height="12" rx="2.2" fill="#185C37"/>' +
+    '<path d="M4.7 9.7 L10.3 16.3 M10.3 9.7 L4.7 16.3" stroke="#fff" stroke-width="1.7" stroke-linecap="round"/>'),
+  // BigQuery: blue hexagon + white magnifier over a bar chart
+  bigquery: _svg('<path d="M6 3.2 H18 L22 12 L18 20.8 H6 L2 12 Z" fill="#4285F4"/>' +
+    '<g fill="#fff"><rect x="8.5" y="10" width="1.15" height="2.7" rx=".3"/><rect x="9.95" y="8.5" width="1.15" height="4.2" rx=".3"/>' +
+    '<rect x="11.4" y="9.3" width="1.15" height="3.4" rx=".3"/></g>' +
+    '<circle cx="10.5" cy="10.6" r="4.2" fill="none" stroke="#fff" stroke-width="1.5"/>' +
+    '<line x1="13.7" y1="13.8" x2="17.2" y2="17.3" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/>'),
+  // SharePoint: overlapping teal circles + a dark-teal "S" tile
+  sharepoint: _svg('<circle cx="15.4" cy="7" r="5" fill="#0B6A6E"/><circle cx="18" cy="14.4" r="5" fill="#1CA6AD"/>' +
+    '<circle cx="13.4" cy="18.6" r="4.3" fill="#37C6CE"/>' +
+    '<rect x="1.4" y="6" width="11" height="11" rx="2" fill="#036C70"/>' +
+    '<text x="6.9" y="14.7" font-size="9.2" font-weight="800" fill="#fff" text-anchor="middle" ' +
+    'font-family="Segoe UI,Arial,sans-serif">S</text>'),
 };
 function srcIcon(fmt) { const f = (fmt || '').toLowerCase(); return SOURCE_FMT_SVG[f] || SOURCE_FMT_ICON[f] || '🗄️'; }
 function sourceLabel(fmt) { const f = (fmt || '').toLowerCase(); return SOURCE_FMT_LABEL[f] || (f ? f.toUpperCase() : ''); }
