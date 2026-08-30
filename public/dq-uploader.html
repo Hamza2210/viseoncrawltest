@@ -539,6 +539,27 @@
   .cmp-leg-dot.red { background: var(--err); } .cmp-leg-dot.amber { background: var(--run); }
   .cmp-leg-dot.green { background: var(--ok); } .cmp-leg-dot.muted { background: color-mix(in srgb, var(--muted) 55%, transparent); }
   .cmp-leg-n { font-weight: 800; font-size: 14px; } .cmp-leg-l { color: var(--muted); }
+  .cmp-sec-hd { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; letter-spacing: .02em;
+    text-transform: uppercase; color: var(--muted); margin: 2px 0 10px; }
+  .cmp-sec-n { color: #fff; border-radius: 999px; font-size: 12px; padding: 0 8px; }
+  .cmp-sec-n.red { background: var(--err); } .cmp-sec-n.amber { background: var(--run); }
+  .cmp-allclear { border: 1px solid var(--border); border-left: 4px solid var(--ok); border-radius: 13px; padding: 16px 18px;
+    background: color-mix(in srgb, var(--ok) 6%, var(--card)); color: var(--text); font-size: 14px; font-weight: 600; }
+  .cmp-calm { margin-top: 16px; border: 1px solid var(--border); border-radius: 12px; background: var(--card-2); overflow: hidden; }
+  .cmp-calm > summary { cursor: pointer; padding: 11px 14px; font-size: 13px; color: var(--muted); font-weight: 600; list-style: none; display: flex; align-items: center; gap: 8px; }
+  .cmp-calm > summary::before { content: '▸'; font-size: 11px; transition: transform .12s; }
+  .cmp-calm[open] > summary::before { transform: rotate(90deg); }
+  .cmp-calm > summary::-webkit-details-marker { display: none; }
+  .cmp-mini-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1px 14px; padding: 4px 6px 8px; }
+  .cmp-mini { display: flex; align-items: center; gap: 8px; padding: 7px 9px; border-radius: 7px; cursor: pointer; font-size: 12.5px; border: 1px solid transparent; }
+  .cmp-mini:hover { background: color-mix(in srgb, var(--accent) 7%, transparent); }
+  .cmp-mini.sel { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
+  .cmp-mini-dot { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 auto; }
+  .cmp-mini-dot.green { background: var(--ok); } .cmp-mini-dot.amber { background: var(--run); }
+  .cmp-mini-dot.red { background: var(--err); } .cmp-mini-dot.muted { background: color-mix(in srgb, var(--muted) 55%, transparent); }
+  .cmp-mini-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cmp-mini-note { color: var(--muted); font-size: 11px; }
+  .cmp-mini-when { margin-left: auto; color: var(--muted); font-size: 11px; white-space: nowrap; }
   .cmp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(268px, 1fr)); gap: 14px; }
   .cmp-card { position: relative; border: 1px solid var(--border); border-left: 4px solid var(--muted); border-radius: 13px;
     padding: 13px 15px; background: var(--card); cursor: pointer; transition: border-color .12s, box-shadow .12s, transform .08s; }
@@ -4911,31 +4932,47 @@ function scheduleComplianceRefresh() {
 const _CMP_FW_LABEL = { hipaa: '⚕ HIPAA', ccpa: '🐻 CCPA', bcbs239: '🏦 BCBS 239' };
 const _CMP_RAIL = g => g === 'CRITICAL' ? 'red' : (g === 'AT_RISK' || g === 'REVIEW') ? 'amber' : g === 'OK' ? 'green' : 'muted';
 
+function _cmpFwChip(d) {
+  const fw = (entryFor(d.key).complianceContract || {}).framework;
+  return (fw && fw !== 'gdpr') ? `<span class="cmp-fwchip">${esc(_CMP_FW_LABEL[fw] || fw.toUpperCase())}</span>` : '';
+}
+function _cmpAttestN(d) {
+  return Object.values((entryFor(d.key).complianceAttestations || {}).items || {}).filter(x => x && x.value).length;
+}
+function _cmpDataAttrs(d) {
+  return `data-prefix="${esc(d.resultPrefix || '')}" data-key="${esc(d.key)}" data-name="${esc(d.name || d.slug || '')}"`;
+}
+
+// Full card — used for datasets that need attention (their exposures are the point).
 function cmpCardHtml(d, i) {
   const g = d.complianceGrade || 'NONE';
   const gm = CMP_GRADE[g] || { cls: 'muted', label: g === 'NONE' ? 'Not assessed' : g };
   const c = d.complianceCounts || {};
   const exp = [];
-  if (g === 'EXEMPT') exp.push('<span class="hint">Out of scope</span>');
-  else if (g === 'NONE') exp.push('<span class="hint">No assessment yet</span>');
-  else {
-    if (c.critical) exp.push(`<span class="tag red">${c.critical} crit</span>`);
-    if (c.high) exp.push(`<span class="tag red">${c.high} high</span>`);
-    if (c.medium) exp.push(`<span class="tag amber">${c.medium} med</span>`);
-    if (!exp.length) exp.push(`<span class="tag green">Clean</span>`);
-  }
-  const src = isSourceDataset(d) ? sourceChip(d.sourceFormat) : sourceChip('qlik');
-  // framework + attestation coverage come from the tags cache (already loaded for the estate)
-  const e = entryFor(d.key);
-  const fw = (e.complianceContract || {}).framework;
-  const fwChip = (fw && fw !== 'gdpr') ? `<span class="cmp-fwchip">${esc(_CMP_FW_LABEL[fw] || fw.toUpperCase())}</span>` : '';
-  const attN = Object.values((e.complianceAttestations || {}).items || {}).filter(x => x && x.value).length;
+  if (c.critical) exp.push(`<span class="tag red">${c.critical} crit</span>`);
+  if (c.high) exp.push(`<span class="tag red">${c.high} high</span>`);
+  if (c.medium) exp.push(`<span class="tag amber">${c.medium} med</span>`);
+  const attN = _cmpAttestN(d);
   const attest = attN ? `<span class="cmp-card-attest" title="Governance attestations recorded">⚖ ${attN} attested</span>` : '';
-  return `<div class="cmp-card ${_CMP_RAIL(g)}" data-cmpcard="${i}" data-prefix="${esc(d.resultPrefix || '')}" data-key="${esc(d.key)}" data-name="${esc(d.name || d.slug || '')}">
-      <div class="cmp-card-hd"><span class="cmp-card-name">${esc(d.name || d.slug || '')}</span>${src}
+  return `<div class="cmp-card cmp-item ${_CMP_RAIL(g)}" ${_cmpDataAttrs(d)}>
+      <div class="cmp-card-hd"><span class="cmp-card-name">${esc(d.name || d.slug || '')}</span>${isSourceDataset(d) ? sourceChip(d.sourceFormat) : sourceChip('qlik')}
         <button type="button" class="cmp-open" data-cmpopen="${esc(d.key)}" data-cmpname="${esc(d.name || d.slug || '')}" data-tip="Open in dashboard">⧉</button></div>
       <div class="cmp-card-row"><span class="tag ${gm.cls}">${esc(gm.label)}</span> ${exp.join(' ')}</div>
-      <div class="cmp-card-foot">${fwChip}${attest}<span style="margin-left:auto;">${d.lastSeen ? esc(fmtWhen(d.lastSeen)) : '—'}</span></div>
+      <div class="cmp-card-foot">${_cmpFwChip(d)}${attest}<span style="margin-left:auto;">${d.lastSeen ? esc(fmtWhen(d.lastSeen)) : '—'}</span></div>
+    </div>`;
+}
+
+// Compact one-liner — the clean / out-of-scope / not-assessed majority, so they stay quiet.
+function cmpMiniRow(d) {
+  const g = d.complianceGrade || 'NONE';
+  const note = g === 'EXEMPT' ? '<span class="cmp-mini-note">out of scope</span>'
+    : g === 'NONE' ? '<span class="cmp-mini-note">not assessed</span>' : '';
+  const attN = _cmpAttestN(d);
+  return `<div class="cmp-mini cmp-item ${_CMP_RAIL(g)}" ${_cmpDataAttrs(d)}>
+      <span class="cmp-mini-dot ${_CMP_RAIL(g)}"></span>
+      <span class="cmp-mini-name">${esc(d.name || d.slug || '')}</span>${note}
+      ${_cmpFwChip(d)}${attN ? `<span class="cmp-card-attest">⚖ ${attN}</span>` : ''}
+      <span class="cmp-mini-when">${d.lastSeen ? esc(fmtWhen(d.lastSeen)) : '—'}</span>
     </div>`;
 }
 
@@ -4977,40 +5014,56 @@ function renderComplianceEstate() {
         <div class="cmp-legend">${legend}</div></div>
     </div>`;
 
-  // --- cards for the active filter (not-assessed only shown when explicitly filtered to)
-  let rows;
-  if (cmpFilter === 'notassessed') rows = naList;
-  else {
-    rows = assessed.concat(exempt).sort((a, b) =>
-      ((CMP_GRADE_RANK[b.complianceGrade] || 0) - (CMP_GRADE_RANK[a.complianceGrade] || 0)) ||
-      (((b.complianceCounts || {}).critical || 0) - ((a.complianceCounts || {}).critical || 0)));
-    if (cmpFilter === 'critical') rows = rows.filter(d => d.complianceGrade === 'CRITICAL');
-    else if (cmpFilter === 'atrisk') rows = rows.filter(d => d.complianceGrade === 'AT_RISK' || d.complianceGrade === 'REVIEW');
-    else if (cmpFilter === 'clean') rows = rows.filter(d => d.complianceGrade === 'OK');
-    else if (cmpFilter === 'exempt') rows = rows.filter(d => d.complianceGrade === 'EXEMPT');
+  // --- exceptions-first: prominent cards ONLY for datasets needing attention; the clean majority
+  // collapses into a quiet strip so a wall of 30+ "clean" tables never buries the one that matters.
+  const isAtt = d => d.complianceGrade === 'CRITICAL' || d.complianceGrade === 'AT_RISK' || d.complianceGrade === 'REVIEW';
+  const byRank = (a, b) => ((CMP_GRADE_RANK[b.complianceGrade] || 0) - (CMP_GRADE_RANK[a.complianceGrade] || 0)) ||
+    (((b.complianceCounts || {}).critical || 0) - ((a.complianceCounts || {}).critical || 0));
+  const cardGrid = list => `<div class="cmp-grid">${list.map((d, i) => cmpCardHtml(d, i)).join('')}</div>`;
+  const miniList = list => `<div class="cmp-mini-list">${list.map(d => cmpMiniRow(d)).join('')}</div>`;
+  let content;
+  if (cmpFilter === 'all') {
+    const attention = assessed.filter(isAtt).sort(byRank);
+    const calm = assessed.filter(d => d.complianceGrade === 'OK').concat(exempt).concat(naList);
+    const worstCls = attention.some(d => d.complianceGrade === 'CRITICAL') ? 'red' : 'amber';
+    const head = attention.length
+      ? `<div class="cmp-sec-hd">Needs attention <span class="cmp-sec-n ${worstCls}">${attention.length}</span></div>` + cardGrid(attention)
+      : `<div class="cmp-allclear">✓ No exposures found across ${assessed.length} assessed ${assessed.length === 1 ? noun : noun + 's'}.</div>`;
+    const calmSec = calm.length
+      ? `<details class="cmp-calm"${attention.length ? '' : ' open'}><summary>${clean} clean${exempt.length ? ` · ${exempt.length} out of scope` : ''}${naList.length ? ` · ${naList.length} not assessed` : ''}</summary>${miniList(calm)}</details>`
+      : '';
+    content = head + calmSec;
+  } else {
+    let rows;
+    if (cmpFilter === 'notassessed') rows = naList;
+    else rows = assessed.concat(exempt).sort(byRank).filter(d =>
+      cmpFilter === 'critical' ? d.complianceGrade === 'CRITICAL'
+        : cmpFilter === 'atrisk' ? (d.complianceGrade === 'AT_RISK' || d.complianceGrade === 'REVIEW')
+          : cmpFilter === 'clean' ? d.complianceGrade === 'OK'
+            : cmpFilter === 'exempt' ? d.complianceGrade === 'EXEMPT' : true);
+    const asCards = cmpFilter === 'critical' || cmpFilter === 'atrisk';   // attention → cards; rest → compact list
+    content = rows.length ? (asCards ? cardGrid(rows) : miniList(rows))
+      : `<p class="dash-muted">No datasets match this filter.</p>`;
   }
-  const cards = rows.length ? rows.map((d, i) => cmpCardHtml(d, i)).join('')
-    : `<p class="dash-muted" style="grid-column:1/-1;">No datasets match this filter.</p>`;
 
   wrap.innerHTML =
     `<div style="margin-bottom:14px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;"><span class="scope-toggle" id="cmpScopeToggle">
        <button type="button" class="scope-btn${cmpScope === 'app' ? ' active' : ''}" data-cmpscope="app">App data</button>
        <button type="button" class="scope-btn${cmpScope === 'source' ? ' active' : ''}" data-cmpscope="source">Source data</button>
      </span><button type="button" class="linkbtn" id="cmpRefresh">↻ Refresh</button></div>` +
-    hero +
-    `<div class="cmp-grid" id="cmpGrid">${cards}</div>` +
+    hero + content +
     `<div id="cmpDetailPane"></div>`;
 
   wrap.querySelectorAll('#cmpScopeToggle .scope-btn').forEach(b => b.addEventListener('click', () => { cmpScope = b.dataset.cmpscope; cmpFilter = 'all'; renderComplianceEstate(); }));
   { const rb = wrap.querySelector('#cmpRefresh'); if (rb) rb.addEventListener('click', async () => { rb.textContent = '↻ Refreshing…'; rb.disabled = true; await refreshComplianceData(); }); }
   // clicking a legend segment toggles that filter (click the active one to clear back to All)
   wrap.querySelectorAll('[data-cmpf]').forEach(b => b.addEventListener('click', () => { cmpFilter = (cmpFilter === b.dataset.cmpf) ? 'all' : b.dataset.cmpf; renderComplianceEstate(); }));
-  // master-detail: selecting a card loads its FULL compliance detail into the pane below
-  wrap.querySelectorAll('.cmp-card').forEach(card => card.addEventListener('click', e => {
+  // master-detail: selecting a card OR a compact row loads its FULL compliance detail into the pane
+  wrap.querySelectorAll('.cmp-item').forEach(card => card.addEventListener('click', e => {
     if (e.target.closest('.cmp-open')) return;                 // the ⧉ button opens the dashboard instead
     const pane = $('#cmpDetailPane'); if (!pane) return;
     const already = card.classList.contains('sel');
-    wrap.querySelectorAll('.cmp-card.sel').forEach(c => c.classList.remove('sel'));
+    wrap.querySelectorAll('.cmp-item.sel').forEach(c => c.classList.remove('sel'));
     if (already) { pane.innerHTML = ''; return; }              // toggle off
     card.classList.add('sel');
     loadComplianceCardDetail(pane, card.dataset.prefix, card.dataset.key, card.dataset.name);
@@ -5028,7 +5081,7 @@ async function loadComplianceCardDetail(pane, prefix, key, name) {
     <div class="cmp-detail-body">${dqLoader('Loading compliance', null, true)}</div></div>`;
   const body = pane.querySelector('.cmp-detail-body');
   pane.querySelector('.cmp-detail-close').addEventListener('click', () => {
-    pane.innerHTML = ''; document.querySelectorAll('.cmp-card.sel').forEach(c => c.classList.remove('sel'));
+    pane.innerHTML = ''; document.querySelectorAll('.cmp-item.sel').forEach(c => c.classList.remove('sel'));
   });
   pane.querySelector('.cmp-open').addEventListener('click', () => openDatasetCompliance(key, name));
   pane.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
