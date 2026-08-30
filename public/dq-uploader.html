@@ -461,8 +461,12 @@
   .cmp-set-grid input:focus { outline: none; border-color: var(--accent); }
   .cmp-set-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
   .cmp-exempt { display: flex; align-items: center; gap: 8px; font-size: 13px; margin: 0 0 12px; cursor: pointer; }
-  .cmp-fw { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); margin: 0 0 12px; max-width: 460px; }
-  .cmp-fw select { padding: 7px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--card); color: var(--text); font: inherit; font-size: 13px; }
+  .cmp-fwsel { display: flex; flex-direction: column; align-items: center; gap: 6px; margin: 4px 0 16px; text-align: center; }
+  .cmp-fwsel-lab { font-size: 12px; color: var(--muted); font-weight: 600; display: inline-flex; align-items: center; gap: 5px; }
+  .cmp-fwsel select { padding: 8px 14px; border: 1px solid var(--border); border-radius: 8px; background: var(--card); color: var(--text); font: inherit; font-size: 13px; min-width: 360px; max-width: 100%; text-align: center; }
+  .cmp-fwsel select:focus { outline: none; border-color: var(--accent); }
+  .cmp-info { cursor: help; color: var(--muted); font-size: 13px; line-height: 1; }
+  .cmp-info:hover { color: var(--accent2); }
   .tag.muted { background: color-mix(in srgb, var(--muted) 16%, transparent); color: var(--muted); }
   /* Domain pack: HIPAA Safe Harbor panel */
   .dm-panel { margin: 0 0 20px; padding: 16px 18px; border: 1px solid var(--border); border-left: 4px solid #0e7490; border-radius: 12px; background: var(--card-2); }
@@ -586,6 +590,26 @@
   .cmp-open { background: none; border: 1px solid var(--border); border-radius: 7px; color: var(--muted); cursor: pointer; padding: 3px 9px; font-size: 13px; line-height: 1; }
   .cmp-open:hover { border-color: var(--accent); color: var(--accent2); }
   .cmp-detail-pane .cmp-panel { margin-top: 0; }
+  /* Record detail: a 4-card chooser (Findings / Policy / PIMS / Attestations); one section expands below at a time. */
+  .cmp-choose { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin: 4px 0 20px; }
+  @media (max-width: 1080px) { .cmp-choose { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 560px) { .cmp-choose { grid-template-columns: 1fr; } }
+  .cmp-choose-card { display: flex; align-items: flex-start; gap: 13px; text-align: left; padding: 15px 16px;
+    border: 1px solid var(--border); border-radius: 14px; background: var(--card-2); color: var(--text);
+    font: inherit; cursor: pointer; transition: border-color .12s, box-shadow .12s, transform .08s, background .12s; }
+  .cmp-choose-card:hover { border-color: var(--accent); transform: translateY(-1px);
+    box-shadow: 0 6px 20px -10px color-mix(in srgb, var(--accent) 55%, transparent); }
+  .cmp-choose-card.sel { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--card-2));
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 42%, transparent); }
+  .cmp-choose-ico { flex: 0 0 auto; width: 42px; height: 42px; display: inline-flex; align-items: center; justify-content: center;
+    font-size: 21px; line-height: 1; border-radius: 12px; background: color-mix(in srgb, var(--accent) 15%, var(--card)); }
+  .cmp-choose-card.sel .cmp-choose-ico { background: color-mix(in srgb, var(--accent) 26%, var(--card)); }
+  .cmp-choose-main { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1 1 auto; }
+  .cmp-choose-title { font-weight: 700; font-size: 14.5px; }
+  .cmp-choose-sub { font-size: 11.5px; color: var(--muted); line-height: 1.45; }
+  .cmp-choose-main .tag { align-self: flex-start; margin-top: 2px; }
+  .cmp-sec-detail { animation: cmpSecIn .16s ease; }
+  @keyframes cmpSecIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
   .src-form { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px 16px; margin: 12px 0 16px; }
   .src-field { display: flex; flex-direction: column; gap: 4px; }
   .src-field.full { grid-column: 1 / -1; }
@@ -5270,19 +5294,88 @@ async function openDatasetCompliance(key, name) {
 }
 
 // The FULL compliance picture for a dataset — reused by BOTH the dashboard Compliance sub-tab and the
-// estate card detail, so both show the identical thing: policy settings, ISO 27701 PIMS posture,
-// exposure controls, the domain-pack overlay, and the governance attestations. `key` may be '' (the
-// post-run results screen), in which case only the read-only exposure + domain panels render.
+// estate card detail, so both show the identical thing. Presented as a 4-card chooser (Findings /
+// Policy / PIMS / Attestations); the record opens with NOTHING expanded, then selecting a card
+// expands that section below and highlights the card, selecting another swaps it, and re-selecting
+// collapses it. All four sections are rendered (hidden) so the settings/attest handlers can wire
+// once. `key` may be '' (the post-run results screen), in which case only the read-only exposure +
+// domain panels render (no chooser).
 function complianceDetailBody(comp, prefix, key) {
-  const settings = key ? complianceSettingsHtml(key) : '';
-  const pims = key ? renderIso27701Panel(comp, key) : '';
-  const attest = key ? complianceAttestHtml(key, comp) : '';
   const panel = compliancePanel(comp, prefix) ||
     `<p class="dash-muted">No compliance assessment recorded for this run yet — re-run the dataset to generate the ISO/IEC 29100 lens.</p>`;
-  return settings + pims + panel + domainPanelHtml(comp) + attest;
+  const domain = domainPanelHtml(comp);
+  if (!key) return panel + domain;                       // results screen: findings only, no chooser
+
+  const settings = complianceSettingsHtml(key);
+  const pims = renderIso27701Panel(comp, key);
+  const attest = complianceAttestHtml(key, comp);
+
+  // At-a-glance status chip per chooser card, from data already computed elsewhere.
+  const dismissed = entryFor(key).complianceDismissed || {};
+  let findBadge;
+  if (comp && comp.exempt) findBadge = '<span class="tag muted">Out of scope</span>';
+  else if (comp) {
+    const rg = cmpRegrade((comp.controls || []).filter(c => !dismissed[c.id]));
+    const gm = CMP_GRADE[rg.grade] || { cls: 'amber', label: rg.grade || '—' };
+    findBadge = `<span class="tag ${gm.cls}">${esc(gm.label)}</span>`;
+  } else findBadge = '<span class="tag muted">Not assessed</span>';
+
+  let pimsBadge = '';
+  if (comp && !comp.exempt) {
+    const pp = iso27701Posture(comp, key);
+    const pc = pp.gaps ? 'red' : (pp.readiness === 100 ? 'green' : 'amber');
+    pimsBadge = `<span class="tag ${pc}">${pp.readiness}% ready${pp.gaps ? ` · ${pp.gaps} gap${pp.gaps === 1 ? '' : 's'}` : ''}</span>`;
+  }
+
+  const cc = entryFor(key).complianceContract || {};
+  const ccCols = cc.columns || {};
+  const setN = [cc.retention_days, ccCols.date, ccCols.consent_flag, ccCols.erasure_flag, ccCols.subject_id,
+    (ccCols.audit || []).length].filter(Boolean).length;
+  const polBadge = cc.exempt ? '<span class="tag muted">Exempt</span>'
+    : setN ? `<span class="tag green">${setN} rule${setN === 1 ? '' : 's'} set</span>`
+      : '<span class="tag muted">Not configured</span>';
+
+  const attSaved = (entryFor(key).complianceAttestations || {}).items || {};
+  const attItems = CMP_ATTESTATIONS.filter(a => !a.fw || a.fw === (cc.framework || 'gdpr'));
+  const attAns = attItems.filter(a => attSaved[a.id] && attSaved[a.id].value).length;
+  const attGaps = attItems.filter(a => attSaved[a.id] && attSaved[a.id].value === 'no').length;
+  const attCls = attAns === attItems.length ? 'green' : (attGaps ? 'red' : (attAns ? 'amber' : 'muted'));
+  const attBadge = `<span class="tag ${attCls}">${attAns}/${attItems.length} attested${attGaps ? ` · ${attGaps} gap${attGaps === 1 ? '' : 's'}` : ''}</span>`;
+
+  const cards = [
+    { sec: 'findings', ico: '🔎', title: 'Exposure &amp; findings', sub: 'Sensitive-data exposure, prohibited storage &amp; data-quality accuracy', badge: findBadge },
+    { sec: 'policy', ico: '⚙', title: 'Compliance policy', sub: 'Retention, consent, erasure &amp; audit-column rules', badge: polBadge },
+    { sec: 'pims', ico: '🛡', title: 'PIMS readiness', sub: 'ISO/IEC 27701 Annex A control mapping', badge: pimsBadge },
+    { sec: 'attest', ico: '⚖', title: 'Governance attestations', sub: 'Self-declared privacy &amp; governance controls', badge: attBadge },
+  ];
+  // Nothing expanded by default: the record opens on the chooser; a card is picked to reveal its section.
+  const chooser = `<div class="cmp-choose">${cards.map(c => `
+    <button type="button" class="cmp-choose-card" data-cmpsec="${c.sec}" aria-pressed="false">
+      <span class="cmp-choose-ico">${c.ico}</span>
+      <span class="cmp-choose-main"><span class="cmp-choose-title">${c.title}</span>
+        <span class="cmp-choose-sub">${c.sub}</span>${c.badge || ''}</span>
+    </button>`).join('')}</div>`;
+  const secs =
+    `<div class="cmp-sec-detail" data-sec="findings" style="display:none;">${panel}${domain}</div>` +
+    `<div class="cmp-sec-detail" data-sec="policy" style="display:none;">${settings}</div>` +
+    `<div class="cmp-sec-detail" data-sec="pims" style="display:none;">${pims || '<p class="dash-muted">No PIMS posture — this dataset is out of scope for compliance.</p>'}</div>` +
+    `<div class="cmp-sec-detail" data-sec="attest" style="display:none;">${attest}</div>`;
+  return chooser + secs;
 }
 function wireComplianceDetail(container, comp, prefix, key) {
   if (!key) return;
+  // Chooser: reveal one section at a time; re-selecting the active card collapses it. All sections
+  // are already in the DOM (hidden), so settings/attest wiring below works regardless of which is shown.
+  const cards = [...container.querySelectorAll('.cmp-choose-card')];
+  cards.forEach(card => card.addEventListener('click', () => {
+    const sec = card.dataset.cmpsec, wasSel = card.classList.contains('sel');
+    cards.forEach(c => { c.classList.remove('sel'); c.setAttribute('aria-pressed', 'false'); });
+    container.querySelectorAll('.cmp-sec-detail').forEach(d => d.style.display = 'none');
+    if (wasSel) return;                                  // toggle the active section off
+    card.classList.add('sel'); card.setAttribute('aria-pressed', 'true');
+    const d = container.querySelector(`.cmp-sec-detail[data-sec="${sec}"]`);
+    if (d) d.style.display = '';
+  }));
   wireComplianceSettings(container, key, prefix);
   wireComplianceAttest(container, key, comp);
 }
@@ -5303,17 +5396,15 @@ function complianceSettingsHtml(key) {
   const cols = cc.columns || {};
   const v = x => esc(x || '');
   const fw = (cc.framework || 'gdpr');
-  return `<details class="cmp-settings"><summary>⚙ Compliance policy</summary>
-    <p class="hint" style="margin:6px 0 10px;">Declare your governance policy for this dataset. Each control runs only when its field is set; column names must match the dataset's columns. Applies on the next assessment.</p>
-    <label class="cmp-fw">Regulatory framework
+  return `<div class="cmp-settings">
+    <p class="hint" style="margin:0 0 12px;">Declare your governance policy for this dataset. Each control runs only when its field is set; column names must match the dataset's columns. Applies on the next assessment.</p>
+    <label class="cmp-fwsel"><span class="cmp-fwsel-lab">Regulatory framework <span class="cmp-info" data-tip="Adds a domain pack overlay; the generic exposure grade is unchanged.">&#9432;</span></span>
       <select id="cmpFramework">
         <option value="gdpr"${fw === 'gdpr' ? ' selected' : ''}>General — ISO/IEC 29100 · GDPR</option>
         <option value="hipaa"${fw === 'hipaa' ? ' selected' : ''}>HIPAA — US health (Safe Harbor de-identification)</option>
         <option value="ccpa"${fw === 'ccpa' ? ' selected' : ''}>CCPA / CPRA — California (PI categories + sensitive PI)</option>
         <option value="bcbs239"${fw === 'bcbs239' ? ' selected' : ''}>BCBS 239 — banking risk-data aggregation</option>
-      </select>
-      <span class="hint">Adds a domain pack overlay; the generic exposure grade is unchanged.</span>
-    </label>
+      </select></label>
     <label class="cmp-exempt"><input type="checkbox" id="cmpExempt"${cc.exempt ? ' checked' : ''}> This dataset holds no personal data — exclude from compliance <span class="hint">(out of scope: no controls run, no grade)</span></label>
     <div class="cmp-set-grid">
       <label>Retention limit (days)<input type="number" min="1" id="cmpRetDays" value="${cc.retention_days || ''}" placeholder="e.g. 2555 (7 years)"></label>
@@ -5326,7 +5417,7 @@ function complianceSettingsHtml(key) {
     <div class="cmp-set-actions"><button type="button" class="btn-sm" id="cmpSuggest">✨ Suggest with AI</button>
       <button type="button" class="btn-sm" id="cmpSaveSettings">Save policy</button>
       <span class="hint" id="cmpSetMsg"></span></div>
-  </details>`;
+  </div>`;
 }
 function wireComplianceSettings(panel, key, prefix) {
   const val = id => { const el = panel.querySelector(id); return el ? el.value.trim() : ''; };
