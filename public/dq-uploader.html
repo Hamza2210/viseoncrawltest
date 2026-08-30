@@ -410,9 +410,11 @@
 
   /* Compliance lens (ISO/IEC 29100) */
   .cmp-panel { margin: 18px 0 4px; padding: 14px 16px; border: 1px solid var(--border); border-radius: 12px; background: var(--card-2); }
-  .cmp-title { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
-  .cmp-title h3 { margin: 0; font-size: 16px; }
-  .cmp-fw { font-size: 11px; color: var(--muted); font-weight: 600; }
+  .cmp-title { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+  .cmp-title h3 { margin: 0; font-size: 16px; margin-right: 2px; }
+  /* framework label rendered as a pill so it sits on the same baseline as the .tag chips beside it */
+  .cmp-fw { display: inline-flex; align-items: center; line-height: 1; font-size: 10.5px; color: var(--muted); font-weight: 700;
+    letter-spacing: .02em; border: 1px solid var(--border); border-radius: 999px; padding: 4px 9px; }
   .cmp-ctrl { border: 1px solid var(--border); border-radius: 9px; padding: 10px 12px; margin: 8px 0; background: var(--card); }
   .cmp-ctrl.fail { border-left: 4px solid var(--err); }
   .cmp-ctrl.pass { border-left: 4px solid var(--ok); }
@@ -515,30 +517,51 @@
   .cmp-at-extra input:focus { outline: none; border-color: var(--accent); }
   @media (max-width: 560px) { .cmp-at-extra { grid-template-columns: 1fr; } }
   /* Estate-wide compliance view */
-  .cmp-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: 6px 0 16px; }
-  .cmp-tile { border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; background: var(--card); }
-  .cmp-tile.red { border-left: 4px solid var(--err); }
-  .cmp-tile.amber { border-left: 4px solid var(--run); }
-  .cmp-tile.green { border-left: 4px solid var(--ok); }
-  .cmp-tile.muted { border-left: 4px solid var(--muted); }
-  .cmp-tile-n { font-size: 26px; font-weight: 800; letter-spacing: -.02em; }
-  .cmp-tile-l { font-size: 12px; color: var(--muted); margin-top: 2px; }
-  .cmp-filters { display: flex; gap: 6px; margin: 4px 0 12px; flex-wrap: wrap; }
-  .cmp-filter { padding: 5px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--card); color: var(--text); font: inherit; font-size: 12.5px; cursor: pointer; }
-  .cmp-filter.active { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--card)); color: var(--accent2); font-weight: 600; }
-  table.cmp-estate { width: 100%; border-collapse: collapse; }
-  table.cmp-estate th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); padding: 6px 10px; border-bottom: 1px solid var(--border); }
-  table.cmp-estate td { padding: 9px 10px; border-bottom: 1px solid var(--border); font-size: 13px; vertical-align: middle; }
-  table.cmp-estate tbody tr.cmp-row:hover td { background: color-mix(in srgb, var(--accent) 6%, transparent); }
-  .cmp-row { cursor: pointer; }
-  .cmp-row.open td { background: color-mix(in srgb, var(--accent) 9%, transparent); }
-  .cmp-caret { display: inline-block; color: var(--muted); font-size: 10px; transition: transform .12s; margin-right: 2px; }
-  .cmp-row.open .cmp-caret { transform: rotate(90deg); }
-  .cmp-actions { text-align: right; }
+  /* ---- Estate compliance: posture hero + card grid + master-detail (redesigned) ---- */
+  .cmp-hero { display: grid; grid-template-columns: minmax(200px, 260px) 1fr; gap: 22px; align-items: center;
+    border: 1px solid var(--border); border-radius: 16px; padding: 20px 22px; margin: 4px 0 18px;
+    background: radial-gradient(120% 140% at 0% 0%, color-mix(in srgb, var(--accent) 9%, var(--card)) 0%, var(--card) 55%); }
+  .cmp-hero-score { display: flex; flex-direction: column; gap: 2px; }
+  .cmp-hero-big { font-size: 44px; font-weight: 800; letter-spacing: -.03em; line-height: 1; }
+  .cmp-hero-sub { font-size: 13px; color: var(--muted); }
+  .cmp-hero-headline { font-size: 15px; font-weight: 600; margin-top: 8px; }
+  .cmp-hero-headline.red { color: var(--err); } .cmp-hero-headline.amber { color: var(--run); } .cmp-hero-headline.green { color: var(--ok); }
+  .cmp-bar { display: flex; height: 16px; border-radius: 8px; overflow: hidden; gap: 2px; background: transparent; }
+  .cmp-bar-seg { min-width: 3px; transition: opacity .12s; }
+  .cmp-bar-seg.red { background: var(--err); } .cmp-bar-seg.amber { background: var(--run); }
+  .cmp-bar-seg.green { background: var(--ok); } .cmp-bar-seg.muted { background: color-mix(in srgb, var(--muted) 45%, transparent); }
+  .cmp-legend { display: flex; gap: 8px 16px; flex-wrap: wrap; margin-top: 12px; }
+  .cmp-leg { display: inline-flex; align-items: center; gap: 7px; cursor: pointer; border: 1px solid transparent; border-radius: 8px;
+    padding: 4px 9px; font-size: 12.5px; background: transparent; color: var(--text); }
+  .cmp-leg:hover { background: color-mix(in srgb, var(--accent) 7%, transparent); }
+  .cmp-leg.active { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--card)); }
+  .cmp-leg.dim { opacity: .45; } .cmp-leg-dot { width: 10px; height: 10px; border-radius: 50%; flex: 0 0 auto; }
+  .cmp-leg-dot.red { background: var(--err); } .cmp-leg-dot.amber { background: var(--run); }
+  .cmp-leg-dot.green { background: var(--ok); } .cmp-leg-dot.muted { background: color-mix(in srgb, var(--muted) 55%, transparent); }
+  .cmp-leg-n { font-weight: 800; font-size: 14px; } .cmp-leg-l { color: var(--muted); }
+  .cmp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(268px, 1fr)); gap: 14px; }
+  .cmp-card { position: relative; border: 1px solid var(--border); border-left: 4px solid var(--muted); border-radius: 13px;
+    padding: 13px 15px; background: var(--card); cursor: pointer; transition: border-color .12s, box-shadow .12s, transform .08s; }
+  .cmp-card:hover { border-color: var(--accent); box-shadow: 0 4px 18px -8px color-mix(in srgb, var(--accent) 55%, transparent); transform: translateY(-1px); }
+  .cmp-card.red { border-left-color: var(--err); } .cmp-card.amber { border-left-color: var(--run); }
+  .cmp-card.green { border-left-color: var(--ok); } .cmp-card.muted { border-left-color: var(--muted); }
+  .cmp-card.sel { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 40%, transparent); }
+  .cmp-card-hd { display: flex; align-items: center; gap: 8px; }
+  .cmp-card-name { font-weight: 700; font-size: 14px; flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cmp-card-row { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; margin-top: 9px; }
+  .cmp-card-foot { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 11px; padding-top: 9px; border-top: 1px solid var(--border); font-size: 11.5px; color: var(--muted); }
+  .cmp-card-attest { display: inline-flex; align-items: center; gap: 4px; }
+  .cmp-fwchip { display: inline-flex; align-items: center; gap: 3px; font-size: 10.5px; font-weight: 700; border-radius: 5px; padding: 1px 6px;
+    background: color-mix(in srgb, var(--accent2) 14%, transparent); color: var(--accent2); }
+  .cmp-detail-pane { margin-top: 18px; border: 1px solid var(--accent); border-radius: 14px; padding: 4px 18px 16px;
+    background: color-mix(in srgb, var(--accent) 4%, var(--card-2)); scroll-margin-top: 12px; }
+  .cmp-detail-bar { display: flex; align-items: center; gap: 10px; padding: 12px 0 4px; position: sticky; top: 0; }
+  .cmp-detail-bar h3 { margin: 0; font-size: 16px; flex: 1 1 auto; }
+  .cmp-detail-close { background: none; border: 1px solid var(--border); border-radius: 8px; color: var(--muted); cursor: pointer; padding: 4px 11px; font-size: 13px; }
+  .cmp-detail-close:hover { border-color: var(--err); color: var(--err); }
   .cmp-open { background: none; border: 1px solid var(--border); border-radius: 7px; color: var(--muted); cursor: pointer; padding: 3px 9px; font-size: 13px; line-height: 1; }
   .cmp-open:hover { border-color: var(--accent); color: var(--accent2); }
-  .cmp-detail-row > td { padding: 0 10px 14px !important; background: color-mix(in srgb, var(--accent) 4%, var(--card-2)); }
-  .cmp-detail-row .cmp-panel { margin-top: 0; }
+  .cmp-detail-pane .cmp-panel { margin-top: 0; }
   .src-form { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px 16px; margin: 12px 0 16px; }
   .src-field { display: flex; flex-direction: column; gap: 4px; }
   .src-field.full { grid-column: 1 / -1; }
@@ -4885,73 +4908,136 @@ function scheduleComplianceRefresh() {
   refreshComplianceData();
   setTimeout(refreshComplianceData, 6000);
 }
+const _CMP_FW_LABEL = { hipaa: '⚕ HIPAA', ccpa: '🐻 CCPA', bcbs239: '🏦 BCBS 239' };
+const _CMP_RAIL = g => g === 'CRITICAL' ? 'red' : (g === 'AT_RISK' || g === 'REVIEW') ? 'amber' : g === 'OK' ? 'green' : 'muted';
+
+function cmpCardHtml(d, i) {
+  const g = d.complianceGrade || 'NONE';
+  const gm = CMP_GRADE[g] || { cls: 'muted', label: g === 'NONE' ? 'Not assessed' : g };
+  const c = d.complianceCounts || {};
+  const exp = [];
+  if (g === 'EXEMPT') exp.push('<span class="hint">Out of scope</span>');
+  else if (g === 'NONE') exp.push('<span class="hint">No assessment yet</span>');
+  else {
+    if (c.critical) exp.push(`<span class="tag red">${c.critical} crit</span>`);
+    if (c.high) exp.push(`<span class="tag red">${c.high} high</span>`);
+    if (c.medium) exp.push(`<span class="tag amber">${c.medium} med</span>`);
+    if (!exp.length) exp.push(`<span class="tag green">Clean</span>`);
+  }
+  const src = isSourceDataset(d) ? sourceChip(d.sourceFormat) : sourceChip('qlik');
+  // framework + attestation coverage come from the tags cache (already loaded for the estate)
+  const e = entryFor(d.key);
+  const fw = (e.complianceContract || {}).framework;
+  const fwChip = (fw && fw !== 'gdpr') ? `<span class="cmp-fwchip">${esc(_CMP_FW_LABEL[fw] || fw.toUpperCase())}</span>` : '';
+  const attN = Object.values((e.complianceAttestations || {}).items || {}).filter(x => x && x.value).length;
+  const attest = attN ? `<span class="cmp-card-attest" title="Governance attestations recorded">⚖ ${attN} attested</span>` : '';
+  return `<div class="cmp-card ${_CMP_RAIL(g)}" data-cmpcard="${i}" data-prefix="${esc(d.resultPrefix || '')}" data-key="${esc(d.key)}" data-name="${esc(d.name || d.slug || '')}">
+      <div class="cmp-card-hd"><span class="cmp-card-name">${esc(d.name || d.slug || '')}</span>${src}
+        <button type="button" class="cmp-open" data-cmpopen="${esc(d.key)}" data-cmpname="${esc(d.name || d.slug || '')}" data-tip="Open in dashboard">⧉</button></div>
+      <div class="cmp-card-row"><span class="tag ${gm.cls}">${esc(gm.label)}</span> ${exp.join(' ')}</div>
+      <div class="cmp-card-foot">${fwChip}${attest}<span style="margin-left:auto;">${d.lastSeen ? esc(fmtWhen(d.lastSeen)) : '—'}</span></div>
+    </div>`;
+}
+
 function renderComplianceEstate() {
   const wrap = $('#cmpEstate'); if (!wrap) return;
-  // Scope to app-data vs source-data, matching the dashboard's toggle; tiles + rows reflect it.
   const all = (dashDatasetsAll || []).filter(d => cmpScope === 'source' ? isSourceDataset(d) : !isSourceDataset(d));
-  const exempt = all.filter(d => d.complianceGrade === 'EXEMPT');           // out of scope — no personal data
+  const exempt = all.filter(d => d.complianceGrade === 'EXEMPT');
   const assessed = all.filter(d => d.complianceGrade && d.complianceGrade !== 'EXEMPT');
+  const naList = all.filter(d => !d.complianceGrade);
   const gc = { CRITICAL: 0, AT_RISK: 0, REVIEW: 0, OK: 0 };
   assessed.forEach(d => { gc[d.complianceGrade] = (gc[d.complianceGrade] || 0) + 1; });
-  // REVIEW (medium-only exposure) counts as at-risk, not clean — Clean is OK (zero exposure) only.
   const critical = gc.CRITICAL, atRisk = gc.AT_RISK + gc.REVIEW, clean = gc.OK;
-  const notAssessed = all.length - assessed.length - exempt.length;
   const noun = cmpScope === 'source' ? 'source dataset' : 'app table';
-  const tile = (n, label, cls) => `<div class="cmp-tile ${cls}"><div class="cmp-tile-n">${n}</div><div class="cmp-tile-l">${label}</div></div>`;
-  const tiles = `<div class="cmp-tiles">${tile(critical, 'Critical exposure', 'red')}${tile(atRisk, 'At risk', 'amber')}${tile(clean, 'Clean', 'green')}${tile(exempt.length, 'Out of scope', 'muted')}${tile(notAssessed, 'Not assessed', 'muted')}</div>`;
-  const FLABEL = { all: 'All', critical: 'Critical', atrisk: 'At risk', clean: 'Clean', exempt: 'Out of scope' };
-  const filters = Object.keys(FLABEL).map(f => `<button type="button" class="cmp-filter${cmpFilter === f ? ' active' : ''}" data-cmpf="${f}">${FLABEL[f]}</button>`).join('');
-  let rows = assessed.concat(exempt).sort((a, b) =>
-    ((CMP_GRADE_RANK[b.complianceGrade] || 0) - (CMP_GRADE_RANK[a.complianceGrade] || 0)) ||
-    (((b.complianceCounts || {}).critical || 0) - ((a.complianceCounts || {}).critical || 0)));
-  if (cmpFilter === 'critical') rows = rows.filter(d => d.complianceGrade === 'CRITICAL');
-  else if (cmpFilter === 'atrisk') rows = rows.filter(d => d.complianceGrade === 'AT_RISK' || d.complianceGrade === 'REVIEW');
-  else if (cmpFilter === 'clean') rows = rows.filter(d => d.complianceGrade === 'OK');
-  else if (cmpFilter === 'exempt') rows = rows.filter(d => d.complianceGrade === 'EXEMPT');
-  const gradeBadge = g => { const m = CMP_GRADE[g] || { cls: 'amber', label: g }; return `<span class="tag ${m.cls}">${esc(m.label)}</span>`; };
-  const cc = (c, grade) => { if (grade === 'EXEMPT') return `<span class="hint">—</span>`; c = c || {}; const p = []; if (c.critical) p.push(`<span class="tag red">${c.critical} crit</span>`); if (c.high) p.push(`<span class="tag red">${c.high} high</span>`); if (c.medium) p.push(`<span class="tag amber">${c.medium} med</span>`); if (!p.length) p.push(`<span class="tag green">clean</span>`); return p.join(' '); };
-  const body = rows.length ? rows.map((d, i) => `<tr class="cmp-row" data-cmprow="${i}" data-prefix="${esc(d.resultPrefix || '')}">
-      <td><span class="cmp-caret">▸</span> ${esc(d.name || d.slug || '')} ${isSourceDataset(d) ? sourceChip(d.sourceFormat) : sourceChip('qlik')}</td>
-      <td>${gradeBadge(d.complianceGrade)}</td>
-      <td>${cc(d.complianceCounts, d.complianceGrade)}</td>
-      <td class="hint">${d.lastSeen ? esc(fmtWhen(d.lastSeen)) : '—'}</td>
-      <td class="cmp-actions"><button type="button" class="cmp-open" data-cmpopen="${esc(d.key)}" data-cmpname="${esc(d.name || d.slug || '')}" data-tip="View in dashboard">⧉</button></td>
-    </tr>
-    <tr class="cmp-detail-row" id="cmpdet-${i}" style="display:none;"><td colspan="5"><div class="cmp-detail" data-loaded="0"></div></td></tr>`).join('')
-    : `<tr><td colspan="5" class="dash-muted">No datasets match this filter.</td></tr>`;
+
+  // --- posture hero: a headline stat + a stacked composition bar whose legend segments are filters
+  const segs = [
+    { key: 'critical', cls: 'red', n: critical, label: 'Critical' },
+    { key: 'atrisk', cls: 'amber', n: atRisk, label: 'At risk' },
+    { key: 'clean', cls: 'green', n: clean, label: 'Clean' },
+    { key: 'exempt', cls: 'muted', n: exempt.length, label: 'Out of scope' },
+    { key: 'notassessed', cls: 'muted', n: naList.length, label: 'Not assessed' },
+  ];
+  const bar = segs.filter(s => s.n).map(s =>
+    `<span class="cmp-bar-seg ${s.cls}" style="flex:${s.n}" title="${s.n} ${s.label}"></span>`).join('');
+  const legend = segs.map(s =>
+    `<button type="button" class="cmp-leg${cmpFilter === s.key ? ' active' : (cmpFilter !== 'all' ? ' dim' : '')}" data-cmpf="${s.key}">
+       <span class="cmp-leg-dot ${s.cls}"></span><span class="cmp-leg-n">${s.n}</span><span class="cmp-leg-l">${esc(s.label)}</span></button>`).join('');
+  const need = critical + atRisk;
+  const hl = need ? (critical ? 'red' : 'amber') : 'green';
+  const headline = need ? `${need} ${noun}${need === 1 ? '' : 's'} need attention`
+    : (assessed.length ? 'All assessed datasets are clean' : 'Nothing assessed yet');
+  const hero = `<div class="cmp-hero">
+      <div class="cmp-hero-score">
+        <div class="cmp-hero-big ${hl}">${assessed.length ? Math.round((clean / assessed.length) * 100) + '%' : '—'}</div>
+        <div class="cmp-hero-sub">of ${assessed.length} assessed ${cmpScope === 'source' ? 'source' : 'app'} ${assessed.length === 1 ? noun.split(' ').pop() : 'datasets'} clean</div>
+        <div class="cmp-hero-headline ${hl}">${need ? '⚠ ' : '✓ '}${esc(headline)}</div>
+      </div>
+      <div><div class="cmp-bar">${bar || '<span class="cmp-bar-seg muted" style="flex:1"></span>'}</div>
+        <div class="cmp-legend">${legend}</div></div>
+    </div>`;
+
+  // --- cards for the active filter (not-assessed only shown when explicitly filtered to)
+  let rows;
+  if (cmpFilter === 'notassessed') rows = naList;
+  else {
+    rows = assessed.concat(exempt).sort((a, b) =>
+      ((CMP_GRADE_RANK[b.complianceGrade] || 0) - (CMP_GRADE_RANK[a.complianceGrade] || 0)) ||
+      (((b.complianceCounts || {}).critical || 0) - ((a.complianceCounts || {}).critical || 0)));
+    if (cmpFilter === 'critical') rows = rows.filter(d => d.complianceGrade === 'CRITICAL');
+    else if (cmpFilter === 'atrisk') rows = rows.filter(d => d.complianceGrade === 'AT_RISK' || d.complianceGrade === 'REVIEW');
+    else if (cmpFilter === 'clean') rows = rows.filter(d => d.complianceGrade === 'OK');
+    else if (cmpFilter === 'exempt') rows = rows.filter(d => d.complianceGrade === 'EXEMPT');
+  }
+  const cards = rows.length ? rows.map((d, i) => cmpCardHtml(d, i)).join('')
+    : `<p class="dash-muted" style="grid-column:1/-1;">No datasets match this filter.</p>`;
+
   wrap.innerHTML =
     `<div style="margin-bottom:14px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;"><span class="scope-toggle" id="cmpScopeToggle">
        <button type="button" class="scope-btn${cmpScope === 'app' ? ' active' : ''}" data-cmpscope="app">App data</button>
        <button type="button" class="scope-btn${cmpScope === 'source' ? ' active' : ''}" data-cmpscope="source">Source data</button>
      </span><button type="button" class="linkbtn" id="cmpRefresh">↻ Refresh</button></div>` +
-    tiles +
-    `<div class="cmp-filters">${filters}</div>` +
-    `<table class="cmp-estate"><thead><tr><th>Dataset</th><th>Posture</th><th>Exposures</th><th>Last run</th><th></th></tr></thead><tbody>${body}</tbody></table>` +
-    (notAssessed ? `<p class="hint" style="margin-top:10px;">${notAssessed} ${noun}${notAssessed === 1 ? '' : 's'} have no compliance assessment yet — re-run to populate.</p>` : '');
+    hero +
+    `<div class="cmp-grid" id="cmpGrid">${cards}</div>` +
+    `<div id="cmpDetailPane"></div>`;
+
   wrap.querySelectorAll('#cmpScopeToggle .scope-btn').forEach(b => b.addEventListener('click', () => { cmpScope = b.dataset.cmpscope; cmpFilter = 'all'; renderComplianceEstate(); }));
   { const rb = wrap.querySelector('#cmpRefresh'); if (rb) rb.addEventListener('click', async () => { rb.textContent = '↻ Refreshing…'; rb.disabled = true; await refreshComplianceData(); }); }
-  wrap.querySelectorAll('[data-cmpf]').forEach(b => b.addEventListener('click', () => { cmpFilter = b.dataset.cmpf; renderComplianceEstate(); }));
-  // Whole row toggles an inline compliance detail (lazy-loaded from the run's report).
-  wrap.querySelectorAll('.cmp-row').forEach(row => row.addEventListener('click', () => {
-    const det = document.getElementById('cmpdet-' + row.dataset.cmprow);
-    if (!det) return;
-    if (det.style.display !== 'none') { det.style.display = 'none'; row.classList.remove('open'); return; }
-    det.style.display = ''; row.classList.add('open');
-    const dd = det.querySelector('.cmp-detail');
-    if (dd && dd.dataset.loaded !== '1') { dd.dataset.loaded = '1'; loadInlineEstateDetail(dd, row.dataset.prefix); }
+  // clicking a legend segment toggles that filter (click the active one to clear back to All)
+  wrap.querySelectorAll('[data-cmpf]').forEach(b => b.addEventListener('click', () => { cmpFilter = (cmpFilter === b.dataset.cmpf) ? 'all' : b.dataset.cmpf; renderComplianceEstate(); }));
+  // master-detail: selecting a card loads its FULL compliance detail into the pane below
+  wrap.querySelectorAll('.cmp-card').forEach(card => card.addEventListener('click', e => {
+    if (e.target.closest('.cmp-open')) return;                 // the ⧉ button opens the dashboard instead
+    const pane = $('#cmpDetailPane'); if (!pane) return;
+    const already = card.classList.contains('sel');
+    wrap.querySelectorAll('.cmp-card.sel').forEach(c => c.classList.remove('sel'));
+    if (already) { pane.innerHTML = ''; return; }              // toggle off
+    card.classList.add('sel');
+    loadComplianceCardDetail(pane, card.dataset.prefix, card.dataset.key, card.dataset.name);
   }));
-  // The ⧉ button opens the dataset in the dashboard instead (doesn't toggle the inline detail).
   wrap.querySelectorAll('.cmp-open').forEach(b => b.addEventListener('click', e => {
     e.stopPropagation(); openDatasetCompliance(b.dataset.cmpopen, b.dataset.cmpname);
   }));
 }
-async function loadInlineEstateDetail(detailDiv, prefix) {
-  if (!prefix) { detailDiv.innerHTML = `<p class="dash-muted">No completed run to show for this dataset.</p>`; return; }
-  detailDiv.innerHTML = dqLoader('Loading compliance controls', null, true);
+
+async function loadComplianceCardDetail(pane, prefix, key, name) {
+  pane.innerHTML = `<div class="cmp-detail-pane"><div class="cmp-detail-bar">
+      <h3>${esc(name)}</h3>
+      <button type="button" class="cmp-open" data-cmpopen="${esc(key)}" data-cmpname="${esc(name)}" data-tip="Open in dashboard">⧉ Dashboard</button>
+      <button type="button" class="cmp-detail-close">✕ Close</button></div>
+    <div class="cmp-detail-body">${dqLoader('Loading compliance', null, true)}</div></div>`;
+  const body = pane.querySelector('.cmp-detail-body');
+  pane.querySelector('.cmp-detail-close').addEventListener('click', () => {
+    pane.innerHTML = ''; document.querySelectorAll('.cmp-card.sel').forEach(c => c.classList.remove('sel'));
+  });
+  pane.querySelector('.cmp-open').addEventListener('click', () => openDatasetCompliance(key, name));
+  pane.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  if (!prefix) { body.innerHTML = `<p class="dash-muted">No completed run to show for this dataset — re-run to populate.</p>`; return; }
   try {
     const r = await postJSON(`${API_BASE}/data-quality/result`, HEADERS, { result_prefix: prefix });
-    detailDiv.innerHTML = compliancePanel(r.compliance, prefix) || `<p class="dash-muted">No compliance controls recorded for this run.</p>`;
-  } catch (e) { detailDiv.innerHTML = `<p class="dash-muted" style="color:var(--err)">${esc(e.message)}</p>`; }
+    body.innerHTML = complianceDetailBody(r.compliance, prefix, key);
+    wireComplianceDetail(body, r.compliance, prefix, key);
+  } catch (e) { body.innerHTML = `<p class="dash-muted" style="color:var(--err)">${esc(e.message)}</p>`; }
 }
 async function openDatasetCompliance(key, name) {
   const ds = (dashDatasetsAll || []).find(d => d.key === key);
@@ -4961,17 +5047,30 @@ async function openDatasetCompliance(key, name) {
   await selectDataset(key, name, 'compliance');   // open straight on the Compliance tab (single render)
 }
 
+// The FULL compliance picture for a dataset — reused by BOTH the dashboard Compliance sub-tab and the
+// estate card detail, so both show the identical thing: policy settings, ISO 27701 PIMS posture,
+// exposure controls, the domain-pack overlay, and the governance attestations. `key` may be '' (the
+// post-run results screen), in which case only the read-only exposure + domain panels render.
+function complianceDetailBody(comp, prefix, key) {
+  const settings = key ? complianceSettingsHtml(key) : '';
+  const pims = key ? renderIso27701Panel(comp, key) : '';
+  const attest = key ? complianceAttestHtml(key, comp) : '';
+  const panel = compliancePanel(comp, prefix) ||
+    `<p class="dash-muted">No compliance assessment recorded for this run yet — re-run the dataset to generate the ISO/IEC 29100 lens.</p>`;
+  return settings + pims + panel + domainPanelHtml(comp) + attest;
+}
+function wireComplianceDetail(container, comp, prefix, key) {
+  if (!key) return;
+  wireComplianceSettings(container, key, prefix);
+  wireComplianceAttest(container, key, comp);
+}
+
 async function loadDsCompliance(panel, prefix) {
   const key = dashSelected && dashSelected.key;
   try {
     const r = await postJSON(`${API_BASE}/data-quality/result`, HEADERS, { result_prefix: prefix });
-    const settings = key ? complianceSettingsHtml(key) : '';
-    const pims = key ? renderIso27701Panel(r.compliance, key) : '';
-    const attest = key ? complianceAttestHtml(key, r.compliance) : '';
-    panel.innerHTML = settings + pims + (compliancePanel(r.compliance, prefix) ||
-      `<p class="dash-muted">No compliance assessment recorded for this run yet — re-run the dataset to generate the ISO/IEC 29100 lens.</p>`)
-      + domainPanelHtml(r.compliance) + attest;
-    if (key) { wireComplianceSettings(panel, key, prefix); wireComplianceAttest(panel, key, r.compliance); }
+    panel.innerHTML = complianceDetailBody(r.compliance, prefix, key);
+    wireComplianceDetail(panel, r.compliance, prefix, key);
   } catch (e) { panel.innerHTML = `<p class="dash-muted" style="color:var(--err)">${esc(e.message)}</p>`; }
 }
 
