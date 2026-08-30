@@ -422,6 +422,8 @@
   .cmp-conf { font-size: 10px; text-transform: uppercase; letter-spacing: .03em; color: var(--muted); border: 1px solid var(--border); border-radius: 5px; padding: 1px 5px; }
   .cmp-why { font-size: 13px; margin: 7px 0 4px; line-height: 1.45; }
   .cmp-ev { font-size: 12px; color: var(--muted); margin: 3px 0; }
+  .cmp-ft { color: var(--text); background: rgba(107,70,193,.08); border-left: 2px solid rgba(107,70,193,.4);
+    padding: 3px 8px; border-radius: 3px; }
   .cmp-ev code { background: color-mix(in srgb, var(--muted) 14%, transparent); padding: 1px 5px; border-radius: 4px; }
   .cmp-fix { font-size: 12.5px; margin: 5px 0; }
   .cmp-meta { margin-top: 7px; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
@@ -2209,6 +2211,14 @@ function cmpCtrlHtml(ct, opts) {
     : `<span class="tag green">PASS</span>`;
   const exposure = (ct.status === 'FAIL' && ev.cleartext != null && ev.evaluated != null)
     ? `<div class="cmp-ev">${Number(ev.cleartext).toLocaleString()} of ${Number(ev.evaluated).toLocaleString()} scanned values in cleartext · basis: ${esc(ev.basis || 'sample')}</div>` : '';
+  // Full-table scale (SQL sources only): an exact candidate count where the engine has regex,
+  // else the exact non-null denominator + a labelled estimate from the sample rate.
+  const ft = ev.full_table;
+  const fullTable = ft ? `<div class="cmp-ev cmp-ft">🔎 <strong>Full table:</strong> ${
+      ft.cleartext_candidates != null
+        ? `${Number(ft.cleartext_candidates).toLocaleString()} of ${Number(ft.nonnull).toLocaleString()} non-null rows match the cleartext shape (${Number(ft.rows_total).toLocaleString()} rows scanned)`
+        : `${Number(ft.nonnull).toLocaleString()} non-null of ${Number(ft.rows_total).toLocaleString()} rows · ≈${Number(ft.estimated_exposed || 0).toLocaleString()} exposed (estimate)`
+    } <span class="hint">· ${esc(ft.basis || 'full-table SQL scan')}${ft.engine ? ' · ' + esc(ft.engine) : ''}</span></div>` : '';
   const samples = (ev.samples || []).length
     ? `<div class="cmp-ev">Value shapes (masked): ${ev.samples.map(s => `<code>${esc(s)}</code>`).join(' ')}</div>` : '';
   const cites = (ct.citations || []).map(x => `<span class="cmp-cite">${esc(x)}</span>`).join(' ');
@@ -2242,7 +2252,7 @@ function cmpCtrlHtml(ct, opts) {
       </div>
       <div class="cmp-why">${esc(ct.why || ct.control || '')}</div>
       ${opts.dismissMeta ? `<div class="cmp-ev">Dismissed${opts.dismissMeta.by ? ' by ' + esc(opts.dismissMeta.by) : ''}${opts.dismissMeta.reason ? ` — “${esc(opts.dismissMeta.reason)}”` : ''}</div>` : ''}
-      ${exposure}${samples}${recsBlock}
+      ${exposure}${fullTable}${samples}${recsBlock}
       ${ct.remediation ? `<div class="cmp-fix">↪ ${esc(ct.remediation)}</div>` : ''}
       <div class="cmp-explain-out" style="display:none;"></div>
       <div class="cmp-meta"><span class="cmp-ref">${esc(ct.principle_ref || '')}</span> ${cites}</div>
