@@ -849,6 +849,17 @@
   .modal .trow:last-child { border-bottom: 0; }
   .modal .trow .tmeta { color: var(--muted); font-size: 12px; margin-left: auto; }
   .x-close { background: none; border: 0; color: var(--muted); font-size: 22px; cursor: pointer; line-height: 1; }
+  /* In-app prompt/confirm/alert (replaces the native browser dialogs) */
+  .modal-overlay.dq-ov { z-index: 1200; }
+  .dq-dialog { width: 440px; }
+  .dq-modal-msg { font-size: 14px; line-height: 1.55; color: var(--text); margin: 12px 0 12px; white-space: pre-wrap; }
+  .modal input.dqin { width: 100%; padding: 9px 12px; border: 1px solid var(--border); border-radius: 9px;
+    background: var(--card-2); color: var(--text); font: inherit; font-size: 14px; margin-bottom: 8px; }
+  .modal input.dqin:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+  .dq-ok { padding: 8px 16px; border: none; border-radius: 8px; background: var(--accent); color: var(--accent-fg);
+    font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .dq-ok:hover { filter: brightness(1.07); }
+  .dq-ok.dq-danger { background: var(--err); color: #fff; }
 
   /* App Data Model diagram */
   .model-toolbar { display: flex; gap: 10px; align-items: center; margin-bottom: 6px; }
@@ -2632,7 +2643,7 @@ document.addEventListener('click', async (e) => {
     return;
   }
   if (btn.classList.contains('cmp-dismiss-btn')) {
-    const reason = prompt('Why is this not a compliance issue? (optional — e.g. “test data”, “already tokenised downstream”)');
+    const reason = await dqPrompt('Why is this not a compliance issue? (optional — e.g. “test data”, “already tokenised downstream”)', '', { title: 'Not a compliance issue' });
     if (reason === null) return;   // cancelled
     btn.disabled = true;
     try {
@@ -2642,7 +2653,7 @@ document.addEventListener('click', async (e) => {
       if (r && r.entries) dashEntries = r.entries;
       await reloadCompliancePanel(panel);
       loadDashboard();   // refresh dashDatasetsAll + nav badge (the server applies the dismissal to the grade)
-    } catch (err) { alert('Could not dismiss: ' + err.message); btn.disabled = false; }
+    } catch (err) { dqAlert('Could not dismiss: ' + err.message); btn.disabled = false; }
     return;
   }
   if (btn.classList.contains('cmp-restore-btn')) {
@@ -2654,7 +2665,7 @@ document.addEventListener('click', async (e) => {
       if (r && r.entries) dashEntries = r.entries;
       await reloadCompliancePanel(panel);
       loadDashboard();   // refresh dashDatasetsAll + nav badge (the server applies the dismissal to the grade)
-    } catch (err) { alert('Could not restore: ' + err.message); btn.disabled = false; }
+    } catch (err) { dqAlert('Could not restore: ' + err.message); btn.disabled = false; }
     return;
   }
 });
@@ -3611,6 +3622,50 @@ const DAMA_DIMS = [
 ];
 const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+// In-app prompt / confirm / alert — a themed modal that replaces the native browser dialogs (which
+// leak the domain and don't match the app). Same return contract as the natives so calls are drop-in:
+// dqPrompt -> string|null (null on cancel), dqConfirm -> boolean, dqAlert -> undefined. All async.
+function dqModal(opts) {
+  const o = opts || {}, kind = o.kind || 'prompt', isPrompt = kind === 'prompt';
+  const okLabel = o.okLabel || (kind === 'confirm' ? 'Confirm' : (isPrompt ? 'Save' : 'OK'));
+  return new Promise(resolve => {
+    const ov = document.createElement('div');
+    ov.className = 'modal-overlay dq-ov open';
+    ov.innerHTML =
+      `<div class="modal dq-dialog" role="dialog" aria-modal="true">
+        ${o.title ? `<div class="modal-head"><h3>${esc(o.title)}</h3><button class="x-close" type="button" data-dq="cancel" aria-label="Close">&times;</button></div>` : ''}
+        <div class="modal-body">
+          ${o.message ? `<p class="dq-modal-msg">${esc(o.message)}</p>` : ''}
+          ${isPrompt ? `<input class="dqin" type="text"${o.placeholder ? ` placeholder="${esc(o.placeholder)}"` : ''}>` : ''}
+        </div>
+        <div class="modal-foot">
+          ${kind !== 'alert' ? `<button type="button" class="btn-sm" data-dq="cancel">${esc(o.cancelLabel || 'Cancel')}</button>` : ''}
+          <button type="button" class="dq-ok${o.danger ? ' dq-danger' : ''}" data-dq="ok">${esc(okLabel)}</button>
+        </div>
+      </div>`;
+    document.body.appendChild(ov);
+    const input = ov.querySelector('.dqin');
+    if (input) input.value = o.value == null ? '' : o.value;
+    const finish = v => { ov.remove(); document.removeEventListener('keydown', onKey, true); resolve(v); };
+    const onOk = () => finish(isPrompt ? (input ? input.value : '') : (kind === 'confirm' ? true : undefined));
+    const onCancel = () => finish(isPrompt ? null : (kind === 'confirm' ? false : undefined));
+    ov.addEventListener('click', e => {
+      const b = e.target.closest('[data-dq]');
+      if (b) { e.preventDefault(); (b.dataset.dq === 'ok' ? onOk : onCancel)(); }
+      else if (e.target === ov) onCancel();      // backdrop click cancels
+    });
+    function onKey(e) {
+      if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); onCancel(); }
+      else if (e.key === 'Enter' && document.activeElement !== ov.querySelector('.btn-sm')) { e.preventDefault(); onOk(); }
+    }
+    document.addEventListener('keydown', onKey, true);
+    setTimeout(() => { (input || ov.querySelector('.dq-ok')).focus(); if (input) input.select(); }, 20);
+  });
+}
+const dqPrompt = (message, value = '', opts = {}) => dqModal({ kind: 'prompt', message, value, ...opts });
+const dqConfirm = (message, opts = {}) => dqModal({ kind: 'confirm', message, ...opts });
+const dqAlert = (message, opts = {}) => dqModal({ kind: 'alert', message, ...opts });
 const num1 = v => typeof v === 'number' && isFinite(v) ? v.toFixed(1) : '—';
 const numInt = v => typeof v === 'number' && isFinite(v) ? Math.round(v).toLocaleString() : '—';
 // Compact number for tight spots (chart axes): 1.2K / 3.4M / 1.0B — keeps big values from clipping.
@@ -3837,7 +3892,7 @@ async function setPiiLabel(key, column, label) {
     const r = await postJSON(`${API_BASE}/data-quality/dataset-tags`, HEADERS,
       { app_id: APP_ID, action: 'pii-label', key, pii_column: column, pii_label: label });
     if (r && r.entries) dashEntries = r.entries;
-  } catch (e) { alert('Could not save PII label: ' + e.message); return; }
+  } catch (e) { dqAlert('Could not save PII label: ' + e.message); return; }
   selectDsTab();                 // re-render the active dataset sub-tab (Metadata or Scores) with the new label
   refreshDatasetsTable();
 }
@@ -3871,16 +3926,16 @@ async function addNote(key, text) {
     const r = await postJSON(`${API_BASE}/data-quality/dataset-tags`, HEADERS,
       { app_id: APP_ID, action: 'note-add', key, note_text: text, note_by: EMAIL || '' });
     if (r && r.entries) dashEntries = r.entries;
-  } catch (e) { alert('Could not save note: ' + e.message); return; }
+  } catch (e) { dqAlert('Could not save note: ' + e.message); return; }
   updateDetailTrust(key); refreshDatasetsTable();
 }
 async function delNote(key, id) {
-  if (!confirm('Delete this note?')) return;
+  if (!await dqConfirm('Delete this note?', { title: 'Delete note', danger: true })) return;
   try {
     const r = await postJSON(`${API_BASE}/data-quality/dataset-tags`, HEADERS,
       { app_id: APP_ID, action: 'note-del', key, note_id: id });
     if (r && r.entries) dashEntries = r.entries;
-  } catch (e) { alert('Could not delete note: ' + e.message); return; }
+  } catch (e) { dqAlert('Could not delete note: ' + e.message); return; }
   updateDetailTrust(key); refreshDatasetsTable();
 }
 
@@ -3891,12 +3946,12 @@ function ownerChip(key) {
   if (!o) return `<button type="button" class="owner-add" data-ownerset="1" data-key="${esc(key)}" data-tip="Assign an owner — alerts for this dataset route to them">👤 ＋ Owner</button>`;
   return `<span class="owner-chip" data-ownerfilter="${esc(o)}" data-tip="Owner (alerts route here) — click to filter by this owner">👤 ${esc(o)}<span class="owner-edit" data-ownerset="1" data-key="${esc(key)}" title="Change / clear owner">✎</span></span>`;
 }
-function setOwner(key) {
+async function setOwner(key) {
   const e = entryFor(key);
-  const v = prompt('Owner email — alerts for this dataset route to them (leave blank to clear):', e.owner || '');
+  const v = await dqPrompt('Owner email — alerts for this dataset route to them (leave blank to clear):', e.owner || '', { title: 'Assign owner' });
   if (v === null) return;                                    // cancelled
   const t = v.trim();
-  if (t && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(t)) { alert('Please enter a valid email address (or leave blank to clear).'); return; }
+  if (t && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(t)) { dqAlert('Please enter a valid email address (or leave blank to clear).'); return; }
   e.owner = t.slice(0, 160);
   dashEntries[key] = e; saveEntry(key);
 }
@@ -3930,9 +3985,9 @@ function setTrust(key, level) {
   else { e.trust = ''; e.trustNote = ''; e.trustBy = ''; e.trustAt = ''; }
   dashEntries[key] = e; saveEntry(key);
 }
-function editTrustNote(key) {
+async function editTrustNote(key) {
   const e = entryFor(key);
-  const note = (prompt('Add a note / reason for this trust flag (shown on hover):', e.trustNote || '') || '').trim().slice(0, 280);
+  const note = (await dqPrompt('Add a note / reason for this trust flag (shown on hover):', e.trustNote || '', { title: 'Trust note' }) || '').trim().slice(0, 280);
   e.trustNote = note;
   if (note && !e.trust) { e.trust = 'warning'; e.trustBy = EMAIL || ''; e.trustAt = _nowIso(); }   // a note implies at least a caution
   dashEntries[key] = e; saveEntry(key);
@@ -3947,7 +4002,7 @@ function wireTrust(container, onChange) {
       onChange && onChange(k);
     }));
   container.querySelectorAll('[data-trustnote]').forEach(b =>
-    b.addEventListener('click', e => { e.stopPropagation(); editTrustNote(b.dataset.key); onChange && onChange(b.dataset.key); }));
+    b.addEventListener('click', async e => { e.stopPropagation(); await editTrustNote(b.dataset.key); onChange && onChange(b.dataset.key); }));
 }
 // The trust controls shown in the selected-dataset detail header; re-renders itself on change.
 function updateDetailTrust(key) {
@@ -3959,7 +4014,7 @@ function updateDetailTrust(key) {
     notesSection(key);
   wireTrust(el, () => updateDetailTrust(key));
   el.querySelectorAll('[data-ownerset]').forEach(b =>
-    b.addEventListener('click', e => { e.stopPropagation(); setOwner(key); updateDetailTrust(key); refreshDatasetsTable(); }));
+    b.addEventListener('click', async e => { e.stopPropagation(); await setOwner(key); updateDetailTrust(key); refreshDatasetsTable(); }));
   el.querySelectorAll('.medal[data-medal]').forEach(b =>
     b.addEventListener('click', e => {
       e.stopPropagation(); const m = b.dataset.medal;
@@ -4052,8 +4107,8 @@ async function saveEntry(key) {
   catch (err) { /* non-fatal; local state already updated */ }
 }
 function setStage(key, stage) { const e = entryFor(key); e.stage = stage; dashEntries[key] = e; saveEntry(key); }
-function addTagTo(key) {
-  const t = (prompt('Add a tag to group/search this dataset (e.g. finance, pii, weekly):') || '').trim();
+async function addTagTo(key) {
+  const t = (await dqPrompt('Add a tag to group/search this dataset (e.g. finance, pii, weekly):', '', { title: 'Add tag' }) || '').trim();
   if (!t) return;
   const e = entryFor(key);
   if (!e.tags.some(x => x.toLowerCase() === t.toLowerCase())) e.tags.push(t);
@@ -4225,7 +4280,7 @@ function renderHealthTable(datasets) {
   wireTrust($('#dashTableWrap'), () => refreshDatasetsTable());
   // Ownership: assign/change owner (＋/✎) or click an owner chip to filter by it.
   $('#dashTableWrap').querySelectorAll('[data-ownerset]').forEach(b =>
-    b.addEventListener('click', e => { e.stopPropagation(); setOwner(b.dataset.key); refreshDatasetsTable(); }));
+    b.addEventListener('click', async e => { e.stopPropagation(); await setOwner(b.dataset.key); refreshDatasetsTable(); }));
   $('#dashTableWrap').querySelectorAll('[data-ownerfilter]').forEach(el =>
     el.addEventListener('click', e => {
       if (e.target.closest('[data-ownerset]')) return;       // the ✎ edits, doesn't filter
@@ -5074,7 +5129,7 @@ async function saveContract(key, container, clear) {
   try {
     const r = await postJSON(`${API_BASE}/data-quality/dataset-tags`, HEADERS, body);
     if (r && r.entries) dashEntries = r.entries;
-  } catch (e) { alert('Could not save contract: ' + e.message); return; }
+  } catch (e) { dqAlert('Could not save contract: ' + e.message); return; }
   selectDsTab();
 }
 function wireContract(container, key) {
@@ -6099,7 +6154,7 @@ function _acApply(r) {
 }
 async function clearChannel(which) {
   const label = which === 'slack' ? 'Slack' : 'Teams';
-  if (!confirm(`Stop sending alerts to ${label}? The webhook will be removed for this app.`)) return;
+  if (!await dqConfirm(`Stop sending alerts to ${label}? The webhook will be removed for this app.`, { title: 'Remove alert channel', danger: true })) return;
   const st = $('#acStatus'); if (st) st.textContent = `Removing ${label}…`;
   const body = { app_id: APP_ID, action: 'set' };
   body[which === 'slack' ? 'clear_slack' : 'clear_teams'] = true;
@@ -6298,27 +6353,27 @@ function renderIncidents(r) {
     b.addEventListener('click', () => openIncidentRun(b.dataset.prefix, b.dataset.name)));
   listEl.querySelectorAll('button[data-explain]').forEach(b =>
     b.addEventListener('click', () => explainIncident(b.dataset.dk, b.dataset.key, b.dataset.name, false)));
-  listEl.querySelectorAll('button[data-act]').forEach(b => b.addEventListener('click', () => {
+  listEl.querySelectorAll('button[data-act]').forEach(b => b.addEventListener('click', async () => {
     const { dk, key, act, owner } = b.dataset;
     if (act === 'assign') {
-      const val = prompt('Assign owner (email or name; leave blank to clear):', owner || '');
+      const val = await dqPrompt('Assign owner (email or name; leave blank to clear):', owner || '', { title: 'Assign owner' });
       if (val === null) return;                       // cancelled
       incidentAction(dk, key, 'assign', { owner: val.trim() });
     } else if (act === 'dismiss') {
-      const reason = prompt('Mark this occurrence as intentional — reason (e.g. "offloaded old records"):', '');
+      const reason = await dqPrompt('Mark this occurrence as intentional — reason (e.g. "offloaded old records"):', '', { title: 'Dismiss occurrence' });
       if (reason === null) return;                    // cancelled
-      if (!confirm('Dismiss this occurrence as intentional?\n\nIt leaves the open list. If the same issue happens again it will reappear as a new incident. An audit email is sent.')) return;
+      if (!await dqConfirm('Dismiss this occurrence as intentional?\n\nIt leaves the open list. If the same issue happens again it will reappear as a new incident. An audit email is sent.', { title: 'Dismiss occurrence' })) return;
       incidentAction(dk, key, 'dismiss', { reason: reason.trim() });
     } else if (act === 'restore') {
-      if (!confirm('Reopen this incident (set it back to Open)?')) return;
+      if (!await dqConfirm('Reopen this incident (set it back to Open)?', { title: 'Reopen incident' })) return;
       incidentAction(dk, key, 'restore', {});
     } else if (act === 'accept_new_normal') {
-      if (!confirm('Accept the current values as this dataset\'s new normal?\n\nIts baseline resets and re-learns from now — deviation alerts pause for a few runs, then resume against the new level. This closes the incident. (Gate / schema / volume-vs-previous checks are unaffected.)')) return;
+      if (!await dqConfirm('Accept the current values as this dataset\'s new normal?\n\nIts baseline resets and re-learns from now — deviation alerts pause for a few runs, then resume against the new level. This closes the incident. (Gate / schema / volume-vs-previous checks are unaffected.)', { title: 'Accept new normal' })) return;
       incidentAction(dk, key, 'accept_new_normal', {});
     } else if (act === 'snooze') {
       incidentAction(dk, key, 'snooze', { snooze_hours: Number(b.dataset.hours) });
     } else if (act === 'archive') {
-      if (!confirm('Remove this closed incident from the list?\n\nIt stays in history but won\'t show here. If the same issue recurs and reopens, it will reappear.')) return;
+      if (!await dqConfirm('Remove this closed incident from the list?\n\nIt stays in history but won\'t show here. If the same issue recurs and reopens, it will reappear.', { title: 'Remove incident', danger: true })) return;
       incidentAction(dk, key, 'archive', {});
     } else {
       incidentAction(dk, key, act, {});
@@ -6336,7 +6391,7 @@ async function incidentAction(datasetKey, key, action, extra) {
       Object.assign({ dataset_key: datasetKey, incident_key: key, action, actor: EMAIL || undefined }, extra || {}));
     loadIncidents();
   } catch (e) {
-    alert('Action failed: ' + e.message);
+    dqAlert('Action failed: ' + e.message);
   }
 }
 async function explainIncident(dk, key, name, regenerate) {
@@ -6676,14 +6731,14 @@ function renderRuleReview(r, outEl, prefix) {
 async function rerunWithReview(rerun) {
   if (!rerun) return;
   if (rerun.path === 'app') {
-    if (!rerun.table) { alert('Cannot re-run: the source table is unknown.'); return; }
+    if (!rerun.table) { dqAlert('Cannot re-run: the source table is unknown.'); return; }
     switchTab('appdata');
     if (!APP_ID) { appBanner('err', 'Re-run needs the app context — open from inside the Qlik app.'); return; }
     if (!BEARER) { appBanner('err', 'No Qlik API key configured — set it in the extension settings.'); return; }
     try { await launchAppAssessment([rerun.table], null, { reviewRuleset: true }); }
     catch (e) { appBanner('err', e.message); }
   } else {
-    if (!rerun.inputUri) { alert('This run can\'t be re-assessed automatically.'); return; }
+    if (!rerun.inputUri) { dqAlert('This run can\'t be re-assessed automatically.'); return; }
     switchTab('upload');
     try {
       const res = await postJSON(`${API_BASE}/data-quality`, HEADERS,
@@ -6715,14 +6770,14 @@ async function pinSelectedRules(prefix, augment, btn, note) {
 async function applyRulesAndRerun(rerun, augment) {
   if (!rerun || !augment || !Object.keys(augment).length) return;
   if (rerun.path === 'app') {
-    if (!rerun.table) { alert('Cannot re-run: the source table is unknown.'); return; }
+    if (!rerun.table) { dqAlert('Cannot re-run: the source table is unknown.'); return; }
     switchTab('appdata');
     if (!APP_ID) { appBanner('err', 'Re-run needs the app context — open from inside the Qlik app.'); return; }
     if (!BEARER) { appBanner('err', 'No Qlik API key configured — set it in the extension settings.'); return; }
     try { await launchAppAssessment([rerun.table], augment); }
     catch (e) { appBanner('err', e.message); }
   } else {
-    if (!rerun.inputUri) { alert('This run can\'t be re-assessed automatically (original file not resolvable). Pin the suggestions in your ruleset instead.'); return; }
+    if (!rerun.inputUri) { dqAlert('This run can\'t be re-assessed automatically (original file not resolvable). Pin the suggestions in your ruleset instead.'); return; }
     switchTab('upload');
     try {
       const res = await postJSON(`${API_BASE}/data-quality`, HEADERS,
@@ -6926,7 +6981,7 @@ async function renameCredProfile(key) {
   if (pid === 'default') { setCredMsg(key, 'The Default profile can’t be renamed — use “Save current as…” to create a named profile.', true); return; }
   const p = (credProfiles[key] || []).find(x => x.id === pid);
   if (!p) return;
-  const name = (prompt('Rename credential profile:', p.name) || '').trim();
+  const name = (await dqPrompt('Rename credential profile:', p.name, { title: 'Rename profile' }) || '').trim();
   if (!name || name === p.name) return;
   try {
     // Re-save with the same id + existing (non-secret) config; the server preserves the
@@ -6963,7 +7018,7 @@ function applyCredProfile(key) {
 
 async function saveCredProfileAs(key) {
   const cur = (credProfiles[key] || []).find(x => x.id === activeProfile[key]);
-  const name = (prompt('Name this credential profile (e.g. “Prod Redshift – orders”):', cur ? cur.name : '') || '').trim();
+  const name = (await dqPrompt('Name this credential profile (e.g. “Prod Redshift – orders”):', cur ? cur.name : '', { title: 'Save credential profile' }) || '').trim();
   if (!name) return;
   const cfg = collectSourceFields(key);
   try {
@@ -6980,7 +7035,7 @@ async function deleteCredProfile(key) {
   const pid = sel ? sel.value : '';
   if (!pid) { setCredMsg(key, 'Choose a profile to delete.', true); return; }
   const p = (credProfiles[key] || []).find(x => x.id === pid);
-  if (!confirm(`Delete credential profile “${p ? p.name : pid}”? This can’t be undone.`)) return;
+  if (!await dqConfirm(`Delete credential profile “${p ? p.name : pid}”? This can’t be undone.`, { title: 'Delete profile', danger: true })) return;
   try { await postJSON(`${API_BASE}/data-quality/credential-profiles`, HEADERS, { app_id: APP_ID, source: key, action: 'delete', profile_id: pid }); }
   catch (e) { setCredMsg(key, 'Could not delete: ' + e.message, true); return; }
   if (activeProfile[key] === pid) activeProfile[key] = null;
@@ -9269,7 +9324,7 @@ async function schAction(act, s) {
         `Schedule "${s.label}" ${nowEnabled ? 'enabled' : 'disabled'}.`);
       loadSchedules();
     } else if (act === 'del') {
-      if (!confirm(`Delete schedule "${s.label}"?`)) return;
+      if (!await dqConfirm(`Delete schedule "${s.label}"?`, { title: 'Delete schedule', danger: true })) return;
       await postJSON(`${API_BASE}/data-quality/schedules/delete`, HEADERS,
         { app_id: APP_ID, name: s.name });
       schBanner('err', `Schedule "${s.label}" deleted.`);   // destructive → red
