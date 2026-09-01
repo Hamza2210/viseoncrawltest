@@ -134,9 +134,16 @@
     const r = await api('/portal/admin/orgs');
     orgs = r.orgs || [];
     const sel = $('#uOrg');
-    sel.innerHTML = orgs.length
-      ? orgs.map(o => `<option value="${o.org_id}">${(o.name || o.org_id)} — ${o.tenant_url}</option>`).join('')
-      : '<option value="">(no orgs yet — create one first)</option>';
+    sel.innerHTML = '';
+    if (!orgs.length) {
+      const o = document.createElement('option'); o.value = ''; o.textContent = '(no orgs yet — create one first)';
+      sel.appendChild(o);
+    } else orgs.forEach(o => {
+      const opt = document.createElement('option');
+      opt.value = o.org_id;                                          // value, never HTML
+      opt.textContent = (o.name || o.org_id) + ' — ' + o.tenant_url; // textContent auto-escapes
+      sel.appendChild(opt);
+    });
     $('#orgCount').textContent = orgs.length + ' organisation' + (orgs.length === 1 ? '' : 's');
   }
 
