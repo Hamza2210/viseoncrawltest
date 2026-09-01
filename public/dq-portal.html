@@ -54,6 +54,12 @@
   #portalShell { display: none; align-items: center; gap: 12px; margin: 0 0 10px; }
   body.portal #portalShell { display: flex; }
   #portalShell .pu-email { color: var(--muted); font-size: 13px; }
+  #portalAdminBtn { display: none; position: fixed; top: 14px; right: 22px; z-index: 60;
+    align-items: center; gap: 6px; padding: 7px 14px; border-radius: 9px; text-decoration: none;
+    font-size: 13px; font-weight: 600; color: var(--muted); border: 1px solid var(--border);
+    background: rgba(255,255,255,.03); }
+  #portalAdminBtn:hover { color: #fff; border-color: var(--muted); }
+  body.portal-admin #portalAdminBtn { display: inline-flex; }
   .side-nav { display: flex; flex-direction: column; gap: 2px; }
   .side-group { color: var(--muted); font-size: 10px; font-weight: 700; letter-spacing: .08em;
     text-transform: uppercase; padding: 14px 8px 4px; }
@@ -1314,6 +1320,8 @@
 
     <div class="side-group">Records</div>
     <button class="side-item sub" data-tab="history"><span class="si-ico">📜</span>Assessment history</button>
+
+    <button class="side-item" data-tab="profile" id="profileNav" style="display:none"><span class="si-ico">👤</span>Profile</button>
   </nav>
 </aside>
 <div class="wrap">
@@ -1324,6 +1332,7 @@
     <span class="pu-email" id="portalUserEmail"></span>
     <button type="button" class="btn-sm" id="portalLogout">Log out</button>
   </div>
+  <a id="portalAdminBtn" href="#" target="_blank" rel="noopener">⚙ Admin portal</a>
 
   <!-- ============ UPLOAD ============ -->
   <div id="uploadPanel">
@@ -1735,6 +1744,26 @@
       <table id="resultTable"></table>
     </div>
 
+  </div>
+
+  <!-- ============ PROFILE (portal only) ============ -->
+  <div id="profilePanel" style="display:none;">
+    <div class="tab-intro">
+      <h2>Profile</h2>
+      <p>Your portal account details.</p>
+    </div>
+    <div style="max-width:560px;border:1px solid var(--border);border-radius:14px;padding:20px 22px;background:rgba(255,255,255,.02);">
+      <div style="display:flex;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--border);">
+        <span style="color:var(--muted);font-size:13px;">Username</span><span id="profUsername" style="font-size:14px;">—</span></div>
+      <div style="display:flex;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--border);">
+        <span style="color:var(--muted);font-size:13px;">Organisation</span><span id="profOrg" style="font-size:14px;">—</span></div>
+      <div style="display:flex;justify-content:space-between;padding:11px 0;">
+        <span style="color:var(--muted);font-size:13px;">Role</span><span id="profRole" style="font-size:14px;text-transform:capitalize;">—</span></div>
+      <div style="margin-top:20px;">
+        <button type="button" class="btn-sm" id="profResetBtn">Reset password</button>
+        <div id="profResetMsg" style="margin-top:12px;font-size:13px;color:var(--muted);display:none;"></div>
+      </div>
+    </div>
   </div>
 
   <!-- ============ HISTORY ============ -->
@@ -8363,6 +8392,7 @@ function switchTab(name) {
   $('#incidentsPanel').style.display = name === 'incidents' ? 'block' : 'none';
   $('#complianceTab').style.display = name === 'compliance' ? 'block' : 'none';
   $('#lineagePanel').style.display = name === 'lineage' ? 'block' : 'none';
+  $('#profilePanel').style.display = name === 'profile' ? 'block' : 'none';
   // Wide, full-width tabs vs the narrow centered form column.
   const wrapEl = document.querySelector('.wrap');
   if (wrapEl) wrapEl.classList.add('wide');   // every tab now uses the full width
@@ -8398,6 +8428,7 @@ function applyMode() {
   if (qlikOpt) qlikOpt.remove();
   const lo = $('#portalLogout');
   if (lo && !lo._wired) { lo._wired = true; lo.addEventListener('click', () => { location.href = `${API_BASE}/portal/auth/logout`; }); }
+  const pn = $('#profileNav'); if (pn) pn.style.display = '';   // reveal the Profile tab
 }
 function startCommon() {
   switchTab('dashboard');                       // Dashboard is the landing tab; sync the panels + wide layout on load
@@ -8414,8 +8445,30 @@ async function bootPortal() {
   EMAIL  = me.user.email || '';
   APP_ID = me.user.workspace_id || '';
   applyMode();
+  if ((me.user.role || '').toLowerCase() === 'admin') {   // admins get the admin-portal button (new tab)
+    document.body.classList.add('portal-admin');
+    const ab = $('#portalAdminBtn'); if (ab) ab.href = location.origin + '/dq-portal-admin';
+  }
   const ue = $('#portalUserEmail'); if (ue) ue.textContent = EMAIL;
   const cx = $('#ctx'); if (cx) cx.textContent = me.user.org_name ? ('Workspace: ' + me.user.org_name) : '';
+  // Profile tab fields + reset-password button
+  const pU = $('#profUsername'); if (pU) pU.textContent = EMAIL || '—';
+  const pO = $('#profOrg'); if (pO) pO.textContent = me.user.org_name || me.user.org_id || '—';
+  const pR = $('#profRole'); if (pR) pR.textContent = me.user.role || 'member';
+  const rb = $('#profResetBtn');
+  if (rb && !rb._wired) {
+    rb._wired = true;
+    rb.addEventListener('click', async () => {
+      rb.disabled = true;
+      const msg = $('#profResetMsg');
+      try {
+        const r = await postJSON(`${API_BASE}/portal/auth/reset-password`, {}, {});
+        if (msg) { msg.style.display = 'block'; msg.textContent = (r && r.message) || "We've emailed you a link to reset your password — follow it to set a new one."; }
+      } catch (e) {
+        if (msg) { msg.style.display = 'block'; msg.textContent = 'Could not start a reset right now — please try again.'; }
+      } finally { rb.disabled = false; }
+    });
+  }
   startCommon();
 }
 if (PORTAL) { bootPortal(); } else { startCommon(); }
