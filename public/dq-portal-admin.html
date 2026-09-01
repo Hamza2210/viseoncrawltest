@@ -93,15 +93,10 @@
 
         <div class="card">
           <h2>Create user</h2>
-          <p class="hint">Creates the login in <strong>Auth0</strong> and provisions the user for the chosen org so
-             they can sign in immediately.</p>
+          <p class="hint">Creates the user and emails them a secure link to <strong>set their own password</strong>,
+             then provisions them for the chosen org.</p>
           <label>Email</label>
           <input id="uEmail" type="email" placeholder="person@acme.com" autocomplete="off">
-          <label>Password</label>
-          <div class="row">
-            <input id="uPass" type="text" placeholder="strong password" autocomplete="off">
-            <button class="btn btn-ghost" id="genPass" type="button" title="Generate">Generate</button>
-          </div>
           <div class="row">
             <div><label>Org</label><select id="uOrg"></select></div>
             <div><label>Role</label><select id="uRole"><option value="member">member</option><option value="admin">admin</option></select></div>
@@ -159,20 +154,14 @@
     } catch (e) { show(m, 'err', e.message); } finally { b.disabled = false; }
   });
 
-  $('#genPass').addEventListener('click', () => {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%^&*';
-    const a = new Uint32Array(20); crypto.getRandomValues(a);
-    $('#uPass').value = Array.from(a, x => chars[x % chars.length]).join('');
-  });
-
   $('#createUser').addEventListener('click', async () => {
     const b = $('#createUser'); const m = $('#userMsg'); b.disabled = true;
     try {
       const r = await api('/portal/admin/users', { method: 'POST', body: JSON.stringify({
-        email: $('#uEmail').value.trim(), password: $('#uPass').value,
+        email: $('#uEmail').value.trim(),
         org_id: $('#uOrg').value, role: $('#uRole').value }) });
       show(m, 'ok', 'User ' + r.email + ' → ' + r.org_id + ' (' + r.role + '). ' + r.note);
-      $('#uEmail').value = ''; $('#uPass').value = '';
+      $('#uEmail').value = '';
     } catch (e) { show(m, 'err', e.message); } finally { b.disabled = false; }
   });
 
