@@ -110,6 +110,16 @@
           <div class="msg" id="userMsg"></div>
         </div>
 
+        <div class="card">
+          <h2>Send password reset link</h2>
+          <p class="hint">When a user requests a reset (you'll get an email), send them an Auth0 reset
+             link here — they set their own new password. No password sharing.</p>
+          <label>User email</label>
+          <input id="rEmail" type="email" placeholder="person@acme.com" autocomplete="off">
+          <button class="btn" id="sendReset">Send reset link</button>
+          <div class="msg" id="resetMsg"></div>
+        </div>
+
       </div>
     </div>
   </div>
@@ -173,6 +183,16 @@
         org_id: $('#uOrg').value, role: $('#uRole').value }) });
       show(m, 'ok', 'User ' + r.email + ' → ' + r.org_id + ' (' + r.role + '). ' + r.note);
       $('#uEmail').value = ''; $('#uPass').value = '';
+    } catch (e) { show(m, 'err', e.message); } finally { b.disabled = false; }
+  });
+
+  $('#sendReset').addEventListener('click', async () => {
+    const b = $('#sendReset'); const m = $('#resetMsg'); b.disabled = true;
+    try {
+      const r = await api('/portal/admin/users/send-reset', { method: 'POST',
+        body: JSON.stringify({ email: $('#rEmail').value.trim() }) });
+      show(m, 'ok', r.message || 'Reset link sent.');
+      $('#rEmail').value = '';
     } catch (e) { show(m, 'err', e.message); } finally { b.disabled = false; }
   });
 
