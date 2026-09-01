@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Differentia · DQ Portal Admin</title>
+<!--
+  Admin portal: create orgs + users (users are created in Auth0 AND provisioned in
+  dq-portal-users so they can log in). Admin-only — the page checks /portal/auth/me
+  and requires role=admin; the endpoints re-check server-side. Cookie auth only.
+  Edit API_BASE below if the DQ API host ever changes.
+-->
+<style>
+  :root{ --bg:#0b1020; --card:rgba(18,26,48,.72); --ink:#eaf0ff; --muted:#9fb0d6;
+    --line:rgba(120,140,190,.22); --accent:#5b8cff; --accent2:#37e0c8; --danger:#ff6b7d; --ok:#37e0c8; }
+  *{box-sizing:border-box}
+  body{margin:0;min-height:100vh;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    color:var(--ink);background:radial-gradient(1200px 700px at 15% -10%,#1a2650,transparent 60%),
+    radial-gradient(1000px 600px at 110% 10%,#123f3a,transparent 55%),var(--bg);}
+  header{display:flex;align-items:center;gap:12px;padding:16px 24px;border-bottom:1px solid var(--line)}
+  header .dot{width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  header .t{font-weight:700}
+  header .t small{display:block;color:var(--muted);font-weight:500;font-size:11px;letter-spacing:.3px}
+  header .spacer{flex:1}
+  header .who{color:var(--muted);font-size:13px}
+  .wrap{max-width:900px;margin:0 auto;padding:28px 24px 60px}
+  h1{font-size:22px;margin:6px 0 4px}
+  .sub{color:var(--muted);font-size:13.5px;margin:0 0 22px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  @media (max-width:760px){.grid{grid-template-columns:1fr}}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px 20px 18px;backdrop-filter:blur(12px)}
+  .card h2{font-size:15px;margin:0 0 4px}
+  .card p.hint{color:var(--muted);font-size:12px;margin:0 0 14px;line-height:1.5}
+  label{display:block;font-size:12px;color:var(--muted);margin:12px 0 5px}
+  input,select{width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line);
+    background:rgba(9,15,32,.6);color:var(--ink);font-size:13.5px;outline:none}
+  input:focus,select:focus{border-color:var(--accent)}
+  .row{display:flex;gap:8px}
+  .row > *{flex:1}
+  .btn{margin-top:16px;width:100%;padding:11px 14px;border:0;border-radius:10px;cursor:pointer;font-size:14px;font-weight:650;
+    color:#06122b;background:linear-gradient(135deg,var(--accent),var(--accent2));transition:filter .12s}
+  .btn:hover{filter:brightness(1.06)} .btn:disabled{opacity:.55;cursor:default}
+  .btn-ghost{background:transparent;color:var(--muted);border:1px solid var(--line);font-weight:500;padding:8px 10px;width:auto;margin:0}
+  .msg{margin-top:12px;padding:9px 12px;border-radius:9px;font-size:12.5px;line-height:1.5;display:none}
+  .msg.show{display:block}
+  .msg.ok{border:1px solid rgba(55,224,200,.35);background:rgba(55,224,200,.10);color:#c9fff4}
+  .msg.err{border:1px solid rgba(255,107,125,.35);background:rgba(255,107,125,.10);color:#ffd5db}
+  .orgcount{color:var(--muted);font-size:11.5px;margin-top:8px}
+  #denied,#loading{max-width:520px;margin:16vh auto;text-align:center;color:var(--muted)}
+  #denied h1{color:var(--ink)}
+  a{color:var(--accent2);text-decoration:none}
+  code{background:rgba(9,15,32,.6);padding:1px 5px;border-radius:5px;font-size:12px}
+</style>
+</head>
+<body>
+  <div id="loading" style="display:block">Loading…</div>
+
+  <div id="denied" style="display:none">
+    <h1>Admin access required</h1>
+    <p>You're signed in as <span id="deniedWho"></span>, but this page is for administrators.
+       <br><a href="#" id="deniedLogout">Log out</a></p>
+  </div>
+
+  <div id="app" style="display:none">
+    <header>
+      <div class="dot"></div>
+      <div class="t">Differentia<small>DQ PORTAL · ADMIN</small></div>
+      <div class="spacer"></div>
+      <span class="who" id="who"></span>
+      <button class="btn btn-ghost" id="logout">Log out</button>
+    </header>
+    <div class="wrap">
+      <h1>User &amp; org administration</h1>
+      <p class="sub">Create an organisation (its own isolated tenant), then create users who can log in to the portal.</p>
+      <div class="grid">
+
+        <div class="card">
+          <h2>Create organisation</h2>
+          <p class="hint">Each org gets its own isolated tenant folder. Use a <strong>distinct</strong> tenant URL
+             (e.g. your domain) — <em>not</em> a Qlik <code>*.qlikcloud.com</code> value.</p>
+          <label>Org ID (slug)</label>
+          <input id="oId" placeholder="acme" autocomplete="off">
+          <label>Display name</label>
+          <input id="oName" placeholder="Acme Corp" autocomplete="off">
+          <label>Tenant URL</label>
+          <input id="oTenant" placeholder="acme.com" autocomplete="off">
+          <label>Workspace name (optional)</label>
+          <input id="oWs" placeholder="defaults to the display name" autocomplete="off">
+          <button class="btn" id="createOrg">Create organisation</button>
+          <div class="msg" id="orgMsg"></div>
+          <div class="orgcount" id="orgCount"></div>
+        </div>
+
+        <div class="card">
+          <h2>Create user</h2>
+          <p class="hint">Creates the login in <strong>Auth0</strong> and provisions the user for the chosen org so
+             they can sign in immediately.</p>
+          <label>Email</label>
+          <input id="uEmail" type="email" placeholder="person@acme.com" autocomplete="off">
+          <label>Password</label>
+          <div class="row">
+            <input id="uPass" type="text" placeholder="strong password" autocomplete="off">
+            <button class="btn btn-ghost" id="genPass" type="button" title="Generate">Generate</button>
+          </div>
+          <div class="row">
+            <div><label>Org</label><select id="uOrg"></select></div>
+            <div><label>Role</label><select id="uRole"><option value="member">member</option><option value="admin">admin</option></select></div>
+          </div>
+          <button class="btn" id="createUser">Create user</button>
+          <div class="msg" id="userMsg"></div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+<script>
+  /* ===================== EDIT IF THE API HOST CHANGES ===================== */
+  const API_BASE = "https://i1jwcc4bx4.execute-api.eu-west-1.amazonaws.com/dev";
+  /* ======================================================================= */
+
+  const $ = s => document.querySelector(s);
+  async function api(path, opts) {
+    const res = await fetch(API_BASE + path, Object.assign({ credentials: 'include',
+      headers: { 'Content-Type': 'application/json' } }, opts || {}));
+    let body; try { body = await res.json(); } catch { body = {}; }
+    if (!res.ok) throw new Error(body.detail || ('HTTP ' + res.status));
+    return body;
+  }
+  function show(el, kind, text) { el.className = 'msg show ' + kind; el.textContent = text; }
+
+  let orgs = [];
+  async function loadOrgs() {
+    const r = await api('/portal/admin/orgs');
+    orgs = r.orgs || [];
+    const sel = $('#uOrg');
+    sel.innerHTML = orgs.length
+      ? orgs.map(o => `<option value="${o.org_id}">${(o.name || o.org_id)} — ${o.tenant_url}</option>`).join('')
+      : '<option value="">(no orgs yet — create one first)</option>';
+    $('#orgCount').textContent = orgs.length + ' organisation' + (orgs.length === 1 ? '' : 's');
+  }
+
+  $('#createOrg').addEventListener('click', async () => {
+    const b = $('#createOrg'); const m = $('#orgMsg'); b.disabled = true;
+    try {
+      const org = await api('/portal/admin/orgs', { method: 'POST', body: JSON.stringify({
+        org_id: $('#oId').value.trim(), name: $('#oName').value.trim(),
+        tenant_url: $('#oTenant').value.trim(), workspace_name: $('#oWs').value.trim() }) });
+      show(m, 'ok', 'Created org "' + org.org.org_id + '".');
+      $('#oId').value = $('#oName').value = $('#oTenant').value = $('#oWs').value = '';
+      await loadOrgs();
+    } catch (e) { show(m, 'err', e.message); } finally { b.disabled = false; }
+  });
+
+  $('#genPass').addEventListener('click', () => {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%^&*';
+    const a = new Uint32Array(20); crypto.getRandomValues(a);
+    $('#uPass').value = Array.from(a, x => chars[x % chars.length]).join('');
+  });
+
+  $('#createUser').addEventListener('click', async () => {
+    const b = $('#createUser'); const m = $('#userMsg'); b.disabled = true;
+    try {
+      const r = await api('/portal/admin/users', { method: 'POST', body: JSON.stringify({
+        email: $('#uEmail').value.trim(), password: $('#uPass').value,
+        org_id: $('#uOrg').value, role: $('#uRole').value }) });
+      show(m, 'ok', 'User ' + r.email + ' → ' + r.org_id + ' (' + r.role + '). ' + r.note);
+      $('#uEmail').value = ''; $('#uPass').value = '';
+    } catch (e) { show(m, 'err', e.message); } finally { b.disabled = false; }
+  });
+
+  function wireLogout(el) { el.addEventListener('click', e => { e.preventDefault(); location.href = API_BASE + '/portal/auth/logout'; }); }
+  wireLogout($('#logout')); wireLogout($('#deniedLogout'));
+
+  (async function init() {
+    let me = null;
+    try { me = await api('/portal/auth/me'); } catch { me = null; }
+    if (!me || !me.ok || !me.user) { location.href = API_BASE + '/portal/auth/login'; return; }
+    $('#loading').style.display = 'none';
+    if ((me.user.role || '').toLowerCase() !== 'admin') {
+      $('#deniedWho').textContent = me.user.email || '';
+      $('#denied').style.display = 'block';
+      return;
+    }
+    $('#who').textContent = me.user.email || '';
+    $('#app').style.display = 'block';
+    try { await loadOrgs(); } catch (e) { show($('#orgMsg'), 'err', 'Could not load orgs: ' + e.message); }
+  })();
+</script>
+</body>
+</html>
