@@ -60,6 +60,12 @@
     background: rgba(255,255,255,.03); }
   #portalAdminBtn:hover { color: #fff; border-color: var(--muted); }
   body.portal-admin #portalAdminBtn { display: inline-flex; }
+  #portalOrgSwitchWrap { display: none; align-items: center; gap: 7px; }
+  body.portal-super #portalShell #portalOrgSwitchWrap { display: inline-flex; }
+  #portalOrgSwitchWrap .pos-label { color: var(--muted); font-size: 10px; font-weight: 700;
+    letter-spacing: .08em; text-transform: uppercase; }
+  #portalOrgSwitch { padding: 6px 10px; border-radius: 8px; border: 1px solid var(--border);
+    background: rgba(255,255,255,.03); color: inherit; font-size: 12.5px; max-width: 240px; }
   .side-nav { display: flex; flex-direction: column; gap: 2px; }
   .side-group { color: var(--muted); font-size: 10px; font-weight: 700; letter-spacing: .08em;
     text-transform: uppercase; padding: 14px 8px 4px; }
@@ -1330,6 +1336,10 @@
   <p class="sub" id="ctx"></p>
   <div id="portalShell">
     <span class="pu-email" id="portalUserEmail"></span>
+    <label id="portalOrgSwitchWrap">
+      <span class="pos-label">Viewing org</span>
+      <select id="portalOrgSwitch" title="Switch which organisation's data you're viewing"></select>
+    </label>
   </div>
   <a id="portalAdminBtn" href="#" target="_blank" rel="noopener">⚙ Admin portal</a>
 
@@ -8435,6 +8445,36 @@ function startCommon() {
   refreshBlockerBar();                          // show open blockers immediately, on every tab
   setInterval(refreshBlockerBar, 60000);        // keep the always-visible bar current
 }
+// Super-admin org switcher: populate from all orgs, and on change ask the server to
+// switch the active org (server-side tenant), then reload so every tab re-fetches
+// under the newly-selected org. Only ever reached for super-admins.
+async function bootOrgSwitcher(activeOrgId) {
+  document.body.classList.add('portal-super');
+  const sel = $('#portalOrgSwitch'); if (!sel) return;
+  try {
+    const r = await (await fetch(`${API_BASE}/portal/admin/orgs`, { credentials: 'include' })).json();
+    const orgs = (r && r.orgs) || [];
+    sel.innerHTML = '';
+    orgs.forEach(o => {
+      const opt = document.createElement('option');
+      opt.value = o.org_id;
+      opt.textContent = o.name || o.org_id;              // textContent → XSS-safe
+      if (o.org_id === activeOrgId) opt.selected = true;
+      sel.appendChild(opt);
+    });
+    if (!sel._wired) {
+      sel._wired = true;
+      sel.addEventListener('change', async () => {
+        sel.disabled = true;
+        try {
+          await postJSON(`${API_BASE}/portal/auth/switch-org`, { org_id: sel.value }, {});
+          location.reload();          // re-fetch every tab under the newly-selected org's tenant
+        } catch (e) { sel.disabled = false; }
+      });
+    }
+  } catch (e) { /* leave the switcher empty; not fatal */ }
+}
+
 // Portal: resolve the session first (server holds the key + tenant), then boot; no
 // session -> Auth0 login. Qlik mode boots synchronously, exactly as before.
 async function bootPortal() {
@@ -8449,12 +8489,13 @@ async function bootPortal() {
     document.body.classList.add('portal-admin');
     const ab = $('#portalAdminBtn'); if (ab) ab.href = location.origin + '/dq-portal-admin';
   }
+  if (me.user.is_super) { await bootOrgSwitcher(me.user.active_org_id || me.user.org_id); }   // super-admin org switcher
   const ue = $('#portalUserEmail'); if (ue) ue.textContent = EMAIL;
   const cx = $('#ctx'); if (cx) cx.textContent = me.user.org_name ? ('Workspace: ' + me.user.org_name) : '';
   // Profile tab fields + reset-password button
   const pU = $('#profUsername'); if (pU) pU.textContent = EMAIL || '—';
-  const pO = $('#profOrg'); if (pO) pO.textContent = me.user.org_name || me.user.org_id || '—';
-  const pR = $('#profRole'); if (pR) pR.textContent = me.user.role || 'member';
+  const pO = $('#profOrg'); if (pO) pO.textContent = me.user.home_org_name || me.user.org_name || me.user.org_id || '—';
+  const pR = $('#profRole'); if (pR) pR.textContent = me.user.is_super ? 'Super Admin' : (me.user.role || 'member');
   const rb = $('#profResetBtn');
   if (rb && !rb._wired) {
     rb._wired = true;
