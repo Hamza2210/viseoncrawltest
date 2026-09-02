@@ -60,12 +60,18 @@
     background: rgba(255,255,255,.03); }
   #portalAdminBtn:hover { color: #fff; border-color: var(--muted); }
   body.portal-admin #portalAdminBtn { display: inline-flex; }
-  #portalOrgSwitchWrap { display: none; align-items: center; gap: 7px; }
+  #portalOrgSwitchWrap { display: none; align-items: center; gap: 8px; }
   body.portal-super #portalShell #portalOrgSwitchWrap { display: inline-flex; }
   #portalOrgSwitchWrap .pos-label { color: var(--muted); font-size: 10px; font-weight: 700;
-    letter-spacing: .08em; text-transform: uppercase; }
-  #portalOrgSwitch { padding: 6px 10px; border-radius: 8px; border: 1px solid var(--border);
-    background: rgba(255,255,255,.03); color: inherit; font-size: 12.5px; max-width: 240px; }
+    letter-spacing: .08em; text-transform: uppercase; white-space: nowrap; }
+  #portalOrgSwitch { min-width: 230px; max-width: 360px; padding: 9px 34px 9px 13px; border-radius: 9px;
+    border: 1px solid #5b8cff; background-color: #14213f; color: #eaf0ff; font-size: 13.5px; font-weight: 600;
+    cursor: pointer; appearance: none; -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23aecbff' d='M6 8.5 1.5 4h9z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 12px center; }
+  #portalOrgSwitch:hover { border-color: #7aa2ff; background-color: #182a52; }
+  #portalOrgSwitch:focus { outline: none; border-color: #7aa2ff; box-shadow: 0 0 0 3px rgba(91,140,255,.25); }
+  #portalOrgSwitch option { background: #0e1830; color: #eaf0ff; font-weight: 500; padding: 6px; }
   .side-nav { display: flex; flex-direction: column; gap: 2px; }
   .side-group { color: var(--muted); font-size: 10px; font-weight: 700; letter-spacing: .08em;
     text-transform: uppercase; padding: 14px 8px 4px; }
@@ -8467,7 +8473,7 @@ async function bootOrgSwitcher(activeOrgId) {
       sel.addEventListener('change', async () => {
         sel.disabled = true;
         try {
-          await postJSON(`${API_BASE}/portal/auth/switch-org`, { org_id: sel.value }, {});
+          await postJSON(`${API_BASE}/portal/auth/switch-org`, {}, { org_id: sel.value });   // (url, headers, body)
           location.reload();          // re-fetch every tab under the newly-selected org's tenant
         } catch (e) { sel.disabled = false; }
       });
