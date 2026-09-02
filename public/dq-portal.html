@@ -51,6 +51,7 @@
   body.portal #dashScopeToggle,
   body.portal #incScopeToggle,
   body.portal #cmpScopeToggle { display: none !important; }
+  body.portal #historySubtabs { display: none !important; }   /* no Qlik full-app view in the portal */
   #portalShell { display: none; align-items: center; gap: 12px; margin: 0 0 10px; }
   body.portal #portalShell { display: flex; }
   #portalShell .pu-email { color: var(--muted); font-size: 13px; }
@@ -1786,7 +1787,7 @@
   <div id="historyPanel">
     <div class="tab-intro">
       <h2>History</h2>
-      <p>Every assessment you've run, full-app health checks and individual dataset runs. Open any run to see its full report.</p>
+      <p id="historyIntro">Every assessment you've run, full-app health checks and individual dataset runs. Open any run to see its full report.</p>
     </div>
     <div class="subtabs" id="historySubtabs">
       <button class="subtab active" data-hsub="app">Full app assessments</button>
@@ -3506,9 +3507,10 @@ function renderHistoryPage() {
     { n: Math.round(passes / historyRuns.length * 100) + '%', l: 'Passed gate', tip: GATE_TIP },
   ]) : '';
   if (!historyRuns.length) {
+    const ctaLabel = PORTAL ? 'Assess a data source →' : 'Assess this app\'s data →';
     list.innerHTML = '<p class="dash-muted" style="margin:0;">No runs yet — assessments you run will appear here.</p>'
-      + (APP_ID ? ' <button id="histAssessCta" style="margin-top:12px;">Assess this app\'s data →</button>' : '');
-    const c = $('#histAssessCta'); if (c) c.addEventListener('click', () => switchTab('appdata'));
+      + (APP_ID ? ' <button id="histAssessCta" style="margin-top:12px;">' + ctaLabel + '</button>' : '');
+    const c = $('#histAssessCta'); if (c) c.addEventListener('click', () => switchTab(PORTAL ? 'upload' : 'appdata'));
     pager.innerHTML = ''; return;
   }
   const pages = Math.ceil(historyRuns.length / PAGE_SIZE);
@@ -4303,11 +4305,11 @@ function renderTiles(t) {
 function renderHealthTable(datasets) {
   if (!datasets.length) {
     $('#dashTableWrap').innerHTML =
-      `<p class="dash-muted" style="margin:0 0 12px;">No assessments yet for this app.</p>` +
-      `<button id="dashAssessCta">Assess this app's data →</button>` +
+      `<p class="dash-muted" style="margin:0 0 12px;">${PORTAL ? 'No assessments yet.' : 'No assessments yet for this app.'}</p>` +
+      `<button id="dashAssessCta">${PORTAL ? 'Assess a data source →' : "Assess this app's data →"}</button>` +
       `<p class="hint" style="margin:12px 0 0;">Then return here to monitor scores, dimensions and trends over time.</p>`;
     const cta = $('#dashAssessCta');
-    if (cta) cta.addEventListener('click', () => switchTab('appdata'));
+    if (cta) cta.addEventListener('click', () => switchTab(PORTAL ? 'upload' : 'appdata'));
     return;
   }
   const rows = datasets.map(d => {
@@ -8419,7 +8421,7 @@ function switchTab(name) {
   if (name === 'compliance') loadComplianceEstate();
   if (name === 'lineage') loadLineage();
   if (name === 'model') loadModel();
-  if (name === 'history') setHistorySub('app');   // Full app assessments is the default subtab
+  if (name === 'history') setHistorySub(PORTAL ? 'dataset' : 'app');   // portal has no Qlik full-app view
   if (name === 'dashboard') { loadDashboard(); refreshIncBadge(); }
   if (name === 'medallion') loadMedallion();
   if (name === 'schedules') {
@@ -8445,6 +8447,7 @@ function applyMode() {
   const lo = $('#portalLogout');
   if (lo && !lo._wired) { lo._wired = true; lo.addEventListener('click', () => { location.href = `${API_BASE}/portal/auth/logout`; }); }
   const pn = $('#profileNav'); if (pn) pn.style.display = '';   // reveal the Profile tab
+  const hi = $('#historyIntro'); if (hi) hi.textContent = "Every assessment you've run. Open any run to see its full report.";
 }
 function startCommon() {
   switchTab('dashboard');                       // Dashboard is the landing tab; sync the panels + wide layout on load
