@@ -46,6 +46,15 @@
   .msg.ok{border:1px solid rgba(55,224,200,.35);background:rgba(55,224,200,.10);color:#c9fff4}
   .msg.err{border:1px solid rgba(255,107,125,.35);background:rgba(255,107,125,.10);color:#ffd5db}
   .orgcount{color:var(--muted);font-size:11.5px;margin-top:8px}
+  .userstable{margin-top:12px;display:flex;flex-direction:column;gap:6px}
+  .urow{display:flex;align-items:center;gap:10px;padding:9px 12px;border:1px solid var(--line);border-radius:9px;background:rgba(9,15,32,.35)}
+  .urow .uemail{flex:1;font-size:13px;word-break:break-all}
+  .urow .utag{font-size:11px;color:var(--muted);padding:2px 8px;border:1px solid var(--line);border-radius:999px;white-space:nowrap}
+  .urow .utag.admin{color:#c9fff4;border-color:rgba(55,224,200,.35)}
+  .urow .udel{padding:6px 11px;border:1px solid rgba(255,107,125,.4);background:transparent;color:var(--danger);border-radius:8px;cursor:pointer;font-size:12px}
+  .urow .udel:hover{background:rgba(255,107,125,.12)}
+  .urow .udel:disabled{opacity:.35;cursor:default}
+  .uempty{color:var(--muted);font-size:12.5px;padding:8px 2px}
   #denied,#loading{max-width:520px;margin:16vh auto;text-align:center;color:var(--muted)}
   #denied h1{color:var(--ink)}
   a{color:var(--accent2);text-decoration:none}
@@ -71,10 +80,10 @@
     </header>
     <div class="wrap">
       <h1>User &amp; org administration</h1>
-      <p class="sub">Create an organisation (its own isolated tenant), then create users who can log in to the portal.</p>
+      <p class="sub" id="subLine">Create an organisation (its own isolated tenant), then create users who can log in to the portal.</p>
       <div class="grid">
 
-        <div class="card">
+        <div class="card" id="orgCard">
           <h2>Create organisation</h2>
           <p class="hint">Each org gets its own isolated tenant folder. Use a <strong>distinct</strong> tenant URL
              (e.g. your domain) — <em>not</em> a Qlik <code>*.qlikcloud.com</code> value.</p>
@@ -106,6 +115,18 @@
         </div>
 
       </div>
+
+      <div class="card" id="usersCard" style="margin-top:18px">
+        <h2>Users</h2>
+        <p class="hint">Everyone provisioned for <span id="usersScopeLabel">your organisation</span>.
+           Deleting a user removes their Auth0 login and their portal access — this can't be undone.</p>
+        <div id="usersOrgWrap" style="display:none">
+          <label>Organisation</label>
+          <select id="usersOrgSel"></select>
+        </div>
+        <div id="usersTable" class="userstable"></div>
+        <div class="msg" id="usersMsg"></div>
+      </div>
     </div>
   </div>
 
@@ -125,21 +146,70 @@
   function show(el, kind, text) { el.className = 'msg show ' + kind; el.textContent = text; }
 
   let orgs = [];
-  async function loadOrgs() {
-    const r = await api('/portal/admin/orgs');
-    orgs = r.orgs || [];
-    const sel = $('#uOrg');
+  let ME = null, IS_SUPER = false, MY_ORG_ID = '';
+
+  function el(tag, cls, text) {
+    const n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text != null) n.textContent = text;   // textContent → XSS-safe
+    return n;
+  }
+  function fillOrgSelect(sel, list) {
+    if (!sel) return;
     sel.innerHTML = '';
-    if (!orgs.length) {
-      const o = document.createElement('option'); o.value = ''; o.textContent = '(no orgs yet — create one first)';
-      sel.appendChild(o);
-    } else orgs.forEach(o => {
-      const opt = document.createElement('option');
-      opt.value = o.org_id;                                          // value, never HTML
-      opt.textContent = (o.name || o.org_id) + ' — ' + o.tenant_url; // textContent auto-escapes
+    if (!list.length) { sel.appendChild(el('option', null, '(no orgs yet — create one first)')); return; }
+    list.forEach(o => {
+      const opt = el('option', null, (o.name || o.org_id) + ' — ' + o.tenant_url);
+      opt.value = o.org_id;                    // value, never HTML
       sel.appendChild(opt);
     });
+  }
+  async function loadOrgs() {
+    const r = await api('/portal/admin/orgs');
+    orgs = r.orgs || [];                        // server returns only YOUR org unless you're super-admin
+    fillOrgSelect($('#uOrg'), orgs);
+    if (IS_SUPER) {                             // org-admins have a single fixed org → no selector
+      fillOrgSelect($('#usersOrgSel'), orgs);
+      $('#usersOrgWrap').style.display = orgs.length ? 'block' : 'none';
+    }
     $('#orgCount').textContent = orgs.length + ' organisation' + (orgs.length === 1 ? '' : 's');
+  }
+
+  async function loadUsers() {
+    const wrap = $('#usersTable'); const m = $('#usersMsg'); m.className = 'msg';
+    const orgId = IS_SUPER ? (($('#usersOrgSel') || {}).value || '') : MY_ORG_ID;
+    wrap.innerHTML = '';
+    if (!orgId) { wrap.appendChild(el('div', 'uempty', 'Select an organisation to view its users.')); return; }
+    wrap.appendChild(el('div', 'uempty', 'Loading…'));
+    try {
+      const r = await api('/portal/admin/users?org_id=' + encodeURIComponent(orgId));
+      renderUsers(r.users || []);
+    } catch (e) { wrap.innerHTML = ''; show(m, 'err', e.message); }
+  }
+  function renderUsers(users) {
+    const wrap = $('#usersTable'); wrap.innerHTML = '';
+    if (!users.length) { wrap.appendChild(el('div', 'uempty', 'No users yet.')); return; }
+    users.forEach(u => {
+      const row = el('div', 'urow');
+      row.appendChild(el('span', 'uemail', u.email));
+      row.appendChild(el('span', 'utag' + (u.role === 'admin' ? ' admin' : ''), u.role));
+      if (u.status && u.status !== 'active') row.appendChild(el('span', 'utag', u.status));
+      const del = el('button', 'udel', 'Delete');
+      if (u.is_self) { del.disabled = true; del.title = "You can't delete your own account."; }
+      else if (u.is_super) { del.disabled = true; del.title = "Platform super-admin — can't be removed here."; }
+      else del.addEventListener('click', () => deleteUser(u.email, del));
+      row.appendChild(del);
+      wrap.appendChild(row);
+    });
+  }
+  async function deleteUser(email, btn) {
+    if (!confirm('Delete ' + email + '?\n\nThis removes their Auth0 login and their portal access. This cannot be undone.')) return;
+    btn.disabled = true; const m = $('#usersMsg'); m.className = 'msg';
+    try {
+      await api('/portal/admin/users/delete', { method: 'POST', body: JSON.stringify({ email: email }) });
+      show(m, 'ok', 'Deleted ' + email + '.');
+      await loadUsers();
+    } catch (e) { show(m, 'err', e.message); btn.disabled = false; }
   }
 
   $('#createOrg').addEventListener('click', async () => {
@@ -162,8 +232,11 @@
         org_id: $('#uOrg').value, role: $('#uRole').value }) });
       show(m, 'ok', 'User ' + r.email + ' → ' + r.org_id + ' (' + r.role + '). ' + r.note);
       $('#uEmail').value = '';
+      try { await loadUsers(); } catch (_) {}
     } catch (e) { show(m, 'err', e.message); } finally { b.disabled = false; }
   });
+
+  const _uos = $('#usersOrgSel'); if (_uos) _uos.addEventListener('change', () => loadUsers());
 
   function wireLogout(el) { el.addEventListener('click', e => { e.preventDefault(); location.href = API_BASE + '/portal/auth/logout'; }); }
   wireLogout($('#logout')); wireLogout($('#deniedLogout'));
@@ -172,15 +245,26 @@
     let me = null;
     try { me = await api('/portal/auth/me'); } catch { me = null; }
     if (!me || !me.ok || !me.user) { location.href = API_BASE + '/portal/auth/login'; return; }
+    ME = me.user; IS_SUPER = !!ME.is_super; MY_ORG_ID = (ME.org_id || '').toLowerCase();
     $('#loading').style.display = 'none';
-    if ((me.user.role || '').toLowerCase() !== 'admin') {
-      $('#deniedWho').textContent = me.user.email || '';
+    const isAdmin = IS_SUPER || (ME.role || '').toLowerCase() === 'admin';
+    if (!isAdmin) {
+      $('#deniedWho').textContent = ME.email || '';
       $('#denied').style.display = 'block';
       return;
     }
-    $('#who').textContent = me.user.email || '';
+    $('#who').textContent = (ME.email || '') + (IS_SUPER ? ' · super-admin' : '');
     $('#app').style.display = 'block';
+    if (!IS_SUPER) {
+      // Org-admin: no org creation; the users list is pinned to their own org.
+      const oc = $('#orgCard'); if (oc) oc.style.display = 'none';
+      const sl = $('#subLine'); if (sl) sl.textContent = 'Manage the users in your organisation.';
+      const usl = $('#usersScopeLabel'); if (usl) usl.textContent = ME.org_name || 'your organisation';
+    } else {
+      const usl = $('#usersScopeLabel'); if (usl) usl.textContent = 'the selected organisation';
+    }
     try { await loadOrgs(); } catch (e) { show($('#orgMsg'), 'err', 'Could not load orgs: ' + e.message); }
+    try { await loadUsers(); } catch (e) { /* surfaced in usersMsg */ }
   })();
 </script>
 </body>
