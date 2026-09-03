@@ -4416,7 +4416,11 @@ function renderApprovals(pending, policy) {
          <div class="hint">submitted by ${esc(p.submittedBy || '—')}${p.submittedAt ? ' · ' + esc(fmtWhen(p.submittedAt)) : ''}</div>
        </div>
        <button class="btn-sm" data-pol-accept="${i}" data-tip="Apply this proposal to the dataset">✓ Accept &amp; apply</button>
-       <button class="btn-sm btn-danger" data-pol-reject="${i}" data-tip="Discard + email the requestor">✕ Reject</button>`)).join('');
+       <button class="btn-sm btn-danger" data-pol-reject="${i}" data-tip="Discard + email the requestor">✕ Reject</button>
+       <details class="appr-pol-detail" style="flex-basis:100%;width:100%;margin-top:2px;">
+         <summary style="cursor:pointer;font-size:12px;color:var(--accent,#6ea8fe);">Review submitted ${p.kind === 'attestations' ? 'attestations' : 'policy'}</summary>
+         <div style="margin-top:8px;">${policyProposalDetail(p)}</div>
+       </details>`)).join('');
   }
   body.innerHTML = html;
   body.querySelectorAll('[data-appr-view]').forEach(b => b.addEventListener('click', () => openApprovalRun(pending[+b.dataset.apprView])));
@@ -4424,6 +4428,45 @@ function renderApprovals(pending, policy) {
   body.querySelectorAll('[data-appr-reject]').forEach(b => { const parts = b.dataset.apprReject.split('::'); b.addEventListener('click', () => decideApproval(pending[+parts[1]], 'reject', parts[0])); });
   body.querySelectorAll('[data-pol-accept]').forEach(b => b.addEventListener('click', () => decidePolicy(policy[+b.dataset.polAccept], 'accept-policy')));
   body.querySelectorAll('[data-pol-reject]').forEach(b => b.addEventListener('click', () => decidePolicy(policy[+b.dataset.polReject], 'reject-policy')));
+}
+// Render the actual proposed content so an admin can review it before accepting/rejecting.
+// `p.data` is the value a member submitted (server returns it only to admins). Two shapes:
+//  - compliance-contract: { exempt?, framework?, retention_days?, columns:{date,consent_flag,erasure_flag,subject_id,audit[]} }
+//  - attestations:        { items:{ id:{value,note?,evidence_url?} }, by?, at? }
+function policyProposalDetail(p) {
+  const d = p && p.data;
+  const box = (rows) => `<table class="mini-kv" style="width:100%;border-collapse:collapse;font-size:12px;">${rows}</table>`;
+  const kv = (k, v) => `<tr><td style="padding:3px 10px 3px 0;color:var(--muted,#9aa4b2);white-space:nowrap;vertical-align:top;">${esc(k)}</td><td style="padding:3px 0;">${v}</td></tr>`;
+  if (p.kind === 'attestations') {
+    const items = (d && d.items) || {};
+    const ids = Object.keys(items);
+    if (!ids.length) return '<p class="hint">Clears all governance attestations for this dataset.</p>';
+    const byId = {}; (typeof CMP_ATTESTATIONS !== 'undefined' ? CMP_ATTESTATIONS : []).forEach(a => byId[a.id] = a);
+    const rows = ids.map(id => {
+      const it = items[id] || {}, meta = byId[id] || {};
+      const val = (it.value || '').toLowerCase();
+      const cls = val === 'yes' ? 'green' : (val === 'no' ? 'red' : 'muted');
+      const ans = (typeof ATTEST_LABEL !== 'undefined' && ATTEST_LABEL[val]) || (it.value || '—');
+      const q = meta.q || id;
+      const extra = (it.note ? `<div class="hint" style="margin-top:2px;">${esc(it.note)}</div>` : '')
+        + (it.evidence_url ? `<div class="hint" style="margin-top:2px;">🔗 <a href="${esc(it.evidence_url)}" target="_blank" rel="noopener">evidence</a></div>` : '');
+      return kv(`<span class="tag ${cls}">${esc(ans)}</span>`, `${esc(q)}${meta.ref ? ` <span class="hint">(${esc(meta.ref)})</span>` : ''}${extra}`);
+    }).join('');
+    const who = d && d.by ? `<p class="hint" style="margin:6px 0 0;">Recorded by ${esc(d.by)}${d.at ? ' · ' + esc(fmtWhen(d.at)) : ''}</p>` : '';
+    return box(rows) + who;
+  }
+  // compliance-contract
+  if (!d || !Object.keys(d).length) return '<p class="hint">Clears the compliance policy — no compliance controls will run for this dataset.</p>';
+  if (d.exempt) return '<p class="hint">Marks the dataset <strong>exempt</strong> (out of scope — holds no personal data, so no compliance controls run).</p>';
+  const fwLabels = { gdpr: 'GDPR', hipaa: 'HIPAA', ccpa: 'CCPA / CPRA', bcbs239: 'BCBS 239' };
+  const cols = d.columns || {};
+  const colLabels = { date: 'Retention date column', consent_flag: 'Consent / lawful-basis column', erasure_flag: 'Erasure / opt-out column', subject_id: 'Data-subject ID column (DSARs)' };
+  let rows = '';
+  rows += kv('Framework', esc(fwLabels[(d.framework || 'gdpr')] || d.framework || 'GDPR'));
+  if (d.retention_days) rows += kv('Retention limit', esc(d.retention_days) + ' days');
+  ['date', 'consent_flag', 'erasure_flag', 'subject_id'].forEach(k => { if (cols[k]) rows += kv(colLabels[k], `<code>${esc(cols[k])}</code>`); });
+  if ((cols.audit || []).length) rows += kv('Audit-trail columns', cols.audit.map(c => `<code>${esc(c)}</code>`).join(', '));
+  return box(rows);
 }
 async function decidePolicy(p, action) {
   if (!p) return;
