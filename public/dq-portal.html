@@ -1321,6 +1321,7 @@
     <div class="side-group">Run assessment</div>
     <button class="side-item sub" data-tab="upload"><span class="si-ico">📥</span>From a data source</button>
     <button class="side-item sub" data-tab="appdata"><span class="si-ico">🧮</span>From this app</button>
+    <button class="side-item sub" data-tab="tagrun"><span class="si-ico">🏷️</span>By tag</button>
 
     <div class="side-group">Monitor</div>
     <button class="side-item sub" data-tab="incidents"><span class="si-ico">🚨</span>Incidents <span class="tab-badge" id="incBadge" style="display:none;"></span></button>
@@ -2161,6 +2162,23 @@
   </div>
 
   <!-- ============ APP DATA ============ -->
+  <div id="tagrunPanel" style="display:none;">
+    <div class="tab-intro">
+      <h2>Assess by tag</h2>
+      <p>Run a data-quality assessment on <strong>every source dataset carrying a tag</strong> — Redshift, S3, Snowflake and the rest — together in a <strong>single</strong> task. Ideal for scoring a whole domain (e.g. <em>finance</em>) across all its sources at once. Qlik-app tables, uploaded files, and any dataset without a saved connection are skipped.</p>
+    </div>
+    <div class="card">
+      <label for="tagrunSel">Tag</label>
+      <select id="tagrunSel" style="max-width:360px;"></select>
+      <div class="hint" style="margin:6px 0 0;">Tags are added to datasets on the Overview tab.</div>
+      <div id="tagrunPreview" style="margin:14px 0;"></div>
+      <label for="tagrunEmail">Alert email <span class="hint" style="font-weight:400;">(optional)</span></label>
+      <input id="tagrunEmail" type="email" placeholder="Where to send this run's quality alerts" style="max-width:360px;" />
+      <div style="margin-top:14px;"><button id="tagrunGo">▶ Run assessment</button></div>
+      <div id="tagrunMsg" style="display:none;margin-top:14px;padding:10px 12px;border-radius:9px;font-size:13px;line-height:1.5;"></div>
+    </div>
+  </div>
+
   <div id="appDataPanel" style="display:none;">
     <div class="banner" id="appBanner"></div>
     <div class="tab-intro">
@@ -4145,9 +4163,7 @@ function renderDashFilters() {
     (dashOwnerSel && dashOwnerSel !== '__none__' ? `<button type="button" class="src-filter-chip active" data-ownerf="">👤 ${esc(dashOwnerSel)} ✕</button>` : '') + `</span>`;
   if (dashTagSel)
     html += `<span class="dash-filtgrp"><span class="hint">Tag:</span>` +
-      `<button type="button" class="src-filter-chip active" data-tagclear="1">🏷️ ${esc(dashTagSel)} ✕</button>` +
-      `<button type="button" class="src-filter-chip" data-runtag="1" data-tip="Assess every source dataset with this tag in one task">▶ Run all tagged</button>` +
-      `<button type="button" class="src-filter-chip" data-schedtag="1" data-tip="Schedule a recurring assessment of this tag">⏰ Schedule</button></span>`;
+      `<button type="button" class="src-filter-chip active" data-tagclear="1">🏷️ ${esc(dashTagSel)} ✕</button></span>`;
   if (dashDatasets.length)                         // export the estate summary as parquet
     html += `<span class="dash-filtgrp"><button type="button" class="src-filter-chip" data-exportall="1" data-tip="Download a parquet summary of all datasets">⬇ Export all (parquet)</button></span>`;
   wrap.innerHTML = html;
@@ -4158,33 +4174,11 @@ function renderDashFilters() {
   wrap.querySelectorAll('[data-ownerf]').forEach(b => b.addEventListener('click', () => { dashOwnerSel = b.dataset.ownerf; renderDashFilters(); refreshDatasetsTable(); }));
   const tc = wrap.querySelector('[data-tagclear]');
   if (tc) tc.addEventListener('click', () => { dashTagSel = ''; renderDashFilters(); refreshDatasetsTable(); });
-  const rt = wrap.querySelector('[data-runtag]');
-  if (rt) rt.addEventListener('click', () => runByTag(dashTagSel));
-  const stg = wrap.querySelector('[data-schedtag]');
-  if (stg) stg.addEventListener('click', () => scheduleTag(dashTagSel));
   const ea = wrap.querySelector('[data-exportall]');
   if (ea) ea.addEventListener('click', () => exportParquet('all', null, ea));
 }
 
-// --- Tag batch runs + parquet export (one ECS task for all tagged datasets) ---
-async function runByTag(tag) {
-  if (!APP_ID || !tag) return;
-  if (!confirm(`Assess every source dataset tagged "${tag}" in one task?`)) return;
-  try {
-    const r = await postJSON(`${API_BASE}/data-quality/run-by-tag`, HEADERS,
-      { app_id: APP_ID, tag: tag, notify_email: EMAIL || '' });
-    let msg = `Launched a batch assessment of ${r.launched} dataset(s) tagged "${tag}".`;
-    if (r.skipped && r.skipped.length)
-      msg += `\n\n${r.skipped.length} skipped (no saved connection, Qlik-app, or not re-runnable).`;
-    alert(msg + '\n\nResults will appear in History shortly.');
-  } catch (e) { alert('Could not run the tag: ' + (e && e.message || e)); }
-}
-function scheduleTag(tag) {
-  switchTab('schedules');
-  const sel = $('#schSourceKind');
-  if (sel) { sel.value = 'tag'; if (typeof schSourceUI === 'function') schSourceUI(); }
-  setTimeout(() => { const ts = $('#schTagSel'); if (ts && tag) ts.value = tag; }, 60);
-}
+// --- Parquet export (bulk estate summary or one dataset) ---
 async function exportParquet(scope, datasetKey, btn) {
   const orig = btn ? btn.textContent : null;
   if (btn) { btn.disabled = true; btn.textContent = 'Exporting…'; }
@@ -4208,6 +4202,69 @@ async function exportParquet(scope, datasetKey, btn) {
     }
   } catch (e) { alert('Could not export: ' + (e && e.message || e)); }
   finally { if (btn) { btn.disabled = false; btn.textContent = orig; } }
+}
+
+// --- "By tag" run tab: pick a tag, preview its datasets, run them all in one task ---
+async function initTagRun() {
+  if (!APP_ID) return;
+  if (!dashEntries || !Object.keys(dashEntries).length) { try { await loadDashEntries(); } catch (e) {} }
+  if (!dashDatasetsAll || !dashDatasetsAll.length) { try { await loadDashboard(); } catch (e) {} }
+  const sel = $('#tagrunSel'); if (!sel) return;
+  const cur = sel.value;
+  const tags = new Set();
+  for (const k in (dashEntries || {})) ((dashEntries[k] || {}).tags || []).forEach(t => tags.add(t));
+  const list = [...tags].sort();
+  sel.innerHTML = '';
+  if (!list.length) {
+    const o = document.createElement('option'); o.value = '';
+    o.textContent = '(no tags yet — add tags to datasets on the Overview tab first)'; sel.appendChild(o);
+  } else {
+    list.forEach(t => { const o = document.createElement('option'); o.value = t; o.textContent = t; if (t === cur) o.selected = true; sel.appendChild(o); });
+  }
+  const em = $('#tagrunEmail'); if (em && !em.value) em.value = EMAIL || '';
+  if (!sel._wired) { sel._wired = true; sel.addEventListener('change', renderTagRunPreview); }
+  const go = $('#tagrunGo'); if (go && !go._wired) { go._wired = true; go.addEventListener('click', runTagAssessment); }
+  renderTagRunPreview();
+}
+function renderTagRunPreview() {
+  const wrap = $('#tagrunPreview'); if (!wrap) return;
+  const tag = ($('#tagrunSel') && $('#tagrunSel').value) || '';
+  if (!tag) { wrap.innerHTML = ''; return; }
+  const keys = Object.keys(dashEntries || {}).filter(k => ((dashEntries[k] || {}).tags || []).includes(tag));
+  if (!keys.length) { wrap.innerHTML = `<p class="hint">No datasets carry the tag "${esc(tag)}" yet.</p>`; return; }
+  const byKey = {}; (dashDatasetsAll || []).forEach(d => byKey[d.key] = d);
+  let runnable = 0;
+  const rows = keys.map(k => {
+    const d = byKey[k];
+    const isSrc = d ? isSourceDataset(d) : false;
+    if (isSrc) runnable++;
+    const chip = d ? (isSrc ? sourceChip(d.sourceFormat) : sourceChip('qlik')) : '';
+    const note = isSrc ? '' : ` <span class="hint">— skipped (not a re-runnable source)</span>`;
+    return `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:13px;"><span>${esc(d ? d.name : k)}</span>${chip}${note}</div>`;
+  }).join('');
+  wrap.innerHTML = `<div class="hint" style="margin-bottom:6px;">${keys.length} dataset(s) tagged "${esc(tag)}" · ${runnable} runnable source dataset(s)</div>` +
+    `<div style="border:1px solid var(--border);border-radius:9px;padding:8px 12px;background:rgba(255,255,255,.02);max-height:260px;overflow:auto;">${rows}</div>`;
+}
+async function runTagAssessment() {
+  const tag = (($('#tagrunSel') && $('#tagrunSel').value) || '').trim();
+  if (!tag) { showTagMsg('err', 'Pick a tag to run.'); return; }
+  const go = $('#tagrunGo'); if (go) go.disabled = true;
+  try {
+    const email = (($('#tagrunEmail') && $('#tagrunEmail').value) || '').trim();
+    const r = await postJSON(`${API_BASE}/data-quality/run-by-tag`, HEADERS, { app_id: APP_ID, tag: tag, notify_email: email });
+    let m = `✅ Launched a single-task assessment of ${r.launched} dataset(s) tagged "${tag}".`;
+    if (r.skipped && r.skipped.length) m += ` ${r.skipped.length} skipped (no saved connection, Qlik-app, or not re-runnable).`;
+    m += ' Results will appear under History shortly.';
+    showTagMsg('ok', m);
+  } catch (e) { showTagMsg('err', 'Could not run: ' + (e && e.message || e)); }
+  finally { if (go) go.disabled = false; }
+}
+function showTagMsg(kind, text) {
+  const m = $('#tagrunMsg'); if (!m) return;
+  m.style.display = 'block'; m.textContent = text;
+  m.style.background = kind === 'ok' ? 'rgba(55,224,200,.10)' : 'rgba(255,107,125,.10)';
+  m.style.color = kind === 'ok' ? '#c9fff4' : '#ffd5db';
+  m.style.border = '1px solid ' + (kind === 'ok' ? 'rgba(55,224,200,.35)' : 'rgba(255,107,125,.35)');
 }
 
 function wireDashControls() {
@@ -8467,6 +8524,7 @@ function switchTab(name) {
   $('#uploadPanel').style.display = name === 'upload' ? 'block' : 'none';
   $('#historyPanel').style.display = name === 'history' ? 'block' : 'none';
   $('#appDataPanel').style.display = name === 'appdata' ? 'block' : 'none';
+  $('#tagrunPanel').style.display = name === 'tagrun' ? 'block' : 'none';
   $('#schedulePanel').style.display = name === 'schedules' ? 'block' : 'none';
   $('#modelPanel').style.display = name === 'model' ? 'block' : 'none';
   $('#dashboardPanel').style.display = name === 'dashboard' ? 'block' : 'none';
@@ -8486,6 +8544,7 @@ function switchTab(name) {
   if (name === 'lineage') loadLineage();
   if (name === 'model') loadModel();
   if (name === 'history') setHistorySub(PORTAL ? 'dataset' : 'app');   // portal has no Qlik full-app view
+  if (name === 'tagrun') initTagRun();
   if (name === 'dashboard') { loadDashboard(); refreshIncBadge(); }
   if (name === 'medallion') loadMedallion();
   if (name === 'schedules') {
