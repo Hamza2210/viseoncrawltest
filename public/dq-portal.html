@@ -4079,7 +4079,9 @@ const TRUST_META = {
 function _nowIso() { return new Date().toISOString(); }
 // A read-only badge (empty when no flag) — carries the note + who/when in its tooltip.
 function trustBadge(key) {
-  if (!IS_PORTAL_ADMIN) return '';                 // trust is admin-only in the portal
+  // Visible to EVERYONE including portal members: a member who submitted a run for approval needs to
+  // see the verdict. It is read-only by construction (trustMenu is the only way to change it, and the
+  // API refuses member writes). `trustBy` is stripped server-side for members, so `who` stays empty.
   const e = entryFor(key), m = TRUST_META[e.trust]; if (!m) return '';
   const who = e.trustBy ? ` by ${e.trustBy}` : '', when = e.trustAt ? ` · ${fmtWhen(e.trustAt)}` : '';
   const note = e.trustNote ? ` — “${e.trustNote}”` : '';
@@ -4124,9 +4126,13 @@ function updateDetailTrust(key) {
   const el = $('#dashDetailHint'); if (!el) return;
   const prefix = dashSelected && dashSelected.prefix;
   // Admins (and Qlik) get the trust menu; portal members get a Submit-for-approval action.
+  const _tb = trustBadge(key);
   const govPart = IS_PORTAL_ADMIN
-    ? `<span class="detail-gov"><span class="hint">Trust</span>${trustMenu(key)}${trustBadge(key) ? ' ' + trustBadge(key) : ''}</span>`
-    : (PORTAL && prefix ? `<span class="detail-gov"><button class="btn-sm" id="dsSubmitApproval" data-tip="Send this run to your admins for approval">Submit for approval</button></span>` : '');
+    ? `<span class="detail-gov"><span class="hint">Trust</span>${trustMenu(key)}${_tb ? ' ' + _tb : ''}</span>`
+    // Members: the verdict read-only (once an admin has ruled), plus their submit action. Seeing
+    // "Endorsed"/"Caution" here is how they learn their submitted run was responded to.
+    : (PORTAL ? `<span class="detail-gov">${_tb ? `<span class="hint">Trust</span>${_tb}` : ''}${
+        prefix ? `<button class="btn-sm" id="dsSubmitApproval" data-tip="Send this run to your admins for approval">Submit for approval</button>` : ''}</span>` : '');
   el.innerHTML = govPart +
     `<span class="detail-gov"><span class="hint">Owner</span>${ownerChip(key)}</span>` +
     `<span class="detail-gov"><span class="hint">Stage</span>${medalCell(key)}</span>` +
@@ -4182,10 +4188,11 @@ function renderDashFilters() {
   html += `<span class="dash-filtgrp"><span class="hint">Stage:</span>` +
     chip('data-stagef', '', 'All', !dashStageSel) +
     MEDALLIONS.map(m => chip('data-stagef', m, MEDAL_LABEL[m], dashStageSel === m)).join('') + `</span>`;
-  if (IS_PORTAL_ADMIN)   // trust is admin-only in the portal — don't expose the trust filter to members
-    html += `<span class="dash-filtgrp"><span class="hint">Trust:</span>` +
-      chip('data-trustf', '', 'All', !dashTrustSel) +
-      TRUST_LEVELS.map(t => chip('data-trustf', t, TRUST_META[t].label, dashTrustSel === t, TRUST_META[t].icon + ' ')).join('') + `</span>`;
+  // Members see the Trust column read-only, so the filter comes with it — it's a purely client-side
+  // view filter over data they already have, and it grants no ability to change a verdict.
+  html += `<span class="dash-filtgrp"><span class="hint">Trust:</span>` +
+    chip('data-trustf', '', 'All', !dashTrustSel) +
+    TRUST_LEVELS.map(t => chip('data-trustf', t, TRUST_META[t].label, dashTrustSel === t, TRUST_META[t].icon + ' ')).join('') + `</span>`;
   html += `<span class="dash-filtgrp"><span class="hint">Owner:</span>` +
     chip('data-ownerf', '', 'All', !dashOwnerSel) +
     chip('data-ownerf', '__none__', 'Unowned', dashOwnerSel === '__none__', '⚠ ') +
@@ -4685,13 +4692,13 @@ function renderHealthTable(datasets) {
         <td>${numInt(d.rows)}</td>
         <td class="dash-muted">${esc(age)}</td>
         <td>${spark}</td>
-        ${IS_PORTAL_ADMIN ? `<td>${trustMenu(d.key)}</td>` : ''}
+        <td>${IS_PORTAL_ADMIN ? trustMenu(d.key) : (trustBadge(d.key) || '<span class="dash-muted">—</span>')}</td>
         <td><button class="btn-sm" data-rerun="${esc(d.name)}" data-fmt="${esc(d.sourceFormat || '')}" data-prefix="${esc(d.resultPrefix || '')}" data-tip="Re-assess this dataset">↻ Re-run</button></td>
       </tr>`;
   }).join('');
   $('#dashTableWrap').innerHTML =
     `<table class="dash-table"><tr><th>Dataset</th><th>Score</th><th>Gate</th>` +
-    `<th>Rows</th><th>Last run</th><th>Trend (${dashWindowDays}d)</th>${IS_PORTAL_ADMIN ? '<th data-tip="Certification: endorse, caution or deprecate this dataset for consumers">Trust</th>' : ''}` +
+    `<th>Rows</th><th>Last run</th><th>Trend (${dashWindowDays}d)</th><th data-tip="${IS_PORTAL_ADMIN ? 'Certification: endorse, caution or deprecate this dataset for consumers' : 'Certification set by your admins — read-only'}">Trust</th>` +
     `<th></th></tr>${rows}</table>`;
   $('#dashTableWrap').querySelectorAll('.dash-row').forEach(tr =>
     tr.addEventListener('click', () => {
@@ -9057,7 +9064,7 @@ function _galaxyHover(e) {
   dom.style.cursor = 'pointer';
   tip.innerHTML = `<div class="gt-name">${esc(orb.name)}</div>Score ${orb.score == null ? '—' : num1(orb.score)} · ${esc(orb.status || '—')}` +
     `${orb.stage ? ` · ${esc(MEDAL_LABEL[orb.stage] || orb.stage)}` : ''}<br>${numInt(orb.rows)} rows` +
-    `${IS_PORTAL_ADMIN && orb.trust && TRUST_META[orb.trust] ? `<br>${TRUST_META[orb.trust].icon} ${TRUST_META[orb.trust].label}` : ''}` +
+    `${orb.trust && TRUST_META[orb.trust] ? `<br>${TRUST_META[orb.trust].icon} ${TRUST_META[orb.trust].label}` : ''}` +
     `${orb.owner ? `<br>👤 ${esc(orb.owner)}` : ''}`;
   tip.style.display = '';
   let lx = e.clientX - wr.left + 14, ly = e.clientY - wr.top + 14;
