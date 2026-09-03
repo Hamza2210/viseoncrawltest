@@ -2170,13 +2170,15 @@
     <div class="card">
       <label for="tagrunSel">Tag</label>
       <select id="tagrunSel" style="max-width:360px;"></select>
-      <div class="hint" style="margin:6px 0 0;">Tags are added to datasets on the Overview tab.</div>
+      <div class="hint" style="margin:8px 0 0;">🔑 Each dataset is assessed using its <strong>stored credential profile</strong>. A dataset with <strong>no saved credentials won't run</strong> — it'll be listed below with the reason. Qlik-app tables and uploaded files are also skipped. Tags are added on the Overview tab.</div>
       <div id="tagrunPreview" style="margin:14px 0;"></div>
       <label for="tagrunEmail">Alert email <span class="hint" style="font-weight:400;">(optional)</span></label>
       <input id="tagrunEmail" type="email" placeholder="Where to send this run's quality alerts" style="max-width:360px;" />
       <div style="margin-top:14px;"><button id="tagrunGo">▶ Run assessment</button></div>
       <div id="tagrunMsg" style="display:none;margin-top:14px;padding:10px 12px;border-radius:9px;font-size:13px;line-height:1.5;"></div>
     </div>
+    <div id="tagrunSkipped" style="display:none;margin-top:14px;padding:11px 14px;border-radius:10px;background:rgba(255,193,7,.08);border:1px solid rgba(255,193,7,.28);font-size:13px;line-height:1.6;"></div>
+    <div id="tagrunResults" class="card" style="display:none;margin-top:16px;"><div id="tagrunResultsBody"></div></div>
   </div>
 
   <div id="appDataPanel" style="display:none;">
@@ -4228,6 +4230,10 @@ async function initTagRun() {
 }
 function renderTagRunPreview() {
   const wrap = $('#tagrunPreview'); if (!wrap) return;
+  // Clear any previous run's output when the tag changes.
+  const res = $('#tagrunResults'); if (res) res.style.display = 'none';
+  const sk = $('#tagrunSkipped'); if (sk) { sk.style.display = 'none'; sk.innerHTML = ''; }
+  const msg = $('#tagrunMsg'); if (msg) msg.style.display = 'none';
   const tag = ($('#tagrunSel') && $('#tagrunSel').value) || '';
   if (!tag) { wrap.innerHTML = ''; return; }
   const keys = Object.keys(dashEntries || {}).filter(k => ((dashEntries[k] || {}).tags || []).includes(tag));
@@ -4248,16 +4254,78 @@ function renderTagRunPreview() {
 async function runTagAssessment() {
   const tag = (($('#tagrunSel') && $('#tagrunSel').value) || '').trim();
   if (!tag) { showTagMsg('err', 'Pick a tag to run.'); return; }
-  const go = $('#tagrunGo'); if (go) go.disabled = true;
+  const go = $('#tagrunGo'); if (go) { go.disabled = true; go.innerHTML = '<span class="spin"></span>Launching…'; }
+  const byKey = {}; (dashDatasetsAll || []).forEach(d => byKey[d.key] = d);
   try {
     const email = (($('#tagrunEmail') && $('#tagrunEmail').value) || '').trim();
     const r = await postJSON(`${API_BASE}/data-quality/run-by-tag`, HEADERS, { app_id: APP_ID, tag: tag, notify_email: email });
-    let m = `✅ Launched a single-task assessment of ${r.launched} dataset(s) tagged "${tag}".`;
-    if (r.skipped && r.skipped.length) m += ` ${r.skipped.length} skipped (no saved connection, Qlik-app, or not re-runnable).`;
-    m += ' Results will appear under History shortly.';
-    showTagMsg('ok', m);
+    renderTagSkipped(r.skipped, byKey);          // name each skipped dataset + why
+    const launched = (r.launched || []).map(x => ({
+      dataset_key: x.dataset_key, resultPrefix: x.resultPrefix,
+      name: (byKey[x.dataset_key] && byKey[x.dataset_key].name) || (x.dataset_key || '').split('/').pop(),
+    }));
+    if (!launched.length) {
+      $('#tagrunResults').style.display = 'none';
+      showTagMsg('info', `No datasets could run for "${tag}" — see the skipped list below.`);
+      return;
+    }
+    showTagMsg('ok', `Assessing ${launched.length} dataset(s) tagged "${tag}" in one task…`);
+    await renderTagResults(launched);            // live animation + tabbed results, like the other tabs
   } catch (e) { showTagMsg('err', 'Could not run: ' + (e && e.message || e)); }
-  finally { if (go) go.disabled = false; }
+  finally { if (go) { go.disabled = false; go.textContent = '▶ Run assessment'; } }
+}
+async function renderTagResults(launched) {
+  const wrap = $('#tagrunResults'), body = $('#tagrunResultsBody');
+  wrap.style.display = 'block';
+  const total = launched.length; let done = 0;
+  const showRunning = () => { body.innerHTML = dqLoader('Running assessment',
+    `${done} of ${total} dataset${total === 1 ? '' : 's'} assessed — scoring against the 9 DAMA quality dimensions.`); };
+  showRunning();
+  const results = await Promise.all(launched.map(d =>
+    pollResult(d.resultPrefix).then(r => { done++; showRunning(); return r; })));
+  // All done: one vertical tab per dataset, each rendered exactly like a single run.
+  let tabs = '', panels = '';
+  launched.forEach((d, i) => {
+    const on = i === 0 ? ' active' : '';
+    tabs += `<button class="apptab${on}" data-target="${i}"></button>`;
+    panels += `<div class="apppanel${on}" id="tagpanel_${i}"><div id="tagres_${i}"></div></div>`;
+  });
+  body.innerHTML = `<div class="apptabs"><div class="apptablist">${tabs}</div><div class="apppanels">${panels}</div></div>`;
+  const btns = [...body.querySelectorAll('.apptab')];
+  btns.forEach(btn => { btn.textContent = launched[+btn.getAttribute('data-target')].name; });
+  btns.forEach(btn => btn.addEventListener('click', () => {
+    btns.forEach(b => b.classList.toggle('active', b === btn));
+    body.querySelectorAll('.apppanel').forEach(p => p.classList.remove('active'));
+    body.querySelector('#tagpanel_' + btn.getAttribute('data-target')).classList.add('active');
+  }));
+  results.forEach((r, i) => {
+    if (r) renderAssessment(r, $('#tagres_' + i), { context: 'app', lazyRecords: true });
+    else $('#tagres_' + i).innerHTML = '<p class="hint">No result for this dataset.</p>';
+  });
+  showTagMsg('ok', `Assessment complete — ${total} dataset(s) tagged.`);
+  if (typeof scheduleComplianceRefresh === 'function') scheduleComplianceRefresh();
+}
+function tagSkipReason(s) {
+  const map = {
+    no_prior_run: 'never assessed on its own yet — run it once first so its connection is known',
+    qlik_needs_live_bearer: 'a Qlik-app table (needs the live extension, not a saved connection)',
+    not_a_rerunnable_source: 'not a re-runnable source',
+    no_saved_credentials: `no saved credentials for its ${(s && s.source) || 'source'} connection`,
+    incomplete_credentials: 'its saved credentials are missing required fields',
+  };
+  return (s && map[s.reason]) || (s && s.reason) || 'not runnable';
+}
+function renderTagSkipped(skipped, byKey) {
+  const el = $('#tagrunSkipped'); if (!el) return;
+  if (!skipped || !skipped.length) { el.style.display = 'none'; el.innerHTML = ''; return; }
+  byKey = byKey || {};
+  const rows = skipped.map(s => {
+    const name = (byKey[s.dataset_key] && byKey[s.dataset_key].name) || (s.dataset_key || '').split('/').pop() || s.dataset_key;
+    return `<li><strong>${esc(name)}</strong> — ${esc(tagSkipReason(s))}</li>`;
+  }).join('');
+  el.style.display = 'block';
+  el.innerHTML = `<div style="margin-bottom:4px;font-weight:600;">⚠ ${skipped.length} dataset(s) skipped:</div>` +
+    `<ul style="margin:0;padding-left:18px;">${rows}</ul>`;
 }
 function showTagMsg(kind, text) {
   const m = $('#tagrunMsg'); if (!m) return;
