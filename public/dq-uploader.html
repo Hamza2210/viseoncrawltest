@@ -50,9 +50,28 @@
   body.portal #dashScopeToggle,
   body.portal #incScopeToggle,
   body.portal #cmpScopeToggle { display: none !important; }
+  body.portal #historySubtabs { display: none !important; }   /* no Qlik full-app view in the portal */
   #portalShell { display: none; align-items: center; gap: 12px; margin: 0 0 10px; }
   body.portal #portalShell { display: flex; }
   #portalShell .pu-email { color: var(--muted); font-size: 13px; }
+  #portalAdminBtn { display: none; position: fixed; top: 14px; right: 22px; z-index: 60;
+    align-items: center; gap: 6px; padding: 7px 14px; border-radius: 9px; text-decoration: none;
+    font-size: 13px; font-weight: 600; color: var(--muted); border: 1px solid var(--border);
+    background: rgba(255,255,255,.03); }
+  #portalAdminBtn:hover { color: #fff; border-color: var(--muted); }
+  body.portal-admin #portalAdminBtn { display: inline-flex; }
+  #portalOrgSwitchWrap { display: none; align-items: center; gap: 8px; }
+  body.portal-super #portalShell #portalOrgSwitchWrap { display: inline-flex; }
+  #portalOrgSwitchWrap .pos-label { color: var(--muted); font-size: 10px; font-weight: 700;
+    letter-spacing: .08em; text-transform: uppercase; white-space: nowrap; }
+  #portalOrgSwitch { min-width: 230px; max-width: 360px; padding: 9px 34px 9px 13px; border-radius: 9px;
+    border: 1px solid #5b8cff; background-color: #14213f; color: #eaf0ff; font-size: 13.5px; font-weight: 600;
+    cursor: pointer; appearance: none; -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23aecbff' d='M6 8.5 1.5 4h9z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 12px center; }
+  #portalOrgSwitch:hover { border-color: #7aa2ff; background-color: #182a52; }
+  #portalOrgSwitch:focus { outline: none; border-color: #7aa2ff; box-shadow: 0 0 0 3px rgba(91,140,255,.25); }
+  #portalOrgSwitch option { background: #0e1830; color: #eaf0ff; font-weight: 500; padding: 6px; }
   .side-nav { display: flex; flex-direction: column; gap: 2px; }
   .side-group { color: var(--muted); font-size: 10px; font-weight: 700; letter-spacing: .08em;
     text-transform: uppercase; padding: 14px 8px 4px; }
@@ -1313,6 +1332,8 @@
 
     <div class="side-group">Records</div>
     <button class="side-item sub" data-tab="history"><span class="si-ico">📜</span>Assessment history</button>
+
+    <button class="side-item" data-tab="profile" id="profileNav" style="display:none"><span class="si-ico">👤</span>Profile</button>
   </nav>
 </aside>
 <div class="wrap">
@@ -1321,8 +1342,12 @@
   <p class="sub" id="ctx"></p>
   <div id="portalShell">
     <span class="pu-email" id="portalUserEmail"></span>
-    <button type="button" class="btn-sm" id="portalLogout">Log out</button>
+    <label id="portalOrgSwitchWrap">
+      <span class="pos-label">Viewing org</span>
+      <select id="portalOrgSwitch" title="Switch which organisation's data you're viewing"></select>
+    </label>
   </div>
+  <a id="portalAdminBtn" href="#" target="_blank" rel="noopener">⚙ Admin portal</a>
 
   <!-- ============ UPLOAD ============ -->
   <div id="uploadPanel">
@@ -1338,13 +1363,6 @@
     <div id="sourcePicker">
       <input type="search" id="srcSearch" class="src-search" placeholder="🔎 Search data sources…" autocomplete="off">
       <div class="source-gallery">
-        <div class="src-cat">
-          <div class="src-cat-hd">Files</div>
-          <div class="src-grid">
-            <button type="button" class="source-card active" data-source="file"><span class="src-ico">📄</span><span class="sc-name">File upload</span><span class="src-tag">Ready</span></button>
-            <button type="button" class="source-card" data-source="excel"><span class="src-ico" data-ico="excel"></span><span class="sc-name">Excel (.xlsx)</span><span class="src-tag betatag">Beta</span></button>
-          </div>
-        </div>
         <div class="src-cat">
           <div class="src-cat-hd">Cloud warehouses</div>
           <div class="src-grid">
@@ -1372,6 +1390,13 @@
             <button type="button" class="source-card" data-source="azureblob"><span class="src-ico" data-ico="azureblob"></span><span class="sc-name">Azure Blob / ADLS</span><span class="src-tag betatag">Beta</span></button>
           </div>
         </div>
+        <div class="src-cat">
+          <div class="src-cat-hd">Files</div>
+          <div class="src-grid">
+            <button type="button" class="source-card active" data-source="file"><span class="src-ico">📄</span><span class="sc-name">Local File</span><span class="src-tag">Ready</span></button>
+            <button type="button" class="source-card" data-source="excel"><span class="src-ico" data-ico="excel"></span><span class="sc-name">Excel (.xlsx)</span><span class="src-tag betatag">Beta</span></button>
+          </div>
+        </div>
       </div>
     </div><!-- /#sourcePicker -->
 
@@ -1383,7 +1408,7 @@
         <div class="card">
       <h2 id="fileCardTitle">Dataset</h2>
       <p class="src-note" id="excelIntro" style="display:none;">Upload a spreadsheet (<code>.xlsx</code> / <code>.xlsm</code>) straight from your computer — no SharePoint or database needed. We read <strong>one worksheet</strong> (the first, or one you name), infer data-quality rules from it, and score it across the DAMA dimensions just like any other dataset. If your workbook has several tabs, pick which one to assess below.</p>
-      <input type="file" id="file" accept=".parquet,.pq,.json,.ndjson,.jsonl,.qvd,.csv,.tsv,.xlsx,.xlsm" />
+      <input type="file" id="file" accept=".parquet,.pq,.json,.ndjson,.jsonl,.qvd,.csv,.tsv,.xlsx,.xlsm,.qsf,.qvf" />
       <div class="fileinfo" id="fileinfo">No file selected.</div>
       <div id="excelSheetWrap" style="display:none;margin:2px 0 12px;">
         <label for="excelSheet">Worksheet <span class="hint">(optional)</span></label>
@@ -1736,11 +1761,32 @@
 
   </div>
 
+  <!-- ============ PROFILE (portal only) ============ -->
+  <div id="profilePanel" style="display:none;">
+    <div class="tab-intro">
+      <h2>Profile</h2>
+      <p>Your portal account details.</p>
+    </div>
+    <div style="max-width:560px;border:1px solid var(--border);border-radius:14px;padding:20px 22px;background:rgba(255,255,255,.02);">
+      <div style="display:flex;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--border);">
+        <span style="color:var(--muted);font-size:13px;">Username</span><span id="profUsername" style="font-size:14px;">—</span></div>
+      <div style="display:flex;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--border);">
+        <span style="color:var(--muted);font-size:13px;">Organisation</span><span id="profOrg" style="font-size:14px;">—</span></div>
+      <div style="display:flex;justify-content:space-between;padding:11px 0;">
+        <span style="color:var(--muted);font-size:13px;">Role</span><span id="profRole" style="font-size:14px;text-transform:capitalize;">—</span></div>
+      <div style="margin-top:20px;display:flex;gap:10px;flex-wrap:wrap;">
+        <button type="button" class="btn-sm" id="profResetBtn">Reset password</button>
+        <button type="button" class="btn-sm" id="portalLogout">Log out</button>
+      </div>
+      <div id="profResetMsg" style="margin-top:12px;font-size:13px;color:var(--muted);display:none;"></div>
+    </div>
+  </div>
+
   <!-- ============ HISTORY ============ -->
   <div id="historyPanel">
     <div class="tab-intro">
       <h2>History</h2>
-      <p>Every assessment you've run, full-app health checks and individual dataset runs. Open any run to see its full report.</p>
+      <p id="historyIntro">Every assessment you've run, full-app health checks and individual dataset runs. Open any run to see its full report.</p>
     </div>
     <div class="subtabs" id="historySubtabs">
       <button class="subtab active" data-hsub="app">Full app assessments</button>
@@ -2341,7 +2387,7 @@ function _applyFileMode(isExcel) {
   const intro = $('#excelIntro'); if (intro) intro.style.display = isExcel ? 'block' : 'none';
   const title = $('#fileCardTitle'); if (title) title.textContent = isExcel ? 'Excel workbook' : 'Dataset';
   if (fileInput) fileInput.setAttribute('accept', isExcel ? '.xlsx,.xlsm'
-    : '.parquet,.pq,.json,.ndjson,.jsonl,.qvd,.csv,.tsv,.xlsx,.xlsm');
+    : '.parquet,.pq,.json,.ndjson,.jsonl,.qvd,.csv,.tsv,.xlsx,.xlsm,.qsf,.qvf');
   refreshFile();
 }
 function refreshFile() {
@@ -3460,9 +3506,10 @@ function renderHistoryPage() {
     { n: Math.round(passes / historyRuns.length * 100) + '%', l: 'Passed gate', tip: GATE_TIP },
   ]) : '';
   if (!historyRuns.length) {
+    const ctaLabel = PORTAL ? 'Assess a data source →' : 'Assess this app\'s data →';
     list.innerHTML = '<p class="dash-muted" style="margin:0;">No runs yet — assessments you run will appear here.</p>'
-      + (APP_ID ? ' <button id="histAssessCta" style="margin-top:12px;">Assess this app\'s data →</button>' : '');
-    const c = $('#histAssessCta'); if (c) c.addEventListener('click', () => switchTab('appdata'));
+      + (APP_ID ? ' <button id="histAssessCta" style="margin-top:12px;">' + ctaLabel + '</button>' : '');
+    const c = $('#histAssessCta'); if (c) c.addEventListener('click', () => switchTab(PORTAL ? 'upload' : 'appdata'));
     pager.innerHTML = ''; return;
   }
   const pages = Math.ceil(historyRuns.length / PAGE_SIZE);
@@ -4257,11 +4304,11 @@ function renderTiles(t) {
 function renderHealthTable(datasets) {
   if (!datasets.length) {
     $('#dashTableWrap').innerHTML =
-      `<p class="dash-muted" style="margin:0 0 12px;">No assessments yet for this app.</p>` +
-      `<button id="dashAssessCta">Assess this app's data →</button>` +
+      `<p class="dash-muted" style="margin:0 0 12px;">${PORTAL ? 'No assessments yet.' : 'No assessments yet for this app.'}</p>` +
+      `<button id="dashAssessCta">${PORTAL ? 'Assess a data source →' : "Assess this app's data →"}</button>` +
       `<p class="hint" style="margin:12px 0 0;">Then return here to monitor scores, dimensions and trends over time.</p>`;
     const cta = $('#dashAssessCta');
-    if (cta) cta.addEventListener('click', () => switchTab('appdata'));
+    if (cta) cta.addEventListener('click', () => switchTab(PORTAL ? 'upload' : 'appdata'));
     return;
   }
   const rows = datasets.map(d => {
@@ -8362,6 +8409,7 @@ function switchTab(name) {
   $('#incidentsPanel').style.display = name === 'incidents' ? 'block' : 'none';
   $('#complianceTab').style.display = name === 'compliance' ? 'block' : 'none';
   $('#lineagePanel').style.display = name === 'lineage' ? 'block' : 'none';
+  $('#profilePanel').style.display = name === 'profile' ? 'block' : 'none';
   // Wide, full-width tabs vs the narrow centered form column.
   const wrapEl = document.querySelector('.wrap');
   if (wrapEl) wrapEl.classList.add('wide');   // every tab now uses the full width
@@ -8372,7 +8420,7 @@ function switchTab(name) {
   if (name === 'compliance') loadComplianceEstate();
   if (name === 'lineage') loadLineage();
   if (name === 'model') loadModel();
-  if (name === 'history') setHistorySub('app');   // Full app assessments is the default subtab
+  if (name === 'history') setHistorySub(PORTAL ? 'dataset' : 'app');   // portal has no Qlik full-app view
   if (name === 'dashboard') { loadDashboard(); refreshIncBadge(); }
   if (name === 'medallion') loadMedallion();
   if (name === 'schedules') {
@@ -8397,12 +8445,44 @@ function applyMode() {
   if (qlikOpt) qlikOpt.remove();
   const lo = $('#portalLogout');
   if (lo && !lo._wired) { lo._wired = true; lo.addEventListener('click', () => { location.href = `${API_BASE}/portal/auth/logout`; }); }
+  const pn = $('#profileNav'); if (pn) pn.style.display = '';   // reveal the Profile tab
+  const hi = $('#historyIntro'); if (hi) hi.textContent = "Every assessment you've run. Open any run to see its full report.";
 }
 function startCommon() {
   switchTab('dashboard');                       // Dashboard is the landing tab; sync the panels + wide layout on load
   refreshBlockerBar();                          // show open blockers immediately, on every tab
   setInterval(refreshBlockerBar, 60000);        // keep the always-visible bar current
 }
+// Super-admin org switcher: populate from all orgs, and on change ask the server to
+// switch the active org (server-side tenant), then reload so every tab re-fetches
+// under the newly-selected org. Only ever reached for super-admins.
+async function bootOrgSwitcher(activeOrgId) {
+  document.body.classList.add('portal-super');
+  const sel = $('#portalOrgSwitch'); if (!sel) return;
+  try {
+    const r = await (await fetch(`${API_BASE}/portal/admin/orgs`, { credentials: 'include' })).json();
+    const orgs = (r && r.orgs) || [];
+    sel.innerHTML = '';
+    orgs.forEach(o => {
+      const opt = document.createElement('option');
+      opt.value = o.org_id;
+      opt.textContent = o.name || o.org_id;              // textContent → XSS-safe
+      if (o.org_id === activeOrgId) opt.selected = true;
+      sel.appendChild(opt);
+    });
+    if (!sel._wired) {
+      sel._wired = true;
+      sel.addEventListener('change', async () => {
+        sel.disabled = true;
+        try {
+          await postJSON(`${API_BASE}/portal/auth/switch-org`, {}, { org_id: sel.value });   // (url, headers, body)
+          location.reload();          // re-fetch every tab under the newly-selected org's tenant
+        } catch (e) { sel.disabled = false; }
+      });
+    }
+  } catch (e) { /* leave the switcher empty; not fatal */ }
+}
+
 // Portal: resolve the session first (server holds the key + tenant), then boot; no
 // session -> Auth0 login. Qlik mode boots synchronously, exactly as before.
 async function bootPortal() {
@@ -8413,8 +8493,31 @@ async function bootPortal() {
   EMAIL  = me.user.email || '';
   APP_ID = me.user.workspace_id || '';
   applyMode();
+  if ((me.user.role || '').toLowerCase() === 'admin' || me.user.is_super) {   // admins + super-admins get the admin-portal button
+    document.body.classList.add('portal-admin');
+    const ab = $('#portalAdminBtn'); if (ab) ab.href = location.origin + '/dq-portal-admin';
+  }
+  if (me.user.is_super) { await bootOrgSwitcher(me.user.active_org_id || me.user.org_id); }   // super-admin org switcher
   const ue = $('#portalUserEmail'); if (ue) ue.textContent = EMAIL;
   const cx = $('#ctx'); if (cx) cx.textContent = me.user.org_name ? ('Workspace: ' + me.user.org_name) : '';
+  // Profile tab fields + reset-password button
+  const pU = $('#profUsername'); if (pU) pU.textContent = EMAIL || '—';
+  const pO = $('#profOrg'); if (pO) pO.textContent = me.user.home_org_name || me.user.org_name || me.user.org_id || '—';
+  const pR = $('#profRole'); if (pR) pR.textContent = me.user.is_super ? 'Super Admin' : (me.user.role || 'member');
+  const rb = $('#profResetBtn');
+  if (rb && !rb._wired) {
+    rb._wired = true;
+    rb.addEventListener('click', async () => {
+      rb.disabled = true;
+      const msg = $('#profResetMsg');
+      try {
+        const r = await postJSON(`${API_BASE}/portal/auth/reset-password`, {}, {});
+        if (msg) { msg.style.display = 'block'; msg.textContent = (r && r.message) || "We've emailed you a link to reset your password — follow it to set a new one."; }
+      } catch (e) {
+        if (msg) { msg.style.display = 'block'; msg.textContent = 'Could not start a reset right now — please try again.'; }
+      } finally { rb.disabled = false; }
+    });
+  }
   startCommon();
 }
 if (PORTAL) { bootPortal(); } else { startCommon(); }

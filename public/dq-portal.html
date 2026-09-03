@@ -1365,13 +1365,6 @@
       <input type="search" id="srcSearch" class="src-search" placeholder="🔎 Search data sources…" autocomplete="off">
       <div class="source-gallery">
         <div class="src-cat">
-          <div class="src-cat-hd">Files</div>
-          <div class="src-grid">
-            <button type="button" class="source-card active" data-source="file"><span class="src-ico">📄</span><span class="sc-name">File upload</span><span class="src-tag">Ready</span></button>
-            <button type="button" class="source-card" data-source="excel"><span class="src-ico" data-ico="excel"></span><span class="sc-name">Excel (.xlsx)</span><span class="src-tag betatag">Beta</span></button>
-          </div>
-        </div>
-        <div class="src-cat">
           <div class="src-cat-hd">Cloud warehouses</div>
           <div class="src-grid">
             <button type="button" class="source-card" data-source="redshift"><span class="src-ico" data-ico="redshift"></span><span class="sc-name">Amazon Redshift</span><span class="src-tag betatag">Beta</span></button>
@@ -1398,6 +1391,13 @@
             <button type="button" class="source-card" data-source="azureblob"><span class="src-ico" data-ico="azureblob"></span><span class="sc-name">Azure Blob / ADLS</span><span class="src-tag betatag">Beta</span></button>
           </div>
         </div>
+        <div class="src-cat">
+          <div class="src-cat-hd">Files</div>
+          <div class="src-grid">
+            <button type="button" class="source-card active" data-source="file"><span class="src-ico">📄</span><span class="sc-name">Local File</span><span class="src-tag">Ready</span></button>
+            <button type="button" class="source-card" data-source="excel"><span class="src-ico" data-ico="excel"></span><span class="sc-name">Excel (.xlsx)</span><span class="src-tag betatag">Beta</span></button>
+          </div>
+        </div>
       </div>
     </div><!-- /#sourcePicker -->
 
@@ -1409,7 +1409,7 @@
         <div class="card">
       <h2 id="fileCardTitle">Dataset</h2>
       <p class="src-note" id="excelIntro" style="display:none;">Upload a spreadsheet (<code>.xlsx</code> / <code>.xlsm</code>) straight from your computer — no SharePoint or database needed. We read <strong>one worksheet</strong> (the first, or one you name), infer data-quality rules from it, and score it across the DAMA dimensions just like any other dataset. If your workbook has several tabs, pick which one to assess below.</p>
-      <input type="file" id="file" accept=".parquet,.pq,.json,.ndjson,.jsonl,.qvd,.csv,.tsv,.xlsx,.xlsm" />
+      <input type="file" id="file" accept=".parquet,.pq,.json,.ndjson,.jsonl,.qvd,.csv,.tsv,.xlsx,.xlsm,.qsf,.qvf" />
       <div class="fileinfo" id="fileinfo">No file selected.</div>
       <div id="excelSheetWrap" style="display:none;margin:2px 0 12px;">
         <label for="excelSheet">Worksheet <span class="hint">(optional)</span></label>
@@ -2388,7 +2388,7 @@ function _applyFileMode(isExcel) {
   const intro = $('#excelIntro'); if (intro) intro.style.display = isExcel ? 'block' : 'none';
   const title = $('#fileCardTitle'); if (title) title.textContent = isExcel ? 'Excel workbook' : 'Dataset';
   if (fileInput) fileInput.setAttribute('accept', isExcel ? '.xlsx,.xlsm'
-    : '.parquet,.pq,.json,.ndjson,.jsonl,.qvd,.csv,.tsv,.xlsx,.xlsm');
+    : '.parquet,.pq,.json,.ndjson,.jsonl,.qvd,.csv,.tsv,.xlsx,.xlsm,.qsf,.qvf');
   refreshFile();
 }
 function refreshFile() {
