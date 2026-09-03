@@ -4192,7 +4192,20 @@ async function exportParquet(scope, datasetKey, btn) {
     const body = { scope: scope, app_id: APP_ID || null };
     if (scope === 'dataset') body.dataset_key = datasetKey;
     const r = await postJSON(`${API_BASE}/data-quality/export`, HEADERS, body);
-    if (r && r.url) window.location.href = r.url;         // presigned + attachment => downloads
+    const fname = (r && r.filename) || 'dq-export.parquet';
+    if (r && r.parquet_b64) {
+      // Same-origin blob download — works inside the Qlik extension iframe (no navigation).
+      const bin = atob(r.parquet_b64), bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      const burl = URL.createObjectURL(new Blob([bytes], { type: 'application/vnd.apache.parquet' }));
+      const a = document.createElement('a'); a.href = burl; a.download = fname;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(burl), 4000);
+    } else if (r && r.url) {
+      // Large export: open in a NEW TAB (top-level context escapes the iframe CSP).
+      const a = document.createElement('a'); a.href = r.url; a.target = '_blank'; a.rel = 'noopener';
+      document.body.appendChild(a); a.click(); a.remove();
+    }
   } catch (e) { alert('Could not export: ' + (e && e.message || e)); }
   finally { if (btn) { btn.disabled = false; btn.textContent = orig; } }
 }
@@ -4377,8 +4390,7 @@ function renderHealthTable(datasets) {
         <td class="dash-muted">${esc(age)}</td>
         <td>${spark}</td>
         <td>${trustMenu(d.key)}</td>
-        <td><button class="btn-sm" data-rerun="${esc(d.name)}" data-fmt="${esc(d.sourceFormat || '')}" data-prefix="${esc(d.resultPrefix || '')}" data-tip="Re-assess this dataset">↻ Re-run</button>
-            <button class="btn-sm" data-export="${esc(d.key)}" data-tip="Export this dataset's summary as parquet">⬇ parquet</button></td>
+        <td><button class="btn-sm" data-rerun="${esc(d.name)}" data-fmt="${esc(d.sourceFormat || '')}" data-prefix="${esc(d.resultPrefix || '')}" data-tip="Re-assess this dataset">↻ Re-run</button></td>
       </tr>`;
   }).join('');
   $('#dashTableWrap').innerHTML =
@@ -4393,8 +4405,6 @@ function renderHealthTable(datasets) {
     }));
   $('#dashTableWrap').querySelectorAll('button[data-rerun]').forEach(b =>
     b.addEventListener('click', e => { e.stopPropagation(); reRunTable(b.dataset.rerun, b.dataset.fmt, b.dataset.prefix); }));
-  $('#dashTableWrap').querySelectorAll('button[data-export]').forEach(b =>
-    b.addEventListener('click', e => { e.stopPropagation(); exportParquet('dataset', b.dataset.export, b); }));
   // Trust / certification: endorse, caution or deprecate (click active to clear) + note.
   wireTrust($('#dashTableWrap'), () => refreshDatasetsTable());
   // Ownership: assign/change owner (＋/✎) or click an owner chip to filter by it.
@@ -4507,12 +4517,15 @@ async function selectDataset(key, name, initialTab) {
   updateDetailTrust(key);
   const bar = DS_TABS.map(([k, l]) => `<button type="button" class="rd-tab${k === dsTab ? ' active' : ''}" data-dstab="${k}">${l}</button>`).join('');
   $('#dashTrends').innerHTML =
-    `<div class="actions" style="margin-bottom:12px;"><button class="btn-sm" id="dsBack">← All datasets</button></div>` +
+    `<div class="actions" style="margin-bottom:12px;"><button class="btn-sm" id="dsBack">← All datasets</button>` +
+    `<button class="btn-sm" id="dsExport" data-tip="Export this dataset's summary as parquet">⬇ Export (parquet)</button></div>` +
     `<div class="rd-tabs" id="dsSubtabs">${bar}</div>` +
     `<div id="dsPanel">${dqLoader('Loading dataset', null, true)}</div>`;
   $('#dashRunDetail').innerHTML = '';
   const back = $('#dsBack');
   if (back) back.addEventListener('click', () => deselectDataset());   // collapse back to the full-width galaxy
+  const dsExp = $('#dsExport');
+  if (dsExp) dsExp.addEventListener('click', () => exportParquet('dataset', key, dsExp));
   $('#dsSubtabs').querySelectorAll('[data-dstab]').forEach(b =>
     b.addEventListener('click', () => { dsTab = b.dataset.dstab; selectDsTab(); }));
   try { dsTrends = await postJSON(`${API_BASE}/data-quality/trends`, HEADERS, { dataset_key: key, window_days: 30 }); }
