@@ -2263,6 +2263,7 @@ const PORTAL = (q.get('mode') === 'portal') || (typeof window !== 'undefined' &&
 // Trust + approvals are admin-governed in the portal. Qlik (non-portal) keeps the full
 // trust UI as before; a portal member sees neither trust nor the approvals queue.
 let IS_PORTAL_ADMIN = !PORTAL;   // set true for portal admins/super-admins in bootPortal
+let PORTAL_ORG_NAME = '';        // set in bootPortal — used in the policy-rejection email
 const API_BASE = (q.get('api') || 'https://i1jwcc4bx4.execute-api.eu-west-1.amazonaws.com/dev').replace(/\/+$/, '');
 const TENANT   = (q.get('tenant') || '').trim();
 const API_KEY  = (q.get('key') || h.get('key') || '').trim();   // ?key=… or #key=…
@@ -4382,31 +4383,60 @@ async function loadApprovals() {
   body.innerHTML = dqLoader('Loading approvals', null, true);
   try {
     const r = await postJSON(`${API_BASE}/data-quality/approvals`, HEADERS, { action: 'list', app_id: APP_ID });
-    renderApprovals(r.pending || []);
+    renderApprovals(r.pending || [], r.policyProposals || []);
   } catch (e) { body.innerHTML = `<p class="dash-muted" style="color:var(--err)">${esc(e && e.message || e)}</p>`; }
 }
-function renderApprovals(pending) {
+function _apprRow(inner) {
+  return `<div class="appr-row" style="display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--border);flex-wrap:wrap;">${inner}</div>`;
+}
+function renderApprovals(pending, policy) {
+  pending = pending || []; policy = policy || [];
   const body = $('#approvalsBody'); if (!body) return;
+  const total = pending.length + policy.length;
   const badge = $('#approvalsBadge');
-  if (badge) { if (pending.length) { badge.style.display = ''; badge.textContent = pending.length; } else badge.style.display = 'none'; }
-  if (!pending.length) { body.innerHTML = '<p class="dash-muted">Nothing awaiting approval right now. 🎉</p>'; return; }
-  body.innerHTML = pending.map((p, i) => `
-    <div class="appr-row" style="display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--border);flex-wrap:wrap;">
-      <div style="flex:1;min-width:220px;">
-        <div style="font-weight:600;">${esc(p.datasetName)}${p.score != null ? ` <span class="tag ${tagClass(p.overallStatus)}">${fmtScore(p.score)}</span>` : ''}</div>
-        <div class="hint">submitted by ${esc(p.submittedBy || '—')}${p.submittedAt ? ' · ' + esc(fmtWhen(p.submittedAt)) : ''}</div>
-      </div>
-      <button class="btn-sm" data-appr-view="${i}" data-tip="Open the run report">View report</button>
-      <button class="btn-sm" data-appr-approve="${i}">✓ Approve</button>
-      <button class="btn-sm" data-appr-reject="warning::${i}">⚠ Caution</button>
-      <button class="btn-sm btn-danger" data-appr-reject="deprecated::${i}">⛔ Deprecate</button>
-    </div>`).join('');
+  if (badge) { if (total) { badge.style.display = ''; badge.textContent = total; } else badge.style.display = 'none'; }
+  if (!total) { body.innerHTML = '<p class="dash-muted">Nothing awaiting approval right now. 🎉</p>'; return; }
+  let html = '';
+  if (pending.length) {
+    html += '<h3 style="margin:0 0 4px;font-size:14px;">Assessment runs</h3>' + pending.map((p, i) => _apprRow(
+      `<div style="flex:1;min-width:220px;">
+         <div style="font-weight:600;">${esc(p.datasetName)}${p.score != null ? ` <span class="tag ${tagClass(p.overallStatus)}">${fmtScore(p.score)}</span>` : ''}</div>
+         <div class="hint">submitted by ${esc(p.submittedBy || '—')}${p.submittedAt ? ' · ' + esc(fmtWhen(p.submittedAt)) : ''}</div>
+       </div>
+       <button class="btn-sm" data-appr-view="${i}" data-tip="Open the run report">View report</button>
+       <button class="btn-sm" data-appr-approve="${i}">✓ Approve</button>
+       <button class="btn-sm" data-appr-reject="warning::${i}">⚠ Caution</button>
+       <button class="btn-sm btn-danger" data-appr-reject="deprecated::${i}">⛔ Deprecate</button>`)).join('');
+  }
+  if (policy.length) {
+    html += '<h3 style="margin:18px 0 4px;font-size:14px;">Compliance &amp; attestation proposals</h3>' + policy.map((p, i) => _apprRow(
+      `<div style="flex:1;min-width:220px;">
+         <div style="font-weight:600;">${esc(p.datasetName)} <span class="tag na">${p.kind === 'attestations' ? 'Governance attestations' : 'Compliance policy'}</span></div>
+         <div class="hint">submitted by ${esc(p.submittedBy || '—')}${p.submittedAt ? ' · ' + esc(fmtWhen(p.submittedAt)) : ''}</div>
+       </div>
+       <button class="btn-sm" data-pol-accept="${i}" data-tip="Apply this proposal to the dataset">✓ Accept &amp; apply</button>
+       <button class="btn-sm btn-danger" data-pol-reject="${i}" data-tip="Discard + email the requestor">✕ Reject</button>`)).join('');
+  }
+  body.innerHTML = html;
   body.querySelectorAll('[data-appr-view]').forEach(b => b.addEventListener('click', () => openApprovalRun(pending[+b.dataset.apprView])));
   body.querySelectorAll('[data-appr-approve]').forEach(b => b.addEventListener('click', () => decideApproval(pending[+b.dataset.apprApprove], 'approve')));
-  body.querySelectorAll('[data-appr-reject]').forEach(b => {
-    const parts = b.dataset.apprReject.split('::');
-    b.addEventListener('click', () => decideApproval(pending[+parts[1]], 'reject', parts[0]));
-  });
+  body.querySelectorAll('[data-appr-reject]').forEach(b => { const parts = b.dataset.apprReject.split('::'); b.addEventListener('click', () => decideApproval(pending[+parts[1]], 'reject', parts[0])); });
+  body.querySelectorAll('[data-pol-accept]').forEach(b => b.addEventListener('click', () => decidePolicy(policy[+b.dataset.polAccept], 'accept-policy')));
+  body.querySelectorAll('[data-pol-reject]').forEach(b => b.addEventListener('click', () => decidePolicy(policy[+b.dataset.polReject], 'reject-policy')));
+}
+async function decidePolicy(p, action) {
+  if (!p) return;
+  let note = '';
+  if (action === 'reject-policy') {
+    const label = p.kind === 'attestations' ? 'attestation' : 'compliance policy';
+    note = (prompt(`Optional note — why reject the proposed ${label} for "${p.datasetName}"? (the requestor is emailed)`, '') || '');
+  }
+  try {
+    await postJSON(`${API_BASE}/data-quality/approvals`, HEADERS,
+      { action: action, app_id: APP_ID, dataset_key: p.dataset_key, kind: p.kind, note: note, org_label: PORTAL_ORG_NAME });
+    loadApprovals();
+    if (typeof loadDashboard === 'function') loadDashboard();
+  } catch (e) { alert('Could not decide: ' + (e && e.message || e)); }
 }
 async function decideApproval(p, action, trust) {
   if (!p) return;
@@ -5852,8 +5882,12 @@ function wireComplianceSettings(panel, key, prefix) {
         erasure_column: val('#cmpErasureCol'), subject_id_column: val('#cmpSubjectCol'),
         audit_columns: val('#cmpAuditCols').split(',').map(s => s.trim()).filter(Boolean),
       });
-      if (r && r.entries) dashEntries = r.entries;
-      setMsg('Saved — applies on the next assessment of this dataset.');
+      if (r && r.status === 'pending_approval') {
+        setMsg('Submitted for admin approval — it will apply to this dataset once an admin accepts it.');
+      } else {
+        if (r && r.entries) dashEntries = r.entries;
+        setMsg('Saved — applies on the next assessment of this dataset.');
+      }
       const m = panel.querySelector('#cmpSetMsg'); if (m) m.style.color = 'var(--ok)';
     } catch (e) { setMsg(e.message, true); }
     btn.disabled = false;
@@ -6195,13 +6229,17 @@ function wireComplianceAttest(panel, key, comp) {
       const r = await postJSON(`${API_BASE}/data-quality/dataset-tags`, HEADERS, {
         app_id: APP_ID, action: 'set-compliance-attestations', key,
         attestations, attest_by: EMAIL || undefined });
-      if (r && r.entries) dashEntries = r.entries;
-      _updateAttestCoverage(panel, attestations);          // live-refresh the summary badge + bar
-      const pims = panel.querySelector('#pimsPanel');       // attestations feed the PIMS posture
-      if (pims) pims.outerHTML = renderIso27701Panel(comp, key);
-      setMsg(orphanContent
-        ? `Saved. ${orphanContent} item(s) had a note/link but no Yes/No/N.A. — pick an answer to save those.`
-        : 'Saved — attestations recorded.', !!orphanContent);
+      if (r && r.status === 'pending_approval') {
+        setMsg('Submitted for admin approval — the attestations apply once an admin accepts them.');
+      } else {
+        if (r && r.entries) dashEntries = r.entries;
+        _updateAttestCoverage(panel, attestations);          // live-refresh the summary badge + bar
+        const pims = panel.querySelector('#pimsPanel');       // attestations feed the PIMS posture
+        if (pims) pims.outerHTML = renderIso27701Panel(comp, key);
+        setMsg(orphanContent
+          ? `Saved. ${orphanContent} item(s) had a note/link but no Yes/No/N.A. — pick an answer to save those.`
+          : 'Saved — attestations recorded.', !!orphanContent);
+      }
     } catch (e) { setMsg(e.message, true); }
     btn.disabled = false;
   });
@@ -8782,6 +8820,7 @@ async function bootPortal() {
   APP_ID = me.user.workspace_id || '';
   applyMode();
   IS_PORTAL_ADMIN = (me.user.role || '').toLowerCase() === 'admin' || !!me.user.is_super;
+  PORTAL_ORG_NAME = me.user.home_org_name || me.user.org_name || '';
   if (IS_PORTAL_ADMIN) {   // admins + super-admins: admin button, trust UI + approvals queue
     document.body.classList.add('portal-admin');
     const ab = $('#portalAdminBtn'); if (ab) ab.href = location.origin + '/dq-portal-admin';
