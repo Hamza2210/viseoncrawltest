@@ -60,6 +60,8 @@
     background: rgba(255,255,255,.03); }
   #portalAdminBtn:hover { color: #fff; border-color: var(--muted); }
   body.portal-admin #portalAdminBtn { display: inline-flex; }
+  #approvalsNav { display: none; }                    /* Approvals is admin/super-admin-only (portal) */
+  body.portal-admin #approvalsNav { display: flex; }
   #portalOrgSwitchWrap { display: none; align-items: center; gap: 8px; }
   body.portal-super #portalShell #portalOrgSwitchWrap { display: inline-flex; }
   #portalOrgSwitchWrap .pos-label { color: var(--muted); font-size: 10px; font-weight: 700;
@@ -1333,6 +1335,7 @@
 
     <div class="side-group">Records</div>
     <button class="side-item sub" data-tab="history"><span class="si-ico">📜</span>Assessment history</button>
+    <button class="side-item sub" id="approvalsNav" data-tab="approvals"><span class="si-ico">✅</span>Approvals <span class="tab-badge" id="approvalsBadge" style="display:none;"></span></button>
 
     <button class="side-item" data-tab="profile" id="profileNav" style="display:none"><span class="si-ico">👤</span>Profile</button>
   </nav>
@@ -1957,6 +1960,14 @@
   </div>
 
   <!-- ============ MEDALLION COMPARISON ============ -->
+  <div id="approvalsPanel" style="display:none;">
+    <div class="tab-intro">
+      <h2>Approvals</h2>
+      <p>Assessment runs that members have submitted for review. <strong>Approve</strong> to endorse the dataset, or reject it as <strong>Caution</strong> or <strong>Deprecated</strong>. Scoped to your organisation.</p>
+    </div>
+    <div class="card"><div id="approvalsBody"><p class="dash-muted">Loading…</p></div></div>
+  </div>
+
   <div id="medallionPanel" style="display:none;">
     <div class="tab-intro">
       <h2>Medallion comparison</h2>
@@ -2249,6 +2260,9 @@ const h = new URLSearchParams((location.hash || '').replace(/^#/, ''));
 // Portal mode: a source-first standalone build (?mode=portal or the baked window.__DQ_MODE__).
 // Every PORTAL branch below reduces to the original Qlik behaviour when this is false.
 const PORTAL = (q.get('mode') === 'portal') || (typeof window !== 'undefined' && window.__DQ_MODE__ === 'portal');
+// Trust + approvals are admin-governed in the portal. Qlik (non-portal) keeps the full
+// trust UI as before; a portal member sees neither trust nor the approvals queue.
+let IS_PORTAL_ADMIN = !PORTAL;   // set true for portal admins/super-admins in bootPortal
 const API_BASE = (q.get('api') || 'https://i1jwcc4bx4.execute-api.eu-west-1.amazonaws.com/dev').replace(/\/+$/, '');
 const TENANT   = (q.get('tenant') || '').trim();
 const API_KEY  = (q.get('key') || h.get('key') || '').trim();   // ?key=… or #key=…
@@ -3483,9 +3497,11 @@ function weightsDesc(w) {
 }
 function historyRow(r) {
   const score = r.overallScore != null ? fmtScore(r.overallScore) : '—';
-  const badge = r.overallStatus
+  const _statusBadge = r.overallStatus
     ? `<span class="tag ${tagClass(r.overallStatus)}">${esc(r.overallStatus)}</span>`
-    : (r.state ? `<span class="tag">${esc(r.state.toLowerCase())}</span>` : '<span></span>');
+    : (r.state ? `<span class="tag">${esc(r.state.toLowerCase())}</span>` : '');
+  // Portal: append the approval status chip (draft/pending/approved/rejected) in the same cell.
+  const badge = `<span>${_statusBadge}${r.approvalStatus ? apprChip(r.approvalStatus) : ''}</span>`;
   const sub = [rowsDesc(r), hasCustomWeights(r.dimensionWeights) ? 'custom weights' : '']
     .filter(Boolean).join(' · ');
   // Re-run for this app's own tables (slug "appId/table"), or any source dataset (routed to
@@ -4060,6 +4076,7 @@ const TRUST_META = {
 function _nowIso() { return new Date().toISOString(); }
 // A read-only badge (empty when no flag) — carries the note + who/when in its tooltip.
 function trustBadge(key) {
+  if (!IS_PORTAL_ADMIN) return '';                 // trust is admin-only in the portal
   const e = entryFor(key), m = TRUST_META[e.trust]; if (!m) return '';
   const who = e.trustBy ? ` by ${e.trustBy}` : '', when = e.trustAt ? ` · ${fmtWhen(e.trustAt)}` : '';
   const note = e.trustNote ? ` — “${e.trustNote}”` : '';
@@ -4067,6 +4084,7 @@ function trustBadge(key) {
 }
 // The 3-flag picker (click a flag to set, click the active one to clear) + a note button.
 function trustMenu(key) {
+  if (!IS_PORTAL_ADMIN) return '';                 // trust menu is admin-only in the portal
   const cur = entryFor(key).trust;
   return `<span class="trust-menu">` + TRUST_LEVELS.map(t => {
     const m = TRUST_META[t];
@@ -4101,12 +4119,18 @@ function wireTrust(container, onChange) {
 // The trust controls shown in the selected-dataset detail header; re-renders itself on change.
 function updateDetailTrust(key) {
   const el = $('#dashDetailHint'); if (!el) return;
-  const badge = trustBadge(key);
-  el.innerHTML = `<span class="detail-gov"><span class="hint">Trust</span>${trustMenu(key)}${badge ? ' ' + badge : ''}</span>` +
+  const prefix = dashSelected && dashSelected.prefix;
+  // Admins (and Qlik) get the trust menu; portal members get a Submit-for-approval action.
+  const govPart = IS_PORTAL_ADMIN
+    ? `<span class="detail-gov"><span class="hint">Trust</span>${trustMenu(key)}${trustBadge(key) ? ' ' + trustBadge(key) : ''}</span>`
+    : (PORTAL && prefix ? `<span class="detail-gov"><button class="btn-sm" id="dsSubmitApproval" data-tip="Send this run to your admins for approval">Submit for approval</button></span>` : '');
+  el.innerHTML = govPart +
     `<span class="detail-gov"><span class="hint">Owner</span>${ownerChip(key)}</span>` +
     `<span class="detail-gov"><span class="hint">Stage</span>${medalCell(key)}</span>` +
     notesSection(key);
-  wireTrust(el, () => updateDetailTrust(key));
+  if (IS_PORTAL_ADMIN) wireTrust(el, () => updateDetailTrust(key));
+  const _sub = $('#dsSubmitApproval');
+  if (_sub) _sub.addEventListener('click', () => submitForApproval(prefix, _sub));
   el.querySelectorAll('[data-ownerset]').forEach(b =>
     b.addEventListener('click', async e => { e.stopPropagation(); await setOwner(key); updateDetailTrust(key); refreshDatasetsTable(); }));
   el.querySelectorAll('.medal[data-medal]').forEach(b =>
@@ -4155,9 +4179,10 @@ function renderDashFilters() {
   html += `<span class="dash-filtgrp"><span class="hint">Stage:</span>` +
     chip('data-stagef', '', 'All', !dashStageSel) +
     MEDALLIONS.map(m => chip('data-stagef', m, MEDAL_LABEL[m], dashStageSel === m)).join('') + `</span>`;
-  html += `<span class="dash-filtgrp"><span class="hint">Trust:</span>` +
-    chip('data-trustf', '', 'All', !dashTrustSel) +
-    TRUST_LEVELS.map(t => chip('data-trustf', t, TRUST_META[t].label, dashTrustSel === t, TRUST_META[t].icon + ' ')).join('') + `</span>`;
+  if (IS_PORTAL_ADMIN)   // trust is admin-only in the portal — don't expose the trust filter to members
+    html += `<span class="dash-filtgrp"><span class="hint">Trust:</span>` +
+      chip('data-trustf', '', 'All', !dashTrustSel) +
+      TRUST_LEVELS.map(t => chip('data-trustf', t, TRUST_META[t].label, dashTrustSel === t, TRUST_META[t].icon + ' ')).join('') + `</span>`;
   html += `<span class="dash-filtgrp"><span class="hint">Owner:</span>` +
     chip('data-ownerf', '', 'All', !dashOwnerSel) +
     chip('data-ownerf', '__none__', 'Unowned', dashOwnerSel === '__none__', '⚠ ') +
@@ -4334,6 +4359,75 @@ function showTagMsg(kind, text) {
   m.style.border = '1px solid ' + (kind === 'ok' ? 'rgba(55,224,200,.35)' : 'rgba(255,107,125,.35)');
 }
 
+// --- Approvals (portal governance) ---------------------------------------------- //
+const _APPR_META = { draft: { label: 'Draft', cls: 'na' }, pending: { label: 'Pending', cls: 'amber' },
+                     approved: { label: 'Approved', cls: 'green' }, rejected: { label: 'Rejected', cls: 'red' } };
+function apprChip(status) {
+  const m = _APPR_META[status]; if (!m) return '';
+  return ` <span class="tag ${m.cls}" data-tip="Approval status">${m.label}</span>`;
+}
+async function submitForApproval(prefix, btn) {
+  if (!prefix) return;
+  if (btn) { btn.disabled = true; btn.textContent = 'Submitting…'; }
+  try {
+    await postJSON(`${API_BASE}/data-quality/approvals`, HEADERS, { action: 'submit', app_id: APP_ID, result_prefix: prefix });
+    if (btn) btn.textContent = '✓ Submitted for approval';
+  } catch (e) {
+    alert('Could not submit for approval: ' + (e && e.message || e));
+    if (btn) { btn.disabled = false; btn.textContent = 'Submit for approval'; }
+  }
+}
+async function loadApprovals() {
+  const body = $('#approvalsBody'); if (!body) return;
+  body.innerHTML = dqLoader('Loading approvals', null, true);
+  try {
+    const r = await postJSON(`${API_BASE}/data-quality/approvals`, HEADERS, { action: 'list', app_id: APP_ID });
+    renderApprovals(r.pending || []);
+  } catch (e) { body.innerHTML = `<p class="dash-muted" style="color:var(--err)">${esc(e && e.message || e)}</p>`; }
+}
+function renderApprovals(pending) {
+  const body = $('#approvalsBody'); if (!body) return;
+  const badge = $('#approvalsBadge');
+  if (badge) { if (pending.length) { badge.style.display = ''; badge.textContent = pending.length; } else badge.style.display = 'none'; }
+  if (!pending.length) { body.innerHTML = '<p class="dash-muted">Nothing awaiting approval right now. 🎉</p>'; return; }
+  body.innerHTML = pending.map((p, i) => `
+    <div class="appr-row" style="display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--border);flex-wrap:wrap;">
+      <div style="flex:1;min-width:220px;">
+        <div style="font-weight:600;">${esc(p.datasetName)}${p.score != null ? ` <span class="tag ${tagClass(p.overallStatus)}">${fmtScore(p.score)}</span>` : ''}</div>
+        <div class="hint">submitted by ${esc(p.submittedBy || '—')}${p.submittedAt ? ' · ' + esc(fmtWhen(p.submittedAt)) : ''}</div>
+      </div>
+      <button class="btn-sm" data-appr-view="${i}" data-tip="Open the run report">View report</button>
+      <button class="btn-sm" data-appr-approve="${i}">✓ Approve</button>
+      <button class="btn-sm" data-appr-reject="warning::${i}">⚠ Caution</button>
+      <button class="btn-sm btn-danger" data-appr-reject="deprecated::${i}">⛔ Deprecate</button>
+    </div>`).join('');
+  body.querySelectorAll('[data-appr-view]').forEach(b => b.addEventListener('click', () => openApprovalRun(pending[+b.dataset.apprView])));
+  body.querySelectorAll('[data-appr-approve]').forEach(b => b.addEventListener('click', () => decideApproval(pending[+b.dataset.apprApprove], 'approve')));
+  body.querySelectorAll('[data-appr-reject]').forEach(b => {
+    const parts = b.dataset.apprReject.split('::');
+    b.addEventListener('click', () => decideApproval(pending[+parts[1]], 'reject', parts[0]));
+  });
+}
+async function decideApproval(p, action, trust) {
+  if (!p) return;
+  let note = '';
+  if (action === 'reject') {
+    const verb = trust === 'deprecated' ? 'deprecate' : 'flag as caution';
+    note = (prompt(`Optional note — why ${verb} "${p.datasetName}"?`, '') || '');
+  }
+  try {
+    await postJSON(`${API_BASE}/data-quality/approvals`, HEADERS,
+      { action: action, app_id: APP_ID, result_prefix: p.resultPrefix, trust: trust, note: note });
+    loadApprovals();
+    if (typeof loadDashboard === 'function') loadDashboard();   // approved runs now surface on the estate
+  } catch (e) { alert('Could not ' + action + ': ' + (e && e.message || e)); }
+}
+function openApprovalRun(p) {
+  if (!p) return;
+  switchTab('history');
+  setTimeout(() => { if (typeof openHistoryRun === 'function') openHistoryRun(p.resultPrefix); }, 60);
+}
+
 function wireDashControls() {
   if (_dashControlsWired) return;
   const s = $('#dashSearch');
@@ -4506,20 +4600,21 @@ function renderHealthTable(datasets) {
     // lives in the dataset detail instead.
     const srcChip = isSourceDataset(d) ? sourceChip(d.sourceFormat) : '';
     const tb = trustBadge(d.key);
+    const draftChip = (PORTAL && d.unapproved) ? ' <span class="tag na" data-tip="No approved run yet — awaiting approval">Draft</span>' : '';
     return `<tr class="dash-row" data-key="${esc(d.key)}" data-name="${esc(d.name)}">
-        <td class="ds-cell"><div class="ds-name-line">${esc(d.name)}</div><div class="ds-meta">${srcChip}${stageBadge(d.key)}${tb}${notesBadge(d.key)}${ownerChip(d.key)}${tagChips(d.key)}</div></td>
+        <td class="ds-cell"><div class="ds-name-line">${esc(d.name)}</div><div class="ds-meta">${srcChip}${stageBadge(d.key)}${tb}${draftChip}${notesBadge(d.key)}${ownerChip(d.key)}${tagChips(d.key)}</div></td>
         <td><strong>${num1(d.score)}</strong> ${statusChip(d.status)}</td>
         <td>${gateChip(d.gate)}</td>
         <td>${numInt(d.rows)}</td>
         <td class="dash-muted">${esc(age)}</td>
         <td>${spark}</td>
-        <td>${trustMenu(d.key)}</td>
+        ${IS_PORTAL_ADMIN ? `<td>${trustMenu(d.key)}</td>` : ''}
         <td><button class="btn-sm" data-rerun="${esc(d.name)}" data-fmt="${esc(d.sourceFormat || '')}" data-prefix="${esc(d.resultPrefix || '')}" data-tip="Re-assess this dataset">↻ Re-run</button></td>
       </tr>`;
   }).join('');
   $('#dashTableWrap').innerHTML =
     `<table class="dash-table"><tr><th>Dataset</th><th>Score</th><th>Gate</th>` +
-    `<th>Rows</th><th>Last run</th><th>Trend (30d)</th><th data-tip="Certification: endorse, caution or deprecate this dataset for consumers">Trust</th>` +
+    `<th>Rows</th><th>Last run</th><th>Trend (30d)</th>${IS_PORTAL_ADMIN ? '<th data-tip="Certification: endorse, caution or deprecate this dataset for consumers">Trust</th>' : ''}` +
     `<th></th></tr>${rows}</table>`;
   $('#dashTableWrap').querySelectorAll('.dash-row').forEach(tr =>
     tr.addEventListener('click', () => {
@@ -8491,7 +8586,7 @@ function _galaxyHover(e) {
   dom.style.cursor = 'pointer';
   tip.innerHTML = `<div class="gt-name">${esc(orb.name)}</div>Score ${orb.score == null ? '—' : num1(orb.score)} · ${esc(orb.status || '—')}` +
     `${orb.stage ? ` · ${esc(MEDAL_LABEL[orb.stage] || orb.stage)}` : ''}<br>${numInt(orb.rows)} rows` +
-    `${orb.trust && TRUST_META[orb.trust] ? `<br>${TRUST_META[orb.trust].icon} ${TRUST_META[orb.trust].label}` : ''}` +
+    `${IS_PORTAL_ADMIN && orb.trust && TRUST_META[orb.trust] ? `<br>${TRUST_META[orb.trust].icon} ${TRUST_META[orb.trust].label}` : ''}` +
     `${orb.owner ? `<br>👤 ${esc(orb.owner)}` : ''}`;
   tip.style.display = '';
   let lx = e.clientX - wr.left + 14, ly = e.clientY - wr.top + 14;
@@ -8590,6 +8685,7 @@ function switchTab(name) {
   document.querySelectorAll('.side-item').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
   $('#uploadPanel').style.display = name === 'upload' ? 'block' : 'none';
   $('#historyPanel').style.display = name === 'history' ? 'block' : 'none';
+  $('#approvalsPanel').style.display = name === 'approvals' ? 'block' : 'none';
   $('#appDataPanel').style.display = name === 'appdata' ? 'block' : 'none';
   $('#tagrunPanel').style.display = name === 'tagrun' ? 'block' : 'none';
   $('#schedulePanel').style.display = name === 'schedules' ? 'block' : 'none';
@@ -8612,6 +8708,7 @@ function switchTab(name) {
   if (name === 'model') loadModel();
   if (name === 'history') setHistorySub(PORTAL ? 'dataset' : 'app');   // portal has no Qlik full-app view
   if (name === 'tagrun') initTagRun();
+  if (name === 'approvals') loadApprovals();
   if (name === 'dashboard') { loadDashboard(); refreshIncBadge(); }
   if (name === 'medallion') loadMedallion();
   if (name === 'schedules') {
@@ -8684,9 +8781,12 @@ async function bootPortal() {
   EMAIL  = me.user.email || '';
   APP_ID = me.user.workspace_id || '';
   applyMode();
-  if ((me.user.role || '').toLowerCase() === 'admin' || me.user.is_super) {   // admins + super-admins get the admin-portal button
+  IS_PORTAL_ADMIN = (me.user.role || '').toLowerCase() === 'admin' || !!me.user.is_super;
+  if (IS_PORTAL_ADMIN) {   // admins + super-admins: admin button, trust UI + approvals queue
     document.body.classList.add('portal-admin');
     const ab = $('#portalAdminBtn'); if (ab) ab.href = location.origin + '/dq-portal-admin';
+  } else {
+    document.body.classList.add('portal-member');   // members: trust hidden, submit-for-approval only
   }
   if (me.user.is_super) { await bootOrgSwitcher(me.user.active_org_id || me.user.org_id); }   // super-admin org switcher
   const ue = $('#portalUserEmail'); if (ue) ue.textContent = EMAIL;
