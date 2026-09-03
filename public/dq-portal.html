@@ -476,7 +476,6 @@
   .cmp-dismiss-btn:hover { border-color: var(--err); color: var(--err); }
   .cmp-records { margin: 8px 0; }
   .cmp-rec-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; flex-wrap: wrap; }
-  .cmp-rec-raw { background: color-mix(in srgb, var(--err) 12%, transparent) !important; color: var(--text); }
   table.cmp-rec-tbl { width: 100%; border-collapse: collapse; font-size: 12px; }
   table.cmp-rec-tbl th { text-align: left; color: var(--muted); font-weight: 600; padding: 4px 8px; border-bottom: 1px solid var(--border); }
   table.cmp-rec-tbl td { padding: 4px 8px; border-bottom: 1px solid var(--border); }
@@ -2579,6 +2578,10 @@ function filesHtml(files) {
       `<span class="sz">${humanSize(f.sizeBytes)}</span></a>`).join('') + `</div></details>`;
 }
 
+// The worker's PII redaction marker (dq/compliance/redact.py REDACTED). A personal-data column's
+// values are never stored, so anywhere we would show or reuse a cell value we must recognise it.
+const DQ_PII_REDACTED = '[redacted PII]';
+
 // ---- Compliance lens (ISO/IEC 29100) --------------------------------------- //
 const CMP_GRADE = {
   CRITICAL: { cls: 'red', label: 'Critical exposure' },
@@ -2631,17 +2634,16 @@ function cmpCtrlHtml(ct, opts) {
   const samples = (ev.samples || []).length
     ? `<div class="cmp-ev">Value shapes (masked): ${ev.samples.map(s => `<code>${esc(s)}</code>`).join(' ')}</div>` : '';
   const cites = (ct.citations || []).map(x => `<span class="cmp-cite">${esc(x)}</span>`).join(' ');
-  // Failing records (masked): a locator (primary key or row) + the masked offending value.
+  // Failing records: a MASKED locator (primary key or row position) + the MASKED value shape.
+  // Privacy posture: the literal PII value is never stored nor served, so there is nothing to reveal.
   const recs = ev.records || [];
   const recsBlock = recs.length ? `<div class="cmp-records" style="display:none;">
-      <div class="cmp-rec-bar"><button type="button" class="cmp-btn cmp-reveal-btn">👁 Reveal values</button>
-        <span class="hint">Masked by default — reveal to see the actual offending values (locator finds the record in your source).</span></div>
-      <table class="cmp-rec-tbl"><thead><tr><th>Record</th><th>Value</th></tr></thead><tbody>${
+      <div class="cmp-rec-bar"><span class="hint">🔒 Personal data is reported as <em>present</em> only — the actual values are never stored or shown. Use the masked shape + locator to find the record in your source.</span></div>
+      <table class="cmp-rec-tbl"><thead><tr><th>Record</th><th>Value shape</th></tr></thead><tbody>${
         recs.map(r => {
           const lm = r.key ? Object.entries(r.key).map(([k, v]) => `${esc(k)}=${esc(String(v))}`).join(', ') : ('row ' + esc(String(r.row)));
-          const lr = r.key_raw ? Object.entries(r.key_raw).map(([k, v]) => `${esc(k)}=${esc(String(v))}`).join(', ') : lm;
-          return `<tr><td><span class="cmp-rec-masked">${lm}</span><span class="cmp-rec-raw" style="display:none;">${lr}</span></td>` +
-            `<td><code class="cmp-rec-masked">${esc(r.masked || '')}</code><code class="cmp-rec-raw" style="display:none;">${esc(r.raw != null ? String(r.raw) : '')}</code></td></tr>`; }).join('')
+          return `<tr><td><span class="cmp-rec-masked">${lm}</span></td>` +
+            `<td><code class="cmp-rec-masked">${esc(r.masked || '')}</code></td></tr>`; }).join('')
       }</tbody></table></div>` : '';
   // Action buttons only on FAIL controls (nothing to view/dismiss on a PASS).
   let actions = '';
@@ -2717,7 +2719,7 @@ function compliancePanel(comp, prefix) {
 // One delegated handler for every compliance panel, wherever it's inserted (result screen,
 // dataset sub-tab, estate detail). Reads the panel's data-prefix + the button's data-cid.
 document.addEventListener('click', async (e) => {
-  const btn = e.target && e.target.closest ? e.target.closest('.cmp-records-btn, .cmp-explain-btn, .cmp-dismiss-btn, .cmp-restore-btn, .cmp-reveal-btn') : null;
+  const btn = e.target && e.target.closest ? e.target.closest('.cmp-records-btn, .cmp-explain-btn, .cmp-dismiss-btn, .cmp-restore-btn') : null;
   if (!btn) return;
   const panel = btn.closest('.cmp-panel'); const ctrl = btn.closest('.cmp-ctrl');
   if (!panel || !ctrl) return;
@@ -2725,14 +2727,6 @@ document.addEventListener('click', async (e) => {
   if (btn.classList.contains('cmp-records-btn')) {
     const rec = ctrl.querySelector('.cmp-records');
     if (rec) { const open = rec.style.display !== 'none'; rec.style.display = open ? 'none' : ''; btn.classList.toggle('active', !open); }
-    return;
-  }
-  if (btn.classList.contains('cmp-reveal-btn')) {
-    const block = btn.closest('.cmp-records'); if (!block) return;
-    const revealed = btn.classList.toggle('active');
-    block.querySelectorAll('.cmp-rec-masked').forEach(el => el.style.display = revealed ? 'none' : '');
-    block.querySelectorAll('.cmp-rec-raw').forEach(el => el.style.display = revealed ? '' : 'none');
-    btn.textContent = revealed ? '🙈 Mask values' : '👁 Reveal values';
     return;
   }
   if (btn.classList.contains('cmp-explain-btn')) {
@@ -4383,7 +4377,10 @@ async function loadApprovals() {
   const body = $('#approvalsBody'); if (!body) return;
   body.innerHTML = dqLoader('Loading approvals', null, true);
   try {
-    const r = await postJSON(`${API_BASE}/data-quality/approvals`, HEADERS, { action: 'list', app_id: APP_ID });
+    const [r] = await Promise.all([
+      postJSON(`${API_BASE}/data-quality/approvals`, HEADERS, { action: 'list', app_id: APP_ID }),
+      ensureCustomFrameworks(),        // so a proposed custom standard shows its name, not its id
+    ]);
     renderApprovals(r.pending || [], r.policyProposals || []);
   } catch (e) { body.innerHTML = `<p class="dash-muted" style="color:var(--err)">${esc(e && e.message || e)}</p>`; }
 }
@@ -4458,11 +4455,10 @@ function policyProposalDetail(p) {
   // compliance-contract
   if (!d || !Object.keys(d).length) return '<p class="hint">Clears the compliance policy — no compliance controls will run for this dataset.</p>';
   if (d.exempt) return '<p class="hint">Marks the dataset <strong>exempt</strong> (out of scope — holds no personal data, so no compliance controls run).</p>';
-  const fwLabels = { gdpr: 'GDPR', hipaa: 'HIPAA', ccpa: 'CCPA / CPRA', bcbs239: 'BCBS 239' };
   const cols = d.columns || {};
   const colLabels = { date: 'Retention date column', consent_flag: 'Consent / lawful-basis column', erasure_flag: 'Erasure / opt-out column', subject_id: 'Data-subject ID column (DSARs)' };
   let rows = '';
-  rows += kv('Framework', esc(fwLabels[(d.framework || 'gdpr')] || d.framework || 'GDPR'));
+  rows += kv('Framework', esc(fwLabel(d.framework || 'gdpr')));   // resolves custom standards too
   if (d.retention_days) rows += kv('Retention limit', esc(d.retention_days) + ' days');
   ['date', 'consent_flag', 'erasure_flag', 'subject_id'].forEach(k => { if (cols[k]) rows += kv(colLabels[k], `<code>${esc(cols[k])}</code>`); });
   if ((cols.audit || []).length) rows += kv('Audit-trail columns', cols.audit.map(c => `<code>${esc(c)}</code>`).join(', '));
@@ -4996,7 +4992,9 @@ function renderExampleFixes(data) {
     const sev = (groups.get(cid)[0].severity || '').toLowerCase();
     const exp = exps[cid], col = exp.column;
     let popEx = null;                                             // a real populated value of this col, if any
-    for (const r of recs) { const v = (r.record || {})[col]; if (v !== '' && v != null) { popEx = v; break; } }
+    // A personal-data column's values are redacted at assess time, so the marker must never be
+    // offered as the "fix to" value (it would tell the user to write '[redacted PII]' into the column).
+    for (const r of recs) { const v = (r.record || {})[col]; if (v !== '' && v != null && v !== DQ_PII_REDACTED) { popEx = v; break; } }
     const meta = fixFor(exp, '', popEx);
     const head = `<div class="fx-head"><span class="fx-dim">${esc((exp.kind || '').replace(/_/g, ' '))}</span><span class="fx-colname">${esc(col)}</span></div>
         <div class="fx-req">${esc(meta.req)}</div>`;
@@ -5006,6 +5004,7 @@ function renderExampleFixes(data) {
     const rows = groups.get(cid).slice(0, 2).map(r => {
       const rec = r.record || {}, bad = rec[col], { after } = fixFor(exp, bad, popEx);
       if (after == null) return '';                               // never render a null "fix to"
+      if (bad === DQ_PII_REDACTED || after === DQ_PII_REDACTED) return '';   // personal data — no worked example
       const rid = rec._row != null ? String(rec._row) : '';
       return `<div class="fx-row">
           <span class="fx-rid" title="${esc(rid)}">${esc(rid || '—')}</span>
@@ -5271,10 +5270,16 @@ function renderColumnProfile(profile) {
     const np = typeof c.null_rate_pct === 'number' ? c.null_rate_pct : 0;
     const nullStyle = np >= 20 ? 'style="color:var(--err);font-weight:600"'
       : (np > 0 ? 'style="color:var(--run)"' : '');
-    const range = (c.min !== undefined) ? `${num1(c.min)} – ${num1(c.max)}`
+    // stats_redacted: a numeric personal-data column — min/max ARE literal cell values, so the
+    // worker removed them. Say so rather than rendering an unexplained dash.
+    const range = c.stats_redacted ? '🔒 not stored'
+      : (c.min !== undefined) ? `${num1(c.min)} – ${num1(c.max)}`
       : (c.min_length !== undefined ? `len ${c.min_length}–${c.max_length}` : '—');
+    // A column the compliance lens flagged as personal data has its sample values redacted at
+    // assess time — say so rather than showing an unexplained blank.
     const extra = (c.mean !== undefined) ? `mean ${num1(c.mean)}`
-      : (c.top_values && c.top_values.length ? c.top_values.slice(0, 3).map(t => t.value).join(', ') : '—');
+      : (c.top_values && c.top_values.length ? c.top_values.slice(0, 3).map(t => t.value).join(', ')
+        : (c.top_values_redacted ? '🔒 personal data — values not stored' : '—'));
     return `<tr><td><strong>${esc(nm)}</strong></td><td class="hint">${esc(c.inferred_dtype || '')}</td>` +
       `<td ${nullStyle}>${num1(np)}%</td><td>${numInt(c.distinct_count)}</td>` +
       `<td class="hint">${esc(range)}</td><td class="hint">${esc(extra)}</td></tr>`;
@@ -5293,6 +5298,11 @@ function metadataQuality(profile) {
   if (!names.length) return null;
   const N = names.length;
   const sampleVals = c => (c.top_values || []).map(x => (x && x.value != null) ? String(x.value) : '').filter(v => v !== '');
+  // Columns the compliance lens flagged as personal data. Their sample values are redacted at
+  // assess time, so any heuristic that reads values is blind for them — these two sets keep the
+  // PII list and the typing denominator honest instead of silently scoring them as clean.
+  const piiCols = new Set(((profile && profile.pii_columns) || []).map(s => String(s).toLowerCase()));
+  const valuesHidden = c => !!(c && (c.top_values_redacted || c.stats_redacted));
   const isNum = v => /^-?\d+(\.\d+)?$/.test(String(v).trim());
   const isDate = v => /^\d{4}-\d{1,2}-\d{1,2}([ T]|$)/.test(String(v).trim()) || /^\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4}$/.test(String(v).trim());
 
@@ -5319,8 +5329,12 @@ function metadataQuality(profile) {
   // else falls back to the sample-inferred type)
   const hasCatalog = (profile && profile.has_catalog) || names.some(nm => cols[nm] && cols[nm].declared_type != null);
   const typingFindings = [];
+  let typingSkipped = 0;
   names.forEach(nm => {
     const c = cols[nm];
+    // A redacted PII column can't be value-checked for typing. Counting it as "appropriately typed"
+    // would inflate the score, so it's excluded from the denominator and reported as unassessable.
+    if (valuesHidden(c)) { typingSkipped++; return; }
     const declared = c.declared_type ? String(c.declared_type).toLowerCase() : '';
     const isText = declared ? /(char|text|string|clob|nvarchar|varchar)/.test(declared)
       : (!c.inferred_dtype || /(str|text|char|object|mixed|categor|unknown|utf|varchar)/.test(String(c.inferred_dtype).toLowerCase()));
@@ -5338,8 +5352,11 @@ function metadataQuality(profile) {
     else if (c.nullable === false && typeof c.null_rate_pct === 'number' && c.null_rate_pct > 0)
       typingFindings.push({ col: nm, msg: `declared NOT NULL but ${num1(c.null_rate_pct)}% of sampled rows are null` });
   });
-  const typingScore = Math.max(0, Math.round(100 * (1 - typingFindings.length / N)));
-  const typingDetail = `${N - typingFindings.length} of ${N} columns appropriately typed`;
+  const typingAssessed = Math.max(0, N - typingSkipped);
+  const typingScore = typingAssessed
+    ? Math.max(0, Math.round(100 * (1 - typingFindings.length / typingAssessed))) : null;
+  const typingDetail = `${typingAssessed - typingFindings.length} of ${typingAssessed} columns appropriately typed`
+    + (typingSkipped ? ` · ${typingSkipped} not assessable (personal data — values not stored)` : '');
 
   // --- Documentation --- (assessed only where the source exposes column comments)
   const docAvailable = names.some(nm => typeof cols[nm].comment === 'string');
@@ -5360,6 +5377,13 @@ function metadataQuality(profile) {
   const isPhone = v => { const s = String(v).trim(); return !isDate(s) && /^\+?[\d()\s-]{9,}$/.test(s) && s.replace(/\D/g, '').length >= 10; };
   const piiFindings = [];
   names.forEach(nm => {
+    // The compliance lens is authoritative: it detects by VALUE (checksum-verified) as well as by
+    // name, and it is what drove redaction — so a column it flagged must appear here even though
+    // its sample values are now hidden from the local heuristics below.
+    if (piiCols.has(String(nm).toLowerCase())) {
+      piiFindings.push({ col: nm, msg: 'personal / sensitive data confirmed by the compliance lens' });
+      return;
+    }
     const tv = sampleVals(cols[nm]);
     const valHit = tv.some(v => emailRe.test(v.trim())) ? 'sample values look like emails'
       : (tv.length >= 2 && tv.every(isPhone) ? 'sample values look like phone numbers' : '');
@@ -5405,7 +5429,11 @@ function metadataQuality(profile) {
 
   const dims = [
     { key: 'naming', label: 'Naming', score: namingScore, detail: namingDetail, findings: namingFindings },
-    { key: 'typing', label: 'Typing', score: typingScore, detail: typingDetail, findings: typingFindings },
+    { key: 'typing', label: 'Typing', score: typingScore, detail: typingDetail, findings: typingFindings,
+      // score is null only when EVERY column is personal data (values not stored) — the panel
+      // renders "not assessed" with this reason rather than a misleading 100.
+      notAssessed: typingScore == null
+        ? 'Every column holds personal data, whose values are never stored — typing can\'t be value-checked.' : undefined },
     documentationDim,
     keysDim,
   ];
@@ -5599,7 +5627,10 @@ const _CMP_RAIL = g => g === 'CRITICAL' ? 'red' : (g === 'AT_RISK' || g === 'REV
 
 function _cmpFwChip(d) {
   const fw = (entryFor(d.key).complianceContract || {}).framework;
-  return (fw && fw !== 'gdpr') ? `<span class="cmp-fwchip">${esc(_CMP_FW_LABEL[fw] || fw.toUpperCase())}</span>` : '';
+  if (!fw || fw === 'gdpr') return '';
+  // Built-in packs have an icon label; a custom standard shows its own name from the catalogue.
+  const lab = _CMP_FW_LABEL[fw] || (customFw(fw) ? '📐 ' + (customFw(fw).label || fw) : fw.toUpperCase());
+  return `<span class="cmp-fwchip">${esc(lab)}</span>`;
 }
 function _cmpAttestN(d) {
   return Object.values((entryFor(d.key).complianceAttestations || {}).items || {}).filter(x => x && x.value).length;
@@ -5752,7 +5783,10 @@ async function loadComplianceCardDetail(pane, prefix, key, name) {
   pane.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   if (!prefix) { body.innerHTML = `<p class="dash-muted">No completed run to show for this dataset — re-run to populate.</p>`; return; }
   try {
-    const r = await postJSON(`${API_BASE}/data-quality/result`, HEADERS, { result_prefix: prefix });
+    const [r] = await Promise.all([
+      postJSON(`${API_BASE}/data-quality/result`, HEADERS, { result_prefix: prefix }),
+      ensureCustomFrameworks(),        // the picker + checklist need the custom-standard catalogue
+    ]);
     body.innerHTML = complianceDetailBody(r.compliance, prefix, key);
     wireComplianceDetail(body, r.compliance, prefix, key);
   } catch (e) { body.innerHTML = `<p class="dash-muted" style="color:var(--err)">${esc(e.message)}</p>`; }
@@ -5808,7 +5842,7 @@ function complianceDetailBody(comp, prefix, key) {
       : '<span class="tag muted">Not configured</span>';
 
   const attSaved = (entryFor(key).complianceAttestations || {}).items || {};
-  const attItems = CMP_ATTESTATIONS.filter(a => !a.fw || a.fw === (cc.framework || 'gdpr'));
+  const attItems = attestCatalogue(cc.framework || 'gdpr');
   const attAns = attItems.filter(a => attSaved[a.id] && attSaved[a.id].value).length;
   const attGaps = attItems.filter(a => attSaved[a.id] && attSaved[a.id].value === 'no').length;
   const attCls = attAns === attItems.length ? 'green' : (attGaps ? 'red' : (attAns ? 'amber' : 'muted'));
@@ -5855,10 +5889,116 @@ function wireComplianceDetail(container, comp, prefix, key) {
 async function loadDsCompliance(panel, prefix) {
   const key = dashSelected && dashSelected.key;
   try {
-    const r = await postJSON(`${API_BASE}/data-quality/result`, HEADERS, { result_prefix: prefix });
+    const [r] = await Promise.all([
+      postJSON(`${API_BASE}/data-quality/result`, HEADERS, { result_prefix: prefix }),
+      ensureCustomFrameworks(),        // the picker + checklist need the custom-standard catalogue
+    ]);
     panel.innerHTML = complianceDetailBody(r.compliance, prefix, key);
     wireComplianceDetail(panel, r.compliance, prefix, key);
   } catch (e) { panel.innerHTML = `<p class="dash-muted" style="color:var(--err)">${esc(e.message)}</p>`; }
+}
+
+// ---- Custom frameworks / standards -----------------------------------------------------------
+// A user-declared standard, stored per app. Two kinds of "rule":
+//   * attestations[] — self-attested checklist items, rendered with the built-in ISO 29100 ones
+//   * rules[]        — column rules the WORKER evaluates each run; a FAIL feeds the compliance grade
+let CUSTOM_FRAMEWORKS = [];
+let _cfwLoaded = false;
+// null-prototype: a custom framework id like "constructor" or "toString" would otherwise read as a
+// truthy built-in label and corrupt both fwLabel() and the picker refresh.
+const CFW_BUILTIN_LABEL = Object.assign(Object.create(null),
+  { gdpr: 'GDPR', hipaa: 'HIPAA', ccpa: 'CCPA / CPRA', bcbs239: 'BCBS 239' });
+const isBuiltinFw = id => Object.prototype.hasOwnProperty.call(CFW_BUILTIN_LABEL, id);
+const CFW_OPS = [
+  ['not_null', 'Must not be null'], ['non_blank', 'Must not be blank'],
+  ['regex', 'Must match pattern (regex)'], ['allowed_values', 'Must be one of (comma-separated)'],
+  ['unique', 'Must be unique'], ['max_age_days', 'Must be newer than N days'],
+  ['min', 'Must be at least (number)'], ['max', 'Must be at most (number)'],
+  ['pii', 'Personal data — redact values (no test)'],
+];
+const CFW_OP_NEEDS_VALUE = { regex: 1, allowed_values: 1, max_age_days: 1, min: 1, max: 1 };
+
+async function ensureCustomFrameworks(force) {
+  if (_cfwLoaded && !force) return CUSTOM_FRAMEWORKS;
+  try {
+    const r = await postJSON(`${API_BASE}/data-quality/frameworks`, HEADERS, { action: 'list', app_id: APP_ID });
+    CUSTOM_FRAMEWORKS = (r && r.frameworks) || [];
+    _cfwLoaded = true;
+  } catch (e) { /* catalogue unavailable — built-in frameworks still work */ }
+  return CUSTOM_FRAMEWORKS;
+}
+function customFw(id) { return CUSTOM_FRAMEWORKS.find(f => f && f.id === id) || null; }
+function fwLabel(id) {
+  if (!id) return CFW_BUILTIN_LABEL.gdpr;
+  if (isBuiltinFw(id)) return CFW_BUILTIN_LABEL[id];
+  const c = customFw(id); return c ? (c.label || id) : id;
+}
+// The attestation checklist for a framework: the universal ISO 29100 items + either the matching
+// built-in domain-pack items or, for a custom framework, its own declared checklist items.
+function attestCatalogue(fw) {
+  const base = CMP_ATTESTATIONS.filter(a => !a.fw || a.fw === fw);
+  const c = customFw(fw);
+  if (!c) return base;
+  const own = (c.attestations || []).filter(a => a && a.id && a.q).map(a => ({
+    id: a.id, group: a.group || c.label || 'Custom standard', ref: a.ref || (c.standard || ''),
+    cite: a.cite || '', q: a.q, fw: fw,
+  }));
+  return base.concat(own);
+}
+
+function customFwManagerHtml() {
+  if (!IS_PORTAL_ADMIN) return '';   // defining an org-wide standard is admin config (server-enforced)
+  return `<details class="cmp-settings cmp-cfw" id="cmpCfwBox" style="margin:10px 0;">
+    <summary style="cursor:pointer;">⚙ Custom frameworks &amp; standards <span class="tag na" id="cmpCfwCount"></span></summary>
+    <p class="hint" style="margin:6px 0 10px;">Declare your own standard: <strong>checklist items</strong> your team self-attests, and <strong>data rules</strong> the engine evaluates on every assessment — a failing rule counts toward the compliance grade like any built-in control.</p>
+    <div id="cmpCfwList"></div>
+    <div style="margin-top:8px;"><button type="button" class="btn-sm" id="cmpCfwNew">＋ New framework</button></div>
+    <div id="cmpCfwEditor" style="display:none;margin-top:12px;"></div>
+  </details>`;
+}
+function _cfwAttRowHtml(a) {
+  a = a || {};
+  return `<div class="cfw-att-row" data-aid="${esc(a.id || '')}" style="display:flex;gap:6px;align-items:flex-start;margin-bottom:6px;flex-wrap:wrap;">
+    <input class="cfw-att-group" placeholder="Group (e.g. Governance)" value="${esc(a.group || '')}" maxlength="80" style="flex:0 0 150px;">
+    <input class="cfw-att-q" placeholder="Checklist question the team attests to" value="${esc(a.q || '')}" maxlength="600" style="flex:1;min-width:220px;">
+    <input class="cfw-att-ref" placeholder="Reference" value="${esc(a.ref || '')}" maxlength="120" style="flex:0 0 110px;">
+    <input class="cfw-att-cite" placeholder="Citation" value="${esc(a.cite || '')}" maxlength="160" style="flex:0 0 110px;">
+    <button type="button" class="btn-sm btn-danger cfw-att-del" data-tip="Remove this item">✕</button></div>`;
+}
+function _cfwRuleRowHtml(r) {
+  r = r || {};
+  const op = r.op || 'not_null';
+  const val = Array.isArray(r.value) ? r.value.join(', ') : (r.value != null ? r.value : '');
+  return `<div class="cfw-rule-row" data-rid="${esc(r.id || '')}" style="display:flex;gap:6px;align-items:flex-start;margin-bottom:6px;flex-wrap:wrap;">
+    <input class="cfw-rule-col" placeholder="Column" value="${esc(r.column || '')}" maxlength="160" style="flex:0 0 140px;">
+    <select class="cfw-rule-op" style="flex:0 0 210px;">${CFW_OPS.map(([o, l]) =>
+      `<option value="${o}"${o === op ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select>
+    <input class="cfw-rule-val" placeholder="Value" value="${esc(String(val))}" maxlength="500" style="flex:0 0 140px;${CFW_OP_NEEDS_VALUE[op] ? '' : 'visibility:hidden;'}">
+    <select class="cfw-rule-sev" style="flex:0 0 150px;" data-tip="Only critical / high / medium move the compliance grade. A 'low' FAIL is recorded and listed, but never changes the grade.">${
+      [['critical', 'critical'], ['high', 'high'], ['medium', 'medium'], ['low', 'low (advisory)']].map(([s, l]) =>
+        `<option value="${s}"${s === (r.severity || 'medium') ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select>
+    <input class="cfw-rule-label" placeholder="Rule name (shown on the finding)" value="${esc(r.label || '')}" maxlength="200" style="flex:1;min-width:160px;">
+    <label class="hint" style="flex:0 0 auto;display:flex;align-items:center;gap:4px;" data-tip="Treat this column as personal data — its values are redacted from all stored output"><input type="checkbox" class="cfw-rule-pii"${r.pii ? ' checked' : ''}> PII</label>
+    <button type="button" class="btn-sm btn-danger cfw-rule-del" data-tip="Remove this rule">✕</button></div>`;
+}
+function cfwEditorHtml(fw) {
+  fw = fw || {};
+  return `<div class="cfw-editor" data-editing="${esc(fw.id || '')}" style="border:1px solid var(--border);border-radius:8px;padding:12px;">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
+      <label style="flex:1;min-width:200px;">Standard name<input id="cfwLabel" value="${esc(fw.label || '')}" maxlength="120" placeholder="e.g. ACME Internal Data Standard"></label>
+      <label style="flex:0 0 200px;">Reference / version<input id="cfwStandard" value="${esc(fw.standard || '')}" maxlength="160" placeholder="e.g. ACME-DS v1.2"></label>
+    </div>
+    <h4 style="margin:10px 0 4px;font-size:13px;">Checklist items <span class="hint">(self-attested — Yes / No / N/A, with a note + evidence link)</span></h4>
+    <div id="cfwAttRows">${((fw.attestations || []).map(_cfwAttRowHtml).join('')) || _cfwAttRowHtml({})}</div>
+    <button type="button" class="btn-sm" id="cfwAddAtt">＋ Add checklist item</button>
+    <h4 style="margin:14px 0 4px;font-size:13px;">Data rules <span class="hint">(machine-evaluated each assessment; a critical / high / medium FAIL feeds the compliance grade — “low” is advisory only. A rule whose column isn’t in the dataset is reported as not evaluated.)</span></h4>
+    <div id="cfwRuleRows">${((fw.rules || []).map(_cfwRuleRowHtml).join('')) || _cfwRuleRowHtml({})}</div>
+    <button type="button" class="btn-sm" id="cfwAddRule">＋ Add data rule</button>
+    <div style="margin-top:12px;display:flex;gap:8px;align-items:center;">
+      <button type="button" class="btn-sm" id="cfwSave">${fw.id ? 'Save changes' : 'Create framework'}</button>
+      <button type="button" class="btn-sm" id="cfwCancel">Cancel</button>
+      <span class="hint" id="cfwMsg"></span></div>
+  </div>`;
 }
 
 // Per-dataset compliance policy (Phase 2): declare a retention window + column mappings; each policy
@@ -5868,15 +6008,23 @@ function complianceSettingsHtml(key) {
   const cols = cc.columns || {};
   const v = x => esc(x || '');
   const fw = (cc.framework || 'gdpr');
+  const customOpts = CUSTOM_FRAMEWORKS.map(f => f && f.id
+    ? `<option value="${esc(f.id)}"${fw === f.id ? ' selected' : ''}>${esc(f.label || f.id)}${f.standard ? ' — ' + esc(f.standard) : ''} (custom)</option>` : '').join('');
+  // A framework that was deleted but is still referenced by this dataset stays selectable so the
+  // picker doesn't silently switch the dataset to GDPR on the next save.
+  const orphan = (fw && !isBuiltinFw(fw) && !customFw(fw))
+    ? `<option value="${esc(fw)}" selected>${esc(fw)} (custom — no longer defined)</option>` : '';
   return `<div class="cmp-settings">
     <p class="hint" style="margin:0 0 12px;">Declare your governance policy for this dataset. Each control runs only when its field is set; column names must match the dataset's columns. Applies on the next assessment.</p>
-    <label class="cmp-fwsel"><span class="cmp-fwsel-lab">Regulatory framework <span class="cmp-info" data-tip="Adds a domain pack overlay; the generic exposure grade is unchanged.">&#9432;</span></span>
+    <label class="cmp-fwsel"><span class="cmp-fwsel-lab">Regulatory framework <span class="cmp-info" data-tip="A built-in framework adds a domain pack overlay (the generic exposure grade is unchanged). A custom standard also runs your own data rules, which DO count toward the grade.">&#9432;</span></span>
       <select id="cmpFramework">
         <option value="gdpr"${fw === 'gdpr' ? ' selected' : ''}>General — ISO/IEC 29100 · GDPR</option>
         <option value="hipaa"${fw === 'hipaa' ? ' selected' : ''}>HIPAA — US health (Safe Harbor de-identification)</option>
         <option value="ccpa"${fw === 'ccpa' ? ' selected' : ''}>CCPA / CPRA — California (PI categories + sensitive PI)</option>
         <option value="bcbs239"${fw === 'bcbs239' ? ' selected' : ''}>BCBS 239 — banking risk-data aggregation</option>
+        ${customOpts}${orphan}
       </select></label>
+    ${customFwManagerHtml()}
     <label class="cmp-exempt"><input type="checkbox" id="cmpExempt"${cc.exempt ? ' checked' : ''}> This dataset holds no personal data — exclude from compliance <span class="hint">(out of scope: no controls run, no grade)</span></label>
     <div class="cmp-set-grid">
       <label>Retention limit (days)<input type="number" min="1" id="cmpRetDays" value="${cc.retention_days || ''}" placeholder="e.g. 2555 (7 years)"></label>
@@ -5891,9 +6039,139 @@ function complianceSettingsHtml(key) {
       <span class="hint" id="cmpSetMsg"></span></div>
   </div>`;
 }
+// Wire the custom-framework manager: list / new / edit / delete + the repeatable row editors.
+function wireCustomFwManager(panel) {
+  const box = panel.querySelector('#cmpCfwBox'); if (!box) return;
+  const listEl = box.querySelector('#cmpCfwList'), edEl = box.querySelector('#cmpCfwEditor');
+  const countEl = box.querySelector('#cmpCfwCount');
+  // Rebuild the custom options while PRESERVING the current selection — including a selection that
+  // is no longer in the catalogue (a deleted standard the dataset still references), which must stay
+  // selectable so saving the policy doesn't silently switch the dataset to GDPR.
+  const refreshFwPicker = () => {
+    const sel = panel.querySelector('#cmpFramework'); if (!sel) return;
+    const cur = sel.value;
+    [...sel.querySelectorAll('option')].forEach(o => { if (!isBuiltinFw(o.value)) o.remove(); });
+    sel.insertAdjacentHTML('beforeend', CUSTOM_FRAMEWORKS.map(f =>
+      `<option value="${esc(f.id)}">${esc(f.label || f.id)}${f.standard ? ' — ' + esc(f.standard) : ''} (custom)</option>`).join(''));
+    if (cur && !isBuiltinFw(cur) && !CUSTOM_FRAMEWORKS.some(f => f && f.id === cur)) {
+      sel.insertAdjacentHTML('beforeend',
+        `<option value="${esc(cur)}">${esc(cur)} (custom — no longer defined)</option>`);
+    }
+    sel.value = [...sel.options].some(o => o.value === cur) ? cur : 'gdpr';
+  };
+  const renderList = () => {
+    if (countEl) countEl.textContent = CUSTOM_FRAMEWORKS.length ? String(CUSTOM_FRAMEWORKS.length) : 'none yet';
+    if (!listEl) return;
+    listEl.innerHTML = CUSTOM_FRAMEWORKS.length ? CUSTOM_FRAMEWORKS.map((f, i) =>
+      `<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);flex-wrap:wrap;">
+         <div style="flex:1;min-width:180px;"><strong>${esc(f.label || f.id)}</strong>${f.standard ? ` <span class="hint">${esc(f.standard)}</span>` : ''}
+           <div class="hint">${(f.rules || []).length} data rule${(f.rules || []).length === 1 ? '' : 's'} · ${(f.attestations || []).length} checklist item${(f.attestations || []).length === 1 ? '' : 's'}</div></div>
+         <button type="button" class="btn-sm cfw-edit" data-i="${i}">Edit</button>
+         <button type="button" class="btn-sm btn-danger cfw-del" data-i="${i}">Delete</button></div>`).join('')
+      : '<p class="hint">No custom standards yet — create one to declare your own checklist items and data rules.</p>';
+    listEl.querySelectorAll('.cfw-edit').forEach(b => b.addEventListener('click', () => openEditor(CUSTOM_FRAMEWORKS[+b.dataset.i])));
+    listEl.querySelectorAll('.cfw-del').forEach(b => b.addEventListener('click', async () => {
+      const f = CUSTOM_FRAMEWORKS[+b.dataset.i]; if (!f) return;
+      if (!confirm(`Delete the custom standard "${f.label || f.id}"?\n\nDatasets still set to it keep the setting but no custom rules will run until you re-create it.`)) return;
+      b.disabled = true;
+      try {
+        await postJSON(`${API_BASE}/data-quality/frameworks`, HEADERS, { action: 'delete', app_id: APP_ID, framework_id: f.id });
+        await ensureCustomFrameworks(true); renderList(); refreshFwPicker();
+      } catch (e) { alert('Could not delete: ' + (e && e.message || e)); b.disabled = false; }
+    }));
+  };
+  // Show/hide a rule's value box for the operators that need one.
+  const syncOpVis = row => {
+    const op = row.querySelector('.cfw-rule-op'), v = row.querySelector('.cfw-rule-val');
+    if (op && v) v.style.visibility = CFW_OP_NEEDS_VALUE[op.value] ? '' : 'hidden';
+  };
+  const wireRows = () => {
+    edEl.querySelectorAll('.cfw-att-del').forEach(b => b.addEventListener('click', () => {
+      const rows = edEl.querySelectorAll('.cfw-att-row');
+      if (rows.length > 1) b.closest('.cfw-att-row').remove(); else b.closest('.cfw-att-row').querySelectorAll('input').forEach(i => i.value = '');
+    }));
+    edEl.querySelectorAll('.cfw-rule-del').forEach(b => b.addEventListener('click', () => {
+      const rows = edEl.querySelectorAll('.cfw-rule-row');
+      if (rows.length > 1) b.closest('.cfw-rule-row').remove(); else b.closest('.cfw-rule-row').querySelectorAll('input').forEach(i => { i.value = ''; i.checked = false; });
+    }));
+    edEl.querySelectorAll('.cfw-rule-row').forEach(row => {
+      syncOpVis(row);
+      const op = row.querySelector('.cfw-rule-op');
+      if (op) op.addEventListener('change', () => syncOpVis(row));
+    });
+  };
+  const openEditor = (fw) => {
+    edEl.style.display = ''; edEl.innerHTML = cfwEditorHtml(fw || {});
+    wireRows();
+    edEl.querySelector('#cfwAddAtt').addEventListener('click', () => {
+      edEl.querySelector('#cfwAttRows').insertAdjacentHTML('beforeend', _cfwAttRowHtml({})); wireRows();
+    });
+    edEl.querySelector('#cfwAddRule').addEventListener('click', () => {
+      edEl.querySelector('#cfwRuleRows').insertAdjacentHTML('beforeend', _cfwRuleRowHtml({})); wireRows();
+    });
+    edEl.querySelector('#cfwCancel').addEventListener('click', () => { edEl.style.display = 'none'; edEl.innerHTML = ''; });
+    edEl.querySelector('#cfwSave').addEventListener('click', async () => {
+      const msg = edEl.querySelector('#cfwMsg');
+      const setM = (t, err) => { if (msg) { msg.textContent = t; msg.style.color = err ? 'var(--err)' : 'var(--ok)'; } };
+      const editingId = edEl.querySelector('.cfw-editor').dataset.editing || '';
+      const attestations = [...edEl.querySelectorAll('.cfw-att-row')].map(r => ({
+        id: r.dataset.aid || '',                      // keep an existing item's id so answers stay attached
+        group: r.querySelector('.cfw-att-group').value.trim(),
+        q: r.querySelector('.cfw-att-q').value.trim(),
+        ref: r.querySelector('.cfw-att-ref').value.trim(),
+        cite: r.querySelector('.cfw-att-cite').value.trim(),
+      })).filter(a => a.q);
+      const rules = [...edEl.querySelectorAll('.cfw-rule-row')].map(r => ({
+        id: r.dataset.rid || '',
+        column: r.querySelector('.cfw-rule-col').value.trim(),
+        op: r.querySelector('.cfw-rule-op').value,
+        value: r.querySelector('.cfw-rule-val').value.trim(),
+        severity: r.querySelector('.cfw-rule-sev').value,
+        label: r.querySelector('.cfw-rule-label').value.trim(),
+        pii: r.querySelector('.cfw-rule-pii').checked,
+      })).filter(r => r.column);
+      const label = edEl.querySelector('#cfwLabel').value.trim();
+      if (!label) { setM('A standard name is required.', true); return; }
+      // Rows that would be silently dropped (a rule with no column, a checklist item with no
+      // question) are surfaced instead of vanishing behind a success message.
+      const droppedRules = [...edEl.querySelectorAll('.cfw-rule-row')].filter(r => {
+        const c = r.querySelector('.cfw-rule-col').value.trim();
+        return !c && (r.querySelector('.cfw-rule-label').value.trim() || r.querySelector('.cfw-rule-val').value.trim());
+      }).length;
+      const droppedAtt = [...edEl.querySelectorAll('.cfw-att-row')].filter(r => {
+        const q = r.querySelector('.cfw-att-q').value.trim();
+        return !q && (r.querySelector('.cfw-att-group').value.trim() || r.querySelector('.cfw-att-ref').value.trim());
+      }).length;
+      if (droppedRules || droppedAtt) {
+        const bits = [];
+        if (droppedRules) bits.push(`${droppedRules} data rule${droppedRules === 1 ? '' : 's'} with no column`);
+        if (droppedAtt) bits.push(`${droppedAtt} checklist item${droppedAtt === 1 ? '' : 's'} with no question`);
+        if (!confirm(`${bits.join(' and ')} will be discarded (incomplete).\n\nSave anyway?`)) { setM('Not saved.', true); return; }
+      }
+      if (!rules.length && !attestations.length) { setM('Add at least one checklist item or data rule.', true); return; }
+      const btn = edEl.querySelector('#cfwSave'); btn.disabled = true;
+      try {
+        await postJSON(`${API_BASE}/data-quality/frameworks`, HEADERS, {
+          action: 'save', app_id: APP_ID, framework_id: editingId || undefined,
+          framework: { label, standard: edEl.querySelector('#cfwStandard').value.trim(), attestations, rules },
+        });
+        await ensureCustomFrameworks(true);
+        renderList();
+        edEl.style.display = 'none'; edEl.innerHTML = '';
+        refreshFwPicker();
+      } catch (e) { setM((e && e.message) || String(e), true); }
+      btn.disabled = false;
+    });
+  };
+  const newBtn = box.querySelector('#cmpCfwNew');
+  if (newBtn) newBtn.addEventListener('click', () => openEditor({}));
+  renderList();
+}
+
 function wireComplianceSettings(panel, key, prefix) {
   const val = id => { const el = panel.querySelector(id); return el ? el.value.trim() : ''; };
   const setMsg = (t, err) => { const m = panel.querySelector('#cmpSetMsg'); if (m) { m.textContent = t; m.style.color = err ? 'var(--err)' : ''; } };
+  wireCustomFwManager(panel);
   // AI-assist: review the schema and fill in the fields it can (user reviews + Saves — nothing auto-applies).
   const sbtn = panel.querySelector('#cmpSuggest');
   if (sbtn && prefix) sbtn.addEventListener('click', async () => {
@@ -5944,10 +6222,38 @@ function wireComplianceSettings(panel, key, prefix) {
 function domainPanelHtml(comp) {
   const d = comp && comp.domain;
   if (!d) return '';
+  if (d.custom) return _customPanelHtml(d);
   if (d.framework === 'HIPAA') return _hipaaPanelHtml(d);
   if (d.framework === 'CCPA') return _ccpaPanelHtml(d);
   if (d.framework === 'BCBS239') return _bcbsPanelHtml(d);
   return '';
+}
+
+// A user-declared standard. Unlike the built-in packs, its data rules ARE scored — each one is a
+// control in the Exposure & findings list above, so this panel is the roll-up, not a second verdict.
+function _customPanelHtml(d) {
+  const total = Number(d.rules_total || 0), failed = Number(d.rules_failed || 0);
+  const declared = Number(d.rules_declared != null ? d.rules_declared : total);
+  const skipped = Number(d.rules_skipped || 0);
+  // readiness === null means NOTHING could be evaluated — that must read as unassessed, never as a
+  // green 100%. A partially-evaluated standard shows the skipped count so nothing hides.
+  const unassessed = (d.readiness == null || !total);
+  const cls = unassessed ? 'muted' : (failed ? (failed === total ? 'red' : 'amber') : 'green');
+  const verdict = unassessed
+    ? `Not assessed — none of the ${declared} declared data rule${declared === 1 ? '' : 's'} could be evaluated`
+    : failed ? `${failed} of ${total} data rule${total === 1 ? '' : 's'} failing`
+      : `All ${total} data rule${total === 1 ? '' : 's'} passing`;
+  const skipNote = skipped ? `<p class="hint" style="margin:6px 0 0;">⚠ ${skipped} declared rule${skipped === 1 ? '' : 's'} not evaluated: ${
+    (d.skipped || []).map(s => `<code>${esc(s.column || s.rule)}</code> — ${esc(s.reason)}`).join('; ')}</p>` : '';
+  const bar = unassessed ? '' : `<div class="cmp-at-cov"><span class="cmp-at-cov-bar"><span class="cmp-at-cov-fill" style="width:${Number(d.readiness)}%"></span></span>
+      <span class="hint">${Number(d.readiness)}% of this standard’s evaluated data rules pass${d.attestations_total ? ` · ${d.attestations_total} checklist item${d.attestations_total === 1 ? '' : 's'} to self-attest` : ''}</span></div>`;
+  return `<div class="dm-panel">
+    <div class="cmp-title"><h3>${esc(d.framework || 'Custom standard')}</h3>
+      <span class="tag ${cls}">${esc(verdict)}</span>
+      ${d.standard ? `<span class="cmp-cite">${esc(d.standard)}</span>` : ''}</div>
+    <p class="hint" style="margin:6px 0 10px;">${esc(d.note || '')}</p>
+    ${bar}${skipNote}
+  </div>`;
 }
 
 function _hipaaPanelHtml(d) {
@@ -6053,7 +6359,10 @@ function _pimsControlStatus(ctrl, comp, att, dismissed) {
   // 7.4.9 security → the active exposure posture (after dismissals)
   if (ctrl.lensGrade) {
     if (!comp || comp.exempt) return 'na';
-    const active = (comp.controls || []).filter(c => c.status === 'FAIL' && c.class !== 'quality' && !dismissed[c.id]);
+    // kind==='custom' excluded: a user-declared business rule (a price bound, a uniqueness rule) is
+    // not evidence about the security of PII transmission/storage, so it must not read as a PIMS gap.
+    const active = (comp.controls || []).filter(c => c.status === 'FAIL' && c.class !== 'quality'
+      && c.kind !== 'custom' && !dismissed[c.id]);
     if (active.some(c => c.severity === 'critical' || c.severity === 'high')) return 'gap';
     if (active.some(c => c.severity === 'medium')) return 'review';
     return 'evidenced';
@@ -6198,8 +6507,11 @@ const ATTEST_LABEL = { yes: 'Yes', no: 'No', na: 'N/A' };
 function _dpiaLikelyRequired(comp, dismissed) {
   if (!comp) return false;
   dismissed = dismissed || {};
+  // kind==='custom' excluded: an Art. 35 DPIA trigger must come from a PRIVACY exposure, not from a
+  // failing user-declared business rule.
   const hiExposure = (comp.controls || []).some(c => c && c.status === 'FAIL' &&
-    c.class !== 'quality' && !dismissed[c.id] && (c.severity === 'critical' || c.severity === 'high'));
+    c.class !== 'quality' && c.kind !== 'custom' && !dismissed[c.id] &&
+    (c.severity === 'critical' || c.severity === 'high'));
   if (hiExposure) return true;
   return (comp.advisory || []).some(a => a && a.kind === 'special_category');
 }
@@ -6210,7 +6522,7 @@ function complianceAttestHtml(key, comp) {
   const dpiaReq = _dpiaLikelyRequired(comp, entryFor(key).complianceDismissed || {});
   // Show universal items always + domain items only for the dataset's selected framework.
   const fw = (entryFor(key).complianceContract || {}).framework || 'gdpr';
-  const items = CMP_ATTESTATIONS.filter(a => !a.fw || a.fw === fw);
+  const items = attestCatalogue(fw);
   const total = items.length;
   const answered = items.filter(a => saved[a.id] && saved[a.id].value).length;
   const gaps = items.filter(a => saved[a.id] && saved[a.id].value === 'no').length;
