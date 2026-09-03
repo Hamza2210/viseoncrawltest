@@ -1408,7 +1408,7 @@
         <div class="card">
       <h2 id="fileCardTitle">Dataset</h2>
       <p class="src-note" id="excelIntro" style="display:none;">Upload a spreadsheet (<code>.xlsx</code> / <code>.xlsm</code>) straight from your computer — no SharePoint or database needed. We read <strong>one worksheet</strong> (the first, or one you name), infer data-quality rules from it, and score it across the DAMA dimensions just like any other dataset. If your workbook has several tabs, pick which one to assess below.</p>
-      <input type="file" id="file" accept=".parquet,.pq,.json,.ndjson,.jsonl,.qvd,.csv,.tsv,.xlsx,.xlsm,.qsf,.qvf" />
+      <input type="file" id="file" accept=".parquet,.pq,.json,.ndjson,.jsonl,.qvd,.csv,.tsv,.xlsx,.xlsm" />
       <div class="fileinfo" id="fileinfo">No file selected.</div>
       <div id="excelSheetWrap" style="display:none;margin:2px 0 12px;">
         <label for="excelSheet">Worksheet <span class="hint">(optional)</span></label>
@@ -2061,6 +2061,7 @@
         <label for="schSourceKind">Assess</label>
         <select id="schSourceKind">
           <option value="qlik">This app's tables (Qlik)</option>
+          <option value="tag">Datasets with a tag (one task)</option>
           <option value="redshift">Amazon Redshift</option>
           <option value="s3">Amazon S3 file</option>
           <option value="snowflake">Snowflake</option>
@@ -2089,6 +2090,12 @@
           <p class="hint" style="margin:8px 0;">The connection details are stored with the schedule so it can run unattended — prefer a role or Secrets Manager ARN over raw passwords/keys where the source allows it.</p>
           <div id="schedCredsNote" style="margin:0 0 10px;"></div>
           <div class="src-form" id="schedSourceFields"></div>
+        </div>
+
+        <div id="schTagWrap" style="display:none;">
+          <label for="schTagSel">Tag</label>
+          <select id="schTagSel" style="max-width:320px;"></select>
+          <p class="hint" style="margin:8px 0;">Assesses every <strong>source</strong> dataset carrying this tag in <strong>one task</strong>. Membership is captured when you save (re-save to refresh it). Datasets need a saved credential profile.</p>
         </div>
 
         <label for="schEmail">Alert email</label>
@@ -2387,7 +2394,7 @@ function _applyFileMode(isExcel) {
   const intro = $('#excelIntro'); if (intro) intro.style.display = isExcel ? 'block' : 'none';
   const title = $('#fileCardTitle'); if (title) title.textContent = isExcel ? 'Excel workbook' : 'Dataset';
   if (fileInput) fileInput.setAttribute('accept', isExcel ? '.xlsx,.xlsm'
-    : '.parquet,.pq,.json,.ndjson,.jsonl,.qvd,.csv,.tsv,.xlsx,.xlsm,.qsf,.qvf');
+    : '.parquet,.pq,.json,.ndjson,.jsonl,.qvd,.csv,.tsv,.xlsx,.xlsm');
   refreshFile();
 }
 function refreshFile() {
@@ -4137,7 +4144,11 @@ function renderDashFilters() {
     (dashOwnerSel && dashOwnerSel !== '__none__' ? `<button type="button" class="src-filter-chip active" data-ownerf="">👤 ${esc(dashOwnerSel)} ✕</button>` : '') + `</span>`;
   if (dashTagSel)
     html += `<span class="dash-filtgrp"><span class="hint">Tag:</span>` +
-      `<button type="button" class="src-filter-chip active" data-tagclear="1">🏷️ ${esc(dashTagSel)} ✕</button></span>`;
+      `<button type="button" class="src-filter-chip active" data-tagclear="1">🏷️ ${esc(dashTagSel)} ✕</button>` +
+      `<button type="button" class="src-filter-chip" data-runtag="1" data-tip="Assess every source dataset with this tag in one task">▶ Run all tagged</button>` +
+      `<button type="button" class="src-filter-chip" data-schedtag="1" data-tip="Schedule a recurring assessment of this tag">⏰ Schedule</button></span>`;
+  if (dashDatasets.length)                         // export the estate summary as parquet
+    html += `<span class="dash-filtgrp"><button type="button" class="src-filter-chip" data-exportall="1" data-tip="Download a parquet summary of all datasets">⬇ Export all (parquet)</button></span>`;
   wrap.innerHTML = html;
   wrap.style.display = 'flex';
   wrap.querySelectorAll('[data-srcf]').forEach(b => b.addEventListener('click', () => { dashSourceSel = b.dataset.srcf; renderDashFilters(); refreshDatasetsTable(); }));
@@ -4146,6 +4157,43 @@ function renderDashFilters() {
   wrap.querySelectorAll('[data-ownerf]').forEach(b => b.addEventListener('click', () => { dashOwnerSel = b.dataset.ownerf; renderDashFilters(); refreshDatasetsTable(); }));
   const tc = wrap.querySelector('[data-tagclear]');
   if (tc) tc.addEventListener('click', () => { dashTagSel = ''; renderDashFilters(); refreshDatasetsTable(); });
+  const rt = wrap.querySelector('[data-runtag]');
+  if (rt) rt.addEventListener('click', () => runByTag(dashTagSel));
+  const stg = wrap.querySelector('[data-schedtag]');
+  if (stg) stg.addEventListener('click', () => scheduleTag(dashTagSel));
+  const ea = wrap.querySelector('[data-exportall]');
+  if (ea) ea.addEventListener('click', () => exportParquet('all', null, ea));
+}
+
+// --- Tag batch runs + parquet export (one ECS task for all tagged datasets) ---
+async function runByTag(tag) {
+  if (!APP_ID || !tag) return;
+  if (!confirm(`Assess every source dataset tagged "${tag}" in one task?`)) return;
+  try {
+    const r = await postJSON(`${API_BASE}/data-quality/run-by-tag`, HEADERS,
+      { app_id: APP_ID, tag: tag, notify_email: EMAIL || '' });
+    let msg = `Launched a batch assessment of ${r.launched} dataset(s) tagged "${tag}".`;
+    if (r.skipped && r.skipped.length)
+      msg += `\n\n${r.skipped.length} skipped (no saved connection, Qlik-app, or not re-runnable).`;
+    alert(msg + '\n\nResults will appear in History shortly.');
+  } catch (e) { alert('Could not run the tag: ' + (e && e.message || e)); }
+}
+function scheduleTag(tag) {
+  switchTab('schedules');
+  const sel = $('#schSourceKind');
+  if (sel) { sel.value = 'tag'; if (typeof schSourceUI === 'function') schSourceUI(); }
+  setTimeout(() => { const ts = $('#schTagSel'); if (ts && tag) ts.value = tag; }, 60);
+}
+async function exportParquet(scope, datasetKey, btn) {
+  const orig = btn ? btn.textContent : null;
+  if (btn) { btn.disabled = true; btn.textContent = 'Exporting…'; }
+  try {
+    const body = { scope: scope, app_id: APP_ID || null };
+    if (scope === 'dataset') body.dataset_key = datasetKey;
+    const r = await postJSON(`${API_BASE}/data-quality/export`, HEADERS, body);
+    if (r && r.url) window.location.href = r.url;         // presigned + attachment => downloads
+  } catch (e) { alert('Could not export: ' + (e && e.message || e)); }
+  finally { if (btn) { btn.disabled = false; btn.textContent = orig; } }
 }
 
 function wireDashControls() {
@@ -4328,7 +4376,8 @@ function renderHealthTable(datasets) {
         <td class="dash-muted">${esc(age)}</td>
         <td>${spark}</td>
         <td>${trustMenu(d.key)}</td>
-        <td><button class="btn-sm" data-rerun="${esc(d.name)}" data-fmt="${esc(d.sourceFormat || '')}" data-prefix="${esc(d.resultPrefix || '')}" data-tip="Re-assess this dataset">↻ Re-run</button></td>
+        <td><button class="btn-sm" data-rerun="${esc(d.name)}" data-fmt="${esc(d.sourceFormat || '')}" data-prefix="${esc(d.resultPrefix || '')}" data-tip="Re-assess this dataset">↻ Re-run</button>
+            <button class="btn-sm" data-export="${esc(d.key)}" data-tip="Export this dataset's summary as parquet">⬇ parquet</button></td>
       </tr>`;
   }).join('');
   $('#dashTableWrap').innerHTML =
@@ -4343,6 +4392,8 @@ function renderHealthTable(datasets) {
     }));
   $('#dashTableWrap').querySelectorAll('button[data-rerun]').forEach(b =>
     b.addEventListener('click', e => { e.stopPropagation(); reRunTable(b.dataset.rerun, b.dataset.fmt, b.dataset.prefix); }));
+  $('#dashTableWrap').querySelectorAll('button[data-export]').forEach(b =>
+    b.addEventListener('click', e => { e.stopPropagation(); exportParquet('dataset', b.dataset.export, b); }));
   // Trust / certification: endorse, caution or deprecate (click active to clear) + note.
   wireTrust($('#dashTableWrap'), () => refreshDatasetsTable());
   // Ownership: assign/change owner (＋/✎) or click an owner chip to filter by it.
@@ -9189,11 +9240,32 @@ function collectSchedSource() {
 function schSourceUI() {
   const kind = ($('#schSourceKind') && $('#schSourceKind').value) || 'qlik';
   const qlik = kind === 'qlik';
+  const tag = kind === 'tag';
   if ($('#schQlikFields')) $('#schQlikFields').style.display = qlik ? '' : 'none';
-  if ($('#schSourceWrap')) $('#schSourceWrap').style.display = qlik ? 'none' : 'block';
-  if (!qlik) renderSchedSourceFields(kind);
+  if ($('#schSourceWrap')) $('#schSourceWrap').style.display = (qlik || tag) ? 'none' : 'block';
+  if ($('#schTagWrap')) $('#schTagWrap').style.display = tag ? 'block' : 'none';
+  if (tag) populateSchTags();
+  else if (!qlik) renderSchedSourceFields(kind);
 }
 if ($('#schSourceKind')) $('#schSourceKind').addEventListener('change', schSourceUI);
+
+async function populateSchTags() {
+  const sel = $('#schTagSel'); if (!sel) return;
+  if (!dashEntries || !Object.keys(dashEntries).length) { try { await loadDashEntries(); } catch (e) {} }
+  const cur = sel.value;
+  const tags = new Set();
+  for (const k in (dashEntries || {})) ((dashEntries[k] || {}).tags || []).forEach(t => tags.add(t));
+  const list = [...tags].sort();
+  sel.innerHTML = '';
+  if (!list.length) {
+    const o = document.createElement('option'); o.value = '';
+    o.textContent = '(no tags yet — tag some datasets first)'; sel.appendChild(o); return;
+  }
+  list.forEach(t => {
+    const o = document.createElement('option'); o.value = t; o.textContent = t;
+    if (t === cur) o.selected = true; sel.appendChild(o);
+  });
+}
 
 async function saveSchedule() {
   if (!APP_ID) { schBanner('err', 'Open from inside a Qlik app to schedule its checks.'); return; }
@@ -9217,6 +9289,10 @@ async function saveSchedule() {
     const sampleRaw = $('#schSample').value.trim();
     const sample = sampleRaw ? parseInt(sampleRaw, 10) : NaN;
     if (Number.isFinite(sample) && sample > 0) body.sample_rows = sample;
+  } else if (kind === 'tag') {
+    const tag = (($('#schTagSel') && $('#schTagSel').value) || '').trim();
+    if (!tag) { schBanner('err', 'Pick a tag to schedule.'); return; }
+    body.tag = tag;
   } else {
     const cfg = collectSchedSource();
     // When saved credentials are applied, the blank secret is injected server-side.
@@ -9407,9 +9483,11 @@ function renderSchedules(list) {
   const rows = list.map((s, i) => {
     const on = s.state === 'ENABLED';
     const isSrc = s.sourceKind && s.sourceKind !== 'qlik';
-    const tables = isSrc
-      ? `${SOURCE_LABEL[s.sourceKind] || s.sourceKind}${s.sourceSummary ? ' · ' + s.sourceSummary : ''}`
-      : ((s.tables && s.tables.length) ? `${s.tables.length} table(s)` : 'All tables');
+    const tables = s.sourceKind === 'tag'
+      ? `🏷️ Tag: ${s.tag || s.sourceSummary || '—'}`
+      : isSrc
+        ? `${SOURCE_LABEL[s.sourceKind] || s.sourceKind}${s.sourceSummary ? ' · ' + s.sourceSummary : ''}`
+        : ((s.tables && s.tables.length) ? `${s.tables.length} table(s)` : 'All tables');
     const stateChip = on ? `<span class="chip good"><span class="dot"></span>Enabled</span>`
       : `<span class="chip na"><span class="dot"></span>Disabled</span>`;
     return `<tr class="sched-main">
@@ -9506,6 +9584,14 @@ function editSchedule(s) {
   if (kind === 'qlik') {
     schSelected = (s.tables || []).slice();   // preserve the schedule's table selection
     updateTablesSummary();
+  } else if (kind === 'tag') {
+    const sel = $('#schTagSel');
+    if (sel && s.tag) {
+      if (![...sel.options].some(o => o.value === s.tag)) {
+        const o = document.createElement('option'); o.value = s.tag; o.textContent = s.tag; sel.appendChild(o);
+      }
+      sel.value = s.tag;
+    }
   } else {
     schBanner('info', 'Re-enter this source’s connection details — credentials aren’t stored back into the form.');
   }
