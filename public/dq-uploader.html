@@ -2314,6 +2314,11 @@ const PORTAL = (q.get('mode') === 'portal') || (typeof window !== 'undefined' &&
 let IS_PORTAL_ADMIN = !PORTAL;   // set true for portal admins/super-admins in bootPortal
 let PORTAL_ORG_NAME = '';        // set in bootPortal — used in the policy-rejection email
 const API_BASE = (q.get('api') || 'https://i1jwcc4bx4.execute-api.eu-west-1.amazonaws.com/dev').replace(/\/+$/, '');
+// MCP servers live on a Lambda FUNCTION URL, not on API_BASE. Two reasons: API Gateway's
+// '/dev' stage prefix makes the RFC 9728 discovery path (/.well-known/oauth-protected-resource
+// /mcp/<surface>) unreachable at the host root, and API Gateway rewrites the WWW-Authenticate
+// header an MCP client needs. Must match MCP_PUBLIC_URL in the Lambda env. Override with ?mcp=
+const MCP_BASE = (q.get('mcp') || 'https://ghceezzczrdlvffjyzyibsxi4y0mxick.lambda-url.eu-west-1.on.aws').replace(/\/+$/, '');
 const TENANT   = (q.get('tenant') || '').trim();
 const API_KEY  = (q.get('key') || h.get('key') || '').trim();   // ?key=… or #key=…
 // Submitting user's email, auto-detected by the extension. In the fragment (#) so
@@ -6945,9 +6950,7 @@ function updateIncBadge(n) {
 // own Auth0 login, and the org + role are resolved server-side from that identity.
 let _mcpInit = false;
 function mcpBaseUrl() {
-  // The MCP endpoints live on the same API base as every other call.
-  const base = String(API_BASE || '').replace(/\/+$/, '');
-  return base + (PORTAL ? '/mcp/portal' : '/mcp/qlik');
+  return MCP_BASE + (PORTAL ? '/mcp/portal' : '/mcp/qlik');
 }
 function initAssistantTab() {
   const urlEl = $('#mcpUrl');
