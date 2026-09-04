@@ -6982,7 +6982,9 @@ function mcpCapsHtml() {
     'Column profiles and the active ruleset',
     'Compliance posture \u2014 exposures, policy, attestations, framework overlays',
     'Schedules, run history and governance metadata'];
-  const ops = ['Re-run an existing dataset', 'Re-run every dataset carrying a tag'];
+  const ops = [PORTAL ? 'Re-run an existing dataset (saved-credential sources)'
+                     : 'Re-run a dataset — this app’s tables, or a saved-credential source',
+               'Re-run every dataset carrying a tag'];
   if (PORTAL) ops.push('Submit your latest run for admin approval');
   if (PORTAL && IS_PORTAL_ADMIN) ops.push('Review the approvals queue and endorse / caution / deprecate a run',
     'Accept or reject a proposed compliance policy or attestation');
@@ -7010,13 +7012,20 @@ async function mcpGenerateCode(btn) {
   if (!APP_ID) { mcpShowMsg('No Qlik app id in this session, so a code can\u2019t be scoped.', true); return; }
   btn.disabled = true; mcpShowMsg('Generating\u2026', false);
   try {
-    const r = await postJSON(`${API_BASE}/data-quality/mcp-connect`, HEADERS,
+    // Send the Qlik engine token so the assistant can RE-RUN this app's tables. It is stored
+    // server-side against the connection and never reaches the MCP client.
+    const r = await postJSON(`${API_BASE}/data-quality/mcp-connect`,
+      { ...HEADERS, ...(BEARER ? { 'X-Qlik-Bearer': BEARER } : {}) },
       { app_id: APP_ID, app_name: (document.title || '').slice(0, 120) });
     const wrap = $('#mcpCodeWrap'), code = $('#mcpCode');
     if (code) code.textContent = r.connect_code || '';
     if (wrap) wrap.style.display = 'block';
     mcpShowMsg('', false);
     // Count the code down so it's obvious when it has gone stale.
+    if (r.can_rerun_tables === false) {
+      mcpShowMsg('Connected reads will work, but no Qlik session was available, so the assistant '
+        + 'won’t be able to re-run this app’s tables. Reload the extension and try again.', true);
+    }
     let left = Number(r.expires_in || 600);
     const exp = $('#mcpCodeExpiry');
     if (_mcpTimer) clearInterval(_mcpTimer);
