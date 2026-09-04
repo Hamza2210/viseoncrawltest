@@ -1337,6 +1337,8 @@
     <button class="side-item sub" data-tab="history"><span class="si-ico">📜</span>Assessment history</button>
     <button class="side-item sub" id="approvalsNav" data-tab="approvals"><span class="si-ico">✅</span>Approvals <span class="tab-badge" id="approvalsBadge" style="display:none;"></span></button>
 
+    <button class="side-item sub" data-tab="assistant"><span class="si-ico">🤖</span>AI assistant</button>
+
     <button class="side-item" data-tab="profile" id="profileNav" style="display:none"><span class="si-ico">👤</span>Profile</button>
   </nav>
 </aside>
@@ -1783,6 +1785,54 @@
         <button type="button" class="btn-sm" id="portalLogout">Log out</button>
       </div>
       <div id="profResetMsg" style="margin-top:12px;font-size:13px;color:var(--muted);display:none;"></div>
+    </div>
+  </div>
+
+  <!-- ============ AI ASSISTANT (MCP) ============ -->
+  <div id="assistantPanel" style="display:none;">
+    <div class="tab-intro">
+      <h2>AI assistant</h2>
+      <p id="mcpIntro">Connect an AI assistant (such as Claude) to this data-quality instance, then just
+        ask &mdash; &ldquo;what&rsquo;s the latest score for orders?&rdquo;, &ldquo;which datasets are failing
+        their gate?&rdquo;, &ldquo;any open incidents and how do I fix them?&rdquo;</p>
+    </div>
+
+    <div class="card" style="max-width:760px;">
+      <h3 style="margin:0 0 4px;font-size:15px;">1 &middot; Connection address</h3>
+      <p class="hint" style="margin:0 0 10px;">Add this as a custom connector / MCP server in your assistant.</p>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <code id="mcpUrl" style="flex:1;min-width:280px;padding:9px 11px;background:var(--bg);border:1px solid var(--border);border-radius:8px;font-size:13px;word-break:break-all;">&mdash;</code>
+        <button class="btn-sm" id="mcpCopyUrl">Copy</button>
+      </div>
+
+      <div id="mcpQlikStep" style="display:none;">
+        <h3 style="margin:22px 0 4px;font-size:15px;">2 &middot; Authorise this Qlik app</h3>
+        <p class="hint" style="margin:0 0 10px;">Generate a one-time code, then paste it into the sign-in page your
+          assistant opens. The connection is limited to <strong id="mcpAppName">this app</strong> &mdash; it can never
+          see another app or another Qlik tenant.</p>
+        <button class="btn-sm" id="mcpGenBtn">Generate connection code</button>
+        <div id="mcpCodeWrap" style="display:none;margin-top:14px;">
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <code id="mcpCode" style="flex:1;min-width:220px;padding:12px;background:var(--bg);border:1px solid var(--accent);border-radius:8px;font-size:20px;letter-spacing:.1em;text-align:center;"></code>
+            <button class="btn-sm" id="mcpCopyCode">Copy code</button>
+          </div>
+          <p class="hint" id="mcpCodeExpiry" style="margin:8px 0 0;"></p>
+        </div>
+        <div id="mcpMsg" style="margin-top:10px;font-size:13px;display:none;"></div>
+      </div>
+
+      <div id="mcpPortalStep" style="display:none;">
+        <h3 style="margin:22px 0 4px;font-size:15px;">2 &middot; Sign in</h3>
+        <p class="hint" style="margin:0;">Your assistant will open a sign-in page. Log in with the same portal
+          account you use here. The connection is limited to
+          <strong id="mcpOrgName">your organisation</strong>, and it inherits your role &mdash; so it can only do
+          what you can do in this UI.</p>
+      </div>
+    </div>
+
+    <div class="card" style="max-width:760px;margin-top:14px;">
+      <h3 style="margin:0 0 8px;font-size:15px;">What it can do</h3>
+      <div id="mcpCaps" class="hint" style="line-height:1.7;"></div>
     </div>
   </div>
 
@@ -6890,6 +6940,98 @@ function updateIncBadge(n) {
   if (n > 0) { b.textContent = n; b.style.display = 'inline-block'; }
   else { b.style.display = 'none'; }
 }
+// ---- AI assistant (MCP) tab ------------------------------------------------------ //
+// Shows the MCP connection address and, for Qlik, mints the one-time connect code that binds a
+// token to THIS app. The portal needs no code: the assistant signs the user in via the portal's
+// own Auth0 login, and the org + role are resolved server-side from that identity.
+let _mcpInit = false;
+function mcpBaseUrl() {
+  // The MCP endpoints live on the same API base as every other call.
+  const base = String(API_BASE || '').replace(/\/+$/, '');
+  return base + (PORTAL ? '/mcp/portal' : '/mcp/qlik');
+}
+function initAssistantTab() {
+  const urlEl = $('#mcpUrl');
+  if (urlEl) urlEl.textContent = mcpBaseUrl();
+  const q = $('#mcpQlikStep'), p = $('#mcpPortalStep');
+  if (q) q.style.display = PORTAL ? 'none' : 'block';
+  if (p) p.style.display = PORTAL ? 'block' : 'none';
+  const org = $('#mcpOrgName');
+  if (org && PORTAL_ORG_NAME) org.textContent = PORTAL_ORG_NAME;
+  const an = $('#mcpAppName');
+  if (an && !PORTAL) an.textContent = APP_ID ? ('app ' + APP_ID) : 'this app';
+  const caps = $('#mcpCaps');
+  if (caps) caps.innerHTML = mcpCapsHtml();
+  if (_mcpInit) return;
+  _mcpInit = true;
+  const cu = $('#mcpCopyUrl');
+  if (cu) cu.addEventListener('click', () => mcpCopy(mcpBaseUrl(), cu));
+  const gen = $('#mcpGenBtn');
+  if (gen) gen.addEventListener('click', () => mcpGenerateCode(gen));
+  const cc = $('#mcpCopyCode');
+  if (cc) cc.addEventListener('click', () => mcpCopy(($('#mcpCode') || {}).textContent || '', cc));
+}
+function mcpCapsHtml() {
+  const read = ['Dataset scores, RAG status and quality-gate results',
+    'All nine DAMA dimensions and the specific checks that are failing',
+    'Score trends over time and the adaptive baseline',
+    'Open incidents with the engine\u2019s own remediation text',
+    'Sample offending records (personal data stays redacted)',
+    'Column profiles and the active ruleset',
+    'Compliance posture \u2014 exposures, policy, attestations, framework overlays',
+    'Schedules, run history and governance metadata'];
+  const ops = ['Re-run an existing dataset', 'Re-run every dataset carrying a tag'];
+  if (PORTAL) ops.push('Submit your latest run for admin approval');
+  if (PORTAL && IS_PORTAL_ADMIN) ops.push('Review the approvals queue and endorse / caution / deprecate a run',
+    'Accept or reject a proposed compliance policy or attestation');
+  const li = a => '<ul style="margin:6px 0 0;padding-left:20px;">' +
+    a.map(x => '<li>' + x + '</li>').join('') + '</ul>';
+  return '<strong>Ask about</strong>' + li(read) +
+    '<strong style="display:block;margin-top:12px;">Actions it can take</strong>' + li(ops) +
+    '<p style="margin:12px 0 0;">It <strong>cannot</strong> submit a new dataset, or change any rule, ' +
+    'compliance policy or attestation \u2014 those stay in this UI by design.</p>';
+}
+function mcpCopy(text, btn) {
+  const done = () => { const t = btn.textContent; btn.textContent = 'Copied'; setTimeout(() => btn.textContent = t, 1400); };
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, () => {});
+  else { const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select();
+         try { document.execCommand('copy'); done(); } catch (e) {} ta.remove(); }
+}
+function mcpShowMsg(text, isErr) {
+  const el = $('#mcpMsg'); if (!el) return;
+  el.style.display = text ? 'block' : 'none';
+  el.style.color = isErr ? 'var(--err)' : 'var(--muted)';
+  el.textContent = text || '';
+}
+let _mcpTimer = null;
+async function mcpGenerateCode(btn) {
+  if (!APP_ID) { mcpShowMsg('No Qlik app id in this session, so a code can\u2019t be scoped.', true); return; }
+  btn.disabled = true; mcpShowMsg('Generating\u2026', false);
+  try {
+    const r = await postJSON(`${API_BASE}/data-quality/mcp-connect`, HEADERS,
+      { app_id: APP_ID, app_name: (document.title || '').slice(0, 120) });
+    const wrap = $('#mcpCodeWrap'), code = $('#mcpCode');
+    if (code) code.textContent = r.connect_code || '';
+    if (wrap) wrap.style.display = 'block';
+    mcpShowMsg('', false);
+    // Count the code down so it's obvious when it has gone stale.
+    let left = Number(r.expires_in || 600);
+    const exp = $('#mcpCodeExpiry');
+    if (_mcpTimer) clearInterval(_mcpTimer);
+    const tick = () => {
+      if (exp) exp.textContent = left > 0
+        ? `Single use \u00b7 expires in ${Math.floor(left / 60)}m ${String(left % 60).padStart(2, '0')}s`
+        : 'Expired \u2014 generate a new code.';
+      if (left <= 0) { clearInterval(_mcpTimer); _mcpTimer = null; }
+      left--;
+    };
+    tick(); _mcpTimer = setInterval(tick, 1000);
+  } catch (e) {
+    const m = String((e && e.message) || e);
+    mcpShowMsg(/503/.test(m) ? 'The AI assistant endpoint isn\u2019t enabled on this deployment yet.' : m, true);
+  } finally { btn.disabled = false; }
+}
+
 // ---- Global blocker bar: always-visible summary of open blockers/incidents ---- //
 const _BB_SEV = { blocker: 3, major: 2, warning: 1, minor: 1 };
 function renderBlockerBar(open) {
@@ -9174,12 +9316,14 @@ function switchTab(name) {
   $('#complianceTab').style.display = name === 'compliance' ? 'block' : 'none';
   $('#lineagePanel').style.display = name === 'lineage' ? 'block' : 'none';
   $('#profilePanel').style.display = name === 'profile' ? 'block' : 'none';
+  $('#assistantPanel').style.display = name === 'assistant' ? 'block' : 'none';
   // Wide, full-width tabs vs the narrow centered form column.
   const wrapEl = document.querySelector('.wrap');
   if (wrapEl) wrapEl.classList.add('wide');   // every tab now uses the full width
   // The standards/methodology footer is only relevant where you run assessments.
   const footEl = document.querySelector('.standards');
   if (footEl) footEl.style.display = (name === 'upload' || name === 'appdata') ? 'block' : 'none';
+  if (name === 'assistant') initAssistantTab();
   if (name === 'incidents') loadIncidents();
   if (name === 'compliance') loadComplianceEstate();
   if (name === 'lineage') loadLineage();
