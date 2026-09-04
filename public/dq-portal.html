@@ -4,7 +4,7 @@
 <script>window.__DQ_MODE__='portal';</script>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Data Quality Profiling</title>
+<title>Data Assurance</title>
 <style>
   :root {
     /* Space-navy theme (matches the Quality Space galaxy) — dark tones, light text, always on. */
@@ -783,12 +783,27 @@
   .na-line { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
   .na-chip { font-size: 11px; color: var(--muted); background: var(--idle-bg); padding: 2px 8px;
     border-radius: 999px; cursor: help; }
-  .rd-tabs { display: flex; gap: 2px; flex-wrap: wrap; border-bottom: 1px solid var(--border); margin: 4px 0 16px; }
-  .rd-tab { position: relative; background: none; border: 0; color: var(--muted); font-size: 13px; font-weight: 600;
-    padding: 8px 14px; cursor: pointer; border-radius: 8px 8px 0 0; transition: color .12s, background-color .12s; }
+  /* About page feature grid */
+  .about-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 14px 20px; }
+  .about-item { display: grid; grid-template-columns: 26px 1fr; grid-template-rows: auto auto;
+    column-gap: 10px; align-items: start; }
+  .about-item .about-ico { grid-row: 1 / span 2; font-size: 17px; line-height: 1.3; }
+  .about-item strong { font-size: 13.5px; color: var(--text); }
+  .about-item span:last-child { font-size: 12.5px; color: var(--muted); line-height: 1.5; }
+  body.portal .qlik-only { display: none; }
+
+  /* Detail-view tabs. With the panel at 70% these fit on one line, so they no longer wrap into
+     a cramped block: nowrap + a little more air, and they scroll horizontally if space runs out. */
+  .rd-tabs { display: flex; gap: 4px; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none;
+    border-bottom: 1px solid var(--border); margin: 2px 0 18px; padding-bottom: 1px; }
+  .rd-tabs::-webkit-scrollbar { display: none; }
+  .rd-tab { position: relative; flex: 0 0 auto; white-space: nowrap; background: none; border: 0;
+    color: var(--muted); font-size: 13px; font-weight: 600; letter-spacing: .01em;
+    padding: 10px 16px; cursor: pointer; border-radius: 8px 8px 0 0;
+    transition: color .12s, background-color .12s; }
   .rd-tab:hover { color: var(--text); background: var(--idle-bg); }
   .rd-tab.active { color: var(--text); }
-  .rd-tab.active::after { content: ''; position: absolute; left: 10px; right: 10px; bottom: -1px; height: 2.5px;
+  .rd-tab.active::after { content: ''; position: absolute; left: 12px; right: 12px; bottom: -1px; height: 2.5px;
     border-radius: 3px; background: var(--grad); }
   /* Full-app history: app-wide average box shown when a run is expanded */
   .apprun-agg { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px;
@@ -1222,11 +1237,21 @@
   /* Galaxy (left) + selected-dataset detail (right), side by side; stacks on narrow screens. */
   /* Galaxy is full-width until a dataset is selected, then it splits: galaxy | detail. */
   .overview-top { display: grid; grid-template-columns: 1fr; gap: 18px; align-items: start; margin-bottom: 18px; }
-  .overview-top.split { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); }
+  /* 30 / 70: the galaxy is an index, the detail panel is where the work happens - so the
+     detail gets the room. Order in the DOM is galaxy first, #dashDetail second. */
+  .overview-top.split { grid-template-columns: minmax(0, 3fr) minmax(0, 7fr); }
   .overview-top:not(.split) > #dashDetail { display: none; }
   .overview-top > * { margin-bottom: 0; }
-  #dashDetail { max-height: 496px; overflow-y: auto; scroll-margin-top: 240px; }
-  #dashDetail .trend-cols { grid-template-columns: 1fr; }   /* stack charts in the narrow side panel */
+  #dashDetail { max-height: 640px; overflow-y: auto; scroll-margin-top: 240px; }
+  /* At 70% width the detail panel is wide enough for side-by-side charts again. */
+  #dashDetail .trend-cols { grid-template-columns: 1fr 1fr; }
+  @media (max-width: 1500px) { #dashDetail .trend-cols { grid-template-columns: 1fr; } }
+  /* Keep the galaxy a sensible shape once it is only 30% wide. */
+  .overview-top.split #galaxyWrap { height: 360px; }
+  /* At 30% the 'drag to orbit...' hint collides with the tool buttons and wraps the heading.
+     It is only needed before a dataset is picked, when the galaxy is full width. */
+  .overview-top.split .galaxy-card h2 .hint { display: none; }
+  .overview-top.split .galaxy-card h2 { white-space: nowrap; }
   @media (max-width: 1100px) { .overview-top.split { grid-template-columns: 1fr; } #dashDetail { max-height: none; } }
   #galaxyWrap.grabbing { cursor: grabbing; }
   #galaxyWrap canvas { display: block; }
@@ -1312,8 +1337,8 @@
 <body>
 <aside class="sidebar">
   <div class="brand">
-    <div class="brand-title">Data Quality</div>
-    <div class="brand-sub">DAMA quality scores across your data stages</div>
+    <div class="brand-title">Data Assurance</div>
+    <div class="brand-sub">Full-table quality, compliance &amp; governance at source</div>
   </div>
   <nav class="side-nav">
     <button class="side-item active" data-tab="dashboard"><span class="si-ico">📊</span>Overview</button>
@@ -1333,11 +1358,13 @@
     <button class="side-item sub" data-tab="model"><span class="si-ico">🧩</span>Data model</button>
     <button class="side-item sub" data-tab="lineage"><span class="si-ico">🔗</span>Lineage</button>
 
-    <div class="side-group">Records</div>
+    <div class="side-group">Audits</div>
     <button class="side-item sub" data-tab="history"><span class="si-ico">📜</span>Assessment history</button>
     <button class="side-item sub" id="approvalsNav" data-tab="approvals"><span class="si-ico">✅</span>Approvals <span class="tab-badge" id="approvalsBadge" style="display:none;"></span></button>
 
     <button class="side-item sub" data-tab="assistant"><span class="si-ico">🤖</span>AI assistant</button>
+
+    <button class="side-item" data-tab="about"><span class="si-ico">ℹ️</span>About</button>
 
     <button class="side-item" data-tab="profile" id="profileNav" style="display:none"><span class="si-ico">👤</span>Profile</button>
   </nav>
@@ -1833,6 +1860,75 @@
     <div class="card" style="max-width:760px;margin-top:14px;">
       <h3 style="margin:0 0 8px;font-size:15px;">What it can do</h3>
       <div id="mcpCaps" class="hint" style="line-height:1.7;"></div>
+    </div>
+  </div>
+
+  <!-- ============ ABOUT ============ -->
+  <div id="aboutPanel" style="display:none;">
+    <div class="tab-intro">
+      <h2>About Data Assurance</h2>
+      <p>What this platform is for, in one page.</p>
+    </div>
+
+    <div class="card" style="max-width:900px;">
+      <p style="font-size:17px;line-height:1.6;margin:0 0 4px;color:var(--text);">
+        <strong>Most data-quality tools grade a sample and call it green.</strong>
+        We score <strong>every row, at the source</strong> &mdash; and we&rsquo;re honest about
+        what we can and can&rsquo;t prove.
+      </p>
+    </div>
+
+    <div class="card" style="max-width:900px;margin-top:14px;">
+      <h3 style="margin:0 0 8px;font-size:15px;">The problem</h3>
+      <p class="dash-muted" style="margin:0 0 10px;line-height:1.65;">
+        Quality tools typically profile a few thousand rows and extrapolate. On a million-row table
+        that green score can hide thousands of broken records &mdash; and you only find out when a
+        report is wrong, a regulator asks, or a customer complains. Worse, quality is usually
+        measured <em>after</em> data has been copied and reshaped, so what gets graded is the
+        pipeline&rsquo;s output rather than the data you actually own.
+      </p>
+      <h3 style="margin:16px 0 8px;font-size:15px;">What we do about it</h3>
+      <p class="dash-muted" style="margin:0;line-height:1.65;">
+        Assessment is pushed down into the warehouse, so the whole table is scored where it already
+        lives &mdash; no extracts, no copies, no data movement. You get exact failing-row counts
+        instead of estimates, the specific records that failed, and a plain-English reason for each.
+        Dimensions we can&rsquo;t legitimately evidence from your data are marked
+        <em>not assessed</em> and excluded from the score, never quietly counted as full marks.
+      </p>
+    </div>
+
+    <div class="card" style="max-width:900px;margin-top:14px;">
+      <h3 style="margin:0 0 10px;font-size:15px;">What&rsquo;s in the box</h3>
+      <div class="about-grid">
+        <div class="about-item"><span class="about-ico">🔎</span>
+          <strong>Full-table scoring</strong>
+          <span>Every row assessed via SQL pushdown &mdash; exact counts, at any scale.</span></div>
+        <div class="about-item"><span class="about-ico">🔌</span>
+          <strong>Scored where it lives</strong>
+          <span>Warehouses, databases, object stores, SharePoint and files<span class="qlik-only">, plus Qlik apps</span> &mdash; one engine.</span></div>
+        <div class="about-item"><span class="about-ico">📐</span>
+          <strong>Nine DAMA dimensions</strong>
+          <span>Completeness, validity, uniqueness, timeliness and more &mdash; scored honestly against DAMA UK &amp; ISO/IEC 25012.</span></div>
+        <div class="about-item"><span class="about-ico">🛡️</span>
+          <strong>Compliance built in</strong>
+          <span>ISO/IEC 29100 privacy lens with GDPR, HIPAA, CCPA and BCBS 239 packs &mdash; or your own standard.</span></div>
+        <div class="about-item"><span class="about-ico">🔒</span>
+          <strong>Privacy by design</strong>
+          <span>Personal data is detected and reported as present &mdash; the values themselves are never stored.</span></div>
+        <div class="about-item"><span class="about-ico">🚨</span>
+          <strong>Monitoring that chases people</strong>
+          <span>Incidents open, route to an owner, alert Slack or Teams, and resolve themselves when fixed.</span></div>
+        <div class="about-item"><span class="about-ico">🏅</span>
+          <strong>Governance you can act on</strong>
+          <span>Medallion stages, ownership, endorsements and an approvals workflow for what teams publish.</span></div>
+        <div class="about-item"><span class="about-ico">🤖</span>
+          <strong>Ask it anything</strong>
+          <span>Connect an AI assistant and query your estate in plain language &mdash; see the AI assistant tab.</span></div>
+      </div>
+      <p class="hint" style="margin:14px 0 0;">
+        Evidence toward compliance, not a certification. Scores describe what the data can
+        demonstrate &mdash; where something isn&rsquo;t assessable, we say so rather than guess.
+      </p>
     </div>
   </div>
 
@@ -9329,6 +9425,7 @@ function switchTab(name) {
   $('#lineagePanel').style.display = name === 'lineage' ? 'block' : 'none';
   $('#profilePanel').style.display = name === 'profile' ? 'block' : 'none';
   $('#assistantPanel').style.display = name === 'assistant' ? 'block' : 'none';
+  $('#aboutPanel').style.display = name === 'about' ? 'block' : 'none';
   // Wide, full-width tabs vs the narrow centered form column.
   const wrapEl = document.querySelector('.wrap');
   if (wrapEl) wrapEl.classList.add('wide');   // every tab now uses the full width
