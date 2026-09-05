@@ -125,7 +125,7 @@
   .wrow input[type=number] { width: 90px; flex: 0 0 auto; }
   .wlabel { flex: 1; min-width: 0; }
   .wdesc { color: var(--muted); font-size: 11px; margin-top: 2px; line-height: 1.35; }
-  input[type=text] { width: 100%; padding: 9px 11px; border: 1px solid var(--border);
+  input[type=text], input[type=email] { width: 100%; padding: 9px 11px; border: 1px solid var(--border);
     border-radius: 8px; background: var(--bg); color: var(--text); font: inherit; }
   .subhead2 { font-size: 12px; font-weight: 700; margin: 14px 0 4px; }
   .rule-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
@@ -816,7 +816,7 @@
   .tt-badge.none { background: var(--idle-bg); color: var(--muted); }
 
   .tagrun-email { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--border); }
-  .tagrun-email input { max-width: 380px; }
+  .tagrun-email input { width: 100%; }
 
   .tagrun-preview-card { position: sticky; top: 12px;
     background: linear-gradient(180deg, var(--idle-bg), var(--card) 130px); }
@@ -869,6 +869,21 @@
   .trs-row:first-child { border-top: 0; }
   .trs-name { font-weight: 600; flex: none; }
   .trs-why { color: var(--muted); font-size: 12.5px; }
+
+  /* Profile: a label/value list. The card keeps the full width every other tab uses, but the
+     value sits in a fixed column beside its label - space-between was throwing the two to
+     opposite edges, so at full width the name and its value were a screen apart.
+     border-top between rows (rather than bottom) means no :last-child exception is needed. */
+  .prof-row { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 16px;
+    align-items: baseline; padding: 11px 0; }
+  .prof-row + .prof-row { border-top: 1px solid var(--border); }
+  .prof-k { color: var(--muted); font-size: 13px; }
+  .prof-v { font-size: 14px; overflow-wrap: anywhere; }
+  .prof-v.cap { text-transform: capitalize; }
+  .prof-actions { margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--border);
+    display: flex; gap: 10px; flex-wrap: wrap; }
+  .prof-msg { margin-top: 12px; font-size: 13px; color: var(--muted); }
+  @media (max-width: 560px) { .prof-row { grid-template-columns: 1fr; gap: 2px; } }
 
   /* About page feature grid */
   .about-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 14px 20px; }
@@ -1858,7 +1873,7 @@
          just above the Run button). selectSource() relocates each into the active source card. -->
     <div id="srcCredsNote" style="display:none;margin:14px 0;"></div>
     <div id="srcSaveWrap" style="display:none;margin:14px 0;">
-      <label class="ar-flag"><input type="checkbox" id="srcSaveCreds"> 💾 Save these credentials for this app (stored encrypted)</label>
+      <label class="ar-flag"><input type="checkbox" id="srcSaveCreds"> 💾 Save these credentials for this <span class="scope-n">app</span> (stored encrypted)</label>
     </div>
 
     <!-- Shared optional Accuracy & Integrity config; selectSource() moves this into the active
@@ -1897,17 +1912,14 @@
       <p>Your portal account details.</p>
     </div>
     <div class="card">
-      <div style="display:flex;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--border);">
-        <span style="color:var(--muted);font-size:13px;">Username</span><span id="profUsername" style="font-size:14px;">-</span></div>
-      <div style="display:flex;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--border);">
-        <span style="color:var(--muted);font-size:13px;">Organisation</span><span id="profOrg" style="font-size:14px;">-</span></div>
-      <div style="display:flex;justify-content:space-between;padding:11px 0;">
-        <span style="color:var(--muted);font-size:13px;">Role</span><span id="profRole" style="font-size:14px;text-transform:capitalize;">-</span></div>
-      <div style="margin-top:20px;display:flex;gap:10px;flex-wrap:wrap;">
+      <div class="prof-row"><span class="prof-k">Username</span><span class="prof-v" id="profUsername">-</span></div>
+      <div class="prof-row"><span class="prof-k">Organisation</span><span class="prof-v" id="profOrg">-</span></div>
+      <div class="prof-row"><span class="prof-k">Role</span><span class="prof-v cap" id="profRole">-</span></div>
+      <div class="prof-actions">
         <button type="button" class="btn-sm" id="profResetBtn">Reset password</button>
         <button type="button" class="btn-sm" id="portalLogout">Log out</button>
       </div>
-      <div id="profResetMsg" style="margin-top:12px;font-size:13px;color:var(--muted);display:none;"></div>
+      <div id="profResetMsg" class="prof-msg" style="display:none;"></div>
     </div>
   </div>
 
@@ -2071,7 +2083,7 @@
     </div>
     <div class="card" id="alertChannelsCard" style="display:none;">
       <h2>Alert channels <span class="hint" style="text-transform:none;letter-spacing:0;font-weight:400;margin-left:12px;">Slack / Teams</span></h2>
-      <p class="dash-muted" style="margin:4px 0 16px;line-height:1.6;">Post this app's failures (opened incidents, recoveries, staleness) to a chat channel - each message shows the app, dataset, score, reasons, owner, and a link.<br>Paste an incoming-webhook URL. <span style="opacity:.8;">Point multiple apps at the same webhook to share one channel.</span></p>
+      <p class="dash-muted" style="margin:4px 0 16px;line-height:1.6;">Post this <span class="scope-n">app</span>'s failures (opened incidents, recoveries, staleness) to a chat channel - each message shows the <span class="scope-n">app</span>, dataset, score, reasons, owner, and a link.<br>Paste an incoming-webhook URL. <span style="opacity:.8;">Point multiple <span class="scope-n">app</span>s at the same webhook to share one channel.</span></p>
       <div class="ac-form">
         <label class="ac-row"><span class="ac-label">🔷 Slack webhook</span>
           <span class="ac-inrow"><input type="text" id="acSlack" class="ac-input" placeholder="https://hooks.slack.com/services/…" autocomplete="off">
@@ -2123,7 +2135,7 @@
   <div id="complianceTab" style="display:none;">
     <div class="tab-intro">
       <h2>Compliance</h2>
-      <p>Privacy &amp; regulatory-risk posture across this app's datasets - anchored on the ISO/IEC 29100 principles with GDPR &amp; PCI DSS citations. Ranked by exposure; open a dataset for its full controls.</p>
+      <p>Privacy &amp; regulatory-risk posture across this <span class="scope-n">app</span>'s datasets - anchored on the ISO/IEC 29100 principles with GDPR &amp; PCI DSS citations. Ranked by exposure; open a dataset for its full controls.</p>
     </div>
     <div id="cmpEstate"></div>
   </div>
@@ -2132,7 +2144,7 @@
   <div id="dashboardPanel" style="display:none;">
     <div class="tab-intro">
       <h2>Overview</h2>
-      <p>Monitor this app's data quality over time - overall scores, per-dimension health and trends across every assessed table.</p>
+      <p>Monitor this <span class="scope-n">app</span>'s data quality over time - overall scores, per-dimension health and trends across every assessed table.</p>
     </div>
     <div class="card">
       <h2>Overview
@@ -2272,7 +2284,7 @@
     <div class="banner" id="schBanner"></div>
     <div class="tab-intro">
       <h2>Schedules</h2>
-      <p>Automate this app's quality checks, run an assessment on a recurring schedule so scores, trends and incidents stay up to date without manual runs.</p>
+      <p>Automate this <span class="scope-n">app</span>'s quality checks, run an assessment on a recurring schedule so scores, trends and incidents stay up to date without manual runs.</p>
     </div>
 
     <div class="sched-top">
@@ -2435,8 +2447,8 @@
 
         <div class="tagrun-email">
           <label for="tagrunEmail">Alert email <span class="hint" style="font-weight:400;">(optional)</span></label>
-          <input id="tagrunEmail" type="email" placeholder="Where to send this run's quality alerts" />
-          <div class="hint" style="margin:6px 0 0;">Quality alerts raised by this run are sent here.</div>
+          <input id="tagrunEmail" type="email" placeholder="Where to send this run's quality alerts" autocomplete="off" />
+          <div class="hint" style="margin:6px 0 0;">Quality alerts raised by this run are sent here. Leave blank to run without email alerts.</div>
         </div>
       </div>
 
@@ -2520,6 +2532,17 @@ const PORTAL = (q.get('mode') === 'portal') || (typeof window !== 'undefined' &&
 // trust UI as before; a portal member sees neither trust nor the approvals queue.
 let IS_PORTAL_ADMIN = !PORTAL;   // set true for portal admins/super-admins in bootPortal
 let PORTAL_ORG_NAME = '';        // set in bootPortal - used in the policy-rejection email
+let PORTAL_WS_NAME = '';         // active org name; the portal shows this, never a raw workspace id
+// Qlik scopes everything to an "app"; the portal scopes to a workspace, and "app" there means
+// nothing to the user. One noun pair drives every string so both surfaces read naturally from
+// the same source. Static markup tags the noun with a .scope-n span, swapped in applyMode().
+const SCOPE_NOUN = PORTAL ? 'workspace' : 'app';
+// "App: <qlik app id>" on the extension; "Workspace: <org name>" in the portal, where the id is
+// an opaque uuid the user has never seen.
+function scopeCtxLabel() {
+  if (PORTAL) return PORTAL_WS_NAME ? ('Workspace: ' + PORTAL_WS_NAME) : 'Workspace';
+  return APP_ID ? ('App: ' + APP_ID) : '';
+}
 const API_BASE = (q.get('api') || 'https://i1jwcc4bx4.execute-api.eu-west-1.amazonaws.com/dev').replace(/\/+$/, '');
 // MCP servers live on a Lambda FUNCTION URL, not on API_BASE. Two reasons: API Gateway's
 // '/dev' stage prefix makes the RFC 9728 discovery path (/.well-known/oauth-protected-resource
@@ -4528,8 +4551,6 @@ async function initTagRun() {
   if (!APP_ID) return;
   if (!dashEntries || !Object.keys(dashEntries).length) { try { await loadDashEntries(); } catch (e) {} }
   if (!dashDatasetsAll || !dashDatasetsAll.length) { try { await loadDashboard(); } catch (e) {} }
-  const em = $('#tagrunEmail'); if (em && !em.value) em.value = EMAIL || '';
-
   // One delegated listener for the whole tab: the tiles and the run button are both re-rendered,
   // so binding them individually would mean re-wiring on every render.
   const panel = $('#tagrunPanel');
@@ -5026,7 +5047,7 @@ function applyDashScope() {
   wireDashControls();
   renderDashFilters();
   if (!dashDatasets.length) {
-    $('#dashTableWrap').innerHTML = `<p class="dash-muted">No ${noun} data for this app yet.</p>`;
+    $('#dashTableWrap').innerHTML = `<p class="dash-muted">No ${noun} data for this ${SCOPE_NOUN} yet.</p>`;
     $('#dashHeat').innerHTML = '';
     $('#dashTrends').innerHTML = '';
   } else {
@@ -5036,7 +5057,7 @@ function applyDashScope() {
   }
   renderGalaxy(dashDatasets);                    // 3D Quality Space (handles the empty case itself)
   $('#dashCtx').textContent =
-    `This app · ${dashDatasets.length} ${noun}${dashDatasets.length === 1 ? '' : 's'} · last ${dashWindowDays} days`;
+    `This ${SCOPE_NOUN} · ${dashDatasets.length} ${noun}${dashDatasets.length === 1 ? '' : 's'} · last ${dashWindowDays} days`;
 }
 
 document.querySelectorAll('#dashScopeToggle .scope-btn').forEach(b =>
@@ -7316,7 +7337,7 @@ function mcpCapsHtml() {
     'Open incidents with the engine\u2019s own remediation text',
     'Sample offending records (personal data stays redacted)',
     'Column profiles and the active ruleset',
-    'Compliance posture \u2014 exposures, policy, attestations, framework overlays',
+    'Compliance posture - exposures, policy, attestations, framework overlays',
     'Schedules, run history and governance metadata'];
   const ops = [PORTAL ? 'Re-run an existing dataset (saved-credential sources)'
                      : 'Re-run a dataset - this app’s tables, or a saved-credential source',
@@ -7329,7 +7350,7 @@ function mcpCapsHtml() {
   return '<strong>Ask about</strong>' + li(read) +
     '<strong style="display:block;margin-top:12px;">Actions it can take</strong>' + li(ops) +
     '<p style="margin:12px 0 0;">It <strong>cannot</strong> submit a new dataset, or change any rule, ' +
-    'compliance policy or attestation \u2014 those stay in this UI by design.</p>';
+    'compliance policy or attestation - those stay in this UI by design.</p>';
 }
 function mcpCopy(text, btn) {
   const done = () => { const t = btn.textContent; btn.textContent = 'Copied'; setTimeout(() => btn.textContent = t, 1400); };
@@ -7368,7 +7389,7 @@ async function mcpGenerateCode(btn) {
     const tick = () => {
       if (exp) exp.textContent = left > 0
         ? `Single use \u00b7 expires in ${Math.floor(left / 60)}m ${String(left % 60).padStart(2, '0')}s`
-        : 'Expired \u2014 generate a new code.';
+        : 'Expired - generate a new code.';
       if (left <= 0) { clearInterval(_mcpTimer); _mcpTimer = null; }
       left--;
     };
@@ -7472,7 +7493,7 @@ function _acApply(r) {
 }
 async function clearChannel(which) {
   const label = which === 'slack' ? 'Slack' : 'Teams';
-  if (!await dqConfirm(`Stop sending alerts to ${label}? The webhook will be removed for this app.`, { title: 'Remove alert channel', danger: true })) return;
+  if (!await dqConfirm(`Stop sending alerts to ${label}? The webhook will be removed for this ${SCOPE_NOUN}.`, { title: 'Remove alert channel', danger: true })) return;
   const st = $('#acStatus'); if (st) st.textContent = `Removing ${label}…`;
   const body = { app_id: APP_ID, action: 'set' };
   body[which === 'slack' ? 'clear_slack' : 'clear_teams'] = true;
@@ -7519,7 +7540,7 @@ async function loadIncidents() {
     list.innerHTML = '<p class="dash-muted">Open this from inside a Qlik app to see that app\'s incidents.</p>';
     return;
   }
-  $('#incCtx').textContent = 'App: ' + APP_ID;
+  $('#incCtx').textContent = scopeCtxLabel();
   list.innerHTML = '<p class="dash-muted"><span class="spin"></span> Loading…</p>';
   try {
     const r = await postJSON(`${API_BASE}/data-quality/incidents/list`, HEADERS,
@@ -9692,7 +9713,7 @@ function switchTab(name) {
   if (name === 'medallion') loadMedallion();
   if (name === 'schedules') {
     $('#schCtx').textContent = APP_ID
-      ? ('App: ' + APP_ID) : 'Open from inside a Qlik app to schedule its checks.';
+      ? scopeCtxLabel() : 'Open from inside a Qlik app to schedule its checks.';
     resetScheduleForm();
     loadSchedules();
   }
@@ -9714,6 +9735,9 @@ function applyMode() {
   if (lo && !lo._wired) { lo._wired = true; lo.addEventListener('click', () => { location.href = `${API_BASE}/portal/auth/logout`; }); }
   const pn = $('#profileNav'); if (pn) pn.style.display = '';   // reveal the Profile tab
   const hi = $('#historyIntro'); if (hi) hi.textContent = "Every assessment you've run. Open any run to see its full report.";
+  // "app" is the Qlik container; here it is a workspace. Static copy carries the noun in a span
+  // so the Qlik markup still reads correctly as written.
+  document.querySelectorAll('.scope-n').forEach(el => { el.textContent = SCOPE_NOUN; });
 }
 function startCommon() {
   switchTab('dashboard');                       // Dashboard is the landing tab; sync the panels + wide layout on load
@@ -9762,6 +9786,7 @@ async function bootPortal() {
   applyMode();
   IS_PORTAL_ADMIN = (me.user.role || '').toLowerCase() === 'admin' || !!me.user.is_super;
   PORTAL_ORG_NAME = me.user.home_org_name || me.user.org_name || '';
+  PORTAL_WS_NAME = me.user.org_name || me.user.home_org_name || '';   // the org being VIEWED
   if (IS_PORTAL_ADMIN) {   // admins + super-admins: admin button, trust UI + approvals queue
     document.body.classList.add('portal-admin');
     const ab = $('#portalAdminBtn'); if (ab) ab.href = location.origin + '/dq-portal-admin';
