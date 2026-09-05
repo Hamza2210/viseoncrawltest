@@ -789,6 +789,87 @@
      No max-width or auto margins here - that made them a narrow centred column, which read as a
      different kind of page. */
 
+  /* ---- Assess by tag ------------------------------------------------------------------
+     Picker (left) beside a sticky live preview that carries the run action (right), the same
+     master-detail shape the Schedules tab uses. */
+  .tagrun-top { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 24px; align-items: start; }
+  @media (max-width: 1100px) { .tagrun-top { grid-template-columns: 1fr; } }
+
+  .tagrun-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(215px, 1fr));
+    gap: 8px; max-height: 336px; overflow-y: auto; padding: 1px; }
+  .tagrun-tile { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
+    padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--card);
+    color: var(--text); font: inherit; cursor: pointer;
+    transition: border-color .12s, background-color .12s, box-shadow .12s; }
+  .tagrun-tile:hover { border-color: var(--accent); background: var(--idle-bg); }
+  .tagrun-tile.active { border-color: var(--accent); background: var(--accent-soft);
+    box-shadow: var(--shadow-sm); }
+  .tagrun-tile .tt-ico { flex: none; font-size: 15px; line-height: 20px; }
+  .tagrun-tile .tt-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+  .tagrun-tile .tt-name { font-size: 13.5px; font-weight: 700; white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis; }
+  .tagrun-tile .tt-meta { font-size: 11px; color: var(--muted); }
+  .tt-badge { flex: none; font-size: 9px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .02em; padding: 2px 6px; border-radius: 5px;
+    background: var(--ok-bg); color: var(--ok); }
+  .tt-badge.none { background: var(--idle-bg); color: var(--muted); }
+
+  .tagrun-email { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--border); }
+  .tagrun-email input { max-width: 380px; }
+
+  .tagrun-preview-card { position: sticky; top: 12px;
+    background: linear-gradient(180deg, var(--idle-bg), var(--card) 130px); }
+  .tr-headline { font-size: 15px; font-weight: 600; line-height: 1.55; margin: 2px 0 15px; }
+  .tr-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px; }
+  .tr-stat { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px;
+    background: var(--card); }
+  .tr-stat .n { font-size: 22px; font-weight: 700; line-height: 1.1; }
+  .tr-stat .l { font-size: 10px; color: var(--muted); text-transform: uppercase;
+    letter-spacing: .04em; margin-top: 2px; }
+  .tr-stat.ready { border-left: 3px solid var(--ok); }
+  .tr-stat.ready .n { color: var(--ok); }
+  .tr-stat.skip { border-left: 3px solid var(--run); }
+  .tr-stat.skip .n { color: var(--run); }
+
+  .tr-list { border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
+    max-height: 268px; overflow-y: auto; margin-bottom: 16px; background: var(--card); }
+  .tr-row { display: flex; align-items: center; gap: 9px; padding: 9px 12px; font-size: 13px;
+    border-bottom: 1px solid var(--border); }
+  .tr-row:last-child { border-bottom: 0; }
+  .tr-row.off { background: var(--card-2); }
+  .tr-dot { flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--idle); }
+  .tr-row:not(.off) .tr-dot { background: var(--ok); }
+  .tr-name { flex: 1; min-width: 0; font-weight: 600; white-space: nowrap; overflow: hidden;
+    text-overflow: ellipsis; }
+  .tr-row.off .tr-name { color: var(--muted); font-weight: 500; }
+  .tr-why { flex: none; font-size: 11px; color: var(--muted); }
+  .tagrun-chip { display: inline-flex; align-items: center; gap: 5px; padding: 1px 10px;
+    border-radius: 999px; font-size: 12.5px; font-weight: 700; background: var(--accent-soft);
+    color: var(--accent2); border: 1px solid color-mix(in srgb, var(--accent2) 30%, transparent); }
+  .tr-msg { margin-top: 12px; padding: 10px 12px; border-radius: 9px; font-size: 13px;
+    line-height: 1.5; border: 1px solid transparent; }
+  .tr-msg.ok { background: var(--ok-bg); color: var(--ok); border-color: color-mix(in srgb, var(--ok) 35%, transparent); }
+  .tr-msg.info { background: var(--idle-bg); color: var(--text); border-color: var(--border); }
+  .tr-msg.err { background: var(--err-bg); color: var(--err); border-color: color-mix(in srgb, var(--err) 35%, transparent); }
+
+  /* Empty states carry the same weight as content here - this tab is useless without tags, so
+     saying so properly (and linking to where you add them) matters more than a grey line. */
+  .tagrun-empty { border: 1px dashed var(--border); border-radius: 12px; padding: 26px 20px;
+    text-align: center; color: var(--muted); font-size: 13px; line-height: 1.6; }
+  .tagrun-empty .tre-ico { font-size: 26px; line-height: 1; margin-bottom: 8px; opacity: .85; }
+  .tagrun-empty .tre-title { font-size: 14.5px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+
+  .tagrun-skipped { margin-top: 16px; border: 1px solid var(--border);
+    border-left: 4px solid var(--run); border-radius: 13px; padding: 15px 18px;
+    background: color-mix(in srgb, var(--run) 6%, var(--card)); }
+  .trs-hd { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 10px; }
+  .trs-row { display: flex; align-items: baseline; gap: 10px; padding: 6px 0;
+    border-top: 1px solid var(--border); font-size: 13px; }
+  .trs-row:first-child { border-top: 0; }
+  .trs-name { font-weight: 600; flex: none; }
+  .trs-why { color: var(--muted); font-size: 12.5px; }
+
   /* About page feature grid */
   .about-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 14px 20px; }
   .about-item { display: grid; grid-template-columns: 26px 1fr; grid-template-rows: auto auto;
@@ -2336,19 +2417,33 @@
   <div id="tagrunPanel" style="display:none;">
     <div class="tab-intro">
       <h2>Assess by tag</h2>
-      <p>Run a data-quality assessment on <strong>every source dataset carrying a tag</strong> - Redshift, S3, Snowflake and the rest - together in a <strong>single</strong> task. Ideal for scoring a whole domain (e.g. <em>finance</em>) across all its sources at once. Qlik-app tables, uploaded files, and any dataset without a saved connection are skipped.</p>
+      <p>Run a data-quality assessment on <strong>every source dataset carrying a tag</strong> - Redshift, S3, Snowflake and the rest - together in a <strong>single</strong> task. Ideal for scoring a whole domain (e.g. <em>finance</em>) across all its sources at once.</p>
     </div>
-    <div class="card">
-      <label for="tagrunSel">Tag</label>
-      <select id="tagrunSel" style="max-width:360px;"></select>
-      <div class="hint" style="margin:8px 0 0;">🔑 Each dataset is assessed using its <strong>stored credential profile</strong>. A dataset with <strong>no saved credentials won't run</strong> - it'll be listed below with the reason. Qlik-app tables and uploaded files are also skipped. Tags are added on the Overview tab.</div>
-      <div id="tagrunPreview" style="margin:14px 0;"></div>
-      <label for="tagrunEmail">Alert email <span class="hint" style="font-weight:400;">(optional)</span></label>
-      <input id="tagrunEmail" type="email" placeholder="Where to send this run's quality alerts" style="max-width:360px;" />
-      <div style="margin-top:14px;"><button id="tagrunGo">▶ Run assessment</button></div>
-      <div id="tagrunMsg" style="display:none;margin-top:14px;padding:10px 12px;border-radius:9px;font-size:13px;line-height:1.5;"></div>
+
+    <!-- Same master-detail shape as Schedules: choose on the left, see exactly what will happen
+         on the right. Nothing runs until the preview says what it is going to run. -->
+    <div class="tagrun-top">
+      <div class="card">
+        <h2>Choose a tag</h2>
+        <p class="dash-muted">Tags group datasets across every connected source. Pick one to assess
+          everything it covers in a single task.</p>
+
+        <div id="tagrunSearchWrap" style="display:none;">
+          <input type="search" id="tagrunSearch" class="src-search" placeholder="🔎 Search tags…" autocomplete="off">
+        </div>
+        <div id="tagrunTags" class="tagrun-grid"></div>
+
+        <div class="tagrun-email">
+          <label for="tagrunEmail">Alert email <span class="hint" style="font-weight:400;">(optional)</span></label>
+          <input id="tagrunEmail" type="email" placeholder="Where to send this run's quality alerts" />
+          <div class="hint" style="margin:6px 0 0;">Quality alerts raised by this run are sent here.</div>
+        </div>
+      </div>
+
+      <div class="card tagrun-preview-card" id="tagrunPreview"></div>
     </div>
-    <div id="tagrunSkipped" style="display:none;margin-top:14px;padding:11px 14px;border-radius:10px;background:rgba(255,193,7,.08);border:1px solid rgba(255,193,7,.28);font-size:13px;line-height:1.6;"></div>
+
+    <div id="tagrunSkipped" class="tagrun-skipped" style="display:none;"></div>
     <div id="tagrunResults" class="card" style="display:none;margin-top:16px;"><div id="tagrunResultsBody"></div></div>
   </div>
 
@@ -4407,54 +4502,164 @@ async function exportParquet(scope, datasetKey, btn) {
 }
 
 // --- "By tag" run tab: pick a tag, preview its datasets, run them all in one task ---
+// --- Assess by tag ------------------------------------------------------------------- //
+// The chosen tag lives here rather than in a <select>, because the picker is a grid of tiles
+// that gets re-rendered (by search, or when the dataset list reloads).
+let tagrunSelected = '';
+let tagrunQuery = '';
+
+// [{tag, total, runnable}] for every tag in use, sorted. `runnable` is a best-effort count:
+// the server has the final say (saved credentials are not visible from here), which is why the
+// preview says so rather than promising.
+function tagRunTags() {
+  const byKey = {}; (dashDatasetsAll || []).forEach(d => byKey[d.key] = d);
+  const m = {};
+  for (const k in (dashEntries || {})) {
+    ((dashEntries[k] || {}).tags || []).forEach(t => {
+      const e = m[t] || (m[t] = { tag: t, total: 0, runnable: 0 });
+      e.total++;
+      if (byKey[k] && isSourceDataset(byKey[k])) e.runnable++;
+    });
+  }
+  return Object.keys(m).map(k => m[k]).sort((a, b) => a.tag.localeCompare(b.tag));
+}
+
 async function initTagRun() {
   if (!APP_ID) return;
   if (!dashEntries || !Object.keys(dashEntries).length) { try { await loadDashEntries(); } catch (e) {} }
   if (!dashDatasetsAll || !dashDatasetsAll.length) { try { await loadDashboard(); } catch (e) {} }
-  const sel = $('#tagrunSel'); if (!sel) return;
-  const cur = sel.value;
-  const tags = new Set();
-  for (const k in (dashEntries || {})) ((dashEntries[k] || {}).tags || []).forEach(t => tags.add(t));
-  const list = [...tags].sort();
-  sel.innerHTML = '';
-  if (!list.length) {
-    const o = document.createElement('option'); o.value = '';
-    o.textContent = '(no tags yet - add tags to datasets on the Overview tab first)'; sel.appendChild(o);
-  } else {
-    list.forEach(t => { const o = document.createElement('option'); o.value = t; o.textContent = t; if (t === cur) o.selected = true; sel.appendChild(o); });
-  }
   const em = $('#tagrunEmail'); if (em && !em.value) em.value = EMAIL || '';
-  if (!sel._wired) { sel._wired = true; sel.addEventListener('change', renderTagRunPreview); }
-  const go = $('#tagrunGo'); if (go && !go._wired) { go._wired = true; go.addEventListener('click', runTagAssessment); }
+
+  // One delegated listener for the whole tab: the tiles and the run button are both re-rendered,
+  // so binding them individually would mean re-wiring on every render.
+  const panel = $('#tagrunPanel');
+  if (panel && !panel._wired) {
+    panel._wired = true;
+    panel.addEventListener('click', e => {
+      const tile = e.target.closest('.tagrun-tile');
+      if (tile) { selectTagRunTag(tile.getAttribute('data-tag')); return; }
+      if (e.target.closest('#tagrunGo')) { runTagAssessment(); return; }
+      const go = e.target.closest('[data-goto]');
+      if (go) switchTab(go.getAttribute('data-goto'));
+    });
+    const srch = $('#tagrunSearch');
+    if (srch) srch.addEventListener('input', () => {
+      tagrunQuery = srch.value.trim().toLowerCase(); renderTagRunTags();
+    });
+  }
+
+  const tags = tagRunTags();
+  // Keep the current pick across reloads, but drop it if the tag no longer exists.
+  if (tagrunSelected && !tags.some(t => t.tag === tagrunSelected)) tagrunSelected = '';
+  if (!tagrunSelected && tags.length === 1) tagrunSelected = tags[0].tag;   // nothing to choose
+  renderTagRunTags();
   renderTagRunPreview();
 }
+
+function selectTagRunTag(tag) {
+  if (!tag || tag === tagrunSelected) return;
+  tagrunSelected = tag;
+  renderTagRunTags();
+  renderTagRunPreview();
+}
+
+function renderTagRunTags() {
+  const wrap = $('#tagrunTags'); if (!wrap) return;
+  const all = tagRunTags();
+  // The search box only earns its place once the grid is long enough to need it.
+  const sw = $('#tagrunSearchWrap'); if (sw) sw.style.display = all.length > 8 ? 'block' : 'none';
+
+  if (!all.length) {
+    wrap.innerHTML = `<div class="tagrun-empty" style="grid-column:1/-1;">` +
+      `<div class="tre-ico">🏷️</div><div class="tre-title">No tags yet</div>` +
+      `<div>Tags group datasets across sources so you can score a whole domain at once.<br>` +
+      `Add one to a dataset on the <button type="button" class="linkbtn" data-goto="dashboard">Overview</button> tab, then come back.</div></div>`;
+    return;
+  }
+  const list = tagrunQuery ? all.filter(t => t.tag.toLowerCase().includes(tagrunQuery)) : all;
+  if (!list.length) {
+    wrap.innerHTML = `<p class="hint" style="grid-column:1/-1;">No tag matches “${esc(tagrunQuery)}”.</p>`;
+    return;
+  }
+  wrap.innerHTML = list.map(t =>
+    `<button type="button" class="tagrun-tile${t.tag === tagrunSelected ? ' active' : ''}" ` +
+      `data-tag="${esc(t.tag)}" data-tip="Assess every dataset tagged \u201c${esc(t.tag)}\u201d">` +
+      `<span class="tt-ico">🏷️</span>` +
+      `<span class="tt-body"><span class="tt-name">${esc(t.tag)}</span>` +
+      `<span class="tt-meta">${t.total} dataset${t.total === 1 ? '' : 's'}</span></span>` +
+      (t.runnable ? `<span class="tt-badge">${t.runnable} ready</span>`
+                  : `<span class="tt-badge none">none</span>`) +
+    `</button>`).join('');
+}
+
 function renderTagRunPreview() {
   const wrap = $('#tagrunPreview'); if (!wrap) return;
-  // Clear any previous run's output when the tag changes.
+  // A new selection invalidates the previous run's output.
   const res = $('#tagrunResults'); if (res) res.style.display = 'none';
   const sk = $('#tagrunSkipped'); if (sk) { sk.style.display = 'none'; sk.innerHTML = ''; }
-  const msg = $('#tagrunMsg'); if (msg) msg.style.display = 'none';
-  const tag = ($('#tagrunSel') && $('#tagrunSel').value) || '';
-  if (!tag) { wrap.innerHTML = ''; return; }
-  const keys = Object.keys(dashEntries || {}).filter(k => ((dashEntries[k] || {}).tags || []).includes(tag));
-  if (!keys.length) { wrap.innerHTML = `<p class="hint">No datasets carry the tag "${esc(tag)}" yet.</p>`; return; }
+
+  const tag = tagrunSelected;
+  if (!tag) {
+    wrap.innerHTML = `<h2>Run preview</h2>` +
+      `<div class="tagrun-empty"><div class="tre-ico">👀</div>` +
+      `<div class="tre-title">Pick a tag to preview</div>` +
+      `<div>Everything the tag covers is listed here, with what will run and what will not,<br>` +
+      `before anything starts.</div></div>`;
+    return;
+  }
+
   const byKey = {}; (dashDatasetsAll || []).forEach(d => byKey[d.key] = d);
-  let runnable = 0;
-  const rows = keys.map(k => {
-    const d = byKey[k];
-    const isSrc = d ? isSourceDataset(d) : false;
-    if (isSrc) runnable++;
-    const chip = d ? (isSrc ? sourceChip(d.sourceFormat) : sourceChip('qlik')) : '';
-    const note = isSrc ? '' : ` <span class="hint">- skipped (not a re-runnable source)</span>`;
-    return `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;font-size:13px;"><span>${esc(d ? d.name : k)}</span>${chip}${note}</div>`;
-  }).join('');
-  wrap.innerHTML = `<div class="hint" style="margin-bottom:6px;">${keys.length} dataset(s) tagged "${esc(tag)}" · ${runnable} runnable source dataset(s)</div>` +
-    `<div style="border:1px solid var(--border);border-radius:9px;padding:8px 12px;background:rgba(255,255,255,.02);max-height:260px;overflow:auto;">${rows}</div>`;
+  const rows = Object.keys(dashEntries || {})
+    .filter(k => ((dashEntries[k] || {}).tags || []).includes(tag))
+    .map(k => {
+      const d = byKey[k];
+      const ok = d ? isSourceDataset(d) : false;
+      return { name: (d && d.name) || (k.split('/').pop() || k),
+               fmt: d ? d.sourceFormat : '',
+               ok: ok,
+               why: d ? (ok ? '' : 'Qlik-app table') : 'not assessed yet' };
+    })
+    .sort((a, b) => (b.ok - a.ok) || a.name.localeCompare(b.name));
+
+  if (!rows.length) {
+    wrap.innerHTML = `<h2>Run preview</h2>` +
+      `<div class="tagrun-empty"><div class="tre-ico">🏷️</div>` +
+      `<div class="tre-title">Nothing carries this tag</div>` +
+      `<div>No dataset is tagged “${esc(tag)}” yet.</div></div>`;
+    return;
+  }
+
+  const ready = rows.filter(r => r.ok).length, skipped = rows.length - ready;
+  const chip = `<span class="tagrun-chip">🏷️ ${esc(tag)}</span>`;
+  wrap.innerHTML =
+    `<h2>Run preview</h2>` +
+    `<div class="tr-headline">` + (ready
+      ? `<strong>${ready}</strong> of ${rows.length} dataset${rows.length === 1 ? '' : 's'} tagged ${chip} will be assessed together, in one task.`
+      : `Nothing tagged ${chip} can be assessed from here yet.`) + `</div>` +
+    `<div class="tr-stats">` +
+      `<div class="tr-stat"><div class="n">${rows.length}</div><div class="l">Tagged</div></div>` +
+      `<div class="tr-stat ready"><div class="n">${ready}</div><div class="l">Will run</div></div>` +
+      `<div class="tr-stat skip"><div class="n">${skipped}</div><div class="l">Skipped</div></div>` +
+    `</div>` +
+    `<div class="tr-list">` + rows.map(r =>
+      `<div class="tr-row${r.ok ? '' : ' off'}"><span class="tr-dot"></span>` +
+      `<span class="tr-name">${esc(r.name)}</span>` +
+      (r.fmt ? sourceChip(r.fmt) : '') +
+      (r.ok ? '' : `<span class="tr-why">${esc(r.why)}</span>`) +
+      `</div>`).join('') + `</div>` +
+    `<button class="src-run" id="tagrunGo"${ready ? '' : ' disabled'}>▶ Run assessment` +
+      (ready ? ` on ${ready} dataset${ready === 1 ? '' : 's'}` : '') + `</button>` +
+    `<div class="hint" style="margin-top:10px;">Each dataset runs on its own <strong>stored credential ` +
+      `profile</strong>. Anything without saved credentials is skipped too, so the final list is ` +
+      `confirmed when the run starts.</div>` +
+    `<div id="tagrunMsg" class="tr-msg" style="display:none;"></div>`;
 }
+
 async function runTagAssessment() {
-  const tag = (($('#tagrunSel') && $('#tagrunSel').value) || '').trim();
+  const tag = (tagrunSelected || '').trim();
   if (!tag) { showTagMsg('err', 'Pick a tag to run.'); return; }
-  const go = $('#tagrunGo'); if (go) { go.disabled = true; go.innerHTML = '<span class="spin"></span>Launching…'; }
+  const go = $('#tagrunGo'), goLabel = go ? go.innerHTML : '';
+  if (go) { go.disabled = true; go.innerHTML = '<span class="spin"></span>Launching…'; }
   const byKey = {}; (dashDatasetsAll || []).forEach(d => byKey[d.key] = d);
   try {
     const email = (($('#tagrunEmail') && $('#tagrunEmail').value) || '').trim();
@@ -4472,7 +4677,7 @@ async function runTagAssessment() {
     showTagMsg('ok', `Assessing ${launched.length} dataset(s) tagged "${tag}" in one task…`);
     await renderTagResults(launched);            // live animation + tabbed results, like the other tabs
   } catch (e) { showTagMsg('err', 'Could not run: ' + (e && e.message || e)); }
-  finally { if (go) { go.disabled = false; go.textContent = '▶ Run assessment'; } }
+  finally { if (go) { go.disabled = false; go.innerHTML = goLabel; } }   // label carries the count
 }
 async function renderTagResults(launched) {
   const wrap = $('#tagrunResults'), body = $('#tagrunResultsBody');
@@ -4519,20 +4724,20 @@ function renderTagSkipped(skipped, byKey) {
   const el = $('#tagrunSkipped'); if (!el) return;
   if (!skipped || !skipped.length) { el.style.display = 'none'; el.innerHTML = ''; return; }
   byKey = byKey || {};
-  const rows = skipped.map(s => {
-    const name = (byKey[s.dataset_key] && byKey[s.dataset_key].name) || (s.dataset_key || '').split('/').pop() || s.dataset_key;
-    return `<li><strong>${esc(name)}</strong> - ${esc(tagSkipReason(s))}</li>`;
-  }).join('');
   el.style.display = 'block';
-  el.innerHTML = `<div style="margin-bottom:4px;font-weight:600;">⚠ ${skipped.length} dataset(s) skipped:</div>` +
-    `<ul style="margin:0;padding-left:18px;">${rows}</ul>`;
+  el.innerHTML = `<div class="trs-hd">⚠ ${skipped.length} dataset${skipped.length === 1 ? '' : 's'} skipped</div>` +
+    skipped.map(sk => {
+      const name = (byKey[sk.dataset_key] && byKey[sk.dataset_key].name)
+        || (sk.dataset_key || '').split('/').pop() || sk.dataset_key;
+      return `<div class="trs-row"><span class="trs-name">${esc(name)}</span>` +
+             `<span class="trs-why">${esc(tagSkipReason(sk))}</span></div>`;
+    }).join('');
 }
 function showTagMsg(kind, text) {
   const m = $('#tagrunMsg'); if (!m) return;
-  m.style.display = 'block'; m.textContent = text;
-  m.style.background = kind === 'ok' ? 'rgba(55,224,200,.10)' : 'rgba(255,107,125,.10)';
-  m.style.color = kind === 'ok' ? '#c9fff4' : '#ffd5db';
-  m.style.border = '1px solid ' + (kind === 'ok' ? 'rgba(55,224,200,.35)' : 'rgba(255,107,125,.35)');
+  m.style.display = 'block';
+  m.className = 'tr-msg ' + (kind === 'ok' ? 'ok' : kind === 'info' ? 'info' : 'err');
+  m.textContent = text;
 }
 
 // --- Approvals (portal governance) ---------------------------------------------- //
