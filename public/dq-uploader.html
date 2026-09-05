@@ -884,6 +884,50 @@
   .prof-msg { margin-top: 12px; font-size: 13px; color: var(--muted); }
   @media (max-width: 560px) { .prof-row { grid-template-columns: 1fr; gap: 2px; } }
 
+  /* ---- Custom framework editor -------------------------------------------------------
+     Numbered sections, one card per item, and labels always above their input. Previously every
+     row was an inline flex line with hand-picked pixel bases, so no two rows lined up. */
+  .cfw-editor { border: 1px solid var(--border); border-radius: 12px; background: var(--card);
+    padding: 4px 18px 18px; }
+  .cfw-sec { padding: 18px 0; border-bottom: 1px solid var(--border); }
+  .cfw-sec:first-child { padding-top: 16px; }
+  .cfw-sec-hd { font-size: 12px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .06em; color: var(--text); margin-bottom: 4px; }
+  .cfw-opt { font-size: 9px; font-weight: 700; letter-spacing: .02em; padding: 2px 6px;
+    border-radius: 5px; background: var(--idle-bg); color: var(--muted); margin-left: 6px;
+    vertical-align: 1px; }
+  .cfw-note { font-size: 12.5px; color: var(--muted); line-height: 1.55; margin: 0 0 12px;
+    max-width: 780px; }
+  .cfw-head { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 14px; }
+  @media (max-width: 720px) { .cfw-head { grid-template-columns: 1fr; } }
+  .cfw-field { display: flex; flex-direction: column; gap: 5px; }
+  .cfw-field > label { font-size: 12px; font-weight: 600; color: var(--muted); }
+  .cfw-field input { width: 100%; }
+
+  /* One card per checklist item / rule, so items stop running into each other. */
+  .cfw-item { position: relative; display: flex; flex-direction: column; gap: 8px;
+    border: 1px solid var(--border); border-radius: 10px; background: var(--card-2);
+    padding: 12px 44px 12px 12px; margin-bottom: 10px; }
+  .cfw-item input, .cfw-item select { width: 100%; font-size: 13px; padding: 8px 10px; }
+  .cfw-x { position: absolute; top: 10px; right: 10px; width: 26px; height: 26px; padding: 0;
+    display: flex; align-items: center; justify-content: center; border-radius: 7px;
+    border: 1px solid var(--border); background: var(--card); color: var(--muted);
+    font-size: 12px; cursor: pointer; transition: color .12s, border-color .12s, background .12s; }
+  .cfw-x:hover { color: var(--err); border-color: var(--err); background: var(--err-bg); }
+  /* Supporting fields share a line and split it evenly - no more 110px stubs beside a wide box. */
+  .cfw-sub { display: flex; gap: 8px; flex-wrap: wrap; }
+  .cfw-sub > * { flex: 1 1 150px; min-width: 0; }
+  /* flex (not a fixed grid) so hiding the value box reflows instead of leaving a hole */
+  .cfw-rule-main { display: flex; gap: 8px; flex-wrap: wrap; }
+  .cfw-rule-main > * { flex: 1 1 140px; min-width: 0; }
+  .cfw-rule-main .cfw-rule-op { flex: 1.5 1 200px; }
+  .cfw-sub .cfw-rule-label { flex: 2 1 220px; }
+  .cfw-sub .cfw-rule-sev { flex: 0 0 150px; }
+  .cfw-pii { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 6px;
+    font-size: 12px; color: var(--muted); white-space: nowrap; cursor: pointer; }
+  .cfw-pii input { width: auto !important; margin: 0; }
+  .cfw-foot { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding-top: 18px; }
+
   /* About page feature grid */
   .about-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 14px 20px; }
   .about-item { display: grid; grid-template-columns: 26px 1fr; grid-template-rows: auto auto;
@@ -6450,46 +6494,78 @@ function customFwManagerHtml() {
 }
 function _cfwAttRowHtml(a) {
   a = a || {};
-  return `<div class="cfw-att-row" data-aid="${esc(a.id || '')}" style="display:flex;gap:6px;align-items:flex-start;margin-bottom:6px;flex-wrap:wrap;">
-    <input class="cfw-att-group" placeholder="Group (e.g. Governance)" value="${esc(a.group || '')}" maxlength="80" style="flex:0 0 150px;">
-    <input class="cfw-att-q" placeholder="Checklist question the team attests to" value="${esc(a.q || '')}" maxlength="600" style="flex:1;min-width:220px;">
-    <input class="cfw-att-ref" placeholder="Reference" value="${esc(a.ref || '')}" maxlength="120" style="flex:0 0 110px;">
-    <input class="cfw-att-cite" placeholder="Citation" value="${esc(a.cite || '')}" maxlength="160" style="flex:0 0 110px;">
-    <button type="button" class="btn-sm btn-danger cfw-att-del" data-tip="Remove this item">✕</button></div>`;
+  // The question is the item; group / reference / citation are supporting detail, so they sit
+  // on a second line instead of competing with it for width.
+  return `<div class="cfw-att-row cfw-item" data-aid="${esc(a.id || '')}">
+    <button type="button" class="cfw-x cfw-att-del" data-tip="Remove this item">✕</button>
+    <input class="cfw-att-q" placeholder="Checklist question the team attests to" value="${esc(a.q || '')}" maxlength="600">
+    <div class="cfw-sub">
+      <input class="cfw-att-group" placeholder="Group (e.g. Governance)" value="${esc(a.group || '')}" maxlength="80">
+      <input class="cfw-att-ref" placeholder="Reference" value="${esc(a.ref || '')}" maxlength="120">
+      <input class="cfw-att-cite" placeholder="Citation" value="${esc(a.cite || '')}" maxlength="160">
+    </div></div>`;
 }
 function _cfwRuleRowHtml(r) {
   r = r || {};
   const op = r.op || 'not_null';
   const val = Array.isArray(r.value) ? r.value.join(', ') : (r.value != null ? r.value : '');
-  return `<div class="cfw-rule-row" data-rid="${esc(r.id || '')}" style="display:flex;gap:6px;align-items:flex-start;margin-bottom:6px;flex-wrap:wrap;">
-    <input class="cfw-rule-col" placeholder="Column" value="${esc(r.column || '')}" maxlength="160" style="flex:0 0 140px;">
-    <select class="cfw-rule-op" style="flex:0 0 210px;">${CFW_OPS.map(([o, l]) =>
-      `<option value="${o}"${o === op ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select>
-    <input class="cfw-rule-val" placeholder="Value" value="${esc(String(val))}" maxlength="500" style="flex:0 0 140px;${CFW_OP_NEEDS_VALUE[op] ? '' : 'visibility:hidden;'}">
-    <select class="cfw-rule-sev" style="flex:0 0 150px;" data-tip="Only critical / high / medium move the compliance grade. A 'low' FAIL is recorded and listed, but never changes the grade.">${
-      [['critical', 'critical'], ['high', 'high'], ['medium', 'medium'], ['low', 'low (advisory)']].map(([s, l]) =>
-        `<option value="${s}"${s === (r.severity || 'medium') ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select>
-    <input class="cfw-rule-label" placeholder="Rule name (shown on the finding)" value="${esc(r.label || '')}" maxlength="200" style="flex:1;min-width:160px;">
-    <label class="hint" style="flex:0 0 auto;display:flex;align-items:center;gap:4px;" data-tip="Treat this column as personal data - its values are redacted from all stored output"><input type="checkbox" class="cfw-rule-pii"${r.pii ? ' checked' : ''}> PII</label>
-    <button type="button" class="btn-sm btn-danger cfw-rule-del" data-tip="Remove this rule">✕</button></div>`;
+  // Line 1 is the test itself (column / operator / value); line 2 is how it is reported.
+  // The value box is display:none rather than visibility:hidden when the operator needs no
+  // value - hidden still reserved its column, which is where the empty gap came from.
+  return `<div class="cfw-rule-row cfw-item" data-rid="${esc(r.id || '')}">
+    <button type="button" class="cfw-x cfw-rule-del" data-tip="Remove this rule">✕</button>
+    <div class="cfw-rule-main">
+      <input class="cfw-rule-col" placeholder="Column" value="${esc(r.column || '')}" maxlength="160">
+      <select class="cfw-rule-op">${CFW_OPS.map(([o, l]) =>
+        `<option value="${o}"${o === op ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select>
+      <input class="cfw-rule-val" placeholder="Value" value="${esc(String(val))}" maxlength="500"${CFW_OP_NEEDS_VALUE[op] ? '' : ' hidden'}>
+    </div>
+    <div class="cfw-sub">
+      <input class="cfw-rule-label" placeholder="Rule name (shown on the finding)" value="${esc(r.label || '')}" maxlength="200">
+      <select class="cfw-rule-sev" data-tip="Only critical / high / medium move the compliance grade. A 'low' FAIL is recorded and listed, but never changes the grade.">${
+        [['critical', 'critical'], ['high', 'high'], ['medium', 'medium'], ['low', 'low (advisory)']].map(([sv, l]) =>
+          `<option value="${sv}"${sv === (r.severity || 'medium') ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select>
+      <label class="cfw-pii" data-tip="Treat this column as personal data - its values are redacted from all stored output"><input type="checkbox" class="cfw-rule-pii"${r.pii ? ' checked' : ''}> PII</label>
+    </div></div>`;
 }
 function cfwEditorHtml(fw) {
   fw = fw || {};
-  return `<div class="cfw-editor" data-editing="${esc(fw.id || '')}" style="border:1px solid var(--border);border-radius:8px;padding:12px;">
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
-      <label style="flex:1;min-width:200px;">Standard name<input id="cfwLabel" value="${esc(fw.label || '')}" maxlength="120" placeholder="e.g. ACME Internal Data Standard"></label>
-      <label style="flex:0 0 200px;">Reference / version<input id="cfwStandard" value="${esc(fw.standard || '')}" maxlength="160" placeholder="e.g. ACME-DS v1.2"></label>
+  // Three plainly separated steps - name it, list what the team attests to, list what the engine
+  // checks - instead of one continuous stack of controls. Labels always sit ABOVE their input.
+  return `<div class="cfw-editor" data-editing="${esc(fw.id || '')}">
+    <div class="cfw-sec">
+      <div class="cfw-sec-hd">1 · The standard</div>
+      <div class="cfw-head">
+        <div class="cfw-field"><label for="cfwLabel">Standard name</label>
+          <input id="cfwLabel" value="${esc(fw.label || '')}" maxlength="120" placeholder="e.g. ACME Internal Data Standard"></div>
+        <div class="cfw-field"><label for="cfwStandard">Reference / version</label>
+          <input id="cfwStandard" value="${esc(fw.standard || '')}" maxlength="160" placeholder="e.g. ACME-DS v1.2"></div>
+      </div>
     </div>
-    <h4 style="margin:10px 0 4px;font-size:13px;">Checklist items <span class="hint">(self-attested - Yes / No / N/A, with a note + evidence link)</span></h4>
-    <div id="cfwAttRows">${((fw.attestations || []).map(_cfwAttRowHtml).join('')) || _cfwAttRowHtml({})}</div>
-    <button type="button" class="btn-sm" id="cfwAddAtt">＋ Add checklist item</button>
-    <h4 style="margin:14px 0 4px;font-size:13px;">Data rules <span class="hint">(machine-evaluated each assessment; a critical / high / medium FAIL feeds the compliance grade - “low” is advisory only. A rule whose column isn’t in the dataset is reported as not evaluated.)</span></h4>
-    <div id="cfwRuleRows">${((fw.rules || []).map(_cfwRuleRowHtml).join('')) || _cfwRuleRowHtml({})}</div>
-    <button type="button" class="btn-sm" id="cfwAddRule">＋ Add data rule</button>
-    <div style="margin-top:12px;display:flex;gap:8px;align-items:center;">
+
+    <div class="cfw-sec">
+      <div class="cfw-sec-hd">2 · Checklist items <span class="cfw-opt">optional</span></div>
+      <p class="cfw-note">Your team self-attests to each of these: Yes / No / N/A, with a note and an
+        evidence link. They are not machine-checked.</p>
+      <div id="cfwAttRows">${((fw.attestations || []).map(_cfwAttRowHtml).join('')) || _cfwAttRowHtml({})}</div>
+      <button type="button" class="btn-sm" id="cfwAddAtt">＋ Add checklist item</button>
+    </div>
+
+    <div class="cfw-sec">
+      <div class="cfw-sec-hd">3 · Data rules <span class="cfw-opt">optional</span></div>
+      <p class="cfw-note">The engine evaluates these on every assessment. A <strong>critical</strong>,
+        <strong>high</strong> or <strong>medium</strong> failure counts toward the compliance grade;
+        <strong>low</strong> is advisory only. A rule whose column is not in the dataset is reported
+        as not evaluated rather than failed.</p>
+      <div id="cfwRuleRows">${((fw.rules || []).map(_cfwRuleRowHtml).join('')) || _cfwRuleRowHtml({})}</div>
+      <button type="button" class="btn-sm" id="cfwAddRule">＋ Add data rule</button>
+    </div>
+
+    <div class="cfw-foot">
       <button type="button" class="btn-sm" id="cfwSave">${fw.id ? 'Save changes' : 'Create framework'}</button>
       <button type="button" class="btn-sm" id="cfwCancel">Cancel</button>
-      <span class="hint" id="cfwMsg"></span></div>
+      <span class="hint" id="cfwMsg"></span>
+    </div>
   </div>`;
 }
 
@@ -6572,10 +6648,11 @@ function wireCustomFwManager(panel) {
       } catch (e) { alert('Could not delete: ' + (e && e.message || e)); b.disabled = false; }
     }));
   };
-  // Show/hide a rule's value box for the operators that need one.
+  // Show/hide a rule's value box for the operators that need one. `hidden` COLLAPSES the box;
+  // the old visibility:hidden kept its slot, leaving an unexplained gap mid-row.
   const syncOpVis = row => {
     const op = row.querySelector('.cfw-rule-op'), v = row.querySelector('.cfw-rule-val');
-    if (op && v) v.style.visibility = CFW_OP_NEEDS_VALUE[op.value] ? '' : 'hidden';
+    if (op && v) v.hidden = !CFW_OP_NEEDS_VALUE[op.value];
   };
   const wireRows = () => {
     edEl.querySelectorAll('.cfw-att-del').forEach(b => b.addEventListener('click', () => {
