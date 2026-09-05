@@ -4283,14 +4283,14 @@ function updateDetailTrust(key) {
     // Members: the verdict read-only (once an admin has ruled), plus their submit action. Seeing
     // "Endorsed"/"Caution" here is how they learn their submitted run was responded to.
     : (PORTAL ? `<span class="detail-gov">${_tb ? `<span class="hint">Trust</span>${_tb}` : ''}${
-        prefix ? `<button class="btn-sm" id="dsSubmitApproval" data-tip="Send this run to your admins for approval">Submit for approval</button>` : ''}</span>` : '');
+        prefix ? submitApprovalBtn(key) : ''}</span>` : '');
   el.innerHTML = govPart +
     `<span class="detail-gov"><span class="hint">Owner</span>${ownerChip(key)}</span>` +
     `<span class="detail-gov"><span class="hint">Stage</span>${medalCell(key)}</span>` +
     notesSection(key);
   if (IS_PORTAL_ADMIN) wireTrust(el, () => updateDetailTrust(key));
   const _sub = $('#dsSubmitApproval');
-  if (_sub) _sub.addEventListener('click', () => submitForApproval(prefix, _sub));
+  if (_sub && !_sub.disabled) _sub.addEventListener('click', () => submitForApproval(prefix, _sub));
   el.querySelectorAll('[data-ownerset]').forEach(b =>
     b.addEventListener('click', async e => { e.stopPropagation(); await setOwner(key); updateDetailTrust(key); refreshDatasetsTable(); }));
   el.querySelectorAll('.medal[data-medal]').forEach(b =>
@@ -4526,6 +4526,25 @@ const _APPR_META = { draft: { label: 'Draft', cls: 'na' }, pending: { label: 'Pe
 function apprChip(status) {
   const m = _APPR_META[status]; if (!m) return '';
   return ` <span class="tag ${m.cls}" data-tip="Approval status">${m.label}</span>`;
+}
+// A RED run is too low to put forward for endorsement - it must be at least amber. The button
+// is disabled rather than hidden so the reason is visible; the API enforces the same rule, since
+// hiding a button is not enforcement (the approvals endpoint is also reachable via MCP).
+function submitApprovalBtn(key) {
+  // Only amber/green may be put forward. An allow-list, not "block red": a run can also come back
+  // `not_assessed` (nothing could be scored) or with no status at all (the run failed), and
+  // neither of those is "at least amber" either. The API enforces the same rule - this only makes
+  // the reason visible rather than making the user discover it by being refused.
+  const row = (typeof dashDatasets !== 'undefined' ? dashDatasets : []).find(x => x.key === key);
+  const status = String((row && (row.status || row.overallStatus)) || '').toLowerCase();
+  if (status !== 'amber' && status !== 'green') {
+    const sc = (row && typeof row.score === 'number') ? ` (${num1(row.score)})` : '';
+    const why = status === 'red'
+      ? `This run scored red${sc} — too low to submit. A run must be at least amber to be put forward: fix the failing checks, re-run, then submit.`
+      : `This run has no overall score, so there is nothing to endorse. A run must be at least amber to be put forward — check the dataset has rules that can be evaluated, then re-run.`;
+    return `<button class="btn-sm" id="dsSubmitApproval" disabled data-tip="${why}">Submit for approval ⛔</button>`;
+  }
+  return `<button class="btn-sm" id="dsSubmitApproval" data-tip="Send this run to your admins for approval">Submit for approval</button>`;
 }
 async function submitForApproval(prefix, btn) {
   if (!prefix) return;
