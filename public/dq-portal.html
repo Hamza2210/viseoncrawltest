@@ -2648,7 +2648,10 @@ function banner(kind, msg) { showBanner($('#banner'), kind, msg); }
 // Plain-English explainer for the quality "gate", reused wherever it's surfaced.
 const GATE_TIP = 'The quality gate is a pass/fail safety check - any blocker-severity issue fails it, regardless of the overall score.';
 const sleep = ms => new Promise(r => setTimeout(r, ms));
-const TERMINAL = ['SUCCEEDED', 'GATE_FAILED', 'FAILED'];
+// ERROR = the worker could not reach the source at all (bad credentials / host /
+// permissions). It is terminal - omitting it meant pollResults' `while (true)` never
+// stopped, so a wrong password showed an assessment spinner indefinitely.
+const TERMINAL = ['SUCCEEDED', 'GATE_FAILED', 'FAILED', 'ERROR'];
 const fmtScore = n => (n == null ? '-' : Number(Number(n).toFixed(2)));
 function tagClass(s) { return ({ green: 'green', amber: 'amber', red: 'red' })[s] || ''; }
 // A friendly label + chip for the dataset's origin (source_format on the run).
@@ -2959,6 +2962,14 @@ function cmpCtrlHtml(ct, opts) {
         ? `${Number(ft.cleartext_candidates).toLocaleString()} of ${Number(ft.nonnull).toLocaleString()} non-null rows match the cleartext shape (${Number(ft.rows_total).toLocaleString()} rows scanned)`
         : `${Number(ft.nonnull).toLocaleString()} non-null of ${Number(ft.rows_total).toLocaleString()} rows · ≈${Number(ft.estimated_exposed || 0).toLocaleString()} exposed (estimate)`
     } <span class="hint">· ${esc(ft.basis || 'full-table SQL scan')}${ft.engine ? ' · ' + esc(ft.engine) : ''}</span></div>` : '';
+  // Declared-rule evidence (custom frameworks) carries {basis, evaluated, failed} rather than
+  // the detector's {cleartext,...}. Neither block above matches it, so its counts used to render
+  // with no scope at all - and on a warehouse source they come from the inference sample, not
+  // the full table. Surface the basis the evidence already records.
+  const declared = (ev.cleartext == null && !ev.full_table && ev.evaluated != null)
+    ? `<div class="cmp-ev">${Number(ev.failed || 0).toLocaleString()} of ${
+        Number(ev.evaluated).toLocaleString()} rows failed <span class="hint">· basis: ${
+        esc(ev.basis || 'assessed sample')}</span></div>` : '';
   const samples = (ev.samples || []).length
     ? `<div class="cmp-ev">Value shapes (masked): ${ev.samples.map(s => `<code>${esc(s)}</code>`).join(' ')}</div>` : '';
   const cites = (ct.citations || []).map(x => `<span class="cmp-cite">${esc(x)}</span>`).join(' ');
@@ -2991,7 +3002,7 @@ function cmpCtrlHtml(ct, opts) {
       </div>
       <div class="cmp-why">${esc(ct.why || ct.control || '')}</div>
       ${opts.dismissMeta ? `<div class="cmp-ev">Dismissed${opts.dismissMeta.by ? ' by ' + esc(opts.dismissMeta.by) : ''}${opts.dismissMeta.reason ? ` - “${esc(opts.dismissMeta.reason)}”` : ''}</div>` : ''}
-      ${exposure}${fullTable}${samples}${recsBlock}
+      ${exposure}${fullTable}${declared}${samples}${recsBlock}
       ${ct.remediation ? `<div class="cmp-fix">↪ ${esc(ct.remediation)}</div>` : ''}
       <div class="cmp-explain-out" style="display:none;"></div>
       <div class="cmp-meta"><span class="cmp-ref">${esc(ct.principle_ref || '')}</span> ${cites}</div>
@@ -3112,9 +3123,17 @@ async function reloadCompliancePanel(panelEl) {
 function renderAssessment(r, bodyEl, opts) {
   const isApp = !!(opts && opts.context === 'app');
   const body = bodyEl || $('#assessBody');
-  if (r.state === 'FAILED') {
-    const err = (r.status && r.status.error) || 'The assessment run failed.';
-    body.innerHTML = `<div class="headline"><span class="tag red">Run failed</span></div>` +
+  // FAILED = the run broke partway. ERROR = we never reached the source, which is almost
+  // always a credential/host/permission problem, so it gets its own wording and a nudge to
+  // the thing the user can actually fix.
+  if (r.state === 'FAILED' || r.state === 'ERROR') {
+    const src = r.state === 'ERROR';
+    const err = (r.status && r.status.error)
+      || (src ? 'The data source could not be reached.' : 'The assessment run failed.');
+    body.innerHTML = `<div class="headline"><span class="tag red">${
+        src ? 'Could not reach the source' : 'Run failed'}</span></div>` +
+      (src ? `<p class="dash-muted" style="margin:6px 0 10px;">Nothing was assessed. Check the ` +
+             `credentials, host and that the account can read the table, then run it again.</p>` : '') +
       `<pre>${err}</pre>` + filesHtml(r.files);
     return;
   }
