@@ -4840,6 +4840,17 @@ function submitApprovalBtn(key) {
   // the reason visible rather than making the user discover it by being refused.
   const row = (typeof dashDatasets !== 'undefined' ? dashDatasets : []).find(x => x.key === key);
   const status = String((row && (row.status || row.overallStatus)) || '').toLowerCase();
+  // Already decided or already queued: offering "Submit" here is a dead end, because the API
+  // refuses a second submit ("This run is already approved."). An admin's own runs are approved
+  // on arrival, so a member browsing the workspace WILL meet this state.
+  const appr = String((row && row.approvalStatus) || '').toLowerCase();
+  if (appr === 'approved' || appr === 'pending') {
+    const label = appr === 'approved' ? 'Approved' : 'Awaiting review';
+    const why = appr === 'approved'
+      ? 'This run is already approved, so there is nothing to submit.'
+      : 'This run has already been submitted and is waiting for an admin to review it.';
+    return `<button class="btn-sm" id="dsSubmitApproval" disabled data-tip="${why}">${label}</button>`;
+  }
   if (status !== 'amber' && status !== 'green') {
     const sc = (row && typeof row.score === 'number') ? ` (${num1(row.score)})` : '';
     const why = status === 'red'
