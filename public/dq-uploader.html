@@ -2194,6 +2194,7 @@
       <h2>Compliance</h2>
       <p>Privacy &amp; regulatory-risk posture across this <span class="scope-n">app</span>'s datasets - anchored on the ISO/IEC 29100 principles with GDPR &amp; PCI DSS citations. Ranked by exposure; open a dataset for its full controls.</p>
     </div>
+    <div id="cmpOrgPolicy"></div>
     <div id="cmpEstate"></div>
   </div>
 
@@ -2385,6 +2386,7 @@
         <select id="schSourceKind">
           <option value="qlik">This app's tables (Qlik)</option>
           <option value="tag">Datasets with a tag (one task)</option>
+          <option value="source-watch">Source monitoring only (no assessment)</option>
           <option value="redshift">Amazon Redshift</option>
           <option value="s3">Amazon S3 file</option>
           <option value="snowflake">Snowflake</option>
@@ -2421,6 +2423,11 @@
           <p class="hint" style="margin:8px 0;">Assesses every <strong>source</strong> dataset carrying this tag in <strong>one task</strong>. Membership is captured when you save (re-save to refresh it). Datasets need a saved credential profile.</p>
         </div>
 
+        <div id="schWatchWrap" style="display:none;">
+          <p class="hint" style="margin:8px 0;">Checks whether your sources are still <strong>loading</strong>, without assessing anything. Each check reads only catalog metadata: the row count, the column list, and the newest value of the dataset's event-time column. No rows are read and no score is produced, so this is cheap enough to run hourly against a table you assess weekly.</p>
+          <p class="hint" style="margin:8px 0;">It alerts on a source that has stopped loading, lost rows, changed columns, or become unreachable. Alerts go to the dataset owner (or your organisation's alert recipients), like any other incident.</p>
+        </div>
+
         <label for="schEmail">Alert email</label>
         <input id="schEmail" placeholder="alerts@company.com" />
 
@@ -2440,6 +2447,15 @@
     <div class="card">
       <h2>Current schedules <button class="linkbtn" id="schRefresh">Refresh</button></h2>
       <div id="schList"><p class="dash-muted">Loading…</p></div>
+    </div>
+
+    <div class="card">
+      <h2>Source monitoring
+        <button class="linkbtn" id="watchRun">Check now</button>
+        <button class="linkbtn" id="watchRefresh">Refresh</button>
+      </h2>
+      <p class="dash-muted" style="margin:0 0 10px;">What each source looked like the last time it was checked. Metadata only: no rows are read and no score is produced. Set up a cadence with a "Source monitoring only" schedule above.</p>
+      <div id="watchList"><p class="dash-muted">Not checked yet.</p></div>
     </div>
   </div>
 
@@ -3360,7 +3376,7 @@ function renderAssessment(r, bodyEl, opts) {
       frEl.innerHTML = dqLoader('Loading failed records', null, true);
       try {
         const data = await postJSON(`${API_BASE}/data-quality/failed-records`, HEADERS,
-          { result_prefix: frEl.dataset.prefix, limit: 500 });
+          { result_prefix: frEl.dataset.prefix, limit: 500, app_id: APP_ID });
         showFailedRecords(frEl, data);
       } catch (e) {
         frEl.innerHTML = `<p class="dash-muted" style="color:var(--err)">${esc(e.message)}</p>`;
@@ -5432,7 +5448,7 @@ async function loadDsRules(panel, prefix) {
 
 async function loadDsFailed(panel, prefix) {
   try {
-    const fr = await postJSON(`${API_BASE}/data-quality/failed-records`, HEADERS, { result_prefix: prefix, limit: 500 });
+    const fr = await postJSON(`${API_BASE}/data-quality/failed-records`, HEADERS, { result_prefix: prefix, limit: 500, app_id: APP_ID });
     showFailedRecords(panel, fr);
   } catch (e) { panel.innerHTML = `<p class="dash-muted" style="color:var(--err)">${esc(e.message)}</p>`; }
 }
@@ -5728,9 +5744,28 @@ function renderAppHeatmap(scored) {
 }
 
 const _FR_RANK = { blocker: 3, major: 2, minor: 1 };
+// Explain a records policy in one line, so a missing column never reads as a missing feature.
+// `columns_withheld` is set by the API whenever the effective policy is not 'full'.
+function frPolicyNote(pol) {
+  if (!pol || !pol.columns_withheld) return '';
+  const none = pol.policy === 'none';
+  const body = none
+    ? 'Your organisation’s policy is to keep no record-level detail, so the offending rows are not stored. The failing checks and their exact counts are shown above.'
+    : 'Only the columns each check flagged (plus the key that locates the row) are kept. Other columns of that row are withheld by your organisation’s policy. An admin can change this in Compliance.';
+  return `<p class="dash-muted" style="margin:6px 0 8px;">🔒 ${body}</p>`;
+}
+
 function renderFailedRecords(data) {
   const recs = (data.records || []).slice();
-  if (!recs.length) return '<p class="dash-muted">No failed records - this run passed every check. 🎉</p>';
+  const pol = data.records_policy || {};
+  if (!recs.length) {
+    // A run can have failing checks and still produce no rows here: the policy withheld them, or
+    // the artefact expired. Saying "passed every check" in that case would be plainly false.
+    const failing = (data.check_summary || []).reduce((n, c) => n + (c.failed || 0), 0);
+    if (!failing) return '<p class="dash-muted">No failed records - this run passed every check. 🎉</p>';
+    return renderFailuresViz(data) + (frPolicyNote(pol) ||
+      `<p class="dash-muted" style="margin:6px 0 8px;">Record-level detail is not available for this run. The failing checks and their counts are shown above.</p>`);
+  }
   // Blockers first (they fail the gate), then major, then minor - so the most urgent
   // offending rows are always at the top of the table.
   recs.sort((a, b) => (_FR_RANK[(b.severity || '').toLowerCase()] || 0)
@@ -5748,7 +5783,8 @@ function renderFailedRecords(data) {
     const rec = x.record || {};
     const rowNo = hasSrc ? rec._row : (i + 1);
     const fields = Object.entries(rec).filter(([k]) => k !== '_row')
-      .map(([k, v]) => `${esc(k)}=${esc(v)}`).join('  ·  ');
+      .map(([k, v]) => `${esc(k)}=${esc(v)}`).join('  ·  ')
+      + (x.withheld ? `<span class="dash-muted">  ·  +${esc(x.withheld)} withheld</span>` : '');
     const sev = (x.severity || '').toLowerCase();
     return `<tr class="fr-row ${sev === 'blocker' ? 'fr-blocker' : ''}" data-sev="${esc(sev)}">` +
       `<td class="dash-muted" style="font-variant-numeric:tabular-nums;">${esc(rowNo)}</td>` +
@@ -5767,7 +5803,8 @@ function renderFailedRecords(data) {
   const note = data.truncated
     ? `<p class="dash-muted">Showing ${recs.length} of ${data.total} failed records (download the file for all).</p>`
     : `<p class="dash-muted">${data.total} failed record(s).</p>`;
-  return head + renderFailuresViz(data) + `<p class="dash-muted fr-filter-note" style="margin:0 0 6px;"></p>` + rowNote +
+  return head + renderFailuresViz(data) + frPolicyNote(pol) +
+    `<p class="dash-muted fr-filter-note" style="margin:0 0 6px;"></p>` + rowNote +
     `<div class="fr-scroll"><table class="dash-table">` +
     `<tr><th title="${esc(rowTip)}">${rowLabel}</th><th>Dimension</th><th>Check</th><th>Severity</th><th>Offending record</th></tr>${rows}</table></div>${note}` +
     renderExampleFixes(data);
@@ -5835,7 +5872,7 @@ async function viewLatestRun() {
   }
   try {
     const fr = await postJSON(`${API_BASE}/data-quality/failed-records`, HEADERS,
-      { result_prefix: prefix, limit: 500 });
+      { result_prefix: prefix, limit: 500, app_id: APP_ID });
     showFailedRecords($('#dashRunFailed'), fr);
   } catch (e) {
     $('#dashRunFailed').innerHTML = `<p class="dash-muted" style="color:var(--err)">${esc(e.message)}</p>`;
@@ -6181,7 +6218,55 @@ function refreshCmpBadge() {
   const n = (dashDatasetsAll || []).filter(d => d.complianceGrade === 'CRITICAL').length;
   if (n > 0) { b.textContent = n; b.style.display = ''; } else { b.style.display = 'none'; }
 }
+// Organisation-wide failed-records policy. How much of an offending ROW the platform is allowed
+// to persist is a tenant-level data-protection decision, not a per-dataset one, so it lives at the
+// top of this tab and only an admin sees it (the API refuses `set` from a member regardless).
+// Unset = 'minimal', so a tenant that never opens this is already on the safe setting.
+const _RECPOL_TEXT = {
+  minimal: 'Keep only the columns each check flagged, plus the key that locates the row. Recommended.',
+  full: 'Keep the whole offending row. Detected personal data is still redacted.',
+  none: 'Keep no record-level detail at all. Failing checks and their counts are still reported.',
+};
+async function loadOrgRecordsPolicy() {
+  const wrap = $('#cmpOrgPolicy'); if (!wrap) return;
+  wrap.innerHTML = '';
+  let cur;
+  try {
+    cur = await postJSON(`${API_BASE}/data-quality/records-policy`, HEADERS, { action: 'get' });
+  } catch (e) { return; }                       // not deployed yet / not permitted: show nothing
+  if (!cur || !cur.can_edit) return;            // members and the Qlik surface: no control
+  const p = cur.policy || 'minimal';
+  const opt = v => `<option value="${v}"${p === v ? ' selected' : ''}>${
+    v === 'minimal' ? 'Flagged columns only (default)' : v === 'full' ? 'Whole row' : 'No record detail'}</option>`;
+  const who = cur.updated_by
+    ? `Set by ${esc(cur.updated_by)}${cur.updated_at ? ' on ' + esc(String(cur.updated_at).slice(0, 10)) : ''}.`
+    : 'Never changed, so the safe default applies.';
+  wrap.innerHTML = `<details class="cmp-settings" id="recPolBox">
+    <summary>🔒 Failing-record detail (organisation-wide)</summary>
+    <p class="hint" style="margin:0 0 12px;">When a check fails, the platform stores the offending rows so they can be fixed. This decides how much of each row is kept, for every dataset in your organisation. Applies to new assessments and to how existing ones are shown. ${who}</p>
+    <div class="cmp-set-grid">
+      <label>Detail kept<select id="recPolSel">${opt('none')}${opt('minimal')}${opt('full')}</select></label>
+    </div>
+    <p class="hint" id="recPolDesc" style="margin:8px 0 0;">${esc(_RECPOL_TEXT[p] || '')}</p>
+    <div class="cmp-set-actions"><button type="button" class="btn-sm" id="recPolSave">Save policy</button>
+      <span class="hint" id="recPolMsg"></span></div>
+  </details>`;
+  const sel = wrap.querySelector('#recPolSel'), desc = wrap.querySelector('#recPolDesc');
+  const msg = wrap.querySelector('#recPolMsg');
+  sel.addEventListener('change', () => { desc.textContent = _RECPOL_TEXT[sel.value] || ''; });
+  wrap.querySelector('#recPolSave').addEventListener('click', async (ev) => {
+    const btn = ev.currentTarget; btn.disabled = true; msg.style.color = 'var(--muted)';
+    msg.textContent = 'Saving…';
+    try {
+      await postJSON(`${API_BASE}/data-quality/records-policy`, HEADERS,
+        { action: 'set', policy: sel.value });
+      msg.style.color = 'var(--ok)'; msg.textContent = 'Saved.';
+    } catch (e) { msg.style.color = 'var(--err)'; msg.textContent = e.message; }
+    btn.disabled = false;
+  });
+}
 async function loadComplianceEstate() {
+  loadOrgRecordsPolicy();                       // admin-only, independent of the estate load
   const wrap = $('#cmpEstate'); if (!wrap) return;
   if (!APP_ID) { wrap.innerHTML = `<p class="dash-muted">Open this from inside a Qlik app to see its compliance posture.</p>`; return; }
   if (!dashDatasetsAll || !dashDatasetsAll.length) { wrap.innerHTML = dqLoader('Loading compliance posture', null, true); await loadDashboard(); }
@@ -6416,7 +6501,7 @@ function complianceDetailBody(comp, prefix, key) {
   const cc = entryFor(key).complianceContract || {};
   const ccCols = cc.columns || {};
   const setN = [cc.retention_days, ccCols.date, ccCols.consent_flag, ccCols.erasure_flag, ccCols.subject_id,
-    (ccCols.audit || []).length].filter(Boolean).length;
+    (ccCols.audit || []).length, cc.failedRecords].filter(Boolean).length;
   const polBadge = cc.exempt ? '<span class="tag muted">Exempt</span>'
     : setN ? `<span class="tag green">${setN} rule${setN === 1 ? '' : 's'} set</span>`
       : '<span class="tag muted">Not configured</span>';
@@ -6645,6 +6730,12 @@ function complianceSettingsHtml(key) {
       <label>Erasure / opt-out flag column<input id="cmpErasureCol" value="${v(cols.erasure_flag)}" placeholder="is_erased"></label>
       <label>Data-subject id column (DSARs)<input id="cmpSubjectCol" value="${v(cols.subject_id)}" placeholder="customer_id"></label>
       <label>Audit-trail columns (comma-separated)<input id="cmpAuditCols" value="${v((cols.audit || []).join(', '))}" placeholder="created_at, created_by, updated_at"></label>
+      <label>Failing-record detail <span class="cmp-info" data-tip="How much of an offending row is kept for THIS dataset. It can only be stricter than your organisation's policy, never looser - use this for a dataset that is more sensitive than the rest.">&#9432;</span>
+        <select id="cmpFailedRecords">
+          <option value=""${!cc.failedRecords ? ' selected' : ''}>Organisation default</option>
+          <option value="minimal"${cc.failedRecords === 'minimal' ? ' selected' : ''}>Flagged columns only</option>
+          <option value="none"${cc.failedRecords === 'none' ? ' selected' : ''}>No record detail</option>
+        </select></label>
     </div>
     <div class="cmp-set-actions"><button type="button" class="btn-sm" id="cmpSuggest">✨ Suggest with AI</button>
       <button type="button" class="btn-sm" id="cmpSaveSettings">Save policy</button>
@@ -6816,6 +6907,7 @@ function wireComplianceSettings(panel, key, prefix) {
         date_column: val('#cmpDateCol'), consent_column: val('#cmpConsentCol'),
         erasure_column: val('#cmpErasureCol'), subject_id_column: val('#cmpSubjectCol'),
         audit_columns: val('#cmpAuditCols').split(',').map(s => s.trim()).filter(Boolean),
+        failed_records: val('#cmpFailedRecords'),      // '' = inherit the organisation policy
       });
       if (r && r.status === 'pending_approval') {
         setMsg('Submitted for admin approval - it will apply to this dataset once an admin accepts it.');
@@ -8341,7 +8433,8 @@ const SOURCE_REQUIRED = {
 const SOURCE_LABEL = { redshift: 'Amazon Redshift', s3: 'Amazon S3', snowflake: 'Snowflake',
   databricks: 'Databricks', postgres: 'PostgreSQL', mysql: 'MySQL', sqlserver: 'SQL Server',
   synapse: 'Azure Synapse', bigquery: 'Google BigQuery', sharepoint: 'SharePoint / OneDrive',
-  gcs: 'Google Cloud Storage', azureblob: 'Azure Blob / ADLS' };
+  gcs: 'Google Cloud Storage', azureblob: 'Azure Blob / ADLS',
+  'source-watch': 'Source monitoring' };
 const _SRC_FILE_ONLY = ['assessment', 'resetBar', 'results'];   // cards that belong to the file flow
 
 // Optional Accuracy & Integrity config for a source's FIRST run (sent as a ruleset augment).
@@ -9836,6 +9929,7 @@ function switchTab(name) {
       ? scopeCtxLabel() : 'Open from inside a Qlik app to schedule its checks.';
     resetScheduleForm();
     loadSchedules();
+    loadSourceWatch();
   }
   if (name === 'appdata') {
     $('#appCtx').textContent = APP_ID
@@ -10614,11 +10708,18 @@ function schSourceUI() {
   const kind = ($('#schSourceKind') && $('#schSourceKind').value) || 'qlik';
   const qlik = kind === 'qlik';
   const tag = kind === 'tag';
+  const watch = kind === 'source-watch';        // metadata monitoring: no connector form at all
   if ($('#schQlikFields')) $('#schQlikFields').style.display = qlik ? '' : 'none';
-  if ($('#schSourceWrap')) $('#schSourceWrap').style.display = (qlik || tag) ? 'none' : 'block';
+  if ($('#schSourceWrap')) $('#schSourceWrap').style.display = (qlik || tag || watch) ? 'none' : 'block';
   if ($('#schTagWrap')) $('#schTagWrap').style.display = tag ? 'block' : 'none';
+  if ($('#schWatchWrap')) $('#schWatchWrap').style.display = watch ? 'block' : 'none';
+  // Monitoring alerts route by dataset owner, not by this form's address, so the field is not
+  // required for it. Left visible (and honoured if filled) rather than hidden, so switching
+  // kinds does not silently discard something the user typed.
+  if ($('#schEmail')) $('#schEmail').placeholder = watch
+    ? 'alerts@company.com (optional for monitoring)' : 'alerts@company.com';
   if (tag) populateSchTags();
-  else if (!qlik) renderSchedSourceFields(kind);
+  else if (!qlik && !watch) renderSchedSourceFields(kind);
 }
 if ($('#schSourceKind')) $('#schSourceKind').addEventListener('change', schSourceUI);
 
@@ -10640,6 +10741,86 @@ async function populateSchTags() {
   });
 }
 
+// --- Source monitoring (metadata-only sweep) ------------------------------- //
+// Reads the last observation each dataset's sweep wrote. Deliberately shows the raw facts
+// (row count, newest record, when it was checked) rather than a verdict: the verdict is an
+// incident, and it arrives through the normal incident + email path.
+function _watchAgeText(iso) {
+  const t = Date.parse(String(iso || '').replace(' ', 'T'));
+  if (!isFinite(t)) return esc(iso || '-');
+  const h = (Date.now() - t) / 3600000;
+  if (h < 1) return Math.max(1, Math.round(h * 60)) + 'm ago';
+  if (h < 48) return Math.round(h) + 'h ago';
+  return Math.round(h / 24) + 'd ago';
+}
+
+function _watchRow(key, info) {
+  const o = info.observation || {};
+  const name = esc(o.dataset_name || key.split('/').pop());
+  let state;
+  if (info.excluded) state = '<span class="tag muted">Excluded</span>';
+  else if (o.unsupported) state = `<span class="tag muted" title="${esc(o.unsupported)}">Not monitored</span>`;
+  else if (o.error) state = `<span class="tag red" title="${esc(o.error)}">Unreachable</span>`;
+  else state = '<span class="tag green">Monitored</span>';
+  const rows = (typeof o.rows === 'number')
+    ? '~' + o.rows.toLocaleString()
+    : '<span class="dash-muted">-</span>';
+  const newest = o.max_event_time
+    ? `${_watchAgeText(o.max_event_time)} <span class="dash-muted">(${esc(o.event_time_column || 'event time')})</span>`
+    : '<span class="dash-muted">no event-time column</span>';
+  const checked = o.observed_at ? _watchAgeText(o.observed_at) : '<span class="dash-muted">never</span>';
+  const btn = info.excluded
+    ? `<button class="linkbtn" data-watchinc="${esc(key)}">Include</button>`
+    : `<button class="linkbtn" data-watchexc="${esc(key)}">Exclude</button>`;
+  return `<tr><td>${name}</td><td>${state}</td><td style="font-variant-numeric:tabular-nums;">${rows}</td>` +
+         `<td>${newest}</td><td>${checked}</td><td>${btn}</td></tr>`;
+}
+
+async function loadSourceWatch() {
+  const el = $('#watchList'); if (!el || !APP_ID) return;
+  try {
+    const r = await postJSON(`${API_BASE}/data-quality/source-watch`, HEADERS,
+      { app_id: APP_ID, action: 'status' });
+    const ds = r.datasets || {};
+    const keys = Object.keys(ds).sort();
+    if (!keys.length) {
+      el.innerHTML = `<p class="dash-muted">No source has been checked yet. Use <strong>Check now</strong>, or add a "Source monitoring only" schedule above to keep checking on a cadence.</p>`;
+      return;
+    }
+    el.innerHTML = `<div class="fr-scroll"><table class="dash-table">` +
+      `<tr><th>Dataset</th><th>State</th><th title="From the engine's own catalog statistics, so it is approximate">Rows at source</th><th>Newest record</th><th>Last checked</th><th></th></tr>` +
+      keys.map(k => _watchRow(k, ds[k])).join('') + `</table></div>`;
+    el.querySelectorAll('[data-watchexc],[data-watchinc]').forEach(b =>
+      b.addEventListener('click', async () => {
+        const key = b.dataset.watchexc || b.dataset.watchinc;
+        b.disabled = true;
+        try {
+          await postJSON(`${API_BASE}/data-quality/source-watch`, HEADERS,
+            { app_id: APP_ID, action: b.dataset.watchexc ? 'exclude' : 'include', key });
+          loadSourceWatch();
+        } catch (e) { b.disabled = false; }
+      }));
+  } catch (e) {
+    el.innerHTML = `<p class="dash-muted">${esc(e.message)}</p>`;
+  }
+}
+
+if ($('#watchRefresh')) $('#watchRefresh').addEventListener('click', loadSourceWatch);
+if ($('#watchRun')) $('#watchRun').addEventListener('click', async () => {
+  const btn = $('#watchRun'); const el = $('#watchList');
+  if (!APP_ID) { schBanner('err', 'Open a workspace first.'); return; }
+  btn.disabled = true; const orig = btn.textContent; btn.textContent = 'Checking…';
+  try {
+    const r = await postJSON(`${API_BASE}/data-quality/source-watch`, HEADERS,
+      { app_id: APP_ID, action: 'run' });
+    schBanner('ok', `Checking ${r.watching} source${r.watching === 1 ? '' : 's'} now. Results appear here in a moment.`);
+    // The sweep is a Fargate task, so results land shortly after this returns.
+    setTimeout(loadSourceWatch, 20000);
+  } catch (e) {
+    schBanner('err', e.message);
+  } finally { btn.disabled = false; btn.textContent = orig; }
+});
+
 async function saveSchedule() {
   if (!APP_ID) { schBanner('err', 'Open from inside a Qlik app to schedule its checks.'); return; }
   const kind = ($('#schSourceKind') && $('#schSourceKind').value) || 'qlik';
@@ -10647,7 +10828,7 @@ async function saveSchedule() {
   const email = $('#schEmail').value.trim();
   const cron = schBuildCron();
   if (!label) { schBanner('err', 'Give the schedule a name.'); return; }
-  if (!email) { schBanner('err', 'Enter an alert email.'); return; }
+  if (!email && kind !== 'source-watch') { schBanner('err', 'Enter an alert email.'); return; }
   if (!cron) { schBanner('err', 'Set a frequency / cron expression.'); return; }
 
   const body = {
@@ -10666,6 +10847,9 @@ async function saveSchedule() {
     const tag = (($('#schTagSel') && $('#schTagSel').value) || '').trim();
     if (!tag) { schBanner('err', 'Pick a tag to schedule.'); return; }
     body.tag = tag;
+  } else if (kind === 'source-watch') {
+    // Nothing to collect: the server builds the target list from every dataset in this
+    // workspace that has a saved credential profile.
   } else {
     const cfg = collectSchedSource();
     // When saved credentials are applied, the blank secret is injected server-side.
@@ -10965,6 +11149,9 @@ function editSchedule(s) {
       }
       sel.value = s.tag;
     }
+  } else if (kind === 'source-watch') {
+    // Nothing to restore: the target list is rebuilt from the workspace on save, and there are
+    // no connection details in this form to re-enter.
   } else {
     schBanner('info', 'Re-enter this source’s connection details - credentials aren’t stored back into the form.');
   }
