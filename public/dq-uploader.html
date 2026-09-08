@@ -54,21 +54,25 @@
   #portalShell { display: none; align-items: center; gap: 12px; margin: 0 0 10px; }
   body.portal #portalShell { display: flex; }
   #portalShell .pu-email { color: var(--muted); font-size: 13px; }
-  #portalAdminBtn { display: none; position: fixed; top: 14px; right: 22px; z-index: 60;
+  /* top:22px, not 14px - body has 22px of padding, so this makes the button's top edge sit flush
+     with the top edge of the content column (and with the blocker bar, which is .wrap's first
+     child). right:22px already matches body's padding-right, so the right edges line up. */
+  #portalAdminBtn { display: none; position: fixed; top: 22px; right: 22px; z-index: 60;
     align-items: center; gap: 6px; padding: 7px 14px; border-radius: 9px; text-decoration: none;
     font-size: 13px; font-weight: 600; color: var(--muted); border: 1px solid var(--border);
     background: rgba(255,255,255,.03); }
   #portalAdminBtn:hover { color: #fff; border-color: var(--muted); }
   body.portal-admin #portalAdminBtn { display: inline-flex; }
-  /* The admin-portal button is position:fixed at the top-right, and the blocker bar is a
-     full-width sticky at top:0 - so the bar runs UNDERNEATH it and its "View all" control
-     ends up unclickable. Reserve the button's footprint on the bar rather than moving
-     either one, and only where that button actually exists (admins in the portal; never on
-     the Qlik surface or for a member). */
-  body.portal-admin .blocker-bar .bb-row { padding-right: 172px; }
+  /* The admin-portal button is position:fixed top-right; the blocker bar is the first child of
+     .wrap and, when .wrap is wide, ends at the same right edge. Padding the row was not enough:
+     the red bar still ran underneath the translucent button, which read as a grey chip floating
+     on red. End the BAR early instead, so the two are adjacent pills sharing a right edge.
+     --bb-gutter is measured from the real button at boot (its width depends on the font that
+     actually loaded); the literal here is only a pre-measurement fallback. */
+  body.portal-admin .blocker-bar { margin-right: var(--bb-gutter, 158px); }
   @media (max-width: 860px) {
-    /* Stacked layout: the button is no longer beside the bar, so give the space back. */
-    body.portal-admin .blocker-bar .bb-row { padding-right: 12px; }
+    /* Stacked layout: the bar sits well below the button, so give the width back. */
+    body.portal-admin .blocker-bar { margin-right: 0; }
   }
   #approvalsNav { display: none; }                    /* Approvals is admin/super-admin-only (portal) */
   body.portal-admin #approvalsNav { display: flex; }
@@ -9905,7 +9909,15 @@ async function bootPortal() {
   PORTAL_WS_NAME = me.user.org_name || me.user.home_org_name || '';   // the org being VIEWED
   if (IS_PORTAL_ADMIN) {   // admins + super-admins: admin button, trust UI + approvals queue
     document.body.classList.add('portal-admin');
-    const ab = $('#portalAdminBtn'); if (ab) ab.href = location.origin + '/dq-portal-admin';
+    const ab = $('#portalAdminBtn');
+    if (ab) {
+      ab.href = location.origin + '/dq-portal-admin';
+      // Measure the button and reserve exactly that much room on the blocker bar, so the bar
+      // stops beside it instead of running under it. offsetWidth is read AFTER portal-admin is
+      // on <body> (above), which is what makes the button displayed and therefore measurable.
+      const w = ab.offsetWidth;
+      if (w) document.documentElement.style.setProperty('--bb-gutter', (w + 12) + 'px');
+    }
   } else {
     document.body.classList.add('portal-member');   // members: trust hidden, submit-for-approval only
   }
