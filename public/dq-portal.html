@@ -1522,6 +1522,7 @@
     <div class="side-group">Monitor</div>
     <button class="side-item sub" data-tab="incidents"><span class="si-ico">🚨</span>Incidents <span class="tab-badge" id="incBadge" style="display:none;"></span></button>
     <button class="side-item sub" data-tab="compliance"><span class="si-ico">🛡️</span>Compliance <span class="tab-badge" id="cmpBadge" style="display:none;"></span></button>
+    <button class="side-item sub" data-tab="sourcewatch"><span class="si-ico">📡</span>Source monitoring <span class="tab-badge" id="watchBadge" style="display:none;"></span></button>
     <button class="side-item sub" data-tab="schedules"><span class="si-ico">⏰</span>Schedules</button>
 
     <div class="side-group" id="dqExploreGroup">Explore</div>
@@ -2189,6 +2190,36 @@
     </div>
   </div>
 
+  <!-- ============ SOURCE MONITORING ============ -->
+  <div id="sourceWatchPanel" style="display:none;">
+    <div class="tab-intro" style="position:relative;">
+      <h2>Source monitoring</h2>
+      <p>Whether each source is still <strong>loading</strong>, checked in between assessments. Metadata only: the row count, the column list and the newest record's timestamp. No rows are read and no score is produced, so this is cheap enough to run hourly against a table you assess weekly.</p>
+      <button type="button" class="btn-sm" id="watchRun" style="position:absolute;top:2px;right:0;">📡 Check now</button>
+    </div>
+
+    <div class="card">
+      <h2>Sources <button class="linkbtn" id="watchRefresh">Refresh</button>
+        <span class="hint" id="watchMsg" style="text-transform:none;letter-spacing:0;font-weight:400;margin-left:12px;"></span></h2>
+      <p class="dash-muted" id="watchCtx" style="margin:4px 0 14px;">Loading…</p>
+      <div id="watchList"><p class="dash-muted">Not checked yet.</p></div>
+    </div>
+
+    <div class="card">
+      <h2>What raises an alert</h2>
+      <p class="dash-muted" style="margin:4px 0 14px;line-height:1.6;">A finding here becomes a tracked incident, with the same email, Slack/Teams and acknowledge/snooze behaviour as a quality alert. Source findings and quality findings are kept separate: neither resolves the other.</p>
+      <div class="fr-scroll"><table class="dash-table">
+        <tr><th>Signal</th><th>Raised when</th></tr>
+        <tr><td><strong>Stopped loading</strong></td><td>The newest record is older than the dataset's declared freshness limit (or 48h if it declares none).</td></tr>
+        <tr><td><strong>Lost rows</strong></td><td>The row count fell more than 20% since the previous check. A truncate-and-reload that failed part way looks like this.</td></tr>
+        <tr><td><strong>Stalled</strong></td><td>The row count has not moved for 72h in a table that normally grows. A static reference table never triggers this.</td></tr>
+        <tr><td><strong>Changed shape</strong></td><td>A column was added or removed at source, so a rule pinned to it can no longer be assessed.</td></tr>
+        <tr><td><strong>Unreachable</strong></td><td>The source could not be read at all: a rotated password or a revoked grant, which is otherwise invisible until an assessment fails.</td></tr>
+      </table></div>
+      <p class="dash-muted" style="margin:14px 0 0;">Checks run on a cadence you set with a <strong>Source monitoring only</strong> schedule. <button type="button" class="linkbtn" id="watchToSched">Set up a schedule →</button></p>
+    </div>
+  </div>
+
   <!-- ============ COMPLIANCE (estate-wide) ============ -->
   <div id="complianceTab" style="display:none;">
     <div class="tab-intro">
@@ -2450,14 +2481,6 @@
       <div id="schList"><p class="dash-muted">Loading…</p></div>
     </div>
 
-    <div class="card">
-      <h2>Source monitoring
-        <button class="linkbtn" id="watchRun">Check now</button>
-        <button class="linkbtn" id="watchRefresh">Refresh</button>
-      </h2>
-      <p class="dash-muted" style="margin:0 0 10px;">What each source looked like the last time it was checked. Metadata only: no rows are read and no score is produced. Set up a cadence with a "Source monitoring only" schedule above.</p>
-      <div id="watchList"><p class="dash-muted">Not checked yet.</p></div>
-    </div>
   </div>
 
   <!-- Table picker modal (shared by the schedule form) -->
@@ -9904,6 +9927,7 @@ function switchTab(name) {
   $('#dashboardPanel').style.display = name === 'dashboard' ? 'block' : 'none';
   $('#medallionPanel').style.display = name === 'medallion' ? 'block' : 'none';
   $('#incidentsPanel').style.display = name === 'incidents' ? 'block' : 'none';
+  $('#sourceWatchPanel').style.display = name === 'sourcewatch' ? 'block' : 'none';
   $('#complianceTab').style.display = name === 'compliance' ? 'block' : 'none';
   $('#lineagePanel').style.display = name === 'lineage' ? 'block' : 'none';
   $('#profilePanel').style.display = name === 'profile' ? 'block' : 'none';
@@ -9917,6 +9941,7 @@ function switchTab(name) {
   if (footEl) footEl.style.display = (name === 'upload' || name === 'appdata') ? 'block' : 'none';
   if (name === 'assistant') initAssistantTab();
   if (name === 'incidents') loadIncidents();
+  if (name === 'sourcewatch') loadSourceWatch();
   if (name === 'compliance') loadComplianceEstate();
   if (name === 'lineage') loadLineage();
   if (name === 'model') loadModel();
@@ -9930,7 +9955,6 @@ function switchTab(name) {
       ? scopeCtxLabel() : 'Open from inside a Qlik app to schedule its checks.';
     resetScheduleForm();
     loadSchedules();
-    loadSourceWatch();
   }
   if (name === 'appdata') {
     $('#appCtx').textContent = APP_ID
@@ -10777,15 +10801,39 @@ function _watchRow(key, info) {
          `<td>${newest}</td><td>${checked}</td><td>${btn}</td></tr>`;
 }
 
+function watchMsg(text, kind) {
+  const el = $('#watchMsg'); if (!el) return;
+  el.textContent = text || '';
+  el.style.color = kind === 'err' ? 'var(--err)' : kind === 'ok' ? 'var(--ok)'
+    : kind === 'warn' ? '#b45309' : 'var(--muted)';
+}
+
 async function loadSourceWatch() {
-  const el = $('#watchList'); if (!el || !APP_ID) return;
+  const el = $('#watchList'); if (!el) return;
+  const ctx = $('#watchCtx');
+  if (!APP_ID) {
+    if (ctx) ctx.textContent = 'Open a workspace to monitor its sources.';
+    el.innerHTML = '';
+    return;
+  }
   try {
     const r = await postJSON(`${API_BASE}/data-quality/source-watch`, HEADERS,
       { app_id: APP_ID, action: 'status' });
     const ds = r.datasets || {};
     const keys = Object.keys(ds).sort();
+    const bad = keys.filter(k => ((ds[k].observation || {}).error)).length;
+    const off = keys.filter(k => ds[k].excluded).length;
+    const badge = $('#watchBadge');
+    if (badge) { badge.textContent = bad; badge.style.display = bad ? '' : 'none'; }
+    if (ctx) {
+      const last = keys.map(k => (ds[k].observation || {}).observed_at).filter(Boolean).sort().pop();
+      ctx.textContent = scopeCtxLabel() + ' · ' +
+        (keys.length ? `${keys.length} source${keys.length === 1 ? '' : 's'}` : 'no sources yet') +
+        (off ? `, ${off} excluded` : '') +
+        (last ? ` · last checked ${_watchAgeText(last)}` : '');
+    }
     if (!keys.length) {
-      el.innerHTML = `<p class="dash-muted">No source has been checked yet. Use <strong>Check now</strong>, or add a "Source monitoring only" schedule above to keep checking on a cadence.</p>`;
+      el.innerHTML = `<p class="dash-muted">No source has been checked yet. A dataset becomes monitorable once it has been assessed at least once from a source with a saved credential profile - use <strong>Check now</strong> to try it.</p>`;
       return;
     }
     el.innerHTML = `<div class="fr-scroll"><table class="dash-table">` +
@@ -10799,29 +10847,69 @@ async function loadSourceWatch() {
           await postJSON(`${API_BASE}/data-quality/source-watch`, HEADERS,
             { app_id: APP_ID, action: b.dataset.watchexc ? 'exclude' : 'include', key });
           loadSourceWatch();
-        } catch (e) { b.disabled = false; }
+        } catch (e) { b.disabled = false; watchMsg(e.message, 'err'); }
       }));
   } catch (e) {
     el.innerHTML = `<p class="dash-muted">${esc(e.message)}</p>`;
   }
 }
 
-if ($('#watchRefresh')) $('#watchRefresh').addEventListener('click', loadSourceWatch);
+// Poll ONE sweep to completion, so the button behaves like launching an assessment does.
+// Every observation carries the watch_run_id that wrote it, so "done" means THIS sweep rewrote
+// that dataset's artefact rather than an older one being present. Capped: a target still blocked
+// in a driver call when the sweep's budget runs out never writes an observation, so waiting
+// indefinitely would be waiting for something that is not coming.
+async function watchPollSweep(runId, keys) {
+  const el = $('#watchList'), CAP_MS = 3 * 60 * 1000, start = Date.now();
+  let last = null;
+  while (Date.now() - start < CAP_MS) {
+    await new Promise(r => setTimeout(r, 2500));
+    try {
+      last = await postJSON(`${API_BASE}/data-quality/source-watch`, HEADERS,
+        { app_id: APP_ID, action: 'progress', watch_run_id: runId, keys });
+    } catch (e) { continue; }          // a transient read failure must not abort the wait
+    el.innerHTML = dqLoader('Checking your sources',
+      `${last.done} of ${last.total} checked${last.failed ? ` · ${last.failed} could not be read` : ''}`);
+    if (last.done >= last.total) return last;
+  }
+  return null;                          // gave up waiting; observations still land as they finish
+}
+
+if ($('#watchRefresh')) $('#watchRefresh').addEventListener('click', () => {
+  watchMsg(''); loadSourceWatch();
+});
+if ($('#watchToSched')) $('#watchToSched').addEventListener('click', () => switchTab('schedules'));
 if ($('#watchRun')) $('#watchRun').addEventListener('click', async () => {
-  const btn = $('#watchRun'); const el = $('#watchList');
-  if (!APP_ID) { schBanner('err', 'Open a workspace first.'); return; }
-  btn.disabled = true; const orig = btn.textContent; btn.textContent = 'Checking…';
+  const btn = $('#watchRun'), el = $('#watchList');
+  if (!APP_ID) { watchMsg('Open a workspace first.', 'err'); return; }
+  btn.disabled = true;
+  const orig = btn.textContent;
+  btn.textContent = 'Checking…';
+  watchMsg('');
+  el.innerHTML = dqLoader('Starting the check', 'Finding every monitorable source in this workspace.');
   try {
     const r = await postJSON(`${API_BASE}/data-quality/source-watch`, HEADERS,
       { app_id: APP_ID, action: 'run' });
-    schBanner('ok', `Checking ${r.watching} source${r.watching === 1 ? '' : 's'} now. Results appear here in a moment.`);
-    // The sweep runs asynchronously and writes one observation per dataset as it finishes, so
-    // re-read a few times rather than guessing one delay. A Lambda sweep is usually done inside
-    // the first refresh; the ECS fallback pays a task launch, hence the later ones.
-    [4000, 12000, 30000].forEach(ms => setTimeout(loadSourceWatch, ms));
+    const keys = r.watched || [];
+    el.innerHTML = dqLoader('Checking your sources', `0 of ${keys.length} checked`);
+    const p = await watchPollSweep(r.watchRunId, keys);
+    await loadSourceWatch();
+    const nSkip = (r.skipped || []).length;
+    const tail = nSkip ? ` ${nSkip} not monitorable.` : '';
+    if (!p) {
+      watchMsg(`Still running. Results appear here as they land - use Refresh.${tail}`, 'warn');
+    } else if (p.failed) {
+      watchMsg(`${p.done} checked, ${p.failed} could not be read.${tail}`, 'err');
+    } else {
+      watchMsg(`${p.done} source${p.done === 1 ? '' : 's'} checked.${tail}`, 'ok');
+    }
   } catch (e) {
-    schBanner('err', e.message);
-  } finally { btn.disabled = false; btn.textContent = orig; }
+    await loadSourceWatch();
+    watchMsg(e.message, 'err');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = orig;
+  }
 });
 
 async function saveSchedule() {
