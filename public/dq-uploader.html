@@ -10814,8 +10814,10 @@ if ($('#watchRun')) $('#watchRun').addEventListener('click', async () => {
     const r = await postJSON(`${API_BASE}/data-quality/source-watch`, HEADERS,
       { app_id: APP_ID, action: 'run' });
     schBanner('ok', `Checking ${r.watching} source${r.watching === 1 ? '' : 's'} now. Results appear here in a moment.`);
-    // The sweep is a Fargate task, so results land shortly after this returns.
-    setTimeout(loadSourceWatch, 20000);
+    // The sweep runs asynchronously and writes one observation per dataset as it finishes, so
+    // re-read a few times rather than guessing one delay. A Lambda sweep is usually done inside
+    // the first refresh; the ECS fallback pays a task launch, hence the later ones.
+    [4000, 12000, 30000].forEach(ms => setTimeout(loadSourceWatch, ms));
   } catch (e) {
     schBanner('err', e.message);
   } finally { btn.disabled = false; btn.textContent = orig; }
