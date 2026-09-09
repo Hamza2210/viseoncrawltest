@@ -982,19 +982,34 @@
   .mskill-box summary { cursor: pointer; font-size: 13.5px; font-weight: 700; color: var(--text); }
   .mskill-box[open] summary { margin-bottom: 11px; }
   .mskill-sub { font-weight: 400; font-size: 12px; color: var(--muted); margin-left: 9px; }
-  .mskill-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
-    gap: 4px 18px; }
-  .mskill { display: flex; align-items: center; gap: 8px; padding: 4px 0;
+  /* One column and scrollable: two columns squeezed the titles into ellipses, and the whole
+     point of this list is reading what each skill actually does. */
+  .mskill-grid { display: block; max-height: 340px; overflow-y: auto;
+    border: 1px solid var(--border); border-radius: 8px; background: var(--card);
+    padding: 0 11px; }
+  .mskill { display: flex; align-items: center; gap: 12px; padding: 7px 0;
     border-bottom: 1px solid color-mix(in srgb, var(--border) 45%, transparent); }
-  .mskill code { font-family: ui-monospace, Consolas, monospace; font-size: 11.5px;
-    color: var(--text); white-space: nowrap; }
-  .mskill .mskill-t { flex: 1 1 auto; font-size: 12px; color: var(--muted);
-    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mskill:last-child { border-bottom: 0; }
+  .mskill code { flex: none; min-width: 196px; font-family: ui-monospace, Consolas, monospace;
+    font-size: 11.5px; color: var(--text); white-space: nowrap; }
+  .mskill .mskill-t { flex: 1 1 auto; font-size: 12.5px; color: var(--muted); line-height: 1.4; }
+  /* Fixed-width tag column so the kind tag lands in the same place whether or not the row also
+     carries a scope tag. */
+  .mskill-tags { flex: none; display: flex; gap: 6px; align-items: center;
+    justify-content: flex-end; min-width: 146px; }
   .mskill-tag { flex: none; font-size: 9px; font-weight: 800; letter-spacing: .06em;
-    text-transform: uppercase; border-radius: 999px; padding: 1px 6px; }
-  .mskill-tag.read { color: var(--muted); border: 1px solid var(--border); }
-  .mskill-tag.acts { color: var(--accent2); border: 1px solid color-mix(in srgb, var(--accent2) 45%, transparent); }
-  .mskill-tag.scope { color: var(--accent); border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent); }
+    text-transform: uppercase; border-radius: 999px; padding: 1px 7px; white-space: nowrap; }
+  /* One colour per tag, no sharing: grey = read-only, violet = acts, and the three surface
+     scopes get green / blue / amber so no two tags on this list ever look alike. */
+  .mskill-tag.read { color: var(--muted); border: 1px solid var(--border); min-width: 62px; text-align: center; }
+  .mskill-tag.acts { color: var(--accent2); border: 1px solid color-mix(in srgb, var(--accent2) 55%, transparent);
+    background: color-mix(in srgb, var(--accent2) 12%, transparent); min-width: 62px; text-align: center; }
+  .mskill-tag.qlik { color: var(--ok); border: 1px solid color-mix(in srgb, var(--ok) 50%, transparent);
+    background: color-mix(in srgb, var(--ok) 12%, transparent); }
+  .mskill-tag.portal { color: var(--accent); border: 1px solid color-mix(in srgb, var(--accent) 50%, transparent);
+    background: color-mix(in srgb, var(--accent) 12%, transparent); }
+  .mskill-tag.admin { color: var(--run); border: 1px solid color-mix(in srgb, var(--run) 50%, transparent);
+    background: color-mix(in srgb, var(--run) 12%, transparent); }
   body.portal .qlik-only { display: none; }
 
   /* Detail-view tabs. With the panel at 70% these fit on one line, so they no longer wrap into
@@ -7666,15 +7681,35 @@ const MCP_SKILL_LIST = [
   ['decide_run_approval', 'Approve / caution / deprecate a run', 'acts', 'admin'],
   ['decide_policy_proposal', 'Accept / reject a policy proposal', 'acts', 'admin'],
 ];
+// Which of the registered skills THIS connection actually gets. Mirrors mcp/tools.py `_visible`
+// and McpScope.is_admin exactly: `admin` is a narrower case of `portal`, not a parallel surface,
+// so a Qlik connection can never see the approval skills however its role is set. Listing skills
+// a user cannot call would be the same class of lie as a wrong read-only tag.
+function mcpVisibleSkills() {
+  return MCP_SKILL_LIST.filter(([, , , scope]) => {
+    if (!scope) return true;                       // 'both'
+    if (scope === 'qlik') return !PORTAL;
+    if (scope === 'portal') return PORTAL;
+    if (scope === 'admin') return PORTAL && IS_PORTAL_ADMIN;
+    return false;
+  });
+}
 function mcpSkillListHtml() {
-  const nRead = MCP_SKILL_LIST.filter(s => s[2] === 'read').length;
-  const nAct = MCP_SKILL_LIST.length - nRead;
-  const rows = MCP_SKILL_LIST.map(([name, title, kind, scope]) =>
+  const visible = mcpVisibleSkills();
+  const nRead = visible.filter(s => s[2] === 'read').length;
+  const nAct = visible.length - nRead;
+  const hidden = MCP_SKILL_LIST.length - visible.length;
+  // The scope tag carries its own class (qlik / portal / admin) so each gets a distinct colour.
+  const rows = visible.map(([name, title, kind, scope]) =>
     `<div class="mskill"><code>${esc(name)}</code><span class="mskill-t">${esc(title)}</span>` +
-    (scope ? `<span class="mskill-tag scope">${esc(scope)}</span>` : '') +
-    `<span class="mskill-tag ${kind}">${kind === 'read' ? 'read-only' : 'acts'}</span></div>`).join('');
-  return `<details class="mskill-box"><summary>All ${MCP_SKILL_LIST.length} skills` +
-    `<span class="mskill-sub">${nRead} read-only · ${nAct} that act</span></summary>` +
+    `<span class="mskill-tags">` +
+    (scope ? `<span class="mskill-tag ${esc(scope)}">${esc(scope)}</span>` : '') +
+    `<span class="mskill-tag ${kind}">${kind === 'read' ? 'read-only' : 'acts'}</span>` +
+    `</span></div>`).join('');
+  return `<details class="mskill-box"><summary>All ${visible.length} skills in this connection` +
+    `<span class="mskill-sub">${nRead} read-only · ${nAct} that act` +
+    (hidden ? ` · ${hidden} more on other surfaces or roles` : '') +
+    `</span></summary>` +
     `<div class="mskill-grid">${rows}</div></details>`;
 }
 function mcpCapsHtml() {
@@ -7742,8 +7777,9 @@ function mcpCapsHtml() {
       '&ldquo;accept the retention policy proposed for orders&rdquo;']);
   }
 
+  const nSkills = mcpVisibleSkills().length;   // what THIS connection gets, not the registry total
   return `<div class="mcap-head"><h3>Ask about</h3>` +
-    `<span class="mcap-count">${MCP_SKILLS} skills · scoped to your role</span></div>` +
+    `<span class="mcap-count">${nSkills} skills · scoped to your role</span></div>` +
     `<div class="mcap-grid">${read.map(c => card(c[0], c[1], c[2], c[3], false)).join('')}</div>` +
     `<div class="mcap-head" style="margin-top:18px;"><h3>And it can act</h3></div>` +
     `<div class="mcap-grid">${write.map(c => card(c[0], c[1], c[2], c[3], true)).join('')}</div>` +
