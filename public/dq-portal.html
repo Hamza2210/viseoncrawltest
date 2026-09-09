@@ -1401,6 +1401,11 @@
      detail gets the room. Order in the DOM is galaxy first, #dashDetail second. */
   .overview-top.split { grid-template-columns: minmax(0, 3fr) minmax(0, 7fr); }
   .overview-top:not(.split) > #dashDetail { display: none; }
+  /* Maximised detail: hide the galaxy so the panel gets the whole width. Scoped to .split on
+     purpose - deselecting a dataset drops .split, which brings the galaxy back at full width
+     without the user having to un-maximise first. */
+  .overview-top.split.maxed { grid-template-columns: 1fr; }
+  .overview-top.split.maxed > .galaxy-card { display: none; }
   .overview-top > * { margin-bottom: 0; }
   #dashDetail { max-height: 640px; overflow-y: auto; scroll-margin-top: 240px; }
   /* Charts carry a natural cap so they do not stretch absurdly wide on the full-width estate
@@ -1986,7 +1991,7 @@
   <div id="assistantPanel" style="display:none;">
     <div class="tab-intro">
       <h2>AI Assistant</h2>
-      <p id="mcpIntro">Connect an AI assistant (such as Claude) to this data-quality instance, then just
+      <p id="mcpIntro"><strong>Connect to our MCP</strong> from an AI assistant (such as Claude or ChatGPT), then just
         ask - &ldquo;what&rsquo;s the latest score for orders?&rdquo;, &ldquo;which datasets are failing
         their gate?&rdquo;, &ldquo;any open incidents and how do I fix them?&rdquo;</p>
     </div>
@@ -2039,9 +2044,9 @@
 
     <div class="card">
       <p style="font-size:17px;line-height:1.6;margin:0 0 4px;color:var(--text);">
-        <strong>Most data-quality tools grade a sample and call it green.</strong>
-        We score <strong>every row, at the source</strong> - and we&rsquo;re honest about
-        what we can and can&rsquo;t prove.
+        <strong>Most data-quality, governance and compliance tools grade a sample and call it
+        green.</strong> We score <strong>every row, at the source</strong> - and we&rsquo;re
+        honest about what we can and can&rsquo;t prove.
       </p>
     </div>
 
@@ -2090,7 +2095,7 @@
           <span>Medallion stages, ownership, endorsements and an approvals workflow for what teams publish.</span></div>
         <div class="about-item"><span class="about-ico">🤖</span>
           <strong>Ask it anything</strong>
-          <span>Connect an AI assistant and query your estate in plain language - see the AI Assistant tab.</span></div>
+          <span><strong>Connect to our MCP</strong> and query your estate in plain language from Claude, ChatGPT or any MCP client - see the AI Assistant tab.</span></div>
       </div>
       <p class="hint" style="margin:14px 0 0;">
         Evidence toward compliance, not a certification. Scores describe what the data can
@@ -2271,8 +2276,13 @@
     </div>
 
     <!-- Selected dataset detail sits right under the galaxy so clicking an orb barely scrolls. -->
-    <div class="card" id="dashDetail">
-      <h2 id="dashDetailTitle">Trends</h2>
+    <div class="card" id="dashDetail" style="position:relative;">
+      <!-- Absolutely positioned rather than inside the h2: the title's text is replaced wholesale
+           by the selection handlers, which would take the button with it. -->
+      <button type="button" class="btn-sm" id="dashMaxBtn"
+              style="position:absolute;top:20px;right:22px;"
+              data-tip="Hide the galaxy and use the full width">⤢ Maximise</button>
+      <h2 id="dashDetailTitle" style="padding-right:120px;">Trends</h2>
       <p class="dash-muted" id="dashDetailHint">Click an orb above (or a dataset in the list below) to see its scores, trends, rules, failed records and history.</p>
       <div id="dashTrends"></div>
       <div id="dashRunDetail"></div>
@@ -9860,11 +9870,31 @@ function startGalaxyLoop() {
   loop();
 }
 
+// Maximise the detail panel: hide the galaxy entirely and take the full width. Sticky for the
+// session, so clicking through datasets keeps the layout the user chose rather than snapping back.
+let dashMaxed = false;
+function applyDashMax() {
+  const top = document.querySelector('.overview-top');
+  if (top) top.classList.toggle('maxed', dashMaxed);
+  const b = $('#dashMaxBtn');
+  if (b) {
+    b.textContent = dashMaxed ? '⤡ Restore' : '⤢ Maximise';
+    b.dataset.tip = dashMaxed ? 'Show the quality space again' : 'Hide the galaxy and use the full width';
+  }
+  // The canvas is sized from its wrapper, which just changed (or went to display:none), so refit
+  // on the next frame. Restoring from maximised is the case that needs this.
+  requestAnimationFrame(() => { if (GALAXY.onResize) GALAXY.onResize(); });
+}
+if ($('#dashMaxBtn')) $('#dashMaxBtn').addEventListener('click', () => {
+  dashMaxed = !dashMaxed;
+  applyDashMax();
+});
+
 // Split the Overview (galaxy | detail) when a dataset is picked; full-width galaxy otherwise.
 function setOverviewSplit(on) {
   const top = document.querySelector('.overview-top');
   if (top) top.classList.toggle('split', !!on);
-  requestAnimationFrame(() => { if (GALAXY.onResize) GALAXY.onResize(); });   // refit canvas to the new width
+  applyDashMax();          // re-assert the maximised choice, and refit the canvas
 }
 function deselectDataset() {
   dashSelected = null; GALAXY.selected = null;
