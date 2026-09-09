@@ -5316,6 +5316,7 @@ function renderHealthTable(datasets) {
     }));
   $('#dashTableWrap').querySelectorAll('button[data-rerun]').forEach(b =>
     b.addEventListener('click', e => { e.stopPropagation(); reRunTable(b.dataset.rerun, b.dataset.fmt, b.dataset.prefix); }));
+  openDeepLinkedDataset();                      // ?ds=<key> from a run-completion email
   // Trust / certification: endorse, caution or deprecate (click active to clear) + note.
   wireTrust($('#dashTableWrap'), () => refreshDatasetsTable());
   // Ownership: assign/change owner (＋/✎) or click an owner chip to filter by it.
@@ -5417,6 +5418,26 @@ const DS_WINDOWS = [[365, '1 year'], [30, '30 days']];
 let dsTab = 'scores';
 const DS_TABS = [['scores', 'Scores'], ['metadata', 'Metadata'], ['compliance', 'Compliance'],
                  ['trends', 'Trends'], ['rules', 'Rules'], ['failed', 'Failed records'], ['history', 'History']];
+
+// A run-completion email links to ?ds=<dataset key>, so the recipient lands on the dataset
+// rather than on the estate view and having to find it. Fired from the dashboard render, where
+// the row (and so the display name) is guaranteed to exist, and ONCE per page load - otherwise
+// every later refresh would yank the user back out of whatever they had opened.
+let deepLinkDone = false;
+function openDeepLinkedDataset() {
+  if (deepLinkDone) return;
+  const want = (q.get('ds') || '').trim();
+  if (!want) { deepLinkDone = true; return; }
+  // Matched by comparing attributes rather than building a selector: a dataset key contains
+  // slashes and is user-derived, and there is no CSS-escape helper in this page.
+  const tr = Array.from($('#dashTableWrap').querySelectorAll('.dash-row'))
+    .find(r => r.getAttribute('data-key') === want);
+  if (!tr) return;                              // not in the current filter/window; try next render
+  deepLinkDone = true;
+  tr.classList.add('sel');
+  selectDataset(want, tr.getAttribute('data-name'));
+}
+
 
 async function selectDataset(key, name, initialTab) {
   const ds = dashDatasets.find(x => x.key === key);
@@ -7751,15 +7772,18 @@ function mcpCapsHtml() {
   }
 
   // Every acts card carries a prompt too. Note what these deliberately do NOT claim: the
-  // assistant launches the run and gets an acknowledgement, it is not notified when the run
-  // finishes, so no example implies "and tell me the result".
+  // ASSISTANT launches the run and gets an acknowledgement, and is never notified when the run
+  // finishes, so no example implies "and tell me the result". YOU are emailed instead, which is
+  // what the cards say.
   const write = [
     ['↻', 'Re-run a dataset',
-      PORTAL ? 'Re-assess a source dataset that has a saved credential profile.'
-             : 'Re-assess one of this app’s tables, or a saved-credential source.',
+      (PORTAL ? 'Re-assess a source dataset that has a saved credential profile.'
+              : 'Re-assess one of this app’s tables, or a saved-credential source.')
+        + ' You get an email with the result when it finishes.',
       '&ldquo;re-run the orders dataset&rdquo;'],
     ['🏷️', 'Re-run a tag',
-      'Re-assess every dataset carrying a tag, in one task.',
+      'Re-assess every dataset carrying a tag, in one task. One email summarises them all '
+        + 'when the batch finishes.',
       '&ldquo;re-run everything tagged finance&rdquo;'],
   ];
   if (PORTAL) {
@@ -7807,7 +7831,7 @@ async function mcpGenerateCode(btn) {
     // server-side against the connection and never reaches the MCP client.
     const r = await postJSON(`${API_BASE}/data-quality/mcp-connect`,
       { ...HEADERS, ...(BEARER ? { 'X-Qlik-Bearer': BEARER } : {}) },
-      { app_id: APP_ID, app_name: (document.title || '').slice(0, 120) });
+      { app_id: APP_ID, app_name: (document.title || '').slice(0, 120), email: EMAIL || '' });
     const wrap = $('#mcpCodeWrap'), code = $('#mcpCode');
     if (code) code.textContent = r.connect_code || '';
     if (wrap) wrap.style.display = 'block';
