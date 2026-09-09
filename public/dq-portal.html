@@ -3962,6 +3962,19 @@ function weightsDesc(w) {
   return WEIGHT_DIMS.filter(d => w[d.key] != null && w[d.key] !== d.def)
     .map(d => `${d.label} ×${w[d.key]}`).join(', ');
 }
+// How a run was started, for the History row. Rendered into the existing sub-line rather than
+// as a new column so the fixed grid layout is untouched. Both fields are absent on runs from
+// before provenance shipped, and triggeredBy is always absent for a Qlik caller (no portal
+// identity), so this returns '' rather than guessing.
+const TRIGGER_LABELS = { manual: 'Manual', mcp: 'MCP', schedule: 'Scheduled' };
+function triggerDesc(r) {
+  const t = TRIGGER_LABELS[String(r.triggerType || '').toLowerCase()] || '';
+  const by = (r.triggeredBy || '').trim();
+  if (!t && !by) return '';
+  if (!by) return t;
+  return (t ? t + ' by ' : 'Run by ') + by;
+}
+
 function historyRow(r) {
   const score = r.overallScore != null ? fmtScore(r.overallScore) : '-';
   const _statusBadge = r.overallStatus
@@ -3969,7 +3982,8 @@ function historyRow(r) {
     : (r.state ? `<span class="tag">${esc(r.state.toLowerCase())}</span>` : '');
   // Portal: append the approval status chip (draft/pending/approved/rejected) in the same cell.
   const badge = `<span>${_statusBadge}${r.approvalStatus ? apprChip(r.approvalStatus) : ''}</span>`;
-  const sub = [rowsDesc(r), hasCustomWeights(r.dimensionWeights) ? 'custom weights' : '']
+  const sub = [rowsDesc(r), hasCustomWeights(r.dimensionWeights) ? 'custom weights' : '',
+               triggerDesc(r)]
     .filter(Boolean).join(' · ');
   // Re-run for this app's own tables (slug "appId/table"), or any source dataset (routed to
   // its Data-from-Source tab). Not tenant-wide uploads, which can't be replayed from here.
