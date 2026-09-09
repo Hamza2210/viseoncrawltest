@@ -950,6 +950,30 @@
   .about-item .about-ico { grid-row: 1 / span 2; font-size: 17px; line-height: 1.3; }
   .about-item strong { font-size: 13.5px; color: var(--text); }
   .about-item span:last-child { font-size: 12.5px; color: var(--muted); line-height: 1.5; }
+
+  /* MCP capability grid. Replaces two bulleted lists: the skills are the product surface an
+     assistant gets, so they read as cards with a worked example each, and the WRITE ones are
+     visually separated because "it can change something" is the distinction that matters. */
+  .mcap-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin: 0 0 12px; }
+  .mcap-head h3 { margin: 0; font-size: 15px; }
+  .mcap-count { font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+    color: var(--accent); background: var(--accent-soft); border-radius: 999px; padding: 3px 9px; }
+  .mcap-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(268px, 1fr)); gap: 12px; }
+  .mcap { border: 1px solid var(--border); border-radius: 11px; background: var(--card-2);
+    padding: 12px 13px; }
+  .mcap-t { display: flex; align-items: center; gap: 8px; font-size: 13.5px; font-weight: 700;
+    color: var(--text); margin: 0 0 5px; }
+  .mcap-t .mcap-ico { font-size: 15px; line-height: 1; }
+  .mcap-d { font-size: 12.5px; color: var(--muted); line-height: 1.5; margin: 0; }
+  .mcap-q { display: block; margin: 8px 0 0; font-size: 12px; font-style: italic; color: var(--accent);
+    border-left: 2px solid var(--accent); padding-left: 8px; }
+  .mcap.write { background: color-mix(in srgb, var(--accent2) 8%, var(--card-2)); border-color: color-mix(in srgb, var(--accent2) 32%, var(--border)); }
+  .mcap.write .mcap-q { color: var(--accent2); border-left-color: var(--accent2); }
+  .mcap-tag { margin-left: auto; font-size: 9.5px; font-weight: 800; letter-spacing: .06em;
+    text-transform: uppercase; color: var(--accent2); border: 1px solid color-mix(in srgb, var(--accent2) 45%, transparent);
+    border-radius: 999px; padding: 1px 7px; }
+  .mcap-note { margin: 14px 0 0; font-size: 12.5px; color: var(--muted); line-height: 1.6;
+    border-top: 1px solid var(--border); padding-top: 12px; }
   body.portal .qlik-only { display: none; }
 
   /* Detail-view tabs. With the panel at 70% these fit on one line, so they no longer wrap into
@@ -2030,8 +2054,9 @@
     </div>
 
     <div class="card">
-      <h3 style="margin:0 0 8px;font-size:15px;">What it can do</h3>
-      <div id="mcpCaps" class="hint" style="line-height:1.7;"></div>
+      <!-- mcpCapsHtml() owns this card outright: it emits its own section headings, so a wrapper
+           h3 would only repeat them. The `hint` class is gone too, it fought the card styling. -->
+      <div id="mcpCaps"></div>
     </div>
   </div>
 
@@ -2095,7 +2120,7 @@
           <span>Medallion stages, ownership, endorsements and an approvals workflow for what teams publish.</span></div>
         <div class="about-item"><span class="about-ico">🤖</span>
           <strong>Ask it anything</strong>
-          <span><strong>Connect to our MCP</strong> and query your estate in plain language from Claude, ChatGPT or any MCP client - see the AI Assistant tab.</span></div>
+          <span>Connect to our MCP and query your estate in plain language from Claude, ChatGPT or any MCP client - see the AI Assistant tab.</span></div>
       </div>
       <p class="hint" style="margin:14px 0 0;">
         Evidence toward compliance, not a certification. Scores describe what the data can
@@ -7576,27 +7601,82 @@ function initAssistantTab() {
   const cc = $('#mcpCopyCode');
   if (cc) cc.addEventListener('click', () => mcpCopy(($('#mcpCode') || {}).textContent || '', cc));
 }
+// The assistant's skill surface, grouped the way a person thinks about it rather than the way the
+// tools happen to be registered. Each card carries a worked question, because "list_incidents"
+// means nothing to a buyer and "any open incidents and how do I fix them?" means everything.
+// READ cards and WRITE cards are visually distinct: whether an assistant can change something is
+// the only distinction that matters for trust, so it is the one the layout makes obvious.
+// The cards GROUP skills (one "Scores & gates" card covers list_datasets, get_dataset and
+// get_run_report), so the card count is not the skill count. MCP_SKILLS is the real total from
+// mcp/tools.py, and mcp/test_parity.py asserts the two agree - so this number cannot rot the way
+// the deck's "17 skills" chip did. Add a tool there, bump this, and add it to a card below.
+const MCP_SKILLS = 28;
 function mcpCapsHtml() {
-  const read = ['Dataset scores, RAG status and quality-gate results',
-    'All nine DAMA dimensions and the specific checks that are failing',
-    'Score trends over time and the adaptive baseline',
-    'Open incidents with the engine\u2019s own remediation text',
-    'Sample offending records (personal data stays redacted)',
-    'Column profiles and the active ruleset',
-    'Compliance posture - exposures, policy, attestations, framework overlays',
-    'Schedules, run history and governance metadata'];
-  const ops = [PORTAL ? 'Re-run an existing dataset (saved-credential sources)'
-                     : 'Re-run a dataset - this app’s tables, or a saved-credential source',
-               'Re-run every dataset carrying a tag'];
-  if (PORTAL) ops.push('Submit your latest run for admin approval');
-  if (PORTAL && IS_PORTAL_ADMIN) ops.push('Review the approvals queue and endorse / caution / deprecate a run',
-    'Accept or reject a proposed compliance policy or attestation');
-  const li = a => '<ul style="margin:6px 0 0;padding-left:20px;">' +
-    a.map(x => '<li>' + x + '</li>').join('') + '</ul>';
-  return '<strong>Ask about</strong>' + li(read) +
-    '<strong style="display:block;margin-top:12px;">Actions it can take</strong>' + li(ops) +
-    '<p style="margin:12px 0 0;">It <strong>cannot</strong> submit a new dataset, or change any rule, ' +
-    'compliance policy or attestation - those stay in this UI by design.</p>';
+  const q = t => `<span class="mcap-q">${t}</span>`;
+  const card = (ico, title, desc, ask, write) =>
+    `<div class="mcap${write ? ' write' : ''}"><p class="mcap-t"><span class="mcap-ico">${ico}</span>${title}` +
+    `${write ? '<span class="mcap-tag">acts</span>' : ''}</p>` +
+    `<p class="mcap-d">${desc}</p>${ask ? q(ask) : ''}</div>`;
+
+  const read = [
+    ['📊', 'Scores &amp; gates',
+      'Every dataset’s score, RAG status and pass/fail gate, plus which of the nine DAMA dimensions failed and on which checks.',
+      '&ldquo;what’s failing right now?&rdquo;'],
+    ['📈', 'Trends &amp; history',
+      'Score and volume over time against the dataset’s own learned baseline, and every past run.',
+      '&ldquo;has orders got worse this month?&rdquo;'],
+    ['🚨', 'Incidents',
+      'Open and recovered incidents with the engine’s own diagnosis and remediation text.',
+      '&ldquo;any open incidents and how do I fix them?&rdquo;'],
+    ['🔎', 'Failing records',
+      'A sample of the offending rows and the column profile behind them. Personal data stays redacted, and your record-detail policy still applies.',
+      '&ldquo;show me the rows that broke the email rule&rdquo;'],
+    ['🛡️', 'Compliance',
+      'Exposure grade and findings, domain-pack overlays, ISO 27701 PIMS readiness, and your own declared frameworks.',
+      '&ldquo;where is unmasked personal data?&rdquo;'],
+    ['🏅', 'Governance',
+      'Trust verdicts, medallion stage, owners and tags, so an assistant knows what is endorsed before it trusts it.',
+      '&ldquo;which datasets are deprecated, and why?&rdquo;'],
+    ['📐', 'Rules &amp; metadata',
+      'The active pinned ruleset, the metadata-quality score, and which sources have saved credentials.',
+      '&ldquo;what rules is orders actually scored against?&rdquo;'],
+    ['⏰', 'Schedules &amp; alerting',
+      'What is scheduled to run, and where alerts are routed.',
+      '&ldquo;what runs tonight?&rdquo;'],
+  ];
+  if (!PORTAL) {
+    read.push(['🧩', 'Qlik app &amp; lineage',
+      'This app’s tables, its data model, and the load-script lineage upstream of it.',
+      '&ldquo;where does this table load from?&rdquo;']);
+  }
+
+  const write = [
+    ['↻', 'Re-run a dataset',
+      PORTAL ? 'Re-assess a source dataset that has a saved credential profile.'
+             : 'Re-assess one of this app’s tables, or a saved-credential source.',
+      '&ldquo;re-run orders and tell me if it passes&rdquo;'],
+    ['🏷️', 'Re-run a tag',
+      'Re-assess every dataset carrying a tag, in one task.',
+      '&ldquo;re-run everything tagged finance&rdquo;'],
+  ];
+  if (PORTAL) {
+    write.push(['✅', 'Submit for approval',
+      'Put your latest run into the admin approvals queue.', '']);
+  }
+  if (PORTAL && IS_PORTAL_ADMIN) {
+    write.push(['⚖️', 'Decide approvals',
+      'Work the approvals queue: endorse, caution or deprecate a run.', '']);
+    write.push(['📋', 'Decide policies',
+      'Accept or reject a proposed compliance policy or attestation.', '']);
+  }
+
+  return `<div class="mcap-head"><h3>Ask about</h3>` +
+    `<span class="mcap-count">${MCP_SKILLS} skills · scoped to your role</span></div>` +
+    `<div class="mcap-grid">${read.map(c => card(c[0], c[1], c[2], c[3], false)).join('')}</div>` +
+    `<div class="mcap-head" style="margin-top:18px;"><h3>And it can act</h3></div>` +
+    `<div class="mcap-grid">${write.map(c => card(c[0], c[1], c[2], c[3], true)).join('')}</div>` +
+    `<p class="mcap-note">Everything above is <strong>scoped to you</strong>: the connection inherits your role, so an assistant sees exactly what you see and can do only what you can do. ` +
+    `It <strong>cannot</strong> submit a new dataset, or change any rule, compliance policy or attestation. Those stay in this UI by design.</p>`;
 }
 function mcpCopy(text, btn) {
   const done = () => { const t = btn.textContent; btn.textContent = 'Copied'; setTimeout(() => btn.textContent = t, 1400); };
