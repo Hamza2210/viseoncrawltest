@@ -10779,13 +10779,25 @@ function _watchAgeText(iso) {
   return Math.round(h / 24) + 'd ago';
 }
 
+// Why a dataset cannot be polled, in the user's words rather than the API's reason code. Each
+// one is actionable, which is why these are shown as rows at all.
+const WATCH_REASON = {
+  no_saved_credentials: 'No saved credential profile resolves for this dataset, so there is nothing to reconnect with. Re-run it once with a saved profile.',
+  incomplete_credentials: 'The saved credentials are missing a field this source needs.',
+  no_prior_run: 'Never assessed, so there is no source to poll yet.',
+  not_monitorable: 'This dataset cannot be polled.',
+};
+
 function _watchRow(key, info) {
   const o = info.observation || {};
   const name = esc(o.dataset_name || key.split('/').pop());
+  const why = info.not_monitorable;
   let state;
   if (info.excluded) state = '<span class="tag muted">Excluded</span>';
+  else if (why) state = `<span class="tag amber" title="${esc(WATCH_REASON[why] || why)}">Not monitored</span>`;
   else if (o.unsupported) state = `<span class="tag muted" title="${esc(o.unsupported)}">Not monitored</span>`;
   else if (o.error) state = `<span class="tag red" title="${esc(o.error)}">Unreachable</span>`;
+  else if (!o.observed_at) state = '<span class="tag muted">Never checked</span>';
   else state = '<span class="tag green">Monitored</span>';
   const rows = (typeof o.rows === 'number')
     ? '~' + o.rows.toLocaleString()
@@ -10797,6 +10809,13 @@ function _watchRow(key, info) {
   const btn = info.excluded
     ? `<button class="linkbtn" data-watchinc="${esc(key)}">Include</button>`
     : `<button class="linkbtn" data-watchexc="${esc(key)}">Exclude</button>`;
+  // A dataset that cannot be polled has no metrics to show, so the reason takes their place
+  // rather than sitting in a tooltip - this is the exact question the table has to answer.
+  if (why) {
+    return `<tr><td>${name}</td><td>${state}</td>` +
+           `<td colspan="3" class="dash-muted">${esc(WATCH_REASON[why] || why)}</td>` +
+           `<td>${btn}</td></tr>`;
+  }
   return `<tr><td>${name}</td><td>${state}</td><td style="font-variant-numeric:tabular-nums;">${rows}</td>` +
          `<td>${newest}</td><td>${checked}</td><td>${btn}</td></tr>`;
 }
@@ -10827,9 +10846,13 @@ async function loadSourceWatch() {
     if (badge) { badge.textContent = bad; badge.style.display = bad ? '' : 'none'; }
     if (ctx) {
       const last = keys.map(k => (ds[k].observation || {}).observed_at).filter(Boolean).sort().pop();
+      const mon = keys.filter(k => !ds[k].excluded && !ds[k].not_monitorable).length;
+      // Datasets that can never be polled (a file upload, a Qlik table) are counted, not listed.
+      const quiet = Object.values(r.not_pollable || {}).reduce((a, b) => a + b, 0);
       ctx.textContent = scopeCtxLabel() + ' · ' +
-        (keys.length ? `${keys.length} source${keys.length === 1 ? '' : 's'}` : 'no sources yet') +
+        (mon ? `${mon} monitored` : 'nothing monitored yet') +
         (off ? `, ${off} excluded` : '') +
+        (quiet ? `, ${quiet} with no live source to poll` : '') +
         (last ? ` · last checked ${_watchAgeText(last)}` : '');
     }
     if (!keys.length) {
