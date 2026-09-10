@@ -793,6 +793,14 @@
   .ar-field-x { border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 11px; line-height: 1; padding: 0 0 0 5px; }
   .ar-field-x:hover { color: var(--err); }
   .ar-refs { border-top: 1px solid var(--border); margin-top: 14px; padding-top: 14px; }
+  /* It is a <details> now: the default marker sits oddly against an uppercase label, and the
+     summary needs the same hover affordance the other collapsibles have. */
+  .ar-refs > summary { list-style: none; }
+  .ar-refs > summary::-webkit-details-marker { display: none; }
+  .ar-refs > summary::before { content: 'B8'; display: inline-block; margin-right: 6px;
+    color: var(--muted); transition: transform .12s ease; }
+  .ar-refs[open] > summary::before { transform: rotate(90deg); }
+  .ar-refs > summary:hover { color: var(--fg); }
   .ar-ref-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 8px; }
   .na-line { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
   .na-chip { font-size: 11px; color: var(--muted); background: var(--idle-bg); padding: 2px 8px;
@@ -3542,6 +3550,12 @@ if ($('#prmDone')) $('#prmDone').addEventListener('click', closePinRulesModal);
 if ($('#pinRulesModal')) $('#pinRulesModal').addEventListener('click', e => { if (e.target.id === 'pinRulesModal') closePinRulesModal(); });
 
 // ---- Edit active rules (the ruleset currently pinned / in effect for a dataset) --------
+// Whether the optional accuracy/integrity block is expanded. Persisted across the in-place
+// rerender()s that adding or removing a rule triggers - a fresh <details> defaults to closed, so
+// without this the section would snap shut the moment you clicked "+ Add lookup". Reset when the
+// editor is opened, so viewing a dataset's Rules tab always starts collapsed as intended.
+let arRefsOpen = false;
+
 async function editActiveRules(prefix, outEl) {
   outEl.innerHTML = dqLoader('Loading the active ruleset', null, true);
   let data;
@@ -3572,6 +3586,9 @@ async function editActiveRules(prefix, outEl) {
     accuracyLookups: Object.entries((data.accuracy || {}).lookups || {})
       .map(([col, vals]) => ({ col, values: Array.isArray(vals) ? vals.slice() : [] })),
   };
+  // Opening the editor for a dataset starts the optional block COLLAPSED, whatever the reader
+  // last expanded on another dataset. The flag only survives the in-place rerender()s.
+  arRefsOpen = false;
   renderActiveRulesEditor(state, outEl, prefix);
 }
 const _splitList = s => String(s || '').split(',').map(x => x.trim()).filter(Boolean);
@@ -3594,9 +3611,15 @@ function _refsSection(state) {
       <input class="rule-edit-in al-in" data-ali="${i}" data-alf="values" placeholder="allowed values, comma-separated" value="${esc((l.values || []).join(', '))}" style="flex:1;min-width:240px;">
       <button type="button" class="ar-field-x al-remove" data-ali="${i}" title="Remove lookup">✕</button>
     </div>`).join('') || `<p class="hint" style="margin:0 0 6px;">No accuracy lookups yet.</p>`;
-  return `<div class="ar-refs">
-      <div class="ar-con-label">Accuracy &amp; referential integrity <span style="text-transform:none;font-weight:400;color:var(--muted);">(optional)</span></div>
-      <p class="hint" style="margin:0 0 12px;">Added on top of the auto-detected rules - leave empty to skip. These light up the Accuracy and Referential Integrity dimensions.</p>
+  // Collapsed by default, and a <details> to match the identical block on the source form
+  // (#srcRefs). It is three stacked sub-forms that are OPTIONAL and usually empty, so expanded
+  // it pushed the auto-detected rules - the thing the tab is actually for - off the screen.
+  // A count in the summary so anything already configured is visible without opening it.
+  const _arN = (state.accuracyLookups || []).length + (state.integrityRules || []).length
+             + (acc.reference_uri ? 1 : 0);
+  return `<details class="ar-refs"${arRefsOpen ? ' open' : ''}>
+      <summary style="cursor:pointer;font-weight:600;" class="ar-con-label">Accuracy &amp; referential integrity <span style="text-transform:none;font-weight:400;color:var(--muted);">${_arN ? `(${_arN} configured)` : '(optional)'}</span></summary>
+      <p class="hint" style="margin:8px 0 12px;">Added on top of the auto-detected rules - leave empty to skip. These light up the Accuracy and Referential Integrity dimensions.</p>
       <div class="ar-con-label">Accuracy - authoritative lookups</div>
       <p class="hint" style="margin:0 0 8px;">A column and its full set of allowed values - anything outside the list counts as inaccurate.</p>
       <div class="ar-al-list">${lrows}</div>
@@ -3612,7 +3635,7 @@ function _refsSection(state) {
         <span class="rule-edit-field"><label>Join on (keys)</label><input class="rule-edit-in acc-in" data-accf="join_on" placeholder="col(s)" value="${esc((acc.join_on || []).join(', '))}"></span>
         <span class="rule-edit-field"><label>Compare columns</label><input class="rule-edit-in acc-in" data-accf="compare_columns" placeholder="col(s)" value="${esc((acc.compare_columns || []).join(', '))}"></span>
       </div>
-    </div>`;
+    </details>`;
 }
 // Type / Severity / Weight are column PROPERTIES (always present, no remove); everything
 // else in RULE_FIELD_ORDER is a pass/fail CONSTRAINT (removable, its own box).
@@ -3735,6 +3758,8 @@ function renderActiveRulesEditor(state, outEl, prefix) {
   }));
   const alAdd = outEl.querySelector('.al-add');
   if (alAdd) alAdd.addEventListener('click', () => { state.accuracyLookups.push({ col: '', values: [] }); rerender(); });
+  const arDet = outEl.querySelector('details.ar-refs');
+  if (arDet) arDet.addEventListener('toggle', () => { arRefsOpen = arDet.open; });
   const saveBtn = outEl.querySelector('.ar-save');
   if (saveBtn) saveBtn.addEventListener('click', () => saveActiveRules(prefix, state, saveBtn, outEl.querySelector('#arNote')));
 }
