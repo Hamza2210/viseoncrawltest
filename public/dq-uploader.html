@@ -3289,11 +3289,16 @@ function renderAssessment(r, bodyEl, opts) {
   }
   const provBadge = statusBadge;
   // Count-based visibility: a proportional score rounds a few bad rows in a huge table up to
-  // green, so surface the raw count of failing records too - it stays visible regardless of %.
-  const failing = (st.gate && st.gate.failing_rows) || 0;
-  const bySev = (st.gate && st.gate.failing_rows_by_severity) || {};
+  // green, so surface the raw failure count too - it stays visible regardless of %.
+  // This is the total across ALL checks, NOT a count of distinct rows: a row failing two checks
+  // contributes twice, so it can exceed the row count (1,015,355 on a 1,000,000-row table is
+  // correct arithmetic, not a bug). Labelled accordingly. `failing_rows` is the old name, read
+  // as a fallback so runs assessed before the rename still render.
+  const g = st.gate || {};
+  const failing = g.check_failures || g.failing_rows || 0;
+  const bySev = g.check_failures_by_severity || g.failing_rows_by_severity || {};
   const failChip = failing > 0
-    ? `<span class="tag ${bySev.blocker ? 'red' : 'amber'}" data-tip="Records that failed one or more checks - blocker ${(bySev.blocker||0).toLocaleString()} · major ${(bySev.major||0).toLocaleString()} · minor ${(bySev.minor||0).toLocaleString()}. Shown regardless of the % score, so a handful of bad rows in a large table stays visible.">⚑ ${failing.toLocaleString()} record${failing === 1 ? '' : 's'} failed checks</span>`
+    ? `<span class="tag ${bySev.blocker ? 'red' : 'amber'}" data-tip="Total failures across every check - blocker ${(bySev.blocker||0).toLocaleString()} · major ${(bySev.major||0).toLocaleString()} · minor ${(bySev.minor||0).toLocaleString()}. A row that fails two checks counts twice, so this can exceed the number of rows. Shown regardless of the % score, so a handful of bad rows in a large table stays visible.">⚑ ${failing.toLocaleString()} check failure${failing === 1 ? '' : 's'}</span>`
     : '';
   let html = `${dsName ? `<div class="ds-name">${esc(dsName)}</div>` : ''}<div class="headline">
       <span class="score">${fmtScore(score)}</span>
