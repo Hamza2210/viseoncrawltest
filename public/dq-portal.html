@@ -11050,6 +11050,18 @@ const WATCH_REASON = {
   not_monitorable: 'This dataset cannot be polled.',
 };
 
+// What the freshness column actually measures. A business date (fl_date, order_date) is a fact
+// ABOUT the row, not a record of when the row arrived, so its age says nothing about whether the
+// source is still loading - a healthy nightly load of historical flights reads as 7,500 days old.
+// Labelled here, and the evaluator declines to raise SOURCE_STALE on one for the same reason.
+function _watchBasisTip(o) {
+  if (o.event_time_basis !== 'business_date') return '';
+  return `data-tip="${esc((o.event_time_column || 'This column') + ' looks like a business date, not a load '
+    + 'timestamp - it records when the event happened, not when the row arrived. Freshness alerts are '
+    + 'not raised from it. To measure loading, point timeliness at an ingestion column (created_at, '
+    + 'loaded_at) in the Rules tab, or rely on the row count moving.')}"`;
+}
+
 function _watchRow(key, info) {
   const o = info.observation || {};
   const name = esc(o.dataset_name || key.split('/').pop());
@@ -11065,7 +11077,7 @@ function _watchRow(key, info) {
     ? '~' + o.rows.toLocaleString()
     : '<span class="dash-muted">-</span>';
   const newest = o.max_event_time
-    ? `${_watchAgeText(o.max_event_time)} <span class="dash-muted">(${esc(o.event_time_column || 'event time')})</span>`
+    ? `${_watchAgeText(o.max_event_time)} <span class="dash-muted" ${_watchBasisTip(o)}>(${esc(o.event_time_column || 'event time')}${o.event_time_basis === 'business_date' ? ', business date' : ''})</span>`
     : '<span class="dash-muted">no event-time column</span>';
   const checked = o.observed_at ? _watchAgeText(o.observed_at) : '<span class="dash-muted">never</span>';
   const btn = info.excluded
