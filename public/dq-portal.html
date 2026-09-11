@@ -4752,8 +4752,11 @@ function dashActiveFilters() {
   for (const g of dashFilterGroups()) {
     if (!g.sel) continue;
     const o = g.opts.find(o => o.v === g.sel);
+    // icon and label stay SEPARATE: srcIcon() returns an inline <svg> for the branded sources, so
+    // concatenating it into the label and escaping the result rendered the raw markup on screen.
     // A named owner is a free-text value, not one of the presets, so it has no matching option.
-    out.push({ label: (o ? (o.icon || '') + o.label : g.sel), group: g.label, attr: g.attr });
+    out.push({ icon: (o && o.icon) || '', label: o ? o.label : g.sel,
+               group: g.label, attr: g.attr });
   }
   if (dashTagSel) out.push({ label: dashTagSel, group: 'Tag', attr: 'data-tagclear' });
   return out;
@@ -4768,7 +4771,7 @@ function renderDashFilters() {
   if (n) {
     html += `<span class="dash-filtgrp">` + active.map(a =>
       `<button type="button" class="src-filter-chip active" data-clearone="${esc(a.attr)}" `
-      + `data-tip="Remove this ${esc(a.group.toLowerCase())} filter">${esc(a.group)}: ${esc(a.label)} ✕</button>`
+      + `data-tip="Remove this ${esc(a.group.toLowerCase())} filter">${esc(a.group)}: ${a.icon}${esc(a.label)} ✕</button>`
     ).join('') + `<button type="button" class="linkbtn" data-clearall="1">Clear all</button></span>`;
   }
   if (dashDatasets.length)                         // export the estate summary as parquet
