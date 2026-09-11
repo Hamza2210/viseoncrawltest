@@ -4526,11 +4526,14 @@ let dashWindowDays = 30;
 let dashScope = PORTAL ? 'source' : 'app';                          // 'app' (Qlik tables) | 'source' (Data-from-Source)
 let dashSelected = null;
 let dashSearch = '';                             // matches dataset name + custom tags
-let dashSourceSel = '';                          // '' = all sources (source scope only)
-let dashStageSel = '';                           // '' = all medallion stages
-let dashTrustSel = '';                            // '' = all trust flags
-let dashOwnerSel = '';                            // '' = all · '__none__' = unowned · else a specific owner email
-let dashTagSel = '';                             // '' = no custom-tag filter
+// Every dashboard filter is MULTI-select: each holds an array of chosen values, and an EMPTY
+// array means "all" (no narrowing). Within a group the values are OR'd, across groups AND'd -
+// two sources means show both; a source plus a trust means that source AND only those verdicts.
+let dashSourceSel = [];                          // [] = all sources (source scope only)
+let dashStageSel = [];                           // [] = all medallion stages
+let dashTrustSel = [];                           // [] = all trust flags
+let dashOwnerSel = [];                           // [] = all · '__none__' = unowned · else owner emails
+let dashTagSel = [];                             // [] = no custom-tag filter
 let dashEntries = {};                            // key -> { stage: '', tags: [] }
 let _dashControlsWired = false;
 const MEDALLIONS = ['bronze', 'silver', 'gold'];
@@ -4703,11 +4706,13 @@ function datasetsFiltered() {
     const e = entryFor(d.key);
     const hay = ((d.name || '') + ' ' + e.tags.join(' ')).toLowerCase();
     return (!q || hay.includes(q))
-      && (!dashSourceSel || (d.sourceFormat || '') === dashSourceSel)
-      && (!dashStageSel || e.stage === dashStageSel)
-      && (!dashTrustSel || e.trust === dashTrustSel)
-      && (!dashOwnerSel || (dashOwnerSel === '__none__' ? !e.owner : e.owner === dashOwnerSel))
-      && (!dashTagSel || e.tags.includes(dashTagSel));
+      && (!dashSourceSel.length || dashSourceSel.includes(d.sourceFormat || ''))
+      && (!dashStageSel.length || dashStageSel.includes(e.stage))
+      && (!dashTrustSel.length || dashTrustSel.includes(e.trust))
+      // '__none__' is "has no owner at all", so it cannot be a plain includes() against the
+      // owner value - it has to be asked as a question about absence.
+      && (!dashOwnerSel.length || dashOwnerSel.some(o => o === '__none__' ? !e.owner : e.owner === o))
+      && (!dashTagSel.length || dashTagSel.some(t => e.tags.includes(t)));
   });
 }
 
@@ -4729,8 +4734,10 @@ function refreshDatasetsTable() {
 // clear-all cannot drift apart - previously each was open-coded three times.
 function dashFilterGroups() {
   const sources = [...new Set(dashDatasets.map(d => d.sourceFormat).filter(Boolean))];
-  if (dashScope !== 'source' || sources.length < 2) dashSourceSel = '';
-  else if (dashSourceSel && !sources.includes(dashSourceSel)) dashSourceSel = '';
+  // Drop selections for sources that are no longer present, rather than silently filtering to
+  // nothing against a value the estate no longer contains.
+  if (dashScope !== 'source' || sources.length < 2) dashSourceSel = [];
+  else dashSourceSel = dashSourceSel.filter(v => sources.includes(v));
   const out = [];
   if (dashScope === 'source' && sources.length >= 2)
     out.push({ key: 'src', label: 'Source', attr: 'data-srcf', sel: dashSourceSel,
@@ -4747,18 +4754,22 @@ function dashFilterGroups() {
   return out;
 }
 
+// One chip per SELECTED VALUE, not per group: with multi-select, a single "Source" chip could
+// not say which sources, and could not be removed one at a time.
 function dashActiveFilters() {
   const out = [];
   for (const g of dashFilterGroups()) {
-    if (!g.sel) continue;
-    const o = g.opts.find(o => o.v === g.sel);
-    // icon and label stay SEPARATE: srcIcon() returns an inline <svg> for the branded sources, so
-    // concatenating it into the label and escaping the result rendered the raw markup on screen.
-    // A named owner is a free-text value, not one of the presets, so it has no matching option.
-    out.push({ icon: (o && o.icon) || '', label: o ? o.label : g.sel,
-               group: g.label, attr: g.attr });
+    for (const v of g.sel) {
+      const o = g.opts.find(o => o.v === v);
+      // icon and label stay SEPARATE: srcIcon() returns an inline <svg> for the branded sources,
+      // so folding it into the label and escaping the result printed the raw markup on screen.
+      // A named owner is free text, not one of the presets, so it has no matching option.
+      out.push({ icon: (o && o.icon) || '', label: o ? o.label : v,
+                 group: g.label, attr: g.attr, value: v });
+    }
   }
-  if (dashTagSel) out.push({ label: dashTagSel, group: 'Tag', attr: 'data-tagclear' });
+  for (const t of dashTagSel)
+    out.push({ icon: '', label: t, group: 'Tag', attr: 'data-tagf', value: t });
   return out;
 }
 
@@ -4770,7 +4781,7 @@ function renderDashFilters() {
     + `Filters${n ? ` <span class="df-count">${n}</span>` : ''}</button></span>`;
   if (n) {
     html += `<span class="dash-filtgrp">` + active.map(a =>
-      `<button type="button" class="src-filter-chip active" data-clearone="${esc(a.attr)}" `
+      `<button type="button" class="src-filter-chip active" data-clearone="${esc(a.attr)}" data-clearval="${esc(a.value)}" `
       + `data-tip="Remove this ${esc(a.group.toLowerCase())} filter">${esc(a.group)}: ${a.icon}${esc(a.label)} ✕</button>`
     ).join('') + `<button type="button" class="linkbtn" data-clearall="1">Clear all</button></span>`;
   }
@@ -4782,7 +4793,7 @@ function renderDashFilters() {
   const open = wrap.querySelector('[data-openfilters]');
   if (open) open.addEventListener('click', openDashFilterModal);
   wrap.querySelectorAll('[data-clearone]').forEach(b => b.addEventListener('click', () => {
-    dashApplyFilter(b.dataset.clearone, '');
+    dashApplyFilter(b.dataset.clearone, b.dataset.clearval);   // toggles that one value off
   }));
   const ca = wrap.querySelector('[data-clearall]');
   if (ca) ca.addEventListener('click', clearDashFilters);
@@ -4790,20 +4801,27 @@ function renderDashFilters() {
   if (ea) ea.addEventListener('click', () => exportParquet('all', null, ea));
 }
 
-// One setter for every group, so the bar, the modal and clear-all all go through the same path.
+// One entry point for every group, so the bar, the modal, the in-table chips and clear-all
+// cannot disagree. An empty `val` clears the whole group ("All"); any other value TOGGLES, so
+// clicking a selected filter again removes it.
 function dashApplyFilter(attr, val) {
-  if (attr === 'data-srcf') dashSourceSel = val;
-  else if (attr === 'data-stagef') dashStageSel = val;
-  else if (attr === 'data-trustf') dashTrustSel = val;
-  else if (attr === 'data-ownerf') dashOwnerSel = val;
-  else if (attr === 'data-tagclear') dashTagSel = '';
+  const cur = { 'data-srcf': dashSourceSel, 'data-stagef': dashStageSel,
+                'data-trustf': dashTrustSel, 'data-ownerf': dashOwnerSel,
+                'data-tagf': dashTagSel }[attr];
+  if (!cur) return;
+  const next = !val ? [] : (cur.includes(val) ? cur.filter(v => v !== val) : cur.concat([val]));
+  if (attr === 'data-srcf') dashSourceSel = next;
+  else if (attr === 'data-stagef') dashStageSel = next;
+  else if (attr === 'data-trustf') dashTrustSel = next;
+  else if (attr === 'data-ownerf') dashOwnerSel = next;
+  else if (attr === 'data-tagf') dashTagSel = next;
   renderDashFilters();
   if ($('#dashFilterModal').classList.contains('open')) renderDashFilterBody();
   refreshDatasetsTable();
 }
 
 function clearDashFilters() {
-  dashSourceSel = dashStageSel = dashTrustSel = dashOwnerSel = dashTagSel = '';
+  dashSourceSel = []; dashStageSel = []; dashTrustSel = []; dashOwnerSel = []; dashTagSel = [];
   renderDashFilters();
   if ($('#dashFilterModal').classList.contains('open')) renderDashFilterBody();
   refreshDatasetsTable();
@@ -4816,17 +4834,18 @@ function renderDashFilterBody() {
   let html = '';
   for (const g of dashFilterGroups()) {
     html += `<div class="df-row"><span class="df-label">${esc(g.label)}</span><span class="dash-filtgrp">`
-      + chip(g.attr, '', 'All', !g.sel)
-      + g.opts.map(o => chip(g.attr, o.v, o.label, g.sel === o.v, o.icon)).join('');
-    // A named owner came from clicking an owner chip in the table, so it is not a preset - show
-    // it here anyway, otherwise the modal would look like no owner filter is set while one is.
-    if (g.key === 'owner' && g.sel && g.sel !== '__none__')
-      html += chip(g.attr, g.sel, g.sel, true, '👤 ');
+      + chip(g.attr, '', 'All', !g.sel.length)
+      + g.opts.map(o => chip(g.attr, o.v, o.label, g.sel.includes(o.v), o.icon)).join('');
+    // Named owners come from clicking an owner chip in the table, so they are not presets - shown
+    // here anyway, or the modal would look like no owner filter is set while one is.
+    if (g.key === 'owner')
+      html += g.sel.filter(v => v !== '__none__')
+        .map(v => chip(g.attr, v, v, true, '👤 ')).join('');
     html += `</span></div>`;
   }
-  if (dashTagSel)
+  if (dashTagSel.length)
     html += `<div class="df-row"><span class="df-label">Tag</span><span class="dash-filtgrp">`
-      + `<button type="button" class="src-filter-chip active" data-f="data-tagclear" data-v="">🏷️ ${esc(dashTagSel)} ✕</button></span></div>`;
+      + dashTagSel.map(t => chip('data-tagf', t, t, true, '🏷️ ')).join('') + `</span></div>`;
   body.innerHTML = html;
   body.querySelectorAll('[data-f]').forEach(b =>
     b.addEventListener('click', () => dashApplyFilter(b.dataset.f, b.dataset.v)));
@@ -5480,7 +5499,7 @@ function renderHealthTable(datasets) {
   $('#dashTableWrap').querySelectorAll('[data-ownerfilter]').forEach(el =>
     el.addEventListener('click', e => {
       if (e.target.closest('[data-ownerset]')) return;       // the ✎ edits, doesn't filter
-      e.stopPropagation(); dashOwnerSel = el.dataset.ownerfilter; renderDashFilters(); refreshDatasetsTable();
+      e.stopPropagation(); dashApplyFilter('data-ownerf', el.dataset.ownerfilter);
     }));
   // Custom tags: add (＋), remove (✕), or click a tag to group the list by it.
   $('#dashTableWrap').querySelectorAll('[data-tagadd]').forEach(b =>
@@ -5488,7 +5507,7 @@ function renderHealthTable(datasets) {
   $('#dashTableWrap').querySelectorAll('.ds-tag-x[data-tagrm]').forEach(b =>
     b.addEventListener('click', e => { e.stopPropagation(); removeTagFrom(b.dataset.key, b.dataset.tagrm); }));
   $('#dashTableWrap').querySelectorAll('.ds-tag[data-tagfilter]').forEach(el =>
-    el.addEventListener('click', e => { e.stopPropagation(); dashTagSel = el.dataset.tagfilter; renderDashFilters(); refreshDatasetsTable(); }));
+    el.addEventListener('click', e => { e.stopPropagation(); dashApplyFilter('data-tagf', el.dataset.tagfilter); }));
 }
 
 function renderHeatmap(datasets) {
