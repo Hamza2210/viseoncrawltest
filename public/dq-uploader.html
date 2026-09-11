@@ -1253,6 +1253,15 @@
   .medal.gold   { background: rgba(224,198,90,.16); color: #ecd873; border-color: rgba(224,198,90,.5); }
   .medal-menu { display: inline-flex; gap: 4px; align-items: center; }
   .dash-filtgrp { display: inline-flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  /* Filter bar + the modal's grouped rows. The count badge is what makes a collapsed filter set
+     legible at a glance; without it the button looks the same whether 0 or 4 filters are on. */
+  .df-count { background: var(--accent2); color: #fff; border-radius: 999px; font-size: 10px;
+    font-weight: 700; min-width: 16px; padding: 0 5px; text-align: center; line-height: 16px; }
+  .df-row { display: flex; align-items: flex-start; gap: 12px; padding: 9px 0;
+    border-bottom: 1px solid var(--border); }
+  .df-row:last-child { border-bottom: 0; }
+  .df-label { flex: 0 0 68px; font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .04em; color: var(--muted); padding-top: 4px; }
   /* Dataset name cell: name on top, one wrapping row of attribute chips beneath (source/trust/owner/tags). */
   .ds-cell { vertical-align: top; }
   .ds-name-line { font-weight: 600; font-size: 13.5px; color: var(--text); padding-top: 2px; }
@@ -2560,6 +2569,26 @@
       <div id="schList"><p class="dash-muted">Loading…</p></div>
     </div>
 
+  </div>
+
+  <!-- Dataset filters. A modal rather than an inline chip row: with four groups (and a Source
+       group that grows with every connector a customer uses) the row wrapped onto three lines on
+       a laptop and pushed the table below the fold. Whatever is ACTIVE still shows in the bar. -->
+  <div class="modal-overlay" id="dashFilterModal">
+    <div class="modal">
+      <div class="modal-head">
+        <h3>Filter datasets</h3>
+        <button class="x-close" id="dfClose" type="button" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="hint" style="margin:6px 0 12px;">Changes apply straight away. Active filters also appear next to the Filters button.</p>
+        <div id="dfBody"></div>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn-sm" id="dfClear">Clear all</button>
+        <button type="button" id="dfDone">Done</button>
+      </div>
+    </div>
   </div>
 
   <!-- Table picker modal (shared by the schedule form) -->
@@ -4687,47 +4716,124 @@ function refreshDatasetsTable() {
   renderHealthTable(rows);
 }
 
-// Source (source scope) + Stage + the active custom-tag filter chips.
+// The dataset filters: a compact bar (Filters button + whatever is ACTIVE) plus a modal holding
+// the choices. Four groups inline wrapped onto three lines on a laptop, and the Source group
+// grows with every connector a customer uses, so the row only got worse.
+//
+// The active-filter chips are not decoration: a filter you cannot see is a filter you forget is
+// on, and "No datasets match your filters" with no visible cause is a support call. Everything
+// currently narrowing the table is therefore in the bar, and each chip clears itself.
+
+// Which groups exist, and how each one reads its state. One table so the bar, the modal and the
+// clear-all cannot drift apart - previously each was open-coded three times.
+function dashFilterGroups() {
+  const sources = [...new Set(dashDatasets.map(d => d.sourceFormat).filter(Boolean))];
+  if (dashScope !== 'source' || sources.length < 2) dashSourceSel = '';
+  else if (dashSourceSel && !sources.includes(dashSourceSel)) dashSourceSel = '';
+  const out = [];
+  if (dashScope === 'source' && sources.length >= 2)
+    out.push({ key: 'src', label: 'Source', attr: 'data-srcf', sel: dashSourceSel,
+               opts: sources.map(v => ({ v, label: sourceLabel(v), icon: srcIcon(v) + ' ' })) });
+  out.push({ key: 'stage', label: 'Stage', attr: 'data-stagef', sel: dashStageSel,
+             opts: MEDALLIONS.map(m => ({ v: m, label: MEDAL_LABEL[m] })) });
+  // Members see the Trust column read-only, so the filter comes with it: a purely client-side
+  // view filter over data they already have, granting no ability to change a verdict.
+  out.push({ key: 'trust', label: 'Trust', attr: 'data-trustf', sel: dashTrustSel,
+             opts: TRUST_LEVELS.map(t => ({ v: t, label: TRUST_META[t].label,
+                                            icon: TRUST_META[t].icon + ' ' })) });
+  out.push({ key: 'owner', label: 'Owner', attr: 'data-ownerf', sel: dashOwnerSel,
+             opts: [{ v: '__none__', label: 'Unowned', icon: '⚠ ' }] });
+  return out;
+}
+
+function dashActiveFilters() {
+  const out = [];
+  for (const g of dashFilterGroups()) {
+    if (!g.sel) continue;
+    const o = g.opts.find(o => o.v === g.sel);
+    // A named owner is a free-text value, not one of the presets, so it has no matching option.
+    out.push({ label: (o ? (o.icon || '') + o.label : g.sel), group: g.label, attr: g.attr });
+  }
+  if (dashTagSel) out.push({ label: dashTagSel, group: 'Tag', attr: 'data-tagclear' });
+  return out;
+}
+
 function renderDashFilters() {
   const wrap = $('#dashFilters'); if (!wrap) return;
-  const chip = (attr, val, label, active, icon) =>
-    `<button type="button" class="src-filter-chip${active ? ' active' : ''}" ${attr}="${esc(val)}">${icon || ''}${esc(label)}</button>`;
-  let html = '';
-  const sources = [...new Set(dashDatasets.map(d => d.sourceFormat).filter(Boolean))];
-  if (dashScope === 'source' && sources.length >= 2) {
-    if (dashSourceSel && !sources.includes(dashSourceSel)) dashSourceSel = '';
-    html += `<span class="dash-filtgrp"><span class="hint">Source:</span>` +
-      chip('data-srcf', '', 'All', !dashSourceSel) +
-      sources.map(s => chip('data-srcf', s, sourceLabel(s), dashSourceSel === s, srcIcon(s) + ' ')).join('') + `</span>`;
-  } else dashSourceSel = '';
-  html += `<span class="dash-filtgrp"><span class="hint">Stage:</span>` +
-    chip('data-stagef', '', 'All', !dashStageSel) +
-    MEDALLIONS.map(m => chip('data-stagef', m, MEDAL_LABEL[m], dashStageSel === m)).join('') + `</span>`;
-  // Members see the Trust column read-only, so the filter comes with it - it's a purely client-side
-  // view filter over data they already have, and it grants no ability to change a verdict.
-  html += `<span class="dash-filtgrp"><span class="hint">Trust:</span>` +
-    chip('data-trustf', '', 'All', !dashTrustSel) +
-    TRUST_LEVELS.map(t => chip('data-trustf', t, TRUST_META[t].label, dashTrustSel === t, TRUST_META[t].icon + ' ')).join('') + `</span>`;
-  html += `<span class="dash-filtgrp"><span class="hint">Owner:</span>` +
-    chip('data-ownerf', '', 'All', !dashOwnerSel) +
-    chip('data-ownerf', '__none__', 'Unowned', dashOwnerSel === '__none__', '⚠ ') +
-    (dashOwnerSel && dashOwnerSel !== '__none__' ? `<button type="button" class="src-filter-chip active" data-ownerf="">👤 ${esc(dashOwnerSel)} ✕</button>` : '') + `</span>`;
-  if (dashTagSel)
-    html += `<span class="dash-filtgrp"><span class="hint">Tag:</span>` +
-      `<button type="button" class="src-filter-chip active" data-tagclear="1">🏷️ ${esc(dashTagSel)} ✕</button></span>`;
+  const active = dashActiveFilters();
+  const n = active.length;
+  let html = `<span class="dash-filtgrp"><button type="button" class="src-filter-chip${n ? ' active' : ''}" data-openfilters="1" data-tip="Filter by source, stage, trust or owner">`
+    + `Filters${n ? ` <span class="df-count">${n}</span>` : ''}</button></span>`;
+  if (n) {
+    html += `<span class="dash-filtgrp">` + active.map(a =>
+      `<button type="button" class="src-filter-chip active" data-clearone="${esc(a.attr)}" `
+      + `data-tip="Remove this ${esc(a.group.toLowerCase())} filter">${esc(a.group)}: ${esc(a.label)} ✕</button>`
+    ).join('') + `<button type="button" class="linkbtn" data-clearall="1">Clear all</button></span>`;
+  }
   if (dashDatasets.length)                         // export the estate summary as parquet
-    html += `<span class="dash-filtgrp"><button type="button" class="src-filter-chip" data-exportall="1" data-tip="Download a parquet summary of all datasets">⬇ Export all (parquet)</button></span>`;
+    html += `<span class="dash-filtgrp" style="margin-left:auto;"><button type="button" class="src-filter-chip" data-exportall="1" data-tip="Download a parquet summary of all datasets">⬇ Export all (parquet)</button></span>`;
   wrap.innerHTML = html;
   wrap.style.display = 'flex';
-  wrap.querySelectorAll('[data-srcf]').forEach(b => b.addEventListener('click', () => { dashSourceSel = b.dataset.srcf; renderDashFilters(); refreshDatasetsTable(); }));
-  wrap.querySelectorAll('[data-stagef]').forEach(b => b.addEventListener('click', () => { dashStageSel = b.dataset.stagef; renderDashFilters(); refreshDatasetsTable(); }));
-  wrap.querySelectorAll('[data-trustf]').forEach(b => b.addEventListener('click', () => { dashTrustSel = b.dataset.trustf; renderDashFilters(); refreshDatasetsTable(); }));
-  wrap.querySelectorAll('[data-ownerf]').forEach(b => b.addEventListener('click', () => { dashOwnerSel = b.dataset.ownerf; renderDashFilters(); refreshDatasetsTable(); }));
-  const tc = wrap.querySelector('[data-tagclear]');
-  if (tc) tc.addEventListener('click', () => { dashTagSel = ''; renderDashFilters(); refreshDatasetsTable(); });
+
+  const open = wrap.querySelector('[data-openfilters]');
+  if (open) open.addEventListener('click', openDashFilterModal);
+  wrap.querySelectorAll('[data-clearone]').forEach(b => b.addEventListener('click', () => {
+    dashApplyFilter(b.dataset.clearone, '');
+  }));
+  const ca = wrap.querySelector('[data-clearall]');
+  if (ca) ca.addEventListener('click', clearDashFilters);
   const ea = wrap.querySelector('[data-exportall]');
   if (ea) ea.addEventListener('click', () => exportParquet('all', null, ea));
 }
+
+// One setter for every group, so the bar, the modal and clear-all all go through the same path.
+function dashApplyFilter(attr, val) {
+  if (attr === 'data-srcf') dashSourceSel = val;
+  else if (attr === 'data-stagef') dashStageSel = val;
+  else if (attr === 'data-trustf') dashTrustSel = val;
+  else if (attr === 'data-ownerf') dashOwnerSel = val;
+  else if (attr === 'data-tagclear') dashTagSel = '';
+  renderDashFilters();
+  if ($('#dashFilterModal').classList.contains('open')) renderDashFilterBody();
+  refreshDatasetsTable();
+}
+
+function clearDashFilters() {
+  dashSourceSel = dashStageSel = dashTrustSel = dashOwnerSel = dashTagSel = '';
+  renderDashFilters();
+  if ($('#dashFilterModal').classList.contains('open')) renderDashFilterBody();
+  refreshDatasetsTable();
+}
+
+function renderDashFilterBody() {
+  const body = $('#dfBody'); if (!body) return;
+  const chip = (attr, val, label, active, icon) =>
+    `<button type="button" class="src-filter-chip${active ? ' active' : ''}" data-f="${esc(attr)}" data-v="${esc(val)}">${icon || ''}${esc(label)}</button>`;
+  let html = '';
+  for (const g of dashFilterGroups()) {
+    html += `<div class="df-row"><span class="df-label">${esc(g.label)}</span><span class="dash-filtgrp">`
+      + chip(g.attr, '', 'All', !g.sel)
+      + g.opts.map(o => chip(g.attr, o.v, o.label, g.sel === o.v, o.icon)).join('');
+    // A named owner came from clicking an owner chip in the table, so it is not a preset - show
+    // it here anyway, otherwise the modal would look like no owner filter is set while one is.
+    if (g.key === 'owner' && g.sel && g.sel !== '__none__')
+      html += chip(g.attr, g.sel, g.sel, true, '👤 ');
+    html += `</span></div>`;
+  }
+  if (dashTagSel)
+    html += `<div class="df-row"><span class="df-label">Tag</span><span class="dash-filtgrp">`
+      + `<button type="button" class="src-filter-chip active" data-f="data-tagclear" data-v="">🏷️ ${esc(dashTagSel)} ✕</button></span></div>`;
+  body.innerHTML = html;
+  body.querySelectorAll('[data-f]').forEach(b =>
+    b.addEventListener('click', () => dashApplyFilter(b.dataset.f, b.dataset.v)));
+}
+
+function openDashFilterModal() {
+  renderDashFilterBody();
+  $('#dashFilterModal').classList.add('open');
+}
+
+function closeDashFilterModal() { $('#dashFilterModal').classList.remove('open'); }
 
 // --- Parquet export (bulk estate summary or one dataset) ---
 async function exportParquet(scope, datasetKey, btn) {
@@ -10846,6 +10952,10 @@ $('#schChooseTables').addEventListener('click', openTableModal);
 $('#tmClose').addEventListener('click', closeTableModal);
 $('#tmCancel').addEventListener('click', closeTableModal);
 $('#tableModal').addEventListener('click', e => { if (e.target.id === 'tableModal') closeTableModal(); });
+$('#dfClose').addEventListener('click', closeDashFilterModal);
+$('#dfDone').addEventListener('click', closeDashFilterModal);
+$('#dfClear').addEventListener('click', clearDashFilters);
+$('#dashFilterModal').addEventListener('click', e => { if (e.target.id === 'dashFilterModal') closeDashFilterModal(); });
 $('#tmAll').addEventListener('click', () => document.querySelectorAll('.tmcb').forEach(cb => cb.checked = true));
 $('#tmNone').addEventListener('click', () => document.querySelectorAll('.tmcb').forEach(cb => cb.checked = false));
 $('#tmApply').addEventListener('click', () => {
