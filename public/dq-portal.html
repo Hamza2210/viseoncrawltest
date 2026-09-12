@@ -1652,6 +1652,7 @@
         <div class="src-cat">
           <div class="src-cat-hd">Cloud warehouses</div>
           <div class="src-grid">
+            <button type="button" class="source-card" data-source="athena"><span class="src-ico" data-ico="athena"></span><span class="sc-name">Qlik Open Lakehouse</span><span class="src-tag betatag">Beta</span></button>
             <button type="button" class="source-card" data-source="redshift"><span class="src-ico" data-ico="redshift"></span><span class="sc-name">Amazon Redshift</span><span class="src-tag betatag">Beta</span></button>
             <button type="button" class="source-card" data-source="snowflake"><span class="src-ico" data-ico="snowflake"></span><span class="sc-name">Snowflake</span><span class="src-tag betatag">Beta</span></button>
             <button type="button" class="source-card" data-source="databricks"><span class="src-ico" data-ico="databricks"></span><span class="sc-name">Databricks</span><span class="src-tag betatag">Beta</span></button>
@@ -1761,6 +1762,7 @@
       <div class="card">
         <h2>Amazon Redshift <span class="src-tag betatag">Beta</span></h2>
         <p class="src-note">Point us at a Redshift table. Via the Data API and a cross-account IAM role, the assessment runs as SQL <em>inside</em> Redshift - only aggregate results (and up to 50 sample failing rows per check) come back. Your data is never copied out, and full tables are profiled (no 100k sampling cap).</p>
+        <p class="src-note"><strong>Qlik Open Lakehouse?</strong> If this engine already reads your Iceberg tables as an external schema over the Glue catalog, point the Table field at one and it is assessed in place like any other. Otherwise use the <em>Qlik Open Lakehouse</em> source, which reads the Glue catalog directly.</p>
         <div class="src-form">
           <div class="src-field"><label>Connection method</label>
             <select data-f="method"><option value="data_api">Data API (recommended)</option><option value="direct">Direct connection</option></select></div>
@@ -1803,11 +1805,38 @@
       <div class="card" id="s3Result" style="display:none;"><h2>Assessment</h2><div id="s3ResultBody"></div></div>
     </div>
 
+    <!-- ===== Source: Qlik Open Lakehouse (Iceberg via Athena) ===== -->
+    <div id="src-athena" class="source-body" style="display:none;">
+      <div class="card">
+        <h2>Qlik Open Lakehouse <span class="src-tag betatag">Beta</span></h2>
+        <p class="src-note">Score an Apache Iceberg table where it already lives. Qlik Open Lakehouse
+          writes Iceberg into your own object storage and registers it in a catalog (usually AWS Glue);
+          this reads it through Amazon Athena, so checks push down as SQL and no data is copied.
+          Works against any Glue-catalogued Iceberg lakehouse, not only Qlik's.</p>
+        <p class="src-note">There is no password: Athena authenticates with IAM. Supply a role to assume
+          only if the lakehouse lives in another AWS account.</p>
+        <div class="src-form">
+          <div class="src-field"><label>Glue database</label><input data-f="database" placeholder="lakehouse"></div>
+          <div class="src-field"><label>Table</label><input data-f="table" placeholder="orders"></div>
+          <div class="src-field"><label>Region</label><input data-f="region" placeholder="eu-west-1"></div>
+          <div class="src-field"><label>Workgroup <span class="hint">(optional)</span></label><input data-f="workgroup" placeholder="primary"></div>
+          <div class="src-field"><label>Catalog <span class="hint">(optional)</span></label><input data-f="catalog" placeholder="AwsDataCatalog"></div>
+          <div class="src-field"><label>Results location <span class="hint">(optional)</span></label><input data-f="output_location" placeholder="s3://bucket/athena-results/"></div>
+          <div class="src-field"><label>Role ARN <span class="hint">(optional)</span></label><input data-f="role_arn" placeholder="arn:aws:iam::…:role/…"></div>
+          <div class="src-field"><label>Sample rows <span class="hint">(optional)</span></label><input data-f="sample_rows" type="number" min="1" placeholder="Empty = whole table"></div>
+        </div>
+        <button type="button" class="src-run" data-runsource="athena">Run assessment</button>
+        <div class="src-status" data-status="athena"></div>
+      </div>
+      <div class="card" id="athenaResult" style="display:none;"><h2>Assessment</h2><div id="athenaResultBody"></div></div>
+    </div>
+
     <!-- ===== Source: Snowflake ===== -->
     <div id="src-snowflake" class="source-body" style="display:none;">
       <div class="card">
         <h2>Snowflake <span class="src-tag betatag">Beta</span></h2>
         <p class="src-note">Read a Snowflake table with a read-only role. Checks push down as SQL so only results return.</p>
+        <p class="src-note"><strong>Qlik Open Lakehouse?</strong> If this engine already reads your Iceberg tables as an Iceberg table with an external catalog, point the Table field at one and it is assessed in place like any other. Otherwise use the <em>Qlik Open Lakehouse</em> source, which reads the Glue catalog directly.</p>
         <div class="src-form">
           <div class="src-field"><label>Account</label><input data-f="account" placeholder="xy12345.eu-west-1"></div>
           <div class="src-field"><label>User</label><input data-f="user" placeholder="dq_reader"></div>
@@ -1830,6 +1859,7 @@
       <div class="card">
         <h2>Databricks <span class="src-tag betatag">Beta</span></h2>
         <p class="src-note">Read a Unity Catalog / SQL-warehouse table via a personal access token.</p>
+        <p class="src-note"><strong>Qlik Open Lakehouse?</strong> If this engine already reads your Iceberg tables as a Unity Catalog foreign/Iceberg table, point the Table field at one and it is assessed in place like any other. Otherwise use the <em>Qlik Open Lakehouse</em> source, which reads the Glue catalog directly.</p>
         <div class="src-form">
           <div class="src-field full"><label>Server hostname</label><input data-f="host" placeholder="dbc-1234.cloud.databricks.com"></div>
           <div class="src-field full"><label>HTTP path</label><input data-f="http_path" placeholder="/sql/1.0/warehouses/abcdef"></div>
@@ -1937,6 +1967,7 @@
       <div class="card">
         <h2>Google BigQuery <span class="src-tag betatag">Beta</span></h2>
         <p class="src-note">Assess a BigQuery table in place via SQL pushdown. Authenticate with a service-account key JSON that has <em>BigQuery Data Viewer</em> + <em>BigQuery Job User</em> on the project. The key is applied server-side and never stored in the browser.</p>
+        <p class="src-note"><strong>Qlik Open Lakehouse?</strong> If this engine already reads your Iceberg tables as a BigLake Iceberg table, point the Table field at one and it is assessed in place like any other. Otherwise use the <em>Qlik Open Lakehouse</em> source, which reads the Glue catalog directly.</p>
         <div class="src-form">
           <div class="src-field"><label>Project ID</label><input data-f="project" placeholder="my-gcp-project"></div>
           <div class="src-field"><label>Dataset</label><input data-f="dataset" placeholder="analytics"></div>
@@ -2508,6 +2539,7 @@
           <option value="qlik">This app's tables (Qlik)</option>
           <option value="tag">Datasets with a tag (one task)</option>
           <option value="source-watch">Source monitoring only (no assessment)</option>
+          <option value="athena">Qlik Open Lakehouse</option>
           <option value="redshift">Amazon Redshift</option>
           <option value="s3">Amazon S3 file</option>
           <option value="snowflake">Snowflake</option>
@@ -2818,14 +2850,14 @@ const fmtScore = n => (n == null ? '-' : Number(Number(n).toFixed(2)));
 function tagClass(s) { return ({ green: 'green', amber: 'amber', red: 'red' })[s] || ''; }
 // A friendly label + chip for the dataset's origin (source_format on the run).
 const SOURCE_FMT_LABEL = {
-  qlik: 'Qlik Table', redshift: 'Amazon Redshift', snowflake: 'Snowflake', databricks: 'Databricks',
+  qlik: 'Qlik Table', athena: 'Qlik Open Lakehouse', redshift: 'Amazon Redshift', snowflake: 'Snowflake', databricks: 'Databricks',
   postgres: 'PostgreSQL', mysql: 'MySQL', sqlserver: 'SQL Server', synapse: 'Azure Synapse',
   bigquery: 'Google BigQuery', gcs: 'Google Cloud Storage', azureblob: 'Azure Blob',
   s3: 'Amazon S3', parquet: 'Parquet file', csv: 'CSV file', tsv: 'TSV file',
   json: 'JSON file', ndjson: 'JSON file', qvd: 'QVD file', excel: 'Excel file', sharepoint: 'SharePoint',
 };
 const SOURCE_FMT_ICON = {
-  qlik: '📊', redshift: '🟥', snowflake: '❄️', databricks: '🧱', s3: '🪣',
+  qlik: '📊', athena: '🧊', redshift: '🟥', snowflake: '❄️', databricks: '🧱', s3: '🪣',
   postgres: '🐘', mysql: '🐬', sqlserver: '🗄️', synapse: '🔷', bigquery: '🔷',
   gcs: '🪣', azureblob: '🟦',
   parquet: '📦', csv: '📄', tsv: '📄', json: '📄', ndjson: '📄', qvd: '📄', excel: '📊', sharepoint: '📁',
@@ -2835,6 +2867,11 @@ const SOURCE_FMT_ICON = {
 // <img src="data:image/…"> pointing at a background-removed asset) - one line per source.
 const _svg = inner => `<svg viewBox="0 0 24 24" width="13" height="13" style="vertical-align:-2px" aria-hidden="true">${inner}</svg>`;
 const SOURCE_FMT_SVG = {
+  // Qlik Open Lakehouse: an iceberg - Qlik green above the waterline, a paler mass below, which
+  // is the usual way the format is drawn. Reads at chip size as a solid shape rather than detail.
+  athena: _svg('<path d="M12 3.2 5.4 12h13.2L12 3.2z" fill="#1a9f42"/>' +
+    '<path d="M5.4 12 2.6 20.8h18.8L18.6 12H5.4z" fill="#58595b" opacity=".55"/>' +
+    '<path d="M12 3.2 12 20.8" stroke="#0d1117" stroke-width=".7" opacity=".35"/>'),
   // Qlik: grey lower-left arc, green top/right arc + tail
   qlik: _svg('<circle cx="10.5" cy="10.5" r="7" fill="none" stroke="#58595b" stroke-width="3.2"/>' +
     '<path d="M6.49 4.77 A7 7 0 1 1 14.0 16.56" fill="none" stroke="#1a9f42" stroke-width="3.2"/>' +
@@ -8837,6 +8874,9 @@ $('#lineageRefresh').addEventListener('click', e => { e.preventDefault(); loadLi
 // File upload is fully wired (existing flow); the connector sources capture +
 // validate their config and report status. Their backends are built per-source.
 const SOURCE_REQUIRED = {
+  // Athena needs only WHAT to read: the engine is reached with IAM, and workgroup/catalog/region
+  // all have sensible defaults, so nothing else is mandatory.
+  athena: ['database', 'table'],
   redshift: ['cluster', 'database', 'schema', 'table'],
   s3: ['uri'],
   snowflake: ['account', 'user', 'database', 'schema', 'table'],
@@ -8850,7 +8890,7 @@ const SOURCE_REQUIRED = {
   gcs: ['bucket', 'object', 'credentials_json'],
   azureblob: ['container', 'blob', 'connection_string'],
 };
-const SOURCE_LABEL = { redshift: 'Amazon Redshift', s3: 'Amazon S3', snowflake: 'Snowflake',
+const SOURCE_LABEL = { athena: 'Qlik Open Lakehouse', redshift: 'Amazon Redshift', s3: 'Amazon S3', snowflake: 'Snowflake',
   databricks: 'Databricks', postgres: 'PostgreSQL', mysql: 'MySQL', sqlserver: 'SQL Server',
   synapse: 'Azure Synapse', bigquery: 'Google BigQuery', sharepoint: 'SharePoint / OneDrive',
   gcs: 'Google Cloud Storage', azureblob: 'Azure Blob / ADLS',
@@ -8860,7 +8900,9 @@ const _SRC_FILE_ONLY = ['assessment', 'resetBar', 'results'];   // cards that be
 // Optional Accuracy & Integrity config for a source's FIRST run (sent as a ruleset augment).
 // Lookups apply to every source; reference-table integrity/accuracy apply to warehouses.
 const srcRefsState = { lookups: [], integrity: [], accuracy: {}, warehouse: false };
-const _WAREHOUSE_SRC = new Set(['redshift', 'snowflake', 'databricks', 'postgres', 'mysql', 'sqlserver', 'synapse']);
+// Athena counts as a warehouse here: reference-table integrity and accuracy checks work,
+// because a join to another table in the same catalog is just more SQL.
+const _WAREHOUSE_SRC = new Set(['athena', 'redshift', 'snowflake', 'databricks', 'postgres', 'mysql', 'sqlserver', 'synapse']);
 
 function selectSource(key) {
   // Excel reuses the file-upload flow (a plain upload with an optional worksheet), so it maps to
@@ -9155,6 +9197,7 @@ function runSource(key) {
   }
   // The applied credential profile (if any) supplies the secrets server-side at run time.
   cfg._credProfile = activeProfile[key] || null;
+  if (key === 'athena') { runAthena(cfg, statusEl); return; }       // wired end-to-end
   if (key === 'redshift') { runRedshift(cfg, statusEl); return; }   // wired end-to-end
   if (key === 's3') { runS3(cfg, statusEl); return; }               // wired end-to-end
   if (key === 'snowflake') { runSnowflake(cfg, statusEl); return; } // wired end-to-end
@@ -9247,6 +9290,44 @@ async function runS3(cfg, statusEl) {
   statusEl.innerHTML = `Assessment started (run <code>${esc(res.runId || '')}</code>). Reading the file and scoring…`;
   const card = document.getElementById('s3Result');
   const bodyEl = document.getElementById('s3ResultBody');
+  if (card) card.style.display = 'block';
+  if (bodyEl) bodyEl.innerHTML = `<p><span class="spin"></span> Scoring the dataset - this can take a moment…</p>`;
+  if (res.resultPrefix && bodyEl) {
+    pollInto(res.resultPrefix, bodyEl, {}).finally(() => { if (btn) btn.disabled = false; });
+  } else if (btn) { btn.disabled = false; }
+}
+
+// Launch a full-table Qlik Open Lakehouse (Iceberg via Athena) assessment, then poll + render.
+async function runAthena(cfg, statusEl) {
+  const btn = document.querySelector('[data-runsource="athena"]');
+  const body = {
+    app_id: APP_ID || undefined,
+    database: cfg.database, table: cfg.table,
+    region: cfg.region || undefined, workgroup: cfg.workgroup || undefined,
+    catalog: cfg.catalog || undefined, output_location: cfg.output_location || undefined,
+    role_arn: cfg.role_arn || undefined,
+    sample_rows: cfg.sample_rows ? Number(cfg.sample_rows) : undefined,
+    notify_email: EMAIL || undefined,
+    ruleset_augment: collectSourceRefsAugment() || undefined,
+    credential_profile: cfg._credProfile || undefined,
+  };
+  statusEl.className = 'src-status';
+  statusEl.innerHTML = `<p><span class="spin"></span> Launching lakehouse assessment…</p>`;
+  if (btn) btn.disabled = true;
+  let res;
+  try {
+    res = await postJSON(`${API_BASE}/data-quality/athena-assessment`, HEADERS, body);
+  } catch (e) {
+    statusEl.className = 'src-status err';
+    statusEl.textContent = e.message;
+    if (btn) btn.disabled = false;
+    return;
+  }
+  statusEl.className = 'src-status dev';
+  statusEl.innerHTML = `Assessment started (run <code>${esc(res.runId || '')}</code>). ` +
+    `Inferring the ruleset from a sample, then scoring the whole table in place via Athena…`;
+  const card = document.getElementById('athenaResult');
+  const bodyEl = document.getElementById('athenaResultBody');
   if (card) card.style.display = 'block';
   if (bodyEl) bodyEl.innerHTML = `<p><span class="spin"></span> Scoring the dataset - this can take a moment…</p>`;
   if (res.resultPrefix && bodyEl) {
@@ -9694,6 +9775,15 @@ const SOURCE_FIELD_HELP = {
     port: 'The port the SQL endpoint listens on. Default is 1433.',
     database: 'The dedicated SQL pool (database) that holds the table.',
     user: 'A read-only SQL login (SQL authentication) with SELECT on the table.',
+  },
+  athena: {
+    database: 'The AWS Glue database that holds the table. In Glue the database IS the schema.',
+    table: 'The exact name of the Iceberg table to assess.',
+    region: 'The AWS region the lakehouse and its Glue catalog are in, e.g. eu-west-1.',
+    workgroup: 'Optional. The Athena workgroup that runs the queries. Defaults to primary.',
+    catalog: 'Optional. The Athena data catalog. Defaults to AwsDataCatalog.',
+    output_location: 'Optional. Where Athena writes its result sets, e.g. s3://bucket/athena-results/. Only needed if the workgroup does not already set one.',
+    role_arn: 'Optional. Only for a lakehouse in a DIFFERENT AWS account - an IAM role there that trusts our worker. There is no password: Athena authenticates with IAM.',
   },
   gcs: {
     bucket: 'The Google Cloud Storage bucket name (no gs:// prefix).',
@@ -11056,6 +11146,15 @@ const SCHED_SOURCE_FIELDS = {
     { f: 'database', label: 'SQL pool (database)' }, { f: 'user', label: 'User' },
     { f: 'password', label: 'Password', type: 'password' },
     { f: 'schema', label: 'Schema', value: 'dbo' }, { f: 'table', label: 'Table' },
+    { f: 'sample_rows', label: 'Sample rows', type: 'number' },
+  ],
+  athena: [
+    { f: 'database', label: 'Glue database' }, { f: 'table', label: 'Table' },
+    { f: 'region', label: 'AWS region', value: 'eu-west-1' },
+    { f: 'workgroup', label: 'Workgroup', value: 'primary' },
+    { f: 'catalog', label: 'Catalog', value: 'AwsDataCatalog' },
+    { f: 'output_location', label: 'Results location', full: true },
+    { f: 'role_arn', label: 'Cross-account role ARN', full: true },
     { f: 'sample_rows', label: 'Sample rows', type: 'number' },
   ],
   bigquery: [
