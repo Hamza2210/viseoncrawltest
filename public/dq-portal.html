@@ -40,6 +40,28 @@
     overflow-y: auto; background: var(--card-2); border-right: 1px solid var(--border);
     box-shadow: 4px 0 24px rgba(16,24,40,.035); padding: 20px 12px; z-index: 40; }
   .brand { padding: 4px 8px 14px; margin-bottom: 4px; border-bottom: 1px solid var(--border); }
+  /* Boot splash: covers the first paint until the dashboard is populated. Colours are
+     hard-coded rather than var()-driven, because it has to be right even if it renders before
+     anything else has applied. */
+  #bootSplash { position: fixed; inset: 0; z-index: 99999; background: #0a0e1a;
+    display: flex; align-items: center; justify-content: center;
+    transition: opacity .38s ease; }
+  #bootSplash.bs-hide { opacity: 0; pointer-events: none; }
+  .bs-inner { display: flex; flex-direction: column; align-items: center; gap: 20px; }
+  .bs-ring { width: 52px; height: 52px; border-radius: 50%;
+    border: 3px solid rgba(91,140,255,.16); border-top-color: #5b8cff;
+    border-right-color: #a78bfa; animation: bsSpin .9s linear infinite; }
+  @keyframes bsSpin { to { transform: rotate(360deg); } }
+  .bs-title { font-size: 22px; font-weight: 800; letter-spacing: -.02em;
+    background: linear-gradient(90deg, #5b8cff, #a78bfa);
+    -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .bs-sub { font-size: 13px; color: #94a2be; margin-top: -8px; }
+  /* A spinner is decoration; someone who has asked for less motion should not be given a
+     permanently rotating object to look at. */
+  @media (prefers-reduced-motion: reduce) {
+    .bs-ring { animation: none; border-top-color: #5b8cff; border-right-color: #a78bfa; }
+    #bootSplash { transition: none; }
+  }
   .brand-title { font-size: 21px; font-weight: 800; letter-spacing: -.02em;
     background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
   .brand-sub { color: var(--muted); font-size: 11px; margin-top: 3px; line-height: 1.4; }
@@ -1587,6 +1609,14 @@
 </script>
 </head>
 <body>
+  <!-- First paint. Removed once the dashboard's first load settles (see hideBootSplash). -->
+  <div id="bootSplash" role="status" aria-live="polite" aria-label="Loading">
+    <div class="bs-inner">
+      <div class="bs-ring"></div>
+      <div class="bs-title">Data Assurance</div>
+      <div class="bs-sub">Loading your dashboard</div>
+    </div>
+  </div>
 <aside class="sidebar">
   <div class="brand">
     <div class="brand-title">Data Assurance</div>
@@ -10556,6 +10586,21 @@ function switchTab(name) {
 }
 document.querySelectorAll('.side-item').forEach(t => t.addEventListener('click', () => switchTab(t.dataset.tab)));
 
+// --- Boot splash ----------------------------------------------------------- //
+// Being stuck on a loading screen is worse than seeing a half-built page, so this is called from
+// every exit path: the dashboard settling, a boot that throws, an uncaught error, and a time cap.
+let _bootSplashDone = false;
+function hideBootSplash() {
+  if (_bootSplashDone) return;
+  _bootSplashDone = true;
+  const el = document.getElementById('bootSplash');
+  if (!el) return;
+  el.classList.add('bs-hide');
+  setTimeout(() => { if (el.parentNode) el.parentNode.removeChild(el); }, 420);
+}
+setTimeout(hideBootSplash, 15000);                 // nothing legitimate takes this long
+window.addEventListener('error', hideBootSplash);  // a broken page still has to be reachable
+
 // --- Portal mode wiring (no-op when PORTAL === false) ---------------------- //
 function applyMode() {
   if (!PORTAL) return;
@@ -10574,6 +10619,12 @@ function startCommon() {
   switchTab('dashboard');                       // Dashboard is the landing tab; sync the panels + wide layout on load
   refreshBlockerBar();                          // show open blockers immediately, on every tab
   setInterval(refreshBlockerBar, 60000);        // keep the always-visible bar current
+  // Hold the splash until the dashboard's FIRST load settles, so the user lands on a populated
+  // screen rather than watching empty panels fill in. switchTab already started that load and
+  // loadDashboard shares one in-flight promise, so this attaches to it rather than refetching.
+  // It resolves even when the fetch fails (errors render in-panel) and even when config is
+  // missing (it returns early), so both of those still reveal the page.
+  Promise.resolve(loadDashboard()).catch(() => {}).then(hideBootSplash);
 }
 // Super-admin org switcher: populate from all orgs, and on change ask the server to
 // switch the active org (server-side tenant), then reload so every tab re-fetches
@@ -10655,7 +10706,8 @@ async function bootPortal() {
   }
   startCommon();
 }
-if (PORTAL) { bootPortal(); } else { startCommon(); }
+// A throw anywhere in bootPortal would otherwise leave the splash up for the full 15s cap.
+if (PORTAL) { bootPortal().catch(() => hideBootSplash()); } else { startCommon(); }
 
 // Floating value tooltip - any element with a data-tip attribute shows it on hover.
 (function () {
