@@ -1662,6 +1662,7 @@
         <div class="src-cat">
           <div class="src-cat-hd">Databases</div>
           <div class="src-grid">
+            <button type="button" class="source-card" data-source="oracle"><span class="src-ico" data-ico="oracle"></span><span class="sc-name">Oracle</span><span class="src-tag betatag">Beta</span></button>
             <button type="button" class="source-card" data-source="postgres"><span class="src-ico" data-ico="postgres"></span><span class="sc-name">PostgreSQL</span><span class="src-tag betatag">Beta</span></button>
             <button type="button" class="source-card" data-source="sqlserver"><span class="src-ico" data-ico="sqlserver"></span><span class="sc-name">SQL Server</span><span class="src-tag betatag">Beta</span></button>
             <button type="button" class="source-card" data-source="mysql"><span class="src-ico" data-ico="mysql"></span><span class="sc-name">MySQL</span><span class="src-tag betatag">Beta</span></button>
@@ -1872,6 +1873,34 @@
         <div class="src-status" data-status="databricks"></div>
       </div>
       <div class="card" id="databricksResult" style="display:none;"><h2>Assessment</h2><div id="databricksResultBody"></div></div>
+    </div>
+
+    <!-- ===== Source: PostgreSQL ===== -->
+    <div id="src-oracle" class="source-body" style="display:none;">
+      <div class="card">
+        <h2>Oracle <span class="src-tag betatag">Beta</span></h2>
+        <p class="src-note">Read an Oracle table or view with a read-only user. Checks push down as
+          SQL so only counts and a capped sample of failing rows return. The listener must be
+          reachable from our worker.</p>
+        <p class="src-note">Oracle stores unquoted names in upper case, so <code>hr.employees</code>
+          and <code>HR.EMPLOYEES</code> both work. Note that Oracle treats an empty string as NULL,
+          so a blank cell is counted as missing by Completeness.</p>
+        <div class="src-form">
+          <div class="src-field"><label>Host</label><input data-f="host" placeholder="db.example.com"></div>
+          <div class="src-field"><label>Port</label><input data-f="port" placeholder="1521" value="1521"></div>
+          <div class="src-field"><label>Connect using</label>
+            <select data-f="connect_by"><option value="service_name">Service name</option><option value="sid">SID (legacy)</option></select></div>
+          <div class="src-field"><label>Service name / SID</label><input data-f="service_name" placeholder="ORCLPDB1"></div>
+          <div class="src-field"><label>User</label><input data-f="user" placeholder="dq_reader"></div>
+          <div class="src-field"><label>Password</label><input data-f="password" type="password"></div>
+          <div class="src-field"><label>Schema (owner)</label><input data-f="schema" placeholder="HR"></div>
+          <div class="src-field"><label>Table</label><input data-f="table" placeholder="EMPLOYEES"></div>
+          <div class="src-field"><label>Sample rows <span class="hint">(optional)</span></label><input data-f="sample_rows" type="number" min="1" placeholder="Empty = whole table"></div>
+        </div>
+        <button type="button" class="src-run" data-runsource="oracle">Run assessment</button>
+        <div class="src-status" data-status="oracle"></div>
+      </div>
+      <div class="card" id="oracleResult" style="display:none;"><h2>Assessment</h2><div id="oracleResultBody"></div></div>
     </div>
 
     <!-- ===== Source: PostgreSQL ===== -->
@@ -2543,6 +2572,7 @@
           <option value="s3">Amazon S3 file</option>
           <option value="snowflake">Snowflake</option>
           <option value="databricks">Databricks</option>
+          <option value="oracle">Oracle</option>
           <option value="postgres">PostgreSQL</option>
           <option value="mysql">MySQL</option>
           <option value="sqlserver">SQL Server</option>
@@ -2850,14 +2880,14 @@ function tagClass(s) { return ({ green: 'green', amber: 'amber', red: 'red' })[s
 // A friendly label + chip for the dataset's origin (source_format on the run).
 const SOURCE_FMT_LABEL = {
   qlik: 'Qlik Table', athena: 'Qlik Open Lakehouse', redshift: 'Amazon Redshift', snowflake: 'Snowflake', databricks: 'Databricks',
-  postgres: 'PostgreSQL', mysql: 'MySQL', sqlserver: 'SQL Server', synapse: 'Azure Synapse',
+  oracle: 'Oracle', postgres: 'PostgreSQL', mysql: 'MySQL', sqlserver: 'SQL Server', synapse: 'Azure Synapse',
   bigquery: 'Google BigQuery', gcs: 'Google Cloud Storage', azureblob: 'Azure Blob',
   s3: 'Amazon S3', parquet: 'Parquet file', csv: 'CSV file', tsv: 'TSV file',
   json: 'JSON file', ndjson: 'JSON file', qvd: 'QVD file', excel: 'Excel file', sharepoint: 'SharePoint',
 };
 const SOURCE_FMT_ICON = {
   qlik: '📊', athena: '🧊', redshift: '🟥', snowflake: '❄️', databricks: '🧱', s3: '🪣',
-  postgres: '🐘', mysql: '🐬', sqlserver: '🗄️', synapse: '🔷', bigquery: '🔷',
+  oracle: '🟥', postgres: '🐘', mysql: '🐬', sqlserver: '🗄️', synapse: '🔷', bigquery: '🔷',
   gcs: '🪣', azureblob: '🟦',
   parquet: '📦', csv: '📄', tsv: '📄', json: '📄', ndjson: '📄', qvd: '📄', excel: '📊', sharepoint: '📁',
 };
@@ -2890,6 +2920,9 @@ const SOURCE_FMT_SVG = {
   s3: _svg('<g stroke="#3f9a2e" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round">' +
     '<ellipse cx="12" cy="6.4" rx="6.4" ry="1.9"/><path d="M5.6 6.4 L7.6 18.4 Q12 19.8 16.4 18.4 L18.4 6.4"/><path d="M12.6 10.5 Q16.4 11.8 15.6 15"/></g>'),
   // PostgreSQL: simplified blue elephant silhouette
+  // Oracle: the wordmark is just red text, so at chip size an outlined red capsule (the shape
+  // of the logo's lozenge) reads far better than any attempt at letterforms.
+  oracle: _svg('<rect x="2.5" y="7" width="19" height="10" rx="5" fill="none" stroke="#C74634" stroke-width="2.6"/>'),
   postgres: _svg('<g fill="#336791"><ellipse cx="7.6" cy="8" rx="3.1" ry="3.6"/><ellipse cx="16.4" cy="8" rx="3.1" ry="3.6"/>' +
     '<path d="M6.8 8.5 Q12 5.5 17.2 8.5 Q18.4 14 14.4 16.5 Q13.6 21 11.6 21 Q11.2 17 10 16 Q6 14.5 6.8 8.5 Z"/></g>'),
   // MySQL: teal dolphin arc over a wave
@@ -8880,6 +8913,7 @@ const SOURCE_REQUIRED = {
   s3: ['uri'],
   snowflake: ['account', 'user', 'database', 'schema', 'table'],
   databricks: ['host', 'http_path', 'token', 'schema', 'table'],
+  oracle: ['host', 'user', 'schema', 'table', 'service_name'],
   postgres: ['host', 'database', 'user', 'schema', 'table'],
   mysql: ['host', 'database', 'user', 'table'],
   sqlserver: ['host', 'database', 'user', 'schema', 'table'],
@@ -8890,7 +8924,7 @@ const SOURCE_REQUIRED = {
   azureblob: ['container', 'blob', 'connection_string'],
 };
 const SOURCE_LABEL = { athena: 'Qlik Open Lakehouse', redshift: 'Amazon Redshift', s3: 'Amazon S3', snowflake: 'Snowflake',
-  databricks: 'Databricks', postgres: 'PostgreSQL', mysql: 'MySQL', sqlserver: 'SQL Server',
+  databricks: 'Databricks', oracle: 'Oracle', postgres: 'PostgreSQL', mysql: 'MySQL', sqlserver: 'SQL Server',
   synapse: 'Azure Synapse', bigquery: 'Google BigQuery', sharepoint: 'SharePoint / OneDrive',
   gcs: 'Google Cloud Storage', azureblob: 'Azure Blob / ADLS',
   'source-watch': 'Source monitoring' };
@@ -8901,7 +8935,7 @@ const _SRC_FILE_ONLY = ['assessment', 'resetBar', 'results'];   // cards that be
 const srcRefsState = { lookups: [], integrity: [], accuracy: {}, warehouse: false };
 // Athena counts as a warehouse here: reference-table integrity and accuracy checks work,
 // because a join to another table in the same catalog is just more SQL.
-const _WAREHOUSE_SRC = new Set(['athena', 'redshift', 'snowflake', 'databricks', 'postgres', 'mysql', 'sqlserver', 'synapse']);
+const _WAREHOUSE_SRC = new Set(['athena', 'redshift', 'snowflake', 'databricks', 'oracle', 'postgres', 'mysql', 'sqlserver', 'synapse']);
 
 function selectSource(key) {
   // Excel reuses the file-upload flow (a plain upload with an optional worksheet), so it maps to
@@ -8941,7 +8975,7 @@ function selectSource(key) {
 }
 
 // ---- Per-app credential PROFILES (named connections; secrets applied server-side) -------
-const SRC_SECRET_FIELDS = { redshift: [], s3: ['access_key', 'secret_key'], snowflake: ['password'], databricks: ['token'], postgres: ['password'], mysql: ['password'], sqlserver: ['password'], synapse: ['password'], bigquery: ['credentials_json'], sharepoint: ['client_secret'], gcs: ['credentials_json'], azureblob: ['connection_string'] };
+const SRC_SECRET_FIELDS = { redshift: [], s3: ['access_key', 'secret_key'], snowflake: ['password'], databricks: ['token'], oracle: ['password'], postgres: ['password'], mysql: ['password'], sqlserver: ['password'], synapse: ['password'], bigquery: ['credentials_json'], sharepoint: ['client_secret'], gcs: ['credentials_json'], azureblob: ['connection_string'] };
 const credProfiles = {};      // key -> [{id,name,config,hasSecrets,savedAt}] from the last list
 const activeProfile = {};     // key -> id of the profile currently applied (sent on the run)
 
@@ -9197,6 +9231,7 @@ function runSource(key) {
   // The applied credential profile (if any) supplies the secrets server-side at run time.
   cfg._credProfile = activeProfile[key] || null;
   if (key === 'athena') { runAthena(cfg, statusEl); return; }       // wired end-to-end
+  if (key === 'oracle') { runOracle(cfg, statusEl); return; }       // wired end-to-end
   if (key === 'redshift') { runRedshift(cfg, statusEl); return; }   // wired end-to-end
   if (key === 's3') { runS3(cfg, statusEl); return; }               // wired end-to-end
   if (key === 'snowflake') { runSnowflake(cfg, statusEl); return; } // wired end-to-end
@@ -9400,6 +9435,48 @@ async function runDatabricks(cfg, statusEl) {
     `Inferring the ruleset from a sample, then scoring the whole table in Databricks…`;
   const card = document.getElementById('databricksResult');
   const bodyEl = document.getElementById('databricksResultBody');
+  if (card) card.style.display = 'block';
+  if (bodyEl) bodyEl.innerHTML = `<p><span class="spin"></span> Scoring the dataset - this can take a moment…</p>`;
+  if (res.resultPrefix && bodyEl) {
+    pollInto(res.resultPrefix, bodyEl, {}).finally(() => { if (btn) btn.disabled = false; });
+  } else if (btn) { btn.disabled = false; }
+}
+
+// Launch a full-table PostgreSQL assessment, then poll + render its result.
+async function runOracle(cfg, statusEl) {
+  const btn = document.querySelector('[data-runsource="oracle"]');
+  // One field holds the connect identifier and a select says which KIND it is, because a user
+  // knows one or the other and showing two boxes invites filling in both.
+  const bySid = (cfg.connect_by || 'service_name') === 'sid';
+  const body = {
+    app_id: APP_ID || undefined,
+    host: cfg.host, user: cfg.user, table: cfg.table, schema: cfg.schema,
+    service_name: bySid ? undefined : (cfg.service_name || undefined),
+    sid: bySid ? (cfg.service_name || undefined) : undefined,
+    password: cfg.password || undefined,
+    port: cfg.port ? Number(cfg.port) : undefined,
+    sample_rows: cfg.sample_rows ? Number(cfg.sample_rows) : undefined,
+    notify_email: EMAIL || undefined,
+    ruleset_augment: collectSourceRefsAugment() || undefined,
+    credential_profile: cfg._credProfile || undefined,
+  };
+  statusEl.className = 'src-status';
+  statusEl.innerHTML = `<p><span class="spin"></span> Launching Oracle assessment…</p>`;
+  if (btn) btn.disabled = true;
+  let res;
+  try {
+    res = await postJSON(`${API_BASE}/data-quality/oracle-assessment`, HEADERS, body);
+  } catch (e) {
+    statusEl.className = 'src-status err';
+    statusEl.textContent = e.message;
+    if (btn) btn.disabled = false;
+    return;
+  }
+  statusEl.className = 'src-status dev';
+  statusEl.innerHTML = `Assessment started (run <code>${esc(res.runId || '')}</code>). ` +
+    `Inferring the ruleset from a sample, then scoring the whole table in Oracle…`;
+  const card = document.getElementById('oracleResult');
+  const bodyEl = document.getElementById('oracleResultBody');
   if (card) card.style.display = 'block';
   if (bodyEl) bodyEl.innerHTML = `<p><span class="spin"></span> Scoring the dataset - this can take a moment…</p>`;
   if (res.resultPrefix && bodyEl) {
@@ -9763,6 +9840,15 @@ const SOURCE_FIELD_HELP = {
     http_path: 'The SQL warehouse HTTP path, e.g. /sql/1.0/warehouses/abcdef.',
     token: 'A Databricks personal access token with read access.',
     catalog: 'The Unity Catalog catalog that holds the table.',
+  },
+  oracle: {
+    host: 'Hostname of the Oracle listener - it must be reachable from our worker.',
+    port: 'The port the listener accepts connections on. Default is 1521.',
+    connect_by: 'Service name is the modern connect identifier. Pick SID only for an older instance that is not registered under a service name.',
+    service_name: 'The service name (or SID, if you selected that above) identifying the database to connect to.',
+    user: 'A read-only Oracle user with SELECT on the table, plus SELECT on the ALL_ catalog views.',
+    schema: 'The owner of the table. Oracle stores unquoted names in upper case, so any case is accepted.',
+    table: 'The exact name of the table or view to assess.',
   },
   postgres: {
     host: 'Hostname/endpoint of the Postgres server - it must be reachable from our worker.',
@@ -10739,7 +10825,7 @@ async function assessEntireApp() {
 // Qlik app tables re-run in place (the extension holds the bearer); every other source is
 // routed to its Data-from-Source card to re-enter details + run (pinned rules still apply).
 const _SRC_CARD_BY_FMT = { redshift: 'redshift', snowflake: 'snowflake', databricks: 'databricks',
-  postgres: 'postgres', mysql: 'mysql', sqlserver: 'sqlserver', synapse: 'synapse', bigquery: 'bigquery',
+  oracle: 'oracle', postgres: 'postgres', mysql: 'mysql', sqlserver: 'sqlserver', synapse: 'synapse', bigquery: 'bigquery',
   gcs: 'gcs', azureblob: 'azureblob', sharepoint: 'sharepoint', s3: 's3' };
 async function reRunTable(tableName, sourceFormat, resultPrefix) {
   const fmt = (sourceFormat || '').toLowerCase();
@@ -11115,6 +11201,15 @@ const SCHED_SOURCE_FIELDS = {
     { f: 'token', label: 'Access token', type: 'password', full: true },
     { f: 'catalog', label: 'Catalog' }, { f: 'schema', label: 'Schema', value: 'default' },
     { f: 'table', label: 'Table' }, { f: 'sample_rows', label: 'Sample rows', type: 'number' },
+  ],
+  oracle: [
+    { f: 'host', label: 'Host' }, { f: 'port', label: 'Port', value: '1521' },
+    { f: 'connect_by', label: 'Connect using', type: 'select',
+      options: [['service_name', 'Service name'], ['sid', 'SID (legacy)']] },
+    { f: 'service_name', label: 'Service name / SID' },
+    { f: 'user', label: 'User' }, { f: 'password', label: 'Password', type: 'password' },
+    { f: 'schema', label: 'Schema (owner)' }, { f: 'table', label: 'Table' },
+    { f: 'sample_rows', label: 'Sample rows', type: 'number' },
   ],
   postgres: [
     { f: 'host', label: 'Host' }, { f: 'port', label: 'Port', value: '5432' },
