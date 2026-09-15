@@ -479,6 +479,9 @@
   #sourcePicker { position: sticky; top: 8px; max-height: calc(100vh - 24px); overflow-y: auto; overflow-x: hidden;
     margin: 0; padding: 3px; }   /* padding gives the selected card's 2px ring room so it isn't clipped; x-hidden kills the phantom side-scroll */
   .src-panel { min-width: 0; }
+  /* The one control on the dashboard that destroys data, so it does not look like the rest. */
+  .dash-del { margin-left: 6px; color: var(--err); border-color: rgba(220,90,90,.35); }
+  .dash-del:hover { background: rgba(220,90,90,.12); border-color: var(--err); }
   .src-search { width: 100%; margin: 0 0 14px; padding: 8px 11px; border-radius: 8px; box-sizing: border-box;
     border: 1px solid var(--border); background: var(--card-2); color: var(--text); font: inherit; font-size: 13px; }
   .src-search:focus { outline: none; border-color: var(--accent); }
@@ -1756,6 +1759,8 @@
       <p class="src-note" id="excelIntro" style="display:none;">Upload a spreadsheet (<code>.xlsx</code> / <code>.xlsm</code>) straight from your computer - no SharePoint or database needed. We read <strong>one worksheet</strong> (the first, or one you name), infer data-quality rules from it, and score it across the DAMA dimensions just like any other dataset. If your workbook has several tabs, pick which one to assess below.</p>
       <input type="file" id="file" accept=".parquet,.pq,.json,.ndjson,.jsonl,.qvd,.csv,.tsv,.xlsx,.xlsm" />
       <div class="fileinfo" id="fileinfo">No file selected.</div>
+      <div class="src-note" id="reuploadNote" style="display:none;border-left:3px solid var(--accent);
+           padding:8px 11px;margin:8px 0 2px;background:var(--card-2);border-radius:0 8px 8px 0;"></div>
       <div id="excelSheetWrap" style="display:none;margin:2px 0 12px;">
         <label for="excelSheet">Worksheet <span class="hint">(optional)</span></label>
         <input type="text" id="excelSheet" placeholder="Sheet name or number - leave empty for the first sheet" />
@@ -3076,6 +3081,12 @@ function refreshFile() {
   goBtn.disabled = over || !configOK;
 }
 fileInput.addEventListener('change', refreshFile);
+// The re-upload instruction is answered as soon as a file is picked; leaving it up would make it
+// look like it still applies to whatever happens next.
+fileInput.addEventListener('change', () => {
+  const n = $('#reuploadNote');
+  if (n) n.style.display = 'none';
+});
 
 // dimension-weight controls (must match the engine's dimensions + default weights)
 const WEIGHT_DIMS = [
@@ -4418,7 +4429,7 @@ const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c =>
 // dqPrompt -> string|null (null on cancel), dqConfirm -> boolean, dqAlert -> undefined. All async.
 function dqModal(opts) {
   const o = opts || {}, kind = o.kind || 'prompt', isPrompt = kind === 'prompt';
-  const okLabel = o.okLabel || (kind === 'confirm' ? 'Confirm' : (isPrompt ? 'Save' : 'OK'));
+  const okLabel = o.okLabel || (kind === 'confirm' ? 'Confirm' : (kind === 'alert' ? 'OK' : 'Save'));
   return new Promise(resolve => {
     const ov = document.createElement('div');
     ov.className = 'modal-overlay dq-ov open';
@@ -4428,6 +4439,8 @@ function dqModal(opts) {
         <div class="modal-body">
           ${o.message ? `<p class="dq-modal-msg">${esc(o.message)}</p>` : ''}
           ${isPrompt ? `<input class="dqin" type="text"${o.placeholder ? ` placeholder="${esc(o.placeholder)}"` : ''}>` : ''}
+          ${kind === 'select' ? `<select class="dqin dqsel">${(o.options || []).map(op =>
+              `<option value="${esc(op.value)}"${op.value === (o.value || '') ? ' selected' : ''}>${esc(op.label)}</option>`).join('')}</select>` : ''}
         </div>
         <div class="modal-foot">
           ${kind !== 'alert' ? `<button type="button" class="btn-sm" data-dq="cancel">${esc(o.cancelLabel || 'Cancel')}</button>` : ''}
@@ -4435,11 +4448,16 @@ function dqModal(opts) {
         </div>
       </div>`;
     document.body.appendChild(ov);
-    const input = ov.querySelector('.dqin');
+    const sel = ov.querySelector('.dqsel');
+    const input = ov.querySelector('.dqin:not(.dqsel)');
     if (input) input.value = o.value == null ? '' : o.value;
     const finish = v => { ov.remove(); document.removeEventListener('keydown', onKey, true); resolve(v); };
-    const onOk = () => finish(isPrompt ? (input ? input.value : '') : (kind === 'confirm' ? true : undefined));
-    const onCancel = () => finish(isPrompt ? null : (kind === 'confirm' ? false : undefined));
+    // A select cancels to null like a prompt does, so callers can tell "chose nobody" (which is a
+    // real choice, and clears the assignment) from "changed their mind".
+    const onOk = () => finish(kind === 'select' ? (sel ? sel.value : '')
+      : isPrompt ? (input ? input.value : '') : (kind === 'confirm' ? true : undefined));
+    const onCancel = () => finish((isPrompt || kind === 'select') ? null
+      : (kind === 'confirm' ? false : undefined));
     ov.addEventListener('click', e => {
       const b = e.target.closest('[data-dq]');
       if (b) { e.preventDefault(); (b.dataset.dq === 'ok' ? onOk : onCancel)(); }
@@ -4450,12 +4468,46 @@ function dqModal(opts) {
       else if (e.key === 'Enter' && document.activeElement !== ov.querySelector('.btn-sm')) { e.preventDefault(); onOk(); }
     }
     document.addEventListener('keydown', onKey, true);
-    setTimeout(() => { (input || ov.querySelector('.dq-ok')).focus(); if (input) input.select(); }, 20);
+    setTimeout(() => { (input || sel || ov.querySelector('.dq-ok')).focus(); if (input) input.select(); }, 20);
   });
 }
 const dqPrompt = (message, value = '', opts = {}) => dqModal({ kind: 'prompt', message, value, ...opts });
 const dqConfirm = (message, opts = {}) => dqModal({ kind: 'confirm', message, ...opts });
 const dqAlert = (message, opts = {}) => dqModal({ kind: 'alert', message, ...opts });
+const dqSelect = (message, options, value = '', opts = {}) =>
+  dqModal({ kind: 'select', message, options, value, ...opts });
+
+// The org's assignable people, fetched once. [] on the Qlik surface, which has no user directory
+// and no portal session, and [] if the directory cannot be read - both fall back to free text
+// rather than blocking the assignment.
+let _orgMembers = null;
+async function orgMembers() {
+  if (_orgMembers) return _orgMembers;
+  if (!PORTAL) return (_orgMembers = []);
+  try {
+    const res = await fetch(`${API_BASE}/portal/auth/members`, { credentials: 'include' });
+    const j = await res.json();
+    _orgMembers = Array.isArray(j && j.members) ? j.members : [];
+  } catch (e) { _orgMembers = []; }
+  return _orgMembers;
+}
+
+// Ask who to assign. Returns the chosen email, '' to clear, or null if cancelled.
+async function pickAssignee(title, message, current) {
+  const members = await orgMembers();
+  if (!members.length) {
+    const v = await dqPrompt(message, current || '', { title });
+    return v === null ? null : v.trim();
+  }
+  const opts = [{ value: '', label: 'Unassigned' }].concat(members.map(m => ({
+    value: m.email, label: m.role && m.role !== 'member' ? `${m.email} (${m.role})` : m.email })));
+  // Someone assigned before they left the org is not in the list any more; keep them selectable
+  // so opening the dialog does not silently reassign the dataset to whoever sorts first.
+  if (current && !members.some(m => m.email === current)) {
+    opts.splice(1, 0, { value: current, label: `${current} (no longer in this organisation)` });
+  }
+  return await dqSelect(message, opts, current || '', { title, okLabel: 'Assign' });
+}
 const num1 = v => typeof v === 'number' && isFinite(v) ? v.toFixed(1) : '-';
 const numInt = v => typeof v === 'number' && isFinite(v) ? Math.round(v).toLocaleString() : '-';
 // Compact number for tight spots (chart axes): 1.2K / 3.4M / 1.0B - keeps big values from clipping.
@@ -4748,9 +4800,10 @@ function ownerChip(key) {
 }
 async function setOwner(key) {
   const e = entryFor(key);
-  const v = await dqPrompt('Owner email - alerts for this dataset route to them (leave blank to clear):', e.owner || '', { title: 'Assign owner' });
+  const v = await pickAssignee('Assign owner',
+    'Owner - alerts for this dataset route to them:', e.owner || '');
   if (v === null) return;                                    // cancelled
-  const t = v.trim();
+  const t = (v || '').trim();
   if (t && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(t)) { dqAlert('Please enter a valid email address (or leave blank to clear).'); return; }
   e.owner = t.slice(0, 160);
   dashEntries[key] = e; saveEntry(key);
@@ -5614,7 +5667,8 @@ function renderHealthTable(datasets) {
         <td class="dash-muted">${esc(age)}</td>
         <td>${spark}</td>
         <td>${IS_PORTAL_ADMIN ? trustMenu(d.key) : (trustBadge(d.key) || '<span class="dash-muted">-</span>')}</td>
-        <td><button class="btn-sm" data-rerun="${esc(d.name)}" data-fmt="${esc(d.sourceFormat || '')}" data-prefix="${esc(d.resultPrefix || '')}" data-tip="Re-assess this dataset">↻ Re-run</button></td>
+        <td style="white-space:nowrap;"><button class="btn-sm" data-rerun="${esc(d.name)}" data-fmt="${esc(d.sourceFormat || '')}" data-prefix="${esc(d.resultPrefix || '')}" data-tip="Re-assess this dataset">↻ Re-run</button>
+          <button class="btn-sm dash-del" data-delkey="${esc(d.key)}" data-delname="${esc(d.name)}" data-delruns="${esc(String(d.runsWindow == null ? '' : d.runsWindow))}" data-tip="Delete this dataset and all of its history">✕</button></td>
       </tr>`;
   }).join('');
   $('#dashTableWrap').innerHTML =
@@ -5629,6 +5683,8 @@ function renderHealthTable(datasets) {
     }));
   $('#dashTableWrap').querySelectorAll('button[data-rerun]').forEach(b =>
     b.addEventListener('click', e => { e.stopPropagation(); reRunTable(b.dataset.rerun, b.dataset.fmt, b.dataset.prefix); }));
+  $('#dashTableWrap').querySelectorAll('button[data-delkey]').forEach(b =>
+    b.addEventListener('click', e => { e.stopPropagation(); deleteDataset(b.dataset.delkey, b.dataset.delname, b.dataset.delruns); }));
   openDeepLinkedDataset();                      // ?ds=<key> from a run-completion email
   // Trust / certification: endorse, caution or deprecate (click active to clear) + note.
   wireTrust($('#dashTableWrap'), () => refreshDatasetsTable());
@@ -8466,9 +8522,10 @@ function renderIncidents(r) {
   listEl.querySelectorAll('button[data-act]').forEach(b => b.addEventListener('click', async () => {
     const { dk, key, act, owner } = b.dataset;
     if (act === 'assign') {
-      const val = await dqPrompt('Assign owner (email or name; leave blank to clear):', owner || '', { title: 'Assign owner' });
+      const val = await pickAssignee('Assign owner',
+        'Who should own this incident?', owner || '');
       if (val === null) return;                       // cancelled
-      incidentAction(dk, key, 'assign', { owner: val.trim() });
+      incidentAction(dk, key, 'assign', { owner: (val || '').trim() });
     } else if (act === 'dismiss') {
       const reason = await dqPrompt('Mark this occurrence as intentional - reason (e.g. "offloaded old records"):', '', { title: 'Dismiss occurrence' });
       if (reason === null) return;                    // cancelled
@@ -8848,7 +8905,7 @@ async function rerunWithReview(rerun) {
     try { await launchAppAssessment([rerun.table], null, { reviewRuleset: true }); }
     catch (e) { appBanner('err', e.message); }
   } else {
-    if (!rerun.inputUri) { dqAlert('This run can\'t be re-assessed automatically.'); return; }
+    if (!rerun.inputUri) { dqAlert('This run can\'t be re-assessed automatically. Uploaded files are not kept after assessment - upload the file again to re-assess it.'); return; }
     switchTab('upload');
     try {
       const res = await postJSON(`${API_BASE}/data-quality`, HEADERS,
@@ -8887,7 +8944,7 @@ async function applyRulesAndRerun(rerun, augment) {
     try { await launchAppAssessment([rerun.table], augment); }
     catch (e) { appBanner('err', e.message); }
   } else {
-    if (!rerun.inputUri) { dqAlert('This run can\'t be re-assessed automatically (original file not resolvable). Pin the suggestions in your ruleset instead.'); return; }
+    if (!rerun.inputUri) { dqAlert('This run can\'t be re-assessed automatically - uploaded files are not kept after assessment. Pin the suggestions in your ruleset, or upload the file again.'); return; }
     switchTab('upload');
     try {
       const res = await postJSON(`${API_BASE}/data-quality`, HEADERS,
@@ -9399,6 +9456,44 @@ async function runS3(cfg, statusEl) {
   if (res.resultPrefix && bodyEl) {
     pollInto(res.resultPrefix, bodyEl, {}).finally(() => { if (btn) btn.disabled = false; });
   } else if (btn) { btn.disabled = false; }
+}
+
+// Permanently delete a dataset: its S3 folder and every row under its key. Irreversible, so the
+// confirmation names the dataset and spells out what goes - "are you sure?" alone does not tell
+// someone whether they are losing one run or three years of history.
+async function deleteDataset(key, name, runs) {
+  if (!key) return;
+  const n = parseInt(runs, 10);
+  const runsTxt = Number.isFinite(n) && n > 0
+    ? `${n} run${n === 1 ? '' : 's'} in the last ${dashWindowDays} days, and any older ones,`
+    : 'every run';
+  const ok = await dqConfirm(
+    `Delete “${name || key}” and all of its history?\n\n` +
+    `This permanently removes ${runsTxt} with their reports, scores, failing-record samples and ` +
+    `incidents. It cannot be undone, and the dataset disappears from the dashboard, history and ` +
+    `compliance views.\n\nAny schedule that assesses ONLY this dataset is removed too, along with ` +
+    `its source-monitoring entry and any pending approvals. Schedules covering several datasets ` +
+    `(a tag run, or source monitoring) are left alone.\n\nRe-assessing the source later creates ` +
+    `it again from scratch.`,
+    { title: 'Delete dataset', danger: true, okLabel: 'Delete permanently' });
+  if (!ok) return;
+  try {
+    const r = await postJSON(`${API_BASE}/data-quality/dataset-delete`, HEADERS,
+      { dataset_key: key, confirm: true });
+    // Drop it locally rather than refetching, so the row goes immediately even if the dashboard
+    // is slow; the next load confirms it from the server anyway.
+    dashDatasetsAll = (dashDatasetsAll || []).filter(d => d.key !== key);
+    applyDashScope();
+    // Name what ELSE went, so removing someone's schedule is never a silent side effect.
+    const sch = (r.schedulesDeleted || []).length;
+    const extra = [sch ? `${sch} schedule${sch === 1 ? '' : 's'}` : '',
+                   r.approvalsCleared ? `${r.approvalsCleared} pending approval${r.approvalsCleared === 1 ? '' : 's'}` : '']
+      .filter(Boolean).join(', ');
+    banner('ok', `Deleted “${name || key}” (${r.rowsDeleted || 0} records, ` +
+      `${r.objectsDeleted || 0} files${extra ? ', ' + extra : ''}).`);
+  } catch (e) {
+    dqAlert(`Could not delete this dataset: ${e.message}`, { title: 'Delete failed' });
+  }
 }
 
 // Launch a full-table Qlik Open Lakehouse (Iceberg via Athena) assessment, then poll + render.
@@ -10921,8 +11016,31 @@ async function assessEntireApp() {
 const _SRC_CARD_BY_FMT = { redshift: 'redshift', snowflake: 'snowflake', databricks: 'databricks',
   oracle: 'oracle', postgres: 'postgres', mysql: 'mysql', sqlserver: 'sqlserver', synapse: 'synapse', bigquery: 'bigquery',
   gcs: 'gcs', azureblob: 'azureblob', sharepoint: 'sharepoint', s3: 's3' };
+// Send the user to the upload form to re-assess an uploaded dataset, and tell them the one
+// thing that decides whether they get a NEW RUN of this dataset or a whole new dataset.
+function reUploadPrompt(datasetName) {
+  switchTab('upload');
+  if (typeof selectSource === 'function') selectSource('file');
+  const note = $('#reuploadNote');
+  if (note) {
+    note.style.display = 'block';
+    note.innerHTML = `<strong>Re-assessing ${esc(datasetName || 'this dataset')}.</strong> ` +
+      `Choose the file again (or an updated version of it) and upload it. ` +
+      `<br>Keep the <strong>filename exactly the same</strong>: a dataset is identified by its ` +
+      `filename, so a different name is recorded as a separate dataset instead of another run ` +
+      `of this one.`;
+    note.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+  const f = $('#file');
+  if (f) f.focus();
+}
+
 async function reRunTable(tableName, sourceFormat, resultPrefix) {
   const fmt = (sourceFormat || '').toLowerCase();
+  // An UPLOADED file has nothing to re-run from: no saved connection, and the file itself is
+  // discarded once assessed. Its format is the FILE format (csv/parquet/...), so the connector
+  // fallback below would send it to the S3 form and fail there. Send it to the upload form.
+  if (String(resultPrefix || '').includes('/_uploads/')) { reUploadPrompt(tableName); return; }
   if (fmt && fmt !== 'qlik') {
     // Saved credentials? Re-run this exact dataset directly (server reconstructs the config
     // from the run's own table/schema + the saved connection). Otherwise redirect to re-enter.
