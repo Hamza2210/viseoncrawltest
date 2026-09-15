@@ -40,6 +40,32 @@
     overflow-y: auto; background: var(--card-2); border-right: 1px solid var(--border);
     box-shadow: 4px 0 24px rgba(16,24,40,.035); padding: 20px 12px; z-index: 40; }
   .brand { padding: 4px 8px 14px; margin-bottom: 4px; border-bottom: 1px solid var(--border); }
+  /* Timezone combobox: a native select cannot hold a search box, so the visible control is
+     custom while a hidden <select> keeps being the value. */
+  .tzc { position: relative; max-width: 300px; }
+  .tzc-native { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+  .tzc-btn { width: 100%; text-align: left; padding: 8px 30px 8px 11px; border-radius: 8px;
+    border: 1px solid var(--border); background: var(--card-2); color: var(--text);
+    font: inherit; font-size: 13px; cursor: pointer; box-sizing: border-box; }
+  .tzc-btn:after { content: '\25BE'; position: absolute; right: 11px; top: 50%;
+    transform: translateY(-50%); color: var(--muted); pointer-events: none; }
+  .tzc-btn:focus { outline: none; border-color: var(--accent); }
+  .tzc-panel { position: absolute; z-index: 1300; left: 0; right: 0; top: calc(100% + 4px);
+    background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+    box-shadow: 0 14px 34px rgba(0,0,0,.45); display: none; overflow: hidden; }
+  .tzc.open .tzc-panel { display: block; }
+  .tzc-search { width: 100%; box-sizing: border-box; padding: 9px 11px; font: inherit;
+    font-size: 13px; border: 0; border-bottom: 1px solid var(--border);
+    background: var(--card-2); color: var(--text); }
+  .tzc-search:focus { outline: none; }
+  .tzc-list { max-height: 260px; overflow-y: auto; padding: 4px 0; }
+  .tzc-grp { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
+    color: var(--muted); padding: 8px 11px 3px; }
+  .tzc-opt { padding: 6px 11px; font-size: 13px; color: var(--text); cursor: pointer; }
+  .tzc-opt:hover, .tzc-opt.active { background: var(--card-2); }
+  .tzc-opt[aria-selected="true"] { color: var(--accent); font-weight: 600; }
+  .tzc-none { padding: 10px 11px; font-size: 12px; color: var(--muted); }
+
   /* Boot splash: covers the first paint until the dashboard is populated. Colours are
      hard-coded rather than var()-driven, because it has to be right even if it renders before
      anything else has applied. */
@@ -2590,13 +2616,19 @@
             (min hour day-of-month month day-of-week year).</div>
         </div>
 
-        <label for="schTz">Timezone</label>
-        <input type="search" id="schTzSearch" class="src-search" autocomplete="off"
-               placeholder="\U0001F50E Search timezones, e.g. London, New York, +05:30"
-               style="max-width:300px;margin-bottom:6px;">
-        <select id="schTz" style="max-width:300px;"><option value="UTC">UTC</option></select>
+        <label for="schTzBtn">Timezone</label>
+        <div class="tzc" id="schTzCombo">
+          <select id="schTz" class="tzc-native" tabindex="-1" aria-hidden="true"><option value="UTC">UTC</option></select>
+          <button type="button" class="tzc-btn" id="schTzBtn" aria-haspopup="listbox" aria-expanded="false">UTC</button>
+          <div class="tzc-panel">
+            <input type="text" class="tzc-search" id="schTzSearch" autocomplete="off" role="combobox"
+                   aria-controls="schTzList" aria-autocomplete="list"
+                   placeholder="Search: London, New York, +05:30">
+            <div class="tzc-list" id="schTzList" role="listbox" aria-label="Timezone"></div>
+          </div>
+        </div>
         <div class="hint" style="margin-top:4px;">The schedule fires at the chosen time in THIS
-          zone. Next run shows it in your own time as well. <span id="schTzCount"></span></div>
+          zone. Next run shows it in your own time as well.</div>
 
         <label for="schSourceKind">Assess</label>
         <select id="schSourceKind">
@@ -11168,10 +11200,7 @@ function resetScheduleForm() {
   $('#schLabel').value = ''; $('#schEmail').value = ''; $('#schSample').value = '';
   $('#schFreq').value = 'daily'; $('#schTime').value = '06:00';
   $('#schDom').value = '1'; $('#schCustom').value = '';
-  // Clear any filter with the form, or the next edit opens onto a list still narrowed by a
-  // search the user has forgotten they typed.
-  const _tzq = $('#schTzSearch');
-  if (_tzq) { _tzq.value = ''; renderTzOptions(''); }
+  _tzClose();                   // a reset while the list is open would leave it hanging
   setSchTz('UTC');
   $('#schCancelEdit').style.display = 'none';
   if ($('#schSourceKind') && !PORTAL) $('#schSourceKind').value = 'qlik';
@@ -11783,7 +11812,7 @@ function _tzList() {
   return _TZ_FALLBACK;
 }
 
-// "+01:00" for a zone right now. A label only, so a later DST change making it stale is fine;
+// "UTC+01:00" for a zone right now. A label only, so a later DST change making it stale is fine;
 // it is there to stop someone picking a zone whose offset they have guessed wrong.
 function _tzOffsetLabel(zone) {
   try {
@@ -11794,9 +11823,18 @@ function _tzOffsetLabel(zone) {
   } catch (e) { return ''; }
 }
 
-// Set the timezone select, INSERTING the value when the list does not contain it. A select
-// silently ignores an unknown value, and the save path turns the resulting "" into UTC - which
-// would move an existing schedule to a different time without anyone touching it.
+// Separators are noise when searching: "new york" should find America/New_York and "london"
+// should find Europe/London without the reader knowing which region it is filed under.
+function _tzNorm(t) {
+  return String(t).toLowerCase().replace(/[_/]+/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+let _tzAll = null;              // [{value, text, region, hay}] built once
+
+// The value lives on the hidden <select>, so saveSchedule / renderSchedulePreview / fmtNextRun
+// keep reading $('#schTz').value and need to know nothing about the combobox. An unknown value is
+// INSERTED rather than dropped: a select silently ignores one it has no option for, and the save
+// path turns the resulting "" into UTC, which would move an existing schedule to another time.
 function setSchTz(value) {
   const sel = $('#schTz');
   if (!sel) return;
@@ -11804,30 +11842,39 @@ function setSchTz(value) {
   if (!Array.prototype.some.call(sel.options, o => o.value === want)) {
     const opt = document.createElement('option');
     opt.value = want;
-    opt.textContent = want + ' (not in this browser\'s list)';
+    opt.textContent = want;
     sel.insertBefore(opt, sel.firstChild);
+    if (_tzAll && !_tzAll.some(z => z.value === want)) {
+      _tzAll.unshift({ value: want, text: want, region: 'Current selection', hay: _tzNorm(want) });
+    }
   }
   sel.value = want;
+  const btn = $('#schTzBtn');
+  if (btn) {
+    const known = _tzAll && _tzAll.find(z => z.value === want);
+    btn.textContent = known ? known.text : want;
+  }
 }
 
-let _tzAll = null;              // [{value, text, region, hay}] built once
-
-// Separators are noise when searching: "new york" should find America/New_York and "london"
-// should find Europe/London without the reader knowing which region it is filed under.
-function _tzNorm(t) {
-  return String(t).toLowerCase().replace(/[_/]+/g, ' ').replace(/\s+/g, ' ').trim();
+function _tzSelect(value) {
+  setSchTz(value);
+  const sel = $('#schTz');
+  // The live preview is wired to delegated input/change on the form, so it has to be told.
+  if (sel) sel.dispatchEvent(new Event('change', { bubbles: true }));
+  _tzClose();
+  const btn = $('#schTzBtn');
+  if (btn) btn.focus();
 }
 
 function renderTzOptions(query) {
-  const sel = $('#schTz');
-  if (!sel || !_tzAll) return;
+  const list = $('#schTzList');
+  if (!list || !_tzAll) return;
   const q = _tzNorm(query || '');
-  const current = sel.value || 'UTC';
-  const matched = q ? _tzAll.filter(z => z.hay.includes(q)) : _tzAll.slice();
+  const current = ($('#schTz') || {}).value || 'UTC';
+  const matched = q ? _tzAll.filter(z => z.hay.includes(q)) : _tzAll;
 
-  // A zone can appear twice: once as a Common shortcut and once in its region. Searching then
-  // showed two identical-looking rows, which reads as a bug. First wins, so the Common entry
-  // keeps its "your timezone" label.
+  // A zone appears twice when it is also a Common shortcut. Two identical-looking rows in a
+  // filtered list reads as a bug; first wins, so the Common entry keeps its "your timezone" label.
   const seen = new Set();
   const shown = [];
   for (const z of matched) {
@@ -11836,61 +11883,90 @@ function renderTzOptions(query) {
     shown.push(z);
   }
 
-  // The selected zone is ALWAYS kept. Dropping it would make the control fall back to the first
-  // option, silently rewriting a schedule's timezone because someone typed in a search box. When
-  // it is not a match it goes in its own group, so it is obviously not a search result.
-  if (!seen.has(current)) {
-    const src = _tzAll.find(z => z.value === current)
-      || { value: current, text: current };
-    shown.unshift({ value: src.value, text: src.text, region: 'Current selection' });
+  list.innerHTML = '';
+  if (!shown.length) {
+    const none = document.createElement('div');
+    none.className = 'tzc-none';
+    none.textContent = 'No timezone matches that search.';
+    list.appendChild(none);
+    return;
   }
-
-  const frag = document.createDocumentFragment();
-  let region = null, group = null;
+  let region = null;
   for (const z of shown) {
     if (z.region !== region) {
       region = z.region;
-      group = document.createElement('optgroup');
-      group.label = region;
-      frag.appendChild(group);
+      const h = document.createElement('div');
+      h.className = 'tzc-grp';
+      h.textContent = region;
+      list.appendChild(h);
     }
-    const o = document.createElement('option');
-    o.value = z.value;
+    const o = document.createElement('div');
+    o.className = 'tzc-opt';
+    o.setAttribute('role', 'option');
+    o.dataset.tz = z.value;
     o.textContent = z.text;
-    group.appendChild(o);
+    if (z.value === current) o.setAttribute('aria-selected', 'true');
+    list.appendChild(o);
   }
-  sel.innerHTML = '';
-  sel.appendChild(frag);
-  setSchTz(current);                       // re-applies, and re-inserts an unlisted zone
+}
 
-  const cnt = $('#schTzCount');
-  if (cnt) {
-    const n = seen.size;
-    cnt.textContent = !q ? '' : (n ? `${n} timezone${n === 1 ? '' : 's'} match.`
-                                   : 'No timezone matches that search.');
-  }
+function _tzOpts() { return Array.prototype.slice.call(document.querySelectorAll('#schTzList .tzc-opt')); }
+
+function _tzActivate(el) {
+  _tzOpts().forEach(o => o.classList.remove('active'));
+  if (!el) return;
+  el.classList.add('active');
+  el.scrollIntoView({ block: 'nearest' });
+}
+
+function _tzMove(step) {
+  const opts = _tzOpts();
+  if (!opts.length) return;
+  const cur = opts.findIndex(o => o.classList.contains('active'));
+  let i = cur < 0 ? (step > 0 ? 0 : opts.length - 1) : cur + step;
+  i = Math.max(0, Math.min(opts.length - 1, i));
+  _tzActivate(opts[i]);
+}
+
+function _tzOpen() {
+  const combo = $('#schTzCombo');
+  if (!combo || combo.classList.contains('open')) return;
+  combo.classList.add('open');
+  const btn = $('#schTzBtn');
+  if (btn) btn.setAttribute('aria-expanded', 'true');
+  const box = $('#schTzSearch');
+  if (box) { box.value = ''; renderTzOptions(''); box.focus(); }
+  // Start on the current selection, so arrow keys continue from where the user already is.
+  _tzActivate(_tzOpts().find(o => o.getAttribute('aria-selected') === 'true') || _tzOpts()[0]);
+}
+
+function _tzClose() {
+  const combo = $('#schTzCombo');
+  if (!combo) return;
+  combo.classList.remove('open');
+  const btn = $('#schTzBtn');
+  if (btn) btn.setAttribute('aria-expanded', 'false');
 }
 
 function buildTzSelect() {
   const sel = $('#schTz');
-  if (!sel || sel._built) return;
-  sel._built = true;
+  const combo = $('#schTzCombo');
+  if (!sel || !combo || combo._built) return;
+  combo._built = true;
+
   const zones = _tzList().slice().sort();
   const mine = (function () {
     try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) { return ''; }
   })();
   const label = z => { const o = _tzOffsetLabel(z); return o ? `${z} (${o})` : z; };
-
   const mk = (value, text, region) => ({
     value, text, region,
-    // The offset is searchable too, so "+05:30" finds the half-hour zones.
-    hay: _tzNorm(value + ' ' + text),
+    hay: _tzNorm(value + ' ' + text),   // the offset is searchable too, so "+05:30" finds a zone
   });
 
   // UTC first, then the viewer's own zone: the two anyone actually reaches for.
   _tzAll = [mk('UTC', label('UTC'), 'Common')];
   if (mine && mine !== 'UTC') _tzAll.push(mk(mine, label(mine) + ' - your timezone', 'Common'));
-
   const rest = [];
   for (const z of zones) {
     if (z === 'UTC') continue;
@@ -11900,14 +11976,43 @@ function buildTzSelect() {
                                             : (a.region < b.region ? -1 : 1)));
   _tzAll = _tzAll.concat(rest);
 
-  const search = $('#schTzSearch');
-  if (search && !search._wired) {
-    search._wired = true;
-    search.addEventListener('input', () => renderTzOptions(search.value));
-    // Enter in a search box inside a form would submit it; here it just applies the filter.
-    search.addEventListener('keydown', e => { if (e.key === 'Enter') e.preventDefault(); });
+  // The hidden select holds every zone, so it remains the single source of truth for the value.
+  const current = sel.value || 'UTC';
+  sel.innerHTML = '';
+  for (const z of _tzAll) {
+    const o = document.createElement('option');
+    o.value = z.value;
+    o.textContent = z.text;
+    sel.appendChild(o);
   }
-  renderTzOptions(search ? search.value : '');
+
+  const btn = $('#schTzBtn');
+  const box = $('#schTzSearch');
+  const list = $('#schTzList');
+  btn.addEventListener('click', () => (combo.classList.contains('open') ? _tzClose() : _tzOpen()));
+  btn.addEventListener('keydown', e => {
+    if (e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' ') { e.preventDefault(); _tzOpen(); }
+  });
+  box.addEventListener('input', () => { renderTzOptions(box.value); _tzActivate(_tzOpts()[0]); });
+  box.addEventListener('keydown', e => {
+    if (e.key === 'ArrowDown') { e.preventDefault(); _tzMove(1); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); _tzMove(-1); }
+    else if (e.key === 'Enter') {
+      e.preventDefault();                      // never submit the form from the search box
+      const a = _tzOpts().find(o => o.classList.contains('active'));
+      if (a) _tzSelect(a.dataset.tz);
+    } else if (e.key === 'Escape') { e.preventDefault(); _tzClose(); btn.focus(); }
+  });
+  list.addEventListener('click', e => {
+    const o = e.target.closest('.tzc-opt');
+    if (o) _tzSelect(o.dataset.tz);
+  });
+  document.addEventListener('click', e => {
+    if (combo.classList.contains('open') && !combo.contains(e.target)) _tzClose();
+  });
+
+  renderTzOptions('');
+  setSchTz(current);
 }
 
 function nextRun(cron, tz) {
