@@ -5618,6 +5618,11 @@ function applyDashScope() {
     renderHeatmap(dashDatasets);
     renderAppOverview(dashDatasets);
   }
+  // AFTER the default view, not during the table render: renderAppOverview clears the selection,
+  // so a deep link applied earlier was drawn and then immediately undone. Outside the if/else
+  // too, because the scope that is ACTIVE may be the empty one while the linked dataset sits in
+  // the other - which is the case that needs the scope switch most.
+  openDeepLinkedDataset();
   renderGalaxy(dashDatasets);                    // 3D Quality Space (handles the empty case itself)
   $('#dashCtx').textContent =
     `This ${SCOPE_NOUN} · ${dashDatasets.length} ${noun}${dashDatasets.length === 1 ? '' : 's'} · last ${dashWindowDays} days`;
@@ -5685,7 +5690,6 @@ function renderHealthTable(datasets) {
     b.addEventListener('click', e => { e.stopPropagation(); reRunTable(b.dataset.rerun, b.dataset.fmt, b.dataset.prefix); }));
   $('#dashTableWrap').querySelectorAll('button[data-delkey]').forEach(b =>
     b.addEventListener('click', e => { e.stopPropagation(); deleteDataset(b.dataset.delkey, b.dataset.delname, b.dataset.delruns); }));
-  openDeepLinkedDataset();                      // ?ds=<key> from a run-completion email
   // Trust / certification: endorse, caution or deprecate (click active to clear) + note.
   wireTrust($('#dashTableWrap'), () => refreshDatasetsTable());
   // Ownership: assign/change owner (＋/✎) or click an owner chip to filter by it.
@@ -5793,6 +5797,7 @@ const DS_TABS = [['scores', 'Scores'], ['metadata', 'Metadata'], ['compliance', 
 // the row (and so the display name) is guaranteed to exist, and ONCE per page load - otherwise
 // every later refresh would yank the user back out of whatever they had opened.
 let deepLinkDone = false;
+let deepLinkScoped = false;              // the scope has been switched once for a deep link
 function openDeepLinkedDataset() {
   if (deepLinkDone) return;
   const want = (q.get('ds') || '').trim();
@@ -5801,7 +5806,18 @@ function openDeepLinkedDataset() {
   // slashes and is user-derived, and there is no CSS-escape helper in this page.
   const tr = Array.from($('#dashTableWrap').querySelectorAll('.dash-row'))
     .find(r => r.getAttribute('data-key') === want);
-  if (!tr) return;                              // not in the current filter/window; try next render
+  if (!tr) {
+    // A link from an email or Slack names the dataset, not the tab it lives under. If it is real
+    // but sits in the other scope, switch to the one holding it; otherwise the link silently did
+    // nothing. Guarded so this can only happen once and cannot recurse through applyDashScope.
+    const other = (dashDatasetsAll || []).find(d => d.key === want);
+    if (other && !deepLinkScoped) {
+      deepLinkScoped = true;
+      const wantScope = isSourceDataset(other) ? 'source' : 'app';
+      if (wantScope !== dashScope) { dashScope = wantScope; applyDashScope(); }
+    }
+    return;                                     // not in this filter/window; try the next render
+  }
   deepLinkDone = true;
   tr.classList.add('sel');
   selectDataset(want, tr.getAttribute('data-name'));
