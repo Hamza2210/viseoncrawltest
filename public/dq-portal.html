@@ -2591,7 +2591,9 @@
         </div>
 
         <label for="schTz">Timezone</label>
-        <input id="schTz" value="UTC" style="max-width:240px;" />
+        <select id="schTz" style="max-width:300px;"><option value="UTC">UTC</option></select>
+        <div class="hint" style="margin-top:4px;">The schedule fires at the chosen time in THIS
+          zone. Next run shows it in your own time as well.</div>
 
         <label for="schSourceKind">Assess</label>
         <select id="schSourceKind">
@@ -10573,6 +10575,8 @@ function switchTab(name) {
   if (name === 'dashboard') { loadDashboard(); refreshIncBadge(); }
   if (name === 'medallion') loadMedallion();
   if (name === 'schedules') {
+    buildTzSelect();              // ~400 zones; built once, and BEFORE the form is reset so the
+                                  // reset's timezone assignment has options to match against
     $('#schCtx').textContent = APP_ID
       ? scopeCtxLabel() : 'Open from inside a Qlik app to schedule its checks.';
     resetScheduleForm();
@@ -11160,7 +11164,7 @@ function resetScheduleForm() {
   $('#schFormTitle').textContent = 'New schedule';
   $('#schLabel').value = ''; $('#schEmail').value = ''; $('#schSample').value = '';
   $('#schFreq').value = 'daily'; $('#schTime').value = '06:00';
-  $('#schDom').value = '1'; $('#schCustom').value = ''; $('#schTz').value = 'UTC';
+  $('#schDom').value = '1'; $('#schCustom').value = ''; setSchTz('UTC');
   $('#schCancelEdit').style.display = 'none';
   if ($('#schSourceKind') && !PORTAL) $('#schSourceKind').value = 'qlik';
   if (typeof schSourceUI === 'function') schSourceUI();
@@ -11748,20 +11752,131 @@ function upcomingRuns(cron, tz, count) {
   }
   return out;
 }
+// Common zones, used only where the browser cannot enumerate them itself.
+const _TZ_FALLBACK = [
+  'UTC', 'Europe/London', 'Europe/Dublin', 'Europe/Lisbon', 'Europe/Paris', 'Europe/Berlin',
+  'Europe/Madrid', 'Europe/Rome', 'Europe/Amsterdam', 'Europe/Brussels', 'Europe/Zurich',
+  'Europe/Stockholm', 'Europe/Oslo', 'Europe/Copenhagen', 'Europe/Helsinki', 'Europe/Warsaw',
+  'Europe/Prague', 'Europe/Athens', 'Europe/Bucharest', 'Europe/Istanbul', 'Europe/Moscow',
+  'America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles',
+  'America/Toronto', 'America/Vancouver', 'America/Mexico_City', 'America/Sao_Paulo',
+  'America/Bogota', 'America/Buenos_Aires', 'Africa/Cairo', 'Africa/Lagos',
+  'Africa/Johannesburg', 'Africa/Nairobi', 'Asia/Jerusalem', 'Asia/Dubai', 'Asia/Karachi',
+  'Asia/Kolkata', 'Asia/Dhaka', 'Asia/Bangkok', 'Asia/Jakarta', 'Asia/Singapore',
+  'Asia/Hong_Kong', 'Asia/Shanghai', 'Asia/Tokyo', 'Asia/Seoul', 'Australia/Perth',
+  'Australia/Brisbane', 'Australia/Sydney', 'Australia/Melbourne', 'Pacific/Auckland',
+];
+
+function _tzList() {
+  try {
+    const all = Intl.supportedValuesOf('timeZone');
+    if (all && all.length) return all;
+  } catch (e) { /* not supported: fall through */ }
+  return _TZ_FALLBACK;
+}
+
+// "+01:00" for a zone right now. A label only, so a later DST change making it stale is fine;
+// it is there to stop someone picking a zone whose offset they have guessed wrong.
+function _tzOffsetLabel(zone) {
+  try {
+    const parts = new Intl.DateTimeFormat('en-GB', { timeZone: zone, timeZoneName: 'longOffset' })
+      .formatToParts(new Date());
+    const p = parts.find(x => x.type === 'timeZoneName');
+    return p ? p.value.replace('GMT', 'UTC') : '';
+  } catch (e) { return ''; }
+}
+
+// Set the timezone select, INSERTING the value when the list does not contain it. A select
+// silently ignores an unknown value, and the save path turns the resulting "" into UTC - which
+// would move an existing schedule to a different time without anyone touching it.
+function setSchTz(value) {
+  const sel = $('#schTz');
+  if (!sel) return;
+  const want = (value || 'UTC').trim() || 'UTC';
+  if (!Array.prototype.some.call(sel.options, o => o.value === want)) {
+    const opt = document.createElement('option');
+    opt.value = want;
+    opt.textContent = want + ' (not in this browser\'s list)';
+    sel.insertBefore(opt, sel.firstChild);
+  }
+  sel.value = want;
+}
+
+function buildTzSelect() {
+  const sel = $('#schTz');
+  if (!sel || sel._built) return;
+  sel._built = true;
+  const zones = _tzList().slice().sort();
+  const mine = (function () {
+    try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) { return ''; }
+  })();
+  const label = z => { const o = _tzOffsetLabel(z); return o ? `${z} (${o})` : z; };
+
+  const frag = document.createDocumentFragment();
+  // UTC first, then the viewer's own zone: the two anyone actually reaches for.
+  const top = document.createElement('optgroup');
+  top.label = 'Common';
+  for (const z of (mine && mine !== 'UTC') ? ['UTC', mine] : ['UTC']) {
+    const o = document.createElement('option');
+    o.value = z;
+    o.textContent = label(z) + (z === mine ? ' - your timezone' : '');
+    top.appendChild(o);
+  }
+  frag.appendChild(top);
+
+  const groups = {};
+  for (const z of zones) {
+    if (z === 'UTC') continue;
+    const region = z.includes('/') ? z.split('/')[0] : 'Other';
+    (groups[region] = groups[region] || []).push(z);
+  }
+  for (const region of Object.keys(groups).sort()) {
+    const g = document.createElement('optgroup');
+    g.label = region;
+    for (const z of groups[region]) {
+      const o = document.createElement('option');
+      o.value = z;
+      o.textContent = label(z);
+      g.appendChild(o);
+    }
+    frag.appendChild(g);
+  }
+  const current = sel.value || 'UTC';
+  sel.innerHTML = '';
+  sel.appendChild(frag);
+  setSchTz(current);
+}
+
 function nextRun(cron, tz) {
   return upcomingRuns(cron, tz, 1)[0] || null;
+}
+// The viewer's own IANA zone, for comparing against a schedule's zone.
+function _localTz() {
+  try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) { return ''; }
+}
+function _fmtIn(inst, zone, withDate) {
+  const opts = { hour: '2-digit', minute: '2-digit', timeZoneName: 'short' };
+  if (zone) opts.timeZone = zone;
+  if (withDate) { opts.month = 'short'; opts.day = 'numeric'; }
+  return new Intl.DateTimeFormat(undefined, opts).format(inst);
 }
 function fmtNextRun(cron, tz) {
   const inst = nextRun(cron, tz);
   if (!inst) return '-';
+  const schedTz = tz || 'UTC';
   let when;
   try {
-    when = new Intl.DateTimeFormat(undefined, { timeZone: tz || 'UTC',
-      month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }).format(inst);
-  } catch (e) { when = inst.toISOString().slice(0, 16).replace('T', ' '); }
-  const ms = inst.getTime() - Date.now();
-  const rel = _relFromNow(inst);
-  return `${when} (${rel})`;
+    when = _fmtIn(inst, schedTz, true);
+    // Name the zone ALWAYS, and add the viewer's own when it differs. Without this the column
+    // shows one clock while the row's Frequency states another, and the reader has no way to
+    // tell which one they are looking at.
+    const mine = _localTz();
+    if (mine && mine !== schedTz) {
+      const local = _fmtIn(inst, mine, false);
+      if (local && local !== _fmtIn(inst, schedTz, false)) when += ` \u00b7 ${local} your time`;
+    }
+  } catch (e) { when = inst.toISOString().slice(0, 16).replace('T', ' ') + ' UTC'; }
+  return `${when} (${_relFromNow(inst)})`;
 }
 function _relFromNow(inst) {
   const ms = inst.getTime() - Date.now();
@@ -11771,9 +11886,11 @@ function _relFromNow(inst) {
 }
 function _fmtRunWhen(inst, tz) {
   try {
+    // Same reasoning as fmtNextRun: an unlabelled time in a non-local zone reads as local.
     return new Intl.DateTimeFormat(undefined, { timeZone: tz || 'UTC',
-      weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }).format(inst);
-  } catch (e) { return inst.toISOString().slice(0, 16).replace('T', ' '); }
+      weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
+      timeZoneName: 'short' }).format(inst);
+  } catch (e) { return inst.toISOString().slice(0, 16).replace('T', ' ') + ' UTC'; }
 }
 
 // Live "This schedule" preview - mirrors the form as the user fills it in.
@@ -11922,7 +12039,7 @@ function editSchedule(s) {
   $('#schLabel').value = s.label || '';
   $('#schEmail').value = s.email || '';
   $('#schSample').value = s.sampleRows || '';
-  $('#schTz').value = s.timezone || 'UTC';
+  setSchTz(s.timezone);          // inserts it if this browser does not list that zone
   // Editing keeps the exact expression via the Custom field (no lossy re-parse).
   $('#schFreq').value = 'custom';
   $('#schCustom').value = s.cron || '';
