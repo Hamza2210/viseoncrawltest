@@ -2591,9 +2591,12 @@
         </div>
 
         <label for="schTz">Timezone</label>
+        <input type="search" id="schTzSearch" class="src-search" autocomplete="off"
+               placeholder="\U0001F50E Search timezones, e.g. London, New York, +05:30"
+               style="max-width:300px;margin-bottom:6px;">
         <select id="schTz" style="max-width:300px;"><option value="UTC">UTC</option></select>
         <div class="hint" style="margin-top:4px;">The schedule fires at the chosen time in THIS
-          zone. Next run shows it in your own time as well.</div>
+          zone. Next run shows it in your own time as well. <span id="schTzCount"></span></div>
 
         <label for="schSourceKind">Assess</label>
         <select id="schSourceKind">
@@ -11164,7 +11167,12 @@ function resetScheduleForm() {
   $('#schFormTitle').textContent = 'New schedule';
   $('#schLabel').value = ''; $('#schEmail').value = ''; $('#schSample').value = '';
   $('#schFreq').value = 'daily'; $('#schTime').value = '06:00';
-  $('#schDom').value = '1'; $('#schCustom').value = ''; setSchTz('UTC');
+  $('#schDom').value = '1'; $('#schCustom').value = '';
+  // Clear any filter with the form, or the next edit opens onto a list still narrowed by a
+  // search the user has forgotten they typed.
+  const _tzq = $('#schTzSearch');
+  if (_tzq) { _tzq.value = ''; renderTzOptions(''); }
+  setSchTz('UTC');
   $('#schCancelEdit').style.display = 'none';
   if ($('#schSourceKind') && !PORTAL) $('#schSourceKind').value = 'qlik';
   if (typeof schSourceUI === 'function') schSourceUI();
@@ -11802,6 +11810,67 @@ function setSchTz(value) {
   sel.value = want;
 }
 
+let _tzAll = null;              // [{value, text, region, hay}] built once
+
+// Separators are noise when searching: "new york" should find America/New_York and "london"
+// should find Europe/London without the reader knowing which region it is filed under.
+function _tzNorm(t) {
+  return String(t).toLowerCase().replace(/[_/]+/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function renderTzOptions(query) {
+  const sel = $('#schTz');
+  if (!sel || !_tzAll) return;
+  const q = _tzNorm(query || '');
+  const current = sel.value || 'UTC';
+  const matched = q ? _tzAll.filter(z => z.hay.includes(q)) : _tzAll.slice();
+
+  // A zone can appear twice: once as a Common shortcut and once in its region. Searching then
+  // showed two identical-looking rows, which reads as a bug. First wins, so the Common entry
+  // keeps its "your timezone" label.
+  const seen = new Set();
+  const shown = [];
+  for (const z of matched) {
+    if (seen.has(z.value)) continue;
+    seen.add(z.value);
+    shown.push(z);
+  }
+
+  // The selected zone is ALWAYS kept. Dropping it would make the control fall back to the first
+  // option, silently rewriting a schedule's timezone because someone typed in a search box. When
+  // it is not a match it goes in its own group, so it is obviously not a search result.
+  if (!seen.has(current)) {
+    const src = _tzAll.find(z => z.value === current)
+      || { value: current, text: current };
+    shown.unshift({ value: src.value, text: src.text, region: 'Current selection' });
+  }
+
+  const frag = document.createDocumentFragment();
+  let region = null, group = null;
+  for (const z of shown) {
+    if (z.region !== region) {
+      region = z.region;
+      group = document.createElement('optgroup');
+      group.label = region;
+      frag.appendChild(group);
+    }
+    const o = document.createElement('option');
+    o.value = z.value;
+    o.textContent = z.text;
+    group.appendChild(o);
+  }
+  sel.innerHTML = '';
+  sel.appendChild(frag);
+  setSchTz(current);                       // re-applies, and re-inserts an unlisted zone
+
+  const cnt = $('#schTzCount');
+  if (cnt) {
+    const n = seen.size;
+    cnt.textContent = !q ? '' : (n ? `${n} timezone${n === 1 ? '' : 's'} match.`
+                                   : 'No timezone matches that search.');
+  }
+}
+
 function buildTzSelect() {
   const sel = $('#schTz');
   if (!sel || sel._built) return;
@@ -11812,39 +11881,33 @@ function buildTzSelect() {
   })();
   const label = z => { const o = _tzOffsetLabel(z); return o ? `${z} (${o})` : z; };
 
-  const frag = document.createDocumentFragment();
-  // UTC first, then the viewer's own zone: the two anyone actually reaches for.
-  const top = document.createElement('optgroup');
-  top.label = 'Common';
-  for (const z of (mine && mine !== 'UTC') ? ['UTC', mine] : ['UTC']) {
-    const o = document.createElement('option');
-    o.value = z;
-    o.textContent = label(z) + (z === mine ? ' - your timezone' : '');
-    top.appendChild(o);
-  }
-  frag.appendChild(top);
+  const mk = (value, text, region) => ({
+    value, text, region,
+    // The offset is searchable too, so "+05:30" finds the half-hour zones.
+    hay: _tzNorm(value + ' ' + text),
+  });
 
-  const groups = {};
+  // UTC first, then the viewer's own zone: the two anyone actually reaches for.
+  _tzAll = [mk('UTC', label('UTC'), 'Common')];
+  if (mine && mine !== 'UTC') _tzAll.push(mk(mine, label(mine) + ' - your timezone', 'Common'));
+
+  const rest = [];
   for (const z of zones) {
     if (z === 'UTC') continue;
-    const region = z.includes('/') ? z.split('/')[0] : 'Other';
-    (groups[region] = groups[region] || []).push(z);
+    rest.push(mk(z, label(z), z.includes('/') ? z.split('/')[0] : 'Other'));
   }
-  for (const region of Object.keys(groups).sort()) {
-    const g = document.createElement('optgroup');
-    g.label = region;
-    for (const z of groups[region]) {
-      const o = document.createElement('option');
-      o.value = z;
-      o.textContent = label(z);
-      g.appendChild(o);
-    }
-    frag.appendChild(g);
+  rest.sort((a, b) => (a.region === b.region ? (a.value < b.value ? -1 : 1)
+                                            : (a.region < b.region ? -1 : 1)));
+  _tzAll = _tzAll.concat(rest);
+
+  const search = $('#schTzSearch');
+  if (search && !search._wired) {
+    search._wired = true;
+    search.addEventListener('input', () => renderTzOptions(search.value));
+    // Enter in a search box inside a form would submit it; here it just applies the filter.
+    search.addEventListener('keydown', e => { if (e.key === 'Enter') e.preventDefault(); });
   }
-  const current = sel.value || 'UTC';
-  sel.innerHTML = '';
-  sel.appendChild(frag);
-  setSchTz(current);
+  renderTzOptions(search ? search.value : '');
 }
 
 function nextRun(cron, tz) {
