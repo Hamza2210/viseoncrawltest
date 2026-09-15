@@ -1794,9 +1794,8 @@
         <div class="card">
           <h2>Progress</h2>
       <div class="steps">
-        <div class="step" data-state="idle" id="s1"><span class="pill">idle</span> 1. Request upload</div>
-        <div class="step" data-state="idle" id="s2"><span class="pill">idle</span> 2. Upload file to storage</div>
-        <div class="step" data-state="idle" id="s3"><span class="pill">idle</span> 3. Start assessment</div>
+        <div class="step" data-state="idle" id="s1"><span class="pill">idle</span> 1. Send the file</div>
+        <div class="step" data-state="idle" id="s3"><span class="pill">idle</span> 2. Start assessment</div>
           </div>
           <p class="hint" style="margin:12px 0 0;">These light up once you start an upload.</p>
         </div>
@@ -2928,7 +2927,15 @@ function humanSize(n) {
 // Internal diagnostics only - the on-page log panels were removed so end users
 // don't see backend API calls. Kept as a no-op so call sites need no changes.
 function log(msg, obj) { /* no-op */ }
-function setStep(id, state) { $('#' + id).dataset.state = state; $('#' + id).querySelector('.pill').textContent = state; }
+function setStep(id, state) {
+  // Tolerant of a step that is not on the page: removing one from the markup should change what
+  // is DISPLAYED, not break the upload by taking .dataset off a null.
+  const el = $('#' + id);
+  if (!el) return;
+  el.dataset.state = state;
+  const pill = el.querySelector('.pill');
+  if (pill) pill.textContent = state;
+}
 // Show a dismissable banner: message text + an × the user can click to close it.
 function showBanner(el, cls, msg) {
   el.className = 'banner ' + cls;
@@ -4032,7 +4039,7 @@ async function pollResults(resultPrefix) {
 
 goBtn.addEventListener('click', async () => {
   if (!configOK) return;
-  ['s1', 's2', 's3'].forEach(id => setStep(id, 'idle'));
+  ['s1', 's3'].forEach(id => setStep(id, 'idle'));
   $('#banner').className = 'banner'; $('#assessment').style.display = 'none'; $('#assessBody').innerHTML = '';
   $('#results').style.display = 'none'; $('#resultTable').innerHTML = ''; $('#resetBar').style.display = 'none';
   prog.style.display = 'none'; prog.value = 0;
@@ -4053,9 +4060,10 @@ goBtn.addEventListener('click', async () => {
     if (APP_ID) subBody.app_id = APP_ID;   // nest this run under the app (History scoping)
     const sub = await postJSON(`${API_BASE}/data-quality/submissions`, HEADERS, subBody);
     log('submission response', sub);
-    setStep('s1', 'done');
 
-    setStep('s2', 'running'); prog.style.display = 'block';
+    // The transfer is part of sending the file, not a separate "store it" step: the progress bar
+    // tracks it, and step 1 stays running until the bytes are across.
+    prog.style.display = 'block';
     log('POST file → ' + sub.upload.url);
     const code = await uploadToS3(sub.upload.url, sub.upload.fields, file, p => { prog.value = p; });
     log(`Storage accepted the upload (HTTP ${code})`);
@@ -4065,7 +4073,7 @@ goBtn.addEventListener('click', async () => {
       refUriByName[ref.filename] = ref.uri;
       log(`uploaded reference ${ref.filename}`);
     }
-    setStep('s2', 'done');
+    setStep('s1', 'done');
 
     setStep('s3', 'running');
     const sampleRaw = $('#sampleRows').value.trim();
@@ -4101,7 +4109,7 @@ goBtn.addEventListener('click', async () => {
 
     if (trig.resultPrefix) pollResults(trig.resultPrefix);
   } catch (err) {
-    ['s1', 's2', 's3'].forEach(id => { if ($('#' + id).dataset.state === 'running') setStep(id, 'error'); });
+    ['s1', 's3'].forEach(id => { if ($('#' + id).dataset.state === 'running') setStep(id, 'error'); });
     banner('err', err.message);
     log('ERROR: ' + err.message);
   } finally {
@@ -4115,7 +4123,7 @@ function resetForNewUpload() {
   $('#assessment').style.display = 'none'; $('#assessBody').innerHTML = '';
   $('#results').style.display = 'none'; $('#resultTable').innerHTML = '';
   $('#resetBar').style.display = 'none';
-  ['s1', 's2', 's3'].forEach(id => setStep(id, 'idle'));
+  ['s1', 's3'].forEach(id => setStep(id, 'idle'));
   prog.style.display = 'none'; prog.value = 0;
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
