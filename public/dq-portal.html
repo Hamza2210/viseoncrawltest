@@ -1765,6 +1765,7 @@
             <button type="button" class="source-card" data-source="databricks"><span class="src-ico" data-ico="databricks"></span><span class="sc-name">Databricks</span><span class="src-tag betatag">Beta</span></button>
             <button type="button" class="source-card" data-source="bigquery"><span class="src-ico" data-ico="bigquery"></span><span class="sc-name">Google BigQuery</span><span class="src-tag betatag">Beta</span></button>
             <button type="button" class="source-card" data-source="synapse"><span class="src-ico" data-ico="synapse"></span><span class="sc-name">Azure Synapse</span><span class="src-tag betatag">Beta</span></button>
+            <button type="button" class="source-card" data-source="fabric"><span class="src-ico" data-ico="fabric"></span><span class="sc-name">Microsoft Fabric</span><span class="src-tag betatag">Beta</span></button>
           </div>
         </div>
         <div class="src-cat">
@@ -2076,6 +2077,31 @@
         <div class="src-status" data-status="sqlserver"></div>
       </div>
       <div class="card" id="sqlserverResult" style="display:none;"><h2>Assessment</h2><div id="sqlserverResultBody"></div></div>
+    </div>
+
+    <!-- ===== Source: Microsoft Fabric (Warehouse / Lakehouse SQL analytics endpoint) ===== -->
+    <div id="src-fabric" class="source-body" style="display:none;">
+      <div class="card">
+        <h2>Microsoft Fabric <span class="src-tag betatag">Beta</span></h2>
+        <p class="src-note">Read a table from a Fabric <strong>Warehouse</strong> or <strong>Lakehouse</strong> through its SQL analytics endpoint. Sign in with a <strong>SQL login</strong> or an <strong>Entra service principal</strong> - whichever your tenant allows; many disable SQL logins entirely. Fabric speaks T-SQL, so - as with SQL Server and Synapse - pattern/format validity checks are skipped rather than approximated, and are not scored as passing; every other DAMA dimension is assessed in full.</p>
+        <div class="src-form">
+          <div class="src-field"><label>SQL analytics endpoint</label><input data-f="host" placeholder="xxxxx.datawarehouse.fabric.microsoft.com"></div>
+          <div class="src-field"><label>Port</label><input data-f="port" placeholder="1433" value="1433"></div>
+          <div class="src-field"><label>Warehouse / lakehouse</label><input data-f="database" placeholder="analytics"></div>
+          <div class="src-field"><label>Authentication</label><select data-f="auth" id="fabricAuthSel"><option value="sql">SQL login</option><option value="entra">Entra service principal</option></select></div>
+          <div class="src-field fab-sql"><label>User</label><input data-f="user" placeholder="dq_reader"></div>
+          <div class="src-field fab-sql"><label>Password</label><input data-f="password" type="password"></div>
+          <div class="src-field fab-entra" style="display:none;"><label>Entra tenant</label><input data-f="tenant" placeholder="contoso.onmicrosoft.com"></div>
+          <div class="src-field fab-entra" style="display:none;"><label>Application (client) ID</label><input data-f="client_id" placeholder="00000000-0000-0000-0000-000000000000"></div>
+          <div class="src-field fab-entra" style="display:none;"><label>Client secret</label><input data-f="client_secret" type="password"></div>
+          <div class="src-field"><label>Schema</label><input data-f="schema" placeholder="dbo" value="dbo"></div>
+          <div class="src-field"><label>Table</label><input data-f="table" placeholder="orders"></div>
+          <div class="src-field"><label>Sample rows <span class="hint">(optional)</span></label><input data-f="sample_rows" type="number" min="1" placeholder="Empty = whole table"></div>
+        </div>
+        <button type="button" class="src-run" data-runsource="fabric">Run assessment</button>
+        <div class="src-status" data-status="fabric"></div>
+      </div>
+      <div class="card" id="fabricResult" style="display:none;"><h2>Assessment</h2><div id="fabricResultBody"></div></div>
     </div>
 
     <!-- ===== Source: Azure Synapse Analytics (dedicated SQL pool) ===== -->
@@ -2708,6 +2734,7 @@
           <option value="mysql">MySQL</option>
           <option value="sqlserver">SQL Server</option>
           <option value="synapse">Azure Synapse</option>
+          <option value="fabric">Microsoft Fabric</option>
           <option value="bigquery">Google BigQuery</option>
           <option value="gcs">Google Cloud Storage</option>
           <option value="azureblob">Azure Blob / ADLS</option>
@@ -3035,6 +3062,7 @@ function tagClass(s) { return ({ green: 'green', amber: 'amber', red: 'red' })[s
 const SOURCE_FMT_LABEL = {
   qlik: 'Qlik Table', athena: 'Qlik Open Lakehouse', redshift: 'Amazon Redshift', snowflake: 'Snowflake', databricks: 'Databricks',
   oracle: 'Oracle', postgres: 'PostgreSQL', mysql: 'MySQL', sqlserver: 'SQL Server', synapse: 'Azure Synapse',
+  fabric: 'Microsoft Fabric',
   bigquery: 'Google BigQuery', gcs: 'Google Cloud Storage', azureblob: 'Azure Blob',
   s3: 'Amazon S3', parquet: 'Parquet file', csv: 'CSV file', tsv: 'TSV file',
   json: 'JSON file', ndjson: 'JSON file', qvd: 'QVD file', excel: 'Excel file', sharepoint: 'SharePoint',
@@ -9240,6 +9268,11 @@ const SOURCE_REQUIRED = {
   mysql: ['host', 'database', 'user', 'table'],
   sqlserver: ['host', 'database', 'user', 'schema', 'table'],
   synapse: ['host', 'database', 'user', 'schema', 'table'],
+  // The first connector whose required fields depend on an answer in the form: an Entra service
+  // principal has no user or password at all, and demanding one would be nonsense.
+  fabric: (cfg) => (String(cfg.auth || 'sql') === 'entra'
+    ? ['host', 'database', 'tenant', 'client_id', 'schema', 'table']
+    : ['host', 'database', 'user', 'schema', 'table']),
   bigquery: ['project', 'dataset', 'table', 'credentials_json'],
   sharepoint: ['url', 'tenant', 'client_id', 'client_secret'],
   gcs: ['bucket', 'object', 'credentials_json'],
@@ -9247,7 +9280,7 @@ const SOURCE_REQUIRED = {
 };
 const SOURCE_LABEL = { athena: 'Qlik Open Lakehouse', redshift: 'Amazon Redshift', s3: 'Amazon S3', snowflake: 'Snowflake',
   databricks: 'Databricks', oracle: 'Oracle', postgres: 'PostgreSQL', mysql: 'MySQL', sqlserver: 'SQL Server',
-  synapse: 'Azure Synapse', bigquery: 'Google BigQuery', sharepoint: 'SharePoint / OneDrive',
+  synapse: 'Azure Synapse', fabric: 'Microsoft Fabric', bigquery: 'Google BigQuery', sharepoint: 'SharePoint / OneDrive',
   gcs: 'Google Cloud Storage', azureblob: 'Azure Blob / ADLS',
   'source-watch': 'Source monitoring' };
 const _SRC_FILE_ONLY = ['assessment', 'resetBar', 'results'];   // cards that belong to the file flow
@@ -9257,7 +9290,13 @@ const _SRC_FILE_ONLY = ['assessment', 'resetBar', 'results'];   // cards that be
 const srcRefsState = { lookups: [], integrity: [], accuracy: {}, warehouse: false };
 // Athena counts as a warehouse here: reference-table integrity and accuracy checks work,
 // because a join to another table in the same catalog is just more SQL.
-const _WAREHOUSE_SRC = new Set(['athena', 'redshift', 'snowflake', 'databricks', 'oracle', 'postgres', 'mysql', 'sqlserver', 'synapse']);
+const _WAREHOUSE_SRC = new Set(['athena', 'redshift', 'snowflake', 'databricks', 'oracle', 'postgres', 'mysql', 'sqlserver', 'synapse', 'fabric']);
+
+/** SOURCE_REQUIRED may be a list or, where the answer depends on the form, a function of it. */
+function requiredFields(key, cfg) {
+  const r = SOURCE_REQUIRED[key];
+  return (typeof r === 'function' ? r(cfg || {}) : r) || [];
+}
 
 function selectSource(key) {
   // Excel reuses the file-upload flow (a plain upload with an optional worksheet), so it maps to
@@ -9266,6 +9305,9 @@ function selectSource(key) {
   document.querySelectorAll('.source-card').forEach(c => c.classList.toggle('active', c.dataset.source === key));
   document.querySelectorAll('.source-body').forEach(b => { b.style.display = (b.id === 'src-' + bodyKey) ? 'block' : 'none'; });
   if (bodyKey === 'file') _applyFileMode(key === 'excel');   // recast the shared card as Excel vs generic
+  // Fabric is the one form whose fields depend on a choice inside it, so its toggle is wired the
+  // first time the card is shown rather than at boot (the markup may not have been reached yet).
+  if (bodyKey === 'fabric') wireFabricAuthToggle();
   if (key === 'excel') { const fi = $('#file'); if (fi && !fi.files.length) fi.focus(); }
   // The file-upload assessment/results cards only make sense for the file source.
   _SRC_FILE_ONLY.forEach(id => { const el = document.getElementById(id); if (el) el.classList.toggle('src-hidden', bodyKey !== 'file'); });
@@ -9297,7 +9339,9 @@ function selectSource(key) {
 }
 
 // ---- Per-app credential PROFILES (named connections; secrets applied server-side) -------
-const SRC_SECRET_FIELDS = { redshift: [], s3: ['access_key', 'secret_key'], snowflake: ['password'], databricks: ['token'], oracle: ['password'], postgres: ['password'], mysql: ['password'], sqlserver: ['password'], synapse: ['password'], bigquery: ['credentials_json'], sharepoint: ['client_secret'], gcs: ['credentials_json'], azureblob: ['connection_string'] };
+const SRC_SECRET_FIELDS = { redshift: [], s3: ['access_key', 'secret_key'], snowflake: ['password'], databricks: ['token'], oracle: ['password'], postgres: ['password'], mysql: ['password'], sqlserver: ['password'], synapse: ['password'], bigquery: ['credentials_json'], sharepoint: ['client_secret'], gcs: ['credentials_json'], azureblob: ['connection_string'],
+  // Both, because either can be the secret in play depending on the chosen mode.
+  fabric: ['password', 'client_secret'] };
 const credProfiles = {};      // key -> [{id,name,config,hasSecrets,savedAt}] from the last list
 const activeProfile = {};     // key -> id of the profile currently applied (sent on the run)
 
@@ -9516,7 +9560,7 @@ function updateSourceRunState(key) {
   const bodyEl = document.getElementById('src-' + key);
   const cfg = collectSourceFields(key);
   const secretF = SRC_SECRET_FIELDS[key] || [];
-  const required = (SOURCE_REQUIRED[key] || []).filter(f => !(activeProfile[key] && secretF.includes(f)));
+  const required = requiredFields(key, cfg).filter(f => !(activeProfile[key] && secretF.includes(f)));
   const missing = required.filter(f => !cfg[f]);
   if (missing.length) {
     btn.classList.add('run-off');
@@ -9535,7 +9579,7 @@ function runSource(key) {
   // When saved credentials are applied, the (blank) secret fields are supplied server-side,
   // so don't flag them as missing.
   const secretF = SRC_SECRET_FIELDS[key] || [];
-  const required = (SOURCE_REQUIRED[key] || []).filter(f => !(activeProfile[key] && secretF.includes(f)));
+  const required = requiredFields(key, cfg).filter(f => !(activeProfile[key] && secretF.includes(f)));
   const missing = required.filter(f => !cfg[f]);
   if (body) body.querySelectorAll('.src-missing').forEach(el => el.classList.remove('src-missing'));
   if (missing.length) {
@@ -9562,6 +9606,7 @@ function runSource(key) {
   if (key === 'mysql') { runMySQL(cfg, statusEl); return; }          // wired end-to-end
   if (key === 'sqlserver') { runSQLServer(cfg, statusEl); return; }  // wired end-to-end
   if (key === 'synapse') { runSynapse(cfg, statusEl); return; }      // wired end-to-end
+  if (key === 'fabric') { runFabric(cfg, statusEl); return; }        // wired end-to-end
   if (key === 'bigquery') { runBigQuery(cfg, statusEl); return; }    // wired end-to-end
   if (key === 'sharepoint') { runSharePoint(cfg, statusEl); return; } // wired end-to-end (Preview)
   if (key === 'gcs') { runGCS(cfg, statusEl); return; }              // wired end-to-end
@@ -9990,6 +10035,71 @@ async function runSynapse(cfg, statusEl) {
   if (res.resultPrefix && bodyEl) {
     pollInto(res.resultPrefix, bodyEl, {}).finally(() => { if (btn) btn.disabled = false; });
   } else if (btn) { btn.disabled = false; }
+}
+
+// Launch a full-table Microsoft Fabric assessment, then poll + render its result.
+async function runFabric(cfg, statusEl) {
+  const btn = document.querySelector('[data-runsource="fabric"]');
+  const entra = String(cfg.auth || 'sql') === 'entra';
+  const body = {
+    app_id: APP_ID || undefined,
+    host: cfg.host, database: cfg.database, table: cfg.table,
+    schema: cfg.schema || undefined,
+    auth: entra ? 'entra' : 'sql',
+    // Only the chosen mode's credentials are sent. Posting both would put a password on the wire
+    // for a connection that will never use it.
+    user: entra ? undefined : (cfg.user || undefined),
+    password: entra ? undefined : (cfg.password || undefined),
+    tenant: entra ? cfg.tenant : undefined,
+    client_id: entra ? cfg.client_id : undefined,
+    client_secret: entra ? (cfg.client_secret || undefined) : undefined,
+    port: cfg.port ? Number(cfg.port) : undefined,
+    sample_rows: cfg.sample_rows ? Number(cfg.sample_rows) : undefined,
+    notify_email: EMAIL || undefined,
+    ruleset_augment: collectSourceRefsAugment() || undefined,
+    credential_profile: cfg._credProfile || undefined,
+  };
+  statusEl.className = 'src-status';
+  statusEl.innerHTML = `<p><span class="spin"></span> Launching Fabric assessment…</p>`;
+  if (btn) btn.disabled = true;
+  let res;
+  try {
+    res = await postJSON(`${API_BASE}/data-quality/fabric-assessment`, HEADERS, body);
+  } catch (e) {
+    statusEl.className = 'src-status err';
+    statusEl.textContent = e.message;
+    if (btn) btn.disabled = false;
+    return;
+  }
+  statusEl.className = 'src-status dev';
+  statusEl.innerHTML = `Assessment started (run <code>${esc(res.runId || '')}</code>). ` +
+    `Inferring the ruleset from a sample, then scoring the whole table in Fabric…`;
+  const card = document.getElementById('fabricResult');
+  const bodyEl = document.getElementById('fabricResultBody');
+  if (card) card.style.display = 'block';
+  if (bodyEl) bodyEl.innerHTML = `<p><span class="spin"></span> Scoring the dataset - this can take a moment…</p>`;
+  if (res.resultPrefix && bodyEl) {
+    pollInto(res.resultPrefix, bodyEl, {}).finally(() => { if (btn) btn.disabled = false; });
+  } else if (btn) { btn.disabled = false; }
+}
+
+// Show only the credential fields the chosen authentication mode actually uses. Leaving both sets
+// visible invites somebody to fill in a password that will never be sent, and then wonder why the
+// connection still fails.
+function wireFabricAuthToggle() {
+  const sel = document.getElementById('fabricAuthSel');
+  const body = document.getElementById('src-fabric');
+  if (!sel || !body || sel._wired) return;
+  sel._wired = true;
+  const apply = () => {
+    const entra = sel.value === 'entra';
+    body.querySelectorAll('.fab-sql').forEach(el => { el.style.display = entra ? 'none' : ''; });
+    body.querySelectorAll('.fab-entra').forEach(el => { el.style.display = entra ? '' : 'none'; });
+    // The required set changes with the mode, so the Run button has to be re-evaluated.
+    if (typeof updateSourceRunState === 'function') updateSourceRunState('fabric');
+  };
+  sel.addEventListener('change', apply);
+  apply();
 }
 
 // Launch a full-table Google BigQuery assessment, then poll + render its result.
@@ -11491,7 +11601,7 @@ async function assessEntireApp() {
 // Qlik app tables re-run in place (the extension holds the bearer); every other source is
 // routed to its Data-from-Source card to re-enter details + run (pinned rules still apply).
 const _SRC_CARD_BY_FMT = { redshift: 'redshift', snowflake: 'snowflake', databricks: 'databricks',
-  oracle: 'oracle', postgres: 'postgres', mysql: 'mysql', sqlserver: 'sqlserver', synapse: 'synapse', bigquery: 'bigquery',
+  oracle: 'oracle', postgres: 'postgres', mysql: 'mysql', sqlserver: 'sqlserver', synapse: 'synapse', fabric: 'fabric', bigquery: 'bigquery',
   gcs: 'gcs', azureblob: 'azureblob', sharepoint: 'sharepoint', s3: 's3' };
 // Send the user to the upload form to re-assess an uploaded dataset, and tell them the one
 // thing that decides whether they get a NEW RUN of this dataset or a whole new dataset.
@@ -11934,6 +12044,16 @@ const SCHED_SOURCE_FIELDS = {
     { f: 'host', label: 'Host' }, { f: 'port', label: 'Port', value: '1433' },
     { f: 'database', label: 'Database' }, { f: 'user', label: 'User' },
     { f: 'password', label: 'Password', type: 'password' },
+    { f: 'schema', label: 'Schema', value: 'dbo' }, { f: 'table', label: 'Table' },
+    { f: 'sample_rows', label: 'Sample rows', type: 'number' },
+  ],
+  fabric: [
+    { f: 'host', label: 'SQL analytics endpoint', full: true }, { f: 'port', label: 'Port', value: '1433' },
+    { f: 'database', label: 'Warehouse / lakehouse' },
+    { f: 'auth', label: 'Authentication', value: 'sql' },
+    { f: 'user', label: 'User' }, { f: 'password', label: 'Password', type: 'password' },
+    { f: 'tenant', label: 'Entra tenant' }, { f: 'client_id', label: 'Client ID' },
+    { f: 'client_secret', label: 'Client secret', type: 'password' },
     { f: 'schema', label: 'Schema', value: 'dbo' }, { f: 'table', label: 'Table' },
     { f: 'sample_rows', label: 'Sample rows', type: 'number' },
   ],
