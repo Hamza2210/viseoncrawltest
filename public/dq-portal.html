@@ -66,6 +66,10 @@
   .tzc-opt:hover, .tzc-opt.active { background: var(--card-2); }
   .tzc-opt[aria-selected="true"] { color: var(--accent); font-weight: 600; }
   .tzc-none { padding: 10px 11px; font-size: 12px; color: var(--muted); }
+  /* The schedule's source picker reuses that shell, because the thing a native <option> cannot
+     do is carry the source's brand mark. Fixed width so the labels line up as a column. */
+  .skc-ic { display: inline-flex; width: 17px; justify-content: center; margin-right: 7px;
+    font-size: 12px; line-height: 1; vertical-align: -1px; }
 
   /* Boot splash: covers the first paint until the dashboard is populated. Colours are
      hard-coded rather than var()-driven, because it has to be right even if it renders before
@@ -2719,8 +2723,9 @@
         <div class="hint" style="margin-top:4px;">The schedule fires at the chosen time in THIS
           zone. Next run shows it in your own time as well.</div>
 
-        <label for="schSourceKind">Assess</label>
-        <select id="schSourceKind">
+        <label for="schKindBtn">Assess</label>
+        <div class="tzc" id="schKindCombo">
+        <select id="schSourceKind" class="tzc-native" tabindex="-1" aria-hidden="true">
           <option value="qlik">This app's tables (Qlik)</option>
           <option value="tag">Datasets with a tag (one task)</option>
           <option value="source-watch">Source monitoring only (no assessment)</option>
@@ -2740,6 +2745,9 @@
           <option value="azureblob">Azure Blob / ADLS</option>
           <option value="sharepoint">SharePoint / OneDrive</option>
         </select>
+          <button type="button" class="tzc-btn" id="schKindBtn" aria-haspopup="listbox" aria-expanded="false"></button>
+          <div class="tzc-panel"><div class="tzc-list" id="schKindList" role="listbox" aria-label="Assess"></div></div>
+        </div>
 
         <div id="schQlikFields">
           <label>Tables</label>
@@ -3070,7 +3078,7 @@ const SOURCE_FMT_LABEL = {
 const SOURCE_FMT_ICON = {
   qlik: '📊', athena: '🧊', redshift: '🟥', snowflake: '❄️', databricks: '🧱', s3: '🪣',
   oracle: '🟥', postgres: '🐘', mysql: '🐬', sqlserver: '🗄️', synapse: '🔷', bigquery: '🔷',
-  gcs: '🪣', azureblob: '🟦',
+  gcs: '🪣', azureblob: '🟦', fabric: '🟩',
   parquet: '📦', csv: '📄', tsv: '📄', json: '📄', ndjson: '📄', qvd: '📄', excel: '📊', sharepoint: '📁',
 };
 // Brand marks recreated as inline SVG (transparent, tuned to read at chip size). To use the
@@ -3140,6 +3148,20 @@ const SOURCE_FMT_SVG = {
     '<rect x="11.4" y="9.3" width="1.15" height="3.4" rx=".3"/></g>' +
     '<circle cx="10.5" cy="10.6" r="4.2" fill="none" stroke="#fff" stroke-width="1.5"/>' +
     '<line x1="13.7" y1="13.8" x2="17.2" y2="17.3" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/>'),
+  // Microsoft Fabric: the three stacked, left-leaning bands of the official mark, each sweeping
+  // teal to green. The gradients share one user-space axis so the sweep lines up across bands
+  // instead of restarting inside each one.
+  fabric: _svg('<defs>' +
+    '<linearGradient id="fbT" gradientUnits="userSpaceOnUse" x1="1" y1="0" x2="23" y2="0">' +
+    '<stop offset="0" stop-color="#5BE0C4"/><stop offset="1" stop-color="#C6EC6B"/></linearGradient>' +
+    '<linearGradient id="fbM" gradientUnits="userSpaceOnUse" x1="1" y1="0" x2="23" y2="0">' +
+    '<stop offset="0" stop-color="#1FB5A7"/><stop offset="1" stop-color="#8ED04E"/></linearGradient>' +
+    '<linearGradient id="fbB" gradientUnits="userSpaceOnUse" x1="1" y1="0" x2="23" y2="0">' +
+    '<stop offset="0" stop-color="#0C7A74"/><stop offset="1" stop-color="#2FA886"/></linearGradient>' +
+    '</defs>' +
+    '<path d="M9.2 2.6 H22.4 L19.3 8.2 H6.1 Z" fill="url(#fbT)"/>' +
+    '<path d="M6.6 9.5 H17.6 L14.5 15.1 H3.5 Z" fill="url(#fbM)"/>' +
+    '<path d="M4.0 16.4 H11.6 L8.5 22.0 H0.9 Z" fill="url(#fbB)"/>'),
   // SharePoint: overlapping teal circles + a dark-teal "S" tile
   sharepoint: _svg('<circle cx="15.4" cy="7" r="5" fill="#0B6A6E"/><circle cx="18" cy="14.4" r="5" fill="#1CA6AD"/>' +
     '<circle cx="13.4" cy="18.6" r="4.3" fill="#37C6CE"/>' +
@@ -11296,6 +11318,7 @@ function switchTab(name) {
   if (name === 'schedules') {
     buildTzSelect();              // ~400 zones; built once, and BEFORE the form is reset so the
                                   // reset's timezone assignment has options to match against
+    buildSchedKindSelect();       // likewise before the reset, so its `.value =` repaints the button
     $('#schCtx').textContent = APP_ID
       ? scopeCtxLabel() : 'Open from inside a Qlik app to schedule its checks.';
     resetScheduleForm();
@@ -12674,6 +12697,97 @@ function _tzClose() {
   combo.classList.remove('open');
   const btn = $('#schTzBtn');
   if (btn) btn.setAttribute('aria-expanded', 'false');
+}
+
+// The schedule's "Assess" picker. A native <option> cannot hold an image or an SVG, so the
+// visible control is the same combobox shell the timezone picker uses, while the original
+// <select> stays in the DOM - hidden - and remains the single source of truth for the value.
+// Every existing read and write of #schSourceKind.value therefore keeps working as written.
+// These two are not data sources, so they have no brand mark of their own.
+const SCHED_KIND_ICON = { tag: '🏷️', 'source-watch': '👁️' };
+function schedKindIcon(v) { return `<span class="skc-ic">${SCHED_KIND_ICON[v] || srcIcon(v)}</span>`; }
+
+function buildSchedKindSelect() {
+  const sel = $('#schSourceKind'), combo = $('#schKindCombo');
+  if (!sel || !combo || combo._built) return;
+  combo._built = true;
+  const btn = $('#schKindBtn'), list = $('#schKindList');
+
+  const syncBtn = () => {
+    const o = sel.options[sel.selectedIndex];
+    btn.innerHTML = o ? schedKindIcon(o.value) + esc(o.textContent) : '';
+  };
+  // A programmatic `.value = ...` fires no event, and several call sites do exactly that (the
+  // form reset, loading a saved schedule). Wrapping the setter repaints the button for all of
+  // them at once, rather than leaving the label to drift out of step with the real value.
+  const desc = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value');
+  Object.defineProperty(sel, 'value', {
+    configurable: true,
+    get() { return desc.get.call(sel); },
+    set(v) { desc.set.call(sel, v); syncBtn(); },
+  });
+
+  // Rebuilt on every open, so an option removed elsewhere - portal mode drops the Qlik one -
+  // never lingers in the list.
+  const render = () => {
+    list.innerHTML = Array.prototype.map.call(sel.options, o =>
+      `<div class="tzc-opt" role="option" data-v="${esc(o.value)}" ` +
+      `aria-selected="${o.value === sel.value}">${schedKindIcon(o.value)}${esc(o.textContent)}</div>`
+    ).join('');
+  };
+  const opts = () => Array.prototype.slice.call(list.querySelectorAll('.tzc-opt'));
+  const close = () => { combo.classList.remove('open'); btn.setAttribute('aria-expanded', 'false'); };
+  const open = () => {
+    render();
+    combo.classList.add('open');
+    btn.setAttribute('aria-expanded', 'true');
+    const cur = list.querySelector('[aria-selected="true"]');
+    if (cur) { cur.classList.add('active'); cur.scrollIntoView({ block: 'nearest' }); }
+  };
+  const move = step => {
+    const all = opts();
+    if (!all.length) return;
+    const cur = all.findIndex(o => o.classList.contains('active'));
+    const i = Math.max(0, Math.min(all.length - 1, cur < 0 ? 0 : cur + step));
+    all.forEach(o => o.classList.remove('active'));
+    all[i].classList.add('active');
+    all[i].scrollIntoView({ block: 'nearest' });
+  };
+  const pick = v => {
+    sel.value = v;                              // repaints the button through the wrapped setter
+    sel.dispatchEvent(new Event('change'));     // and runs schSourceUI, as a real select would
+    close();
+    btn.focus();
+  };
+
+  btn.addEventListener('click', () => (combo.classList.contains('open') ? close() : open()));
+  btn.addEventListener('keydown', e => {
+    if (e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      // Stop the key reaching the panel handler below, which would otherwise see the list it
+      // just opened and commit the first entry on the same press.
+      e.stopPropagation();
+      open();
+    }
+  });
+  combo.addEventListener('keydown', e => {
+    if (!combo.classList.contains('open')) return;
+    if (e.key === 'ArrowDown') { e.preventDefault(); move(1); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); move(-1); }
+    else if (e.key === 'Escape') { e.preventDefault(); close(); btn.focus(); }
+    else if (e.key === 'Enter') {
+      const a = list.querySelector('.tzc-opt.active');
+      if (a) { e.preventDefault(); pick(a.dataset.v); }
+    }
+  });
+  list.addEventListener('click', e => {
+    const o = e.target.closest('.tzc-opt');
+    if (o) pick(o.dataset.v);
+  });
+  document.addEventListener('click', e => {
+    if (combo.classList.contains('open') && !combo.contains(e.target)) close();
+  });
+  syncBtn();
 }
 
 function buildTzSelect() {
