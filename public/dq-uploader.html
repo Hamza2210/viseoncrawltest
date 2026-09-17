@@ -1524,6 +1524,7 @@
     border-color: #1e2740; }
   .galaxy-card h2 { color: #aab4c8; }
   #galaxyWrap { position: relative; height: 420px; border-radius: 10px; overflow: hidden; cursor: grab; }
+  .gx-group { width: auto; min-width: 150px; }
   /* Galaxy (left) + selected-dataset detail (right), side by side; stacks on narrow screens. */
   /* Galaxy is full-width until a dataset is selected, then it splits: galaxy | detail. */
   .overview-top { display: grid; grid-template-columns: 1fr; gap: 18px; align-items: start; margin-bottom: 18px; }
@@ -2467,6 +2468,14 @@
         <button type="button" class="gx-btn" id="gxWallsBtn" data-tip="Show medallion walls & rings" aria-label="Toggle medallion walls and rings">▤</button>
         <button type="button" class="gx-btn" id="gxFilterBtn" data-tip="Filter datasets" aria-label="Filter datasets">⚑<span class="gx-badge" id="gxFilterBadge" style="display:none;"></span></button>
         <div id="gxFilterPop" class="gx-filter-pop" style="display:none;"></div>
+        <!-- Grouping appears only once there are enough datasets for it to be the better view. -->
+        <select id="gxGroupBy" class="gx-search gx-group" style="display:none;" aria-label="Group datasets by">
+          <option value="source">Group by source</option>
+          <option value="stage">Group by stage</option>
+          <option value="status">Group by status</option>
+          <option value="owner">Group by owner</option>
+        </select>
+        <button type="button" class="gx-btn" id="gxBackBtn" style="display:none;" data-tip="Back to all groups" aria-label="Back to all groups">← All</button>
       </div>
       <div id="galaxyWrap">
         <div id="galaxyMsg" class="galaxy-msg">Loading 3D view…</div>
@@ -10303,8 +10312,30 @@ function renderMedalCompare() {
 const GALAXY = { loaded: false, loading: null, renderer: null, scene: null, camera: null, group: null,
   orbs: [], raf: null, ray: null, mouse: null, glowTex: null, ringTex: null, selRing: null, wrap: null, onResize: null,
   rot: { x: -0.32, y: 0.55 }, dist: 200, auto: true, lastInteract: 0, hovered: null, selected: null,
-  shelves: [], wallsOn: false };
+  shelves: [], wallsOn: false,
+  // Grouping. `drill` is null at the group level, or the group whose members are on screen.
+  groupBy: 'source', drill: null, clustered: false };
+
+// Above this many datasets the galaxy opens GROUPED. Chosen from measurement rather than taste:
+// frame time is ~12ms at 500 orbs and ~29ms at 1,000, so the view is already working hard well
+// before it looks crowded. Below it, nothing about the galaxy changes.
+const GALAXY_CLUSTER_AT = 150;
 const GALAXY_RAG = { green: 0x30d67f, amber: 0xf5b73d, red: 0xff5d5d, na: 0x8aa0c0 };
+
+// One unit sphere, scaled per orb, instead of a fresh SphereGeometry(r,22,22) each time. Measured
+// at 2,000 datasets: 107ms and 2,001 geometries before, 5ms and 2 after. The render loop already
+// owns mesh.scale (it pulses the selected and hovered orb), so it multiplies by o.r there.
+const _GX_CACHE = { geo: null, mats: new Map() };
+function _gxGeo() {
+  if (!_GX_CACHE.geo) _GX_CACHE.geo = new window.THREE.SphereGeometry(1, 22, 22);
+  return _GX_CACHE.geo;
+}
+function _gxMat(col) {
+  // Safe to share: nothing mutates a MESH material. The loop only changes halo and ring opacity.
+  let m = _GX_CACHE.mats.get(col);
+  if (!m) _GX_CACHE.mats.set(col, m = new window.THREE.MeshBasicMaterial({ color: col }));
+  return m;
+}
 // Stage → depth shelf + medal-ring colour. Colour = RAG status (fill); stage = ring outline + z-layer.
 const GALAXY_STAGE_Z = { bronze: -72, silver: 0, gold: 72 };
 const MEDAL_COLOR = { bronze: 0xcd7f32, silver: 0xc8d0dc, gold: 0xffcf4d };
@@ -10369,6 +10400,13 @@ function wireGalaxyTools() {
     if (open) sInp.focus(); else { sInp.value = ''; GX_FILTER.q = ''; applyGalaxyFilter(); }
   });
   if (sInp) sInp.addEventListener('input', () => { GX_FILTER.q = sInp.value; applyGalaxyFilter(); });
+  const gSel = $('#gxGroupBy'), bBtn = $('#gxBackBtn');
+  if (gSel) gSel.addEventListener('change', () => {
+    GALAXY.groupBy = gSel.value;
+    GALAXY.drill = null;                    // a different grouping makes the old drill meaningless
+    _gxRender(GALAXY.datasets);
+  });
+  if (bBtn) bBtn.addEventListener('click', _gxDrillOut);
   if (fBtn) fBtn.addEventListener('click', () => {
     const open = pop.style.display === 'none';
     pop.style.display = open ? '' : 'none'; fBtn.classList.toggle('active', open);
@@ -10455,6 +10493,12 @@ function initGalaxyScene(wrap) {
   const lblScore = _galaxyTextSprite('Score →'); lblScore.position.set(92, 0, 0); g.group.add(lblScore);
   const lblVol = _galaxyTextSprite('Volume ↑'); lblVol.position.set(0, 66, 0); g.group.add(lblVol);
   const lblStage = _galaxyTextSprite('Stage'); lblStage.position.set(0, 0, 92); g.group.add(lblStage);
+  // Kept so the axes can be relabelled at group level, where the vertical is a COUNT of datasets
+  // and the depth axis means nothing at all. Leaving "Volume" and "Stage" up there would be a
+  // small lie on screen.
+  const lblCount = _galaxyTextSprite('Datasets ↑'); lblCount.position.set(0, 66, 0);
+  lblCount.visible = false; g.group.add(lblCount);
+  g.axisLabels = { score: lblScore, vol: lblVol, stage: lblStage, count: lblCount };
   // Stage shelves: a tinted plane + outline + label at each medallion z-depth, so bronze/silver/gold
   // read as three distinct layers. Off by default (they can be busy) - toggled via the ▤ button.
   const SW = 168, SH = 118;
@@ -10493,6 +10537,160 @@ function initGalaxyScene(wrap) {
   }
 }
 
+// De-clump: repulsion passes so no two orbs overlap, which is what makes every one hoverable.
+// All-pairs below the threshold and spatially binned above it. Measured both ways: binning has
+// grid-rebuild overhead that makes it SLOWER at small n (20ms vs 2ms at 200 orbs) and much faster
+// at large n (165ms vs 828ms at 2,000). So each is used where it wins rather than picking one.
+const _GX_BIN_AT = 600;
+
+function _gxDeclump(pts, pad) {
+  const PASSES = 70, PAD = pad || 7;
+  if (pts.length < _GX_BIN_AT) {
+    for (let it = 0; it < PASSES; it++) {
+      for (let a = 0; a < pts.length; a++) for (let b = a + 1; b < pts.length; b++) {
+        _gxPush(pts[a], pts[b], PAD);
+      }
+    }
+    return;
+  }
+  // Cell size is the largest distance at which two orbs can touch, so any pair in
+  // non-neighbouring cells cannot overlap and never has to be examined.
+  let maxR = 0; for (const p of pts) if (p.r > maxR) maxR = p.r;
+  const CELL = maxR * 2 + PAD;
+  for (let it = 0; it < PASSES; it++) {
+    const grid = new Map();
+    for (const p of pts) {
+      const k = Math.floor(p.x / CELL) + ',' + Math.floor(p.y / CELL) + ',' + Math.floor(p.z / CELL);
+      let c = grid.get(k); if (!c) grid.set(k, c = []);
+      c.push(p);
+    }
+    for (const [k, cell] of grid) {
+      const parts = k.split(','), cx = +parts[0], cy = +parts[1], cz = +parts[2];
+      for (let ox = 0; ox <= 1; ox++) for (let oy = -1; oy <= 1; oy++) for (let oz = -1; oz <= 1; oz++) {
+        // Visit each unordered cell pair once: skip the half-space already covered.
+        if (ox === 0 && (oy < 0 || (oy === 0 && oz < 0))) continue;
+        const other = grid.get((cx + ox) + ',' + (cy + oy) + ',' + (cz + oz));
+        if (!other) continue;
+        const same = other === cell;
+        for (let a = 0; a < cell.length; a++)
+          for (let b = same ? a + 1 : 0; b < other.length; b++) _gxPush(cell[a], other[b], PAD);
+      }
+    }
+  }
+}
+
+function _gxPush(A, B, PAD) {
+  let dx = B.x - A.x, dy = B.y - A.y, dz = B.z - A.z;
+  const dist = Math.sqrt(dx * dx + dy * dy + dz * dz) || 0.001, min = A.r + B.r + PAD;
+  if (dist >= min) return;
+  const push = (min - dist) / 2 / dist;
+  dx *= push; dy *= push; dz *= push;
+  A.x -= dx; A.y -= dy; A.z -= dz; B.x += dx; B.y += dy; B.z += dz;
+}
+
+const _GX_GROUP_LABEL = { source: 'source', stage: 'stage', status: 'status', owner: 'owner' };
+
+function _gxGroupOf(d, by) {
+  const e = dashEntries[d.key] || {};
+  if (by === 'stage') return e.stage ? (MEDAL_LABEL[e.stage] || e.stage) : 'Unstaged';
+  if (by === 'status') return d.status || 'na';
+  if (by === 'owner') return e.owner || 'Unassigned';
+  return d.sourceFormat || 'Unknown';
+}
+
+const _GX_RANK = { red: 3, amber: 2, green: 1, na: 0 };
+
+// A group's fill follows its MEAN score on the platform's own thresholds - the same ones the
+// dimension heatmap and the dashboard use (green >= 95, amber >= 85). Colouring by the worst
+// member instead was tried first and is degenerate: at any real estate size every group contains
+// something red, so every orb came out red and the view stopped discriminating. The worst member
+// is not hidden, it is carried separately as a ring and stated in the tooltip.
+function _gxClusterFill(c) {
+  if (c.mean == null) return 'na';
+  return c.mean >= 95 ? 'green' : (c.mean >= 85 ? 'amber' : 'red');
+}
+
+function _gxBuildClusters(datasets, by) {
+  const map = new Map();
+  datasets.forEach(d => {
+    const label = _gxGroupOf(d, by);
+    let g = map.get(label);
+    if (!g) map.set(label, g = { label, members: [], worst: 'na', rows: 0, scores: [] });
+    g.members.push(d);
+    g.rows += (d.rows || 0);
+    if (typeof d.score === 'number') g.scores.push(d.score);
+    if ((_GX_RANK[d.status] || 0) > (_GX_RANK[g.worst] || 0)) g.worst = d.status || 'na';
+  });
+  const out = [...map.values()];
+  out.forEach(g => {
+    g.count = g.members.length;
+    g.mean = g.scores.length ? g.scores.reduce((a, b) => a + b, 0) / g.scores.length : null;
+    g.bad = g.members.filter(m => m.status === 'red').length;
+  });
+  // Worst first: the group someone needs to look at should not be the one they have to hunt for.
+  out.sort((a, b) => (_GX_RANK[b.worst] - _GX_RANK[a.worst]) || (b.count - a.count));
+  return out;
+}
+
+/** Cluster orbs: one per group, sized by member count, coloured by the worst member. */
+function buildGalaxyClusterOrbs(clusters) {
+  const THREE = window.THREE, g = GALAXY;
+  g.orbs.forEach(o => { g.group.remove(o.mesh); g.group.remove(o.halo); if (o.ring) g.group.remove(o.ring); });
+  g.orbs = []; g.selected = null; g.hovered = null;
+
+  const counts = clusters.map(c => Math.log10(Math.max(1, c.count)));
+  const cmin = Math.min(...counts), cspan = (Math.max(...counts) - cmin) || 1;
+  const means = clusters.map(c => (typeof c.mean === 'number' ? c.mean : 50));
+  const mmin = Math.min(...means), mspan = (Math.max(...means) - mmin) || 1;
+
+  // Laid out on the same axes the dataset view uses - score across, volume up - so moving between
+  // the two levels does not mean relearning the space.
+  const pts = clusters.map((c, i) => ({
+    c,
+    x: (((means[i] - mmin) / mspan) - 0.5) * 165,
+    y: (((counts[i] - cmin) / cspan) - 0.5) * 100,
+    // Deliberately shallow. Depth carries no meaning here, and a few large orbs spread through
+    // it simply hide one another from the default camera angle - a group you cannot see is a
+    // group you cannot click.
+    z: Math.sin(i * 2.399963) * 14,
+    // Group orbs are far bigger than dataset orbs, so they need proportionally more room than the
+    // dataset layout does or the de-clump cannot separate them and they render on top of one
+    // another - which is what the first render showed.
+    r: 5 + ((counts[i] - cmin) / cspan) * 8,
+  }));
+  // A big pad, on purpose. Split a large estate six ways and every group has a similar size and a
+  // similar mean, so they all land on nearly the same point and the SEPARATION becomes the layout.
+  // At the dataset level the data spreads itself and a small pad is enough.
+  _gxDeclump(pts, 26);
+
+  pts.forEach(p => {
+    const fill = _gxClusterFill(p.c);
+    const col = GALAXY_RAG[fill] || GALAXY_RAG.na;
+    const mesh = new THREE.Mesh(_gxGeo(), _gxMat(col));
+    mesh.scale.setScalar(p.r);
+    mesh.position.set(p.x, p.y, p.z);
+    const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: g.glowTex, color: col, transparent: true,
+      blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0.55 }));
+    halo.position.set(p.x, p.y, p.z); halo.scale.setScalar(p.r * 2.8);
+    g.group.add(mesh); g.group.add(halo);
+    // Contains at least one failing dataset: a permanent red ring, so however healthy the average
+    // is, the group cannot be mistaken for one with nothing in it to look at.
+    let ring = null;
+    if (p.c.bad > 0) {
+      ring = new THREE.Sprite(new THREE.SpriteMaterial({ map: g.medalRingTex, color: GALAXY_RAG.red,
+        transparent: true, depthWrite: false, opacity: 0.95 }));
+      ring.position.set(p.x, p.y, p.z); ring.scale.setScalar(p.r * 2.6);
+      g.group.add(ring);
+    }
+    g.orbs.push({ mesh, halo, ring, r: p.r, cluster: p.c, clusterRing: !!ring,
+      key: '~cluster:' + p.c.label, name: p.c.label,
+      score: p.c.mean, status: fill, rows: p.c.rows, stage: '', tags: [], sourceFormat: '',
+      trust: '', owner: '' });
+  });
+  resetGalaxyFilter();
+  applyGalaxyFilter();
+}
+
 function buildGalaxyOrbs(datasets) {
   const THREE = window.THREE, g = GALAXY;
   g.orbs.forEach(o => { g.group.remove(o.mesh); g.group.remove(o.halo); if (o.ring) g.group.remove(o.ring); });
@@ -10512,22 +10710,11 @@ function buildGalaxyOrbs(datasets) {
     const z = GALAXY_STAGE_Z[stage] != null ? GALAXY_STAGE_Z[stage] + Math.sin(i * 2.399963) * 10 : Math.sin(i * 2.399963) * 20;
     return { d, x: (nx - 0.5) * 130, y: (ny - 0.5) * 92, z, r: 2.4 + ny * 3.2, stage };
   });
-  // De-clump: a few repulsion passes so no two orbs overlap - makes every one hoverable/clickable.
-  for (let it = 0; it < 70; it++) {
-    for (let a = 0; a < pts.length; a++) for (let b = a + 1; b < pts.length; b++) {
-      const A = pts[a], B = pts[b];
-      let dx = B.x - A.x, dy = B.y - A.y, dz = B.z - A.z;
-      const dist = Math.sqrt(dx * dx + dy * dy + dz * dz) || 0.001, min = A.r + B.r + 7;
-      if (dist < min) {
-        const push = (min - dist) / 2 / dist;
-        dx *= push; dy *= push; dz *= push;
-        A.x -= dx; A.y -= dy; A.z -= dz; B.x += dx; B.y += dy; B.z += dz;
-      }
-    }
-  }
+  _gxDeclump(pts);
   pts.forEach(p => {
     const col = GALAXY_RAG[p.d.status] || GALAXY_RAG.na;
-    const mesh = new THREE.Mesh(new THREE.SphereGeometry(p.r, 22, 22), new THREE.MeshBasicMaterial({ color: col }));
+    const mesh = new THREE.Mesh(_gxGeo(), _gxMat(col));
+    mesh.scale.setScalar(p.r);                        // unit sphere; radius is the scale now
     mesh.position.set(p.x, p.y, p.z);
     const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: g.glowTex, color: col, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0.6 }));
     halo.position.set(p.x, p.y, p.z); halo.scale.setScalar(p.r * 3.2);       // tighter glow = distinct orbs
@@ -10563,7 +10750,11 @@ function _wireGalaxyControls(wrap) {
     } else _galaxyHover(e);
   });
   window.addEventListener('pointerup', () => {
-    if (down && moved < 5 && g.hovered) openGalaxyDataset(g.hovered.key, g.hovered.name);
+    // A click means "open this": a group opens into its datasets, a dataset opens its detail.
+    if (down && moved < 5 && g.hovered) {
+      if (g.hovered.cluster) _gxDrillInto(g.hovered.cluster.label);
+      else openGalaxyDataset(g.hovered.key, g.hovered.name);
+    }
     down = null; wrap.classList.remove('grabbing'); g.lastInteract = performance.now();
   });
   dom.addEventListener('wheel', e => { e.preventDefault(); g.dist = Math.max(70, Math.min(340, g.dist + e.deltaY * 0.12)); g.auto = false; g.lastInteract = performance.now(); }, { passive: false });
@@ -10577,6 +10768,23 @@ function _galaxyHover(e) {
   g.hovered = orb;
   if (!orb) { tip.style.display = 'none'; dom.style.cursor = ''; return; }
   dom.style.cursor = 'pointer';
+  if (orb.cluster) {
+    // The worst member is stated outright, because that is why the orb is the colour it is and a
+    // reader should never have to drill in to discover it.
+    const c = orb.cluster;
+    tip.innerHTML = `<div class="gt-name">${esc(c.label)}</div>` +
+      `${c.count} dataset${c.count === 1 ? '' : 's'} · ${numInt(c.rows)} rows<br>` +
+      `Average score ${c.mean == null ? '-' : num1(c.mean)}<br>` +
+      (c.bad ? `<span style="color:#ff5d5d;font-weight:600;">${c.bad} failing</span><br>`
+             : `<span style="opacity:.8">none failing</span><br>`) +
+      `<span style="opacity:.75">click to open this group</span>`;
+    tip.style.display = '';
+    let cx = e.clientX - wr.left + 14, cy = e.clientY - wr.top + 14;
+    if (cx + tip.offsetWidth > wr.width) cx = e.clientX - wr.left - tip.offsetWidth - 14;
+    if (cy + tip.offsetHeight > wr.height) cy = wr.height - tip.offsetHeight - 8;
+    tip.style.left = Math.max(4, cx) + 'px'; tip.style.top = Math.max(4, cy) + 'px';
+    return;
+  }
   tip.innerHTML = `<div class="gt-name">${esc(orb.name)}</div>Score ${orb.score == null ? '-' : num1(orb.score)} · ${esc(orb.status || '-')}` +
     `${orb.stage ? ` · ${esc(MEDAL_LABEL[orb.stage] || orb.stage)}` : ''}<br>${numInt(orb.rows)} rows` +
     `${orb.trust && TRUST_META[orb.trust] ? `<br>${TRUST_META[orb.trust].icon} ${TRUST_META[orb.trust].label}` : ''}` +
@@ -10609,10 +10817,16 @@ function startGalaxyLoop() {
     } else if (g.selRing) g.selRing.visible = false;
     g.orbs.forEach(o => {
       const s = o === sel ? 1.85 : (o === g.hovered ? 1.35 : 1);
-      o.mesh.scale.setScalar(s);
+      o.mesh.scale.setScalar(o.r * s);                // o.r, because the geometry is a UNIT sphere
       o.halo.material.opacity = o === sel ? 0.95 : (sel ? 0.35 : 0.6);        // dim the rest when one is selected
       // Medal ring shows ONLY on the selected orb (when walls are on) - a clear selection cue.
-      if (o.ring) { o.ring.scale.setScalar(o.r * 3.0 * s); o.ring.visible = GALAXY.wallsOn && o.mesh.visible && o === sel; o.ring.material.opacity = 1; }
+      if (o.ring && o.clusterRing) {
+        // A group's "contains failures" ring is always on, unlike a dataset's medal ring which
+        // only shows for the selected orb.
+        o.ring.scale.setScalar(o.r * 2.6 * s); o.ring.visible = o.mesh.visible;
+      } else if (o.ring) {
+        o.ring.scale.setScalar(o.r * 3.0 * s); o.ring.visible = GALAXY.wallsOn && o.mesh.visible && o === sel; o.ring.material.opacity = 1;
+      }
     });
     g.renderer.render(g.scene, g.camera);
   };
@@ -10667,6 +10881,16 @@ function openGalaxyDataset(key, name) {
 
 function renderGalaxyLegend() {
   const el = $('#galaxyLegend'); if (!el) return;
+  if (GALAXY.clustered) {
+    // At group level there are no medal rings and size is a dataset count, so the dataset legend
+    // would be describing something that is not on screen.
+    el.innerHTML = `<span class="gl-item" style="color:#8792a6;">Fill</span>` +
+      [['#30d67f', 'Avg \u2265 95'], ['#f5b73d', 'Avg \u2265 85'], ['#ff5d5d', 'Avg < 85']]
+        .map(([c, l]) => `<span class="gl-item"><span class="gl-dot" style="color:${c};background:${c};"></span>${l}</span>`).join('') +
+      `<span class="gl-sep"></span><span class="gl-item"><span class="gl-ring" style="border-color:#ff5d5d;"></span>contains failing datasets</span>` +
+      `<span class="gl-sep"></span><span class="gl-item" style="color:#8792a6;">size: datasets</span>`;
+    return;
+  }
   el.innerHTML = `<span class="gl-item" style="color:#8792a6;">Fill</span>` +
     [['#30d67f', 'Green'], ['#f5b73d', 'Amber'], ['#ff5d5d', 'Red']]
       .map(([c, l]) => `<span class="gl-item"><span class="gl-dot" style="color:${c};background:${c};"></span>${l}</span>`).join('') +
@@ -10686,9 +10910,76 @@ async function renderGalaxy(datasets) {
   if (msg) msg.style.display = 'none';
   initGalaxyScene(wrap);
   wireGalaxyTools();
-  buildGalaxyOrbs(datasets);
+  _gxRender(datasets);
   startGalaxyLoop();
   requestAnimationFrame(() => GALAXY.onResize && GALAXY.onResize());
+}
+
+/**
+ * Decide which of the two levels to draw, and keep the controls in step.
+ *
+ * Grouped only when there are enough datasets to need it AND nobody has drilled in. A small estate
+ * never sees any of this: same galaxy, same behaviour, no new controls.
+ */
+/** The vertical and depth axes mean different things at the two levels; say the right one. */
+function _gxAxisLabels(clustered) {
+  const L = GALAXY.axisLabels; if (!L) return;
+  L.vol.visible = !clustered;                  // dataset view: row count
+  L.count.visible = clustered;                 // group view: number of datasets
+  L.stage.visible = !clustered;                // depth is only a spreading device when grouped
+}
+
+function _gxRender(datasets) {
+  GALAXY.datasets = datasets || [];
+  const many = GALAXY.datasets.length >= GALAXY_CLUSTER_AT;
+  const sel = $('#gxGroupBy'), back = $('#gxBackBtn'), msg = $('#galaxyMsg');
+
+  if (sel) { sel.style.display = many ? '' : 'none'; sel.value = GALAXY.groupBy; }
+  if (back) back.style.display = (many && GALAXY.drill) ? '' : 'none';
+
+  if (!many) {
+    GALAXY.drill = null; GALAXY.clustered = false;
+    _gxAxisLabels(false); buildGalaxyOrbs(GALAXY.datasets); return;
+  }
+
+  if (GALAXY.drill) {
+    const members = GALAXY.datasets.filter(d => _gxGroupOf(d, GALAXY.drill.by) === GALAXY.drill.label);
+    GALAXY.clustered = false;
+    _gxAxisLabels(false);
+    buildGalaxyOrbs(members);
+    renderGalaxyLegend();
+    if (msg) {
+      msg.textContent = members.length + ' dataset' + (members.length === 1 ? '' : 's')
+        + ' in "' + GALAXY.drill.label + '" \u00b7 click \u2190 All to go back';
+      msg.style.display = '';
+      setTimeout(() => { if (msg.style.display !== 'none') msg.style.display = 'none'; }, 3200);
+    }
+    return;
+  }
+
+  const clusters = _gxBuildClusters(GALAXY.datasets, GALAXY.groupBy);
+  GALAXY.clustered = true;
+  _gxAxisLabels(true);
+  buildGalaxyClusterOrbs(clusters);
+  renderGalaxyLegend();                     // the legend describes a different thing at this level
+  if (msg) {
+    msg.textContent = GALAXY.datasets.length + ' datasets grouped by '
+      + (_GX_GROUP_LABEL[GALAXY.groupBy] || GALAXY.groupBy)
+      + ' \u00b7 click a group to open it';
+    msg.style.display = '';
+    setTimeout(() => { if (msg.style.display !== 'none') msg.style.display = 'none'; }, 3200);
+  }
+}
+
+/** Open one group. Cheap: it re-renders from data already in memory, no request. */
+function _gxDrillInto(label) {
+  GALAXY.drill = { by: GALAXY.groupBy, label };
+  _gxRender(GALAXY.datasets);
+}
+
+function _gxDrillOut() {
+  GALAXY.drill = null;
+  _gxRender(GALAXY.datasets);
 }
 
 function switchTab(name) {
