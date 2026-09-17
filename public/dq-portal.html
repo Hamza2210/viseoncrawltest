@@ -1257,6 +1257,17 @@
     border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; background: var(--card); }
   .lin-appnode { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
   .lin-ico { font-size: 20px; flex: none; }
+  /* Association verdicts on the model diagram. Unjudged links keep the default stroke: a colour
+     here would claim a check that never happened. */
+  .mline.mi-green { stroke: var(--ok); stroke-opacity: .75; }
+  .mline.mi-amber { stroke: var(--run); stroke-opacity: .85; stroke-width: 2.5px; }
+  .mline.mi-red { stroke: var(--err); stroke-opacity: .95; stroke-width: 3px; }
+  .mtable.mi-island { border-style: dashed; opacity: .82; }
+  .mi-strip { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center;
+              padding: 9px 12px; margin: 0 0 10px; border: 1px solid var(--border);
+              border-radius: 8px; font-size: 12.5px; }
+  .mi-strip .mi-score { font-weight: 700; font-size: 15px; }
+  .mi-strip .mi-note { color: var(--idle); }
   /* Quality of the dataset this source feeds. `unknown` is deliberately hollow rather than a
      colour: it must never be mistaken for a healthy reading. */
   .lin-rag { width: 9px; height: 9px; border-radius: 50%; flex: none; margin-right: 2px; }
@@ -2575,6 +2586,9 @@
         <button class="btn-sm" id="modelRefresh">Refresh</button>
       </div>
       <p class="dash-muted" style="margin:0 0 10px;">Drag tables to arrange (layout is saved). Click a field to trace it across tables; click a table header to preview its data.</p>
+      <!-- Whether the associations Qlik drew actually hold. Empty until an app assessment has
+           produced a verdict, and it says so rather than looking like a clean bill of health. -->
+      <div class="mi-strip" id="modelIntegrity"></div>
       <div id="modelCanvasOuter">
         <button class="btn-sm" id="modelFsExit">⛶ Exit full screen</button>
         <div id="modelCanvasWrap">
@@ -12818,6 +12832,10 @@ async function loadModel() {
       postJSON(`${API_BASE}/data-quality/dashboard`, HEADERS, { app_id: APP_ID, window_days: 30 }).catch(() => ({ datasets: [] })),
     ]);
     modelData = { tables: model.tables || [], links: model.links || [] };
+    // The verdict on whether those associations hold. Null until an app assessment has produced
+    // one, in which case the diagram renders exactly as it always did.
+    modelIntegrity = model.integrity || null;
+    modelLinkStatus = _miIndex(modelIntegrity);
     buildModelFieldGroups();
     modelScores = {}; (dash.datasets || []).forEach(d => { modelScores[d.name] = d; });
     layoutModel(); renderModelDiagram();
@@ -12825,6 +12843,62 @@ async function loadModel() {
   } catch (e) {
     $('#modelNodes').innerHTML = ''; $('#modelCtx').textContent = ''; modelBanner('err', e.message);
   }
+}
+
+let modelIntegrity = null;      // the latest model-integrity report, or null
+let modelLinkStatus = {};       // "field\u0000TableA\u0000TableB" (sorted) -> verdict
+
+const _MI_RANK = { red: 3, amber: 2, green: 1 };
+
+function _miKey(field, a, b) {
+  const t = [a, b].sort();
+  return field + '\u0000' + t[0] + '\u0000' + t[1];
+}
+
+/** verdict lookup, keyed on the unordered table pair so it matches however the diagram lists them. */
+function _miIndex(report) {
+  const out = {};
+  ((report || {}).verdicts || []).forEach(v => { out[_miKey(v.field, v.from, v.to)] = v; });
+  return out;
+}
+
+/** The worst verdict across the fields a single drawn line represents, or null if none is judged. */
+function _miWorst(fields, a, b) {
+  let worst = null;
+  (fields || []).forEach(f => {
+    const v = modelLinkStatus[_miKey(f, a, b)];
+    if (!v || !_MI_RANK[v.status]) return;
+    if (!worst || _MI_RANK[v.status] > _MI_RANK[worst.status]) worst = v;
+  });
+  return worst;
+}
+
+/** One line above the diagram saying what the whole model resolves to. */
+function renderModelIntegrityStrip() {
+  const host = $('#modelIntegrity'); if (!host) return;
+  const r = modelIntegrity;
+  if (!r || !r.links) {
+    // Said plainly rather than left blank: a diagram with no verdict should not be mistaken for a
+    // diagram that passed.
+    host.innerHTML = '<span class="mi-note">Associations have not been checked yet. '
+      + 'Run an assessment of this app to find out which of these links actually hold.</span>';
+    return;
+  }
+  const col = r.status === 'green' ? 'var(--ok)' : (r.status === 'amber' ? 'var(--run)' : 'var(--err)');
+  const bits = [];
+  bits.push(`<span class="mi-score" style="color:${col}">${r.score == null ? '-' : num1(r.score)}</span>`
+    + `<span class="mi-note">&nbsp;model integrity</span>`);
+  bits.push(`${r.links} association${r.links === 1 ? '' : 's'} checked`);
+  if (r.unmatched_rows)
+    bits.push(`<strong style="color:var(--err)">${numInt(r.unmatched_rows)}</strong> rows drop out of `
+      + `charts combining their tables`);
+  else
+    bits.push('every association resolves');
+  if ((r.islands || []).length)
+    bits.push(`<span title="Associated to nothing. Either deliberate or a modelling bug.">`
+      + `${r.islands.length} island table${r.islands.length === 1 ? '' : 's'}: `
+      + `${esc(r.islands.slice(0, 4).join(', '))}</span>`);
+  host.innerHTML = bits.join('<span class="mi-note">\u00b7</span>');
 }
 
 function layoutModel() {
@@ -12874,6 +12948,10 @@ function renderModelDiagram() {
   });
   nodes.querySelectorAll('.mfield').forEach(f => f.addEventListener('click', e => { e.stopPropagation(); highlightField(f.getAttribute('data-field')); }));
   nodes.querySelectorAll('.mtable-score').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); scorePopup(e, b.getAttribute('data-name')); }));
+  const islands = new Set(((modelIntegrity || {}).islands) || []);
+  nodes.querySelectorAll('.mtable').forEach(el =>
+    el.classList.toggle('mi-island', islands.has(el.getAttribute('data-name'))));
+  renderModelIntegrityStrip();
   drawModelLines();
   applyModelZoom();
 }
@@ -12900,8 +12978,13 @@ function drawModelLines() {
   Object.values(direct).forEach(p => {
     const a = centers[p.a], b = centers[p.b]; if (!a || !b) return;
     const on = modelSelField && p.fields.includes(modelSelField);
-    const cls = 'mline' + (modelSelField ? (on ? ' hl' : ' dim') : '');
-    lines.push(`<path class="${cls}" d="M${a.x.toFixed(0)},${a.y.toFixed(0)} L${b.x.toFixed(0)},${b.y.toFixed(0)}" data-tip="${esc(p.fields.join(', '))}"></path>`);
+    // Worst wins across the fields this one line stands for. Safe here, unlike on the galaxy's
+    // clusters: a line carries one or two fields, so it cannot collapse to "everything is red".
+    const v = _miWorst(p.fields, p.a, p.b);
+    const vcls = v ? ' mi-' + v.status : '';
+    const tip = p.fields.join(', ') + (v && v.reason ? ' \u00b7 ' + v.reason : '');
+    const cls = 'mline' + vcls + (modelSelField ? (on ? ' hl' : ' dim') : '');
+    lines.push(`<path class="${cls}" d="M${a.x.toFixed(0)},${a.y.toFixed(0)} L${b.x.toFixed(0)},${b.y.toFixed(0)}" data-tip="${esc(tip)}"></path>`);
   });
   hubs.forEach(h => {
     const on = modelSelField === h.field;
