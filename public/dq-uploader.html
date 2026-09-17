@@ -1267,6 +1267,31 @@
               border-radius: 8px; font-size: 12.5px; }
   .mi-strip .mi-score { font-weight: 700; font-size: 15px; }
   .mi-strip .mi-note { color: var(--idle); }
+  .mi-strip.mi-clickable { cursor: pointer; }
+  .mi-strip.mi-clickable:hover { border-color: var(--accent, #5b8cff); }
+  .mi-more { margin-left: auto; color: var(--accent, #5b8cff); font-weight: 600; white-space: nowrap; }
+  /* The detail table. Kept plain: it is read, not interacted with. */
+  .mi-tbl { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  .mi-tbl th { text-align: left; padding: 7px 8px; color: var(--muted);
+               border-bottom: 1px solid var(--border); font-weight: 600; white-space: nowrap; }
+  .mi-tbl td { padding: 7px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  /* The reason is the column worth reading, so everything else is held to its content and it
+     takes what is left. Without this the base modal's 560px crushed it into a vertical ribbon. */
+  .mi-tbl td:nth-child(1), .mi-tbl td:nth-child(4) { white-space: nowrap; }
+  .mi-tbl td:nth-child(2), .mi-tbl td:nth-child(3) { white-space: nowrap; }
+  .mi-tbl td:nth-child(5) { white-space: nowrap; text-align: right; }
+  .mi-tbl td:nth-child(6) { width: 46%; line-height: 1.45; }
+  .mi-tbl tr:last-child td { border-bottom: 0; }
+  .mi-pill { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 11px;
+             font-weight: 700; }
+  .mi-pill.green { background: var(--ok-bg); color: var(--ok); }
+  .mi-pill.amber { background: var(--run-bg); color: var(--run); }
+  .mi-pill.red { background: var(--err-bg); color: var(--err); }
+  .mi-pill.unknown { background: var(--idle-bg); color: var(--idle); }
+  .mi-sec { margin: 18px 0 7px; font-weight: 700; color: var(--fg); font-size: 13px; }
+  .mi-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .mi-chips span { border: 1px solid var(--border); border-radius: 8px; padding: 3px 9px;
+                   font-size: 12px; }
   /* Quality of the dataset this source feeds. `unknown` is deliberately hollow rather than a
      colour: it must never be mistaken for a healthy reading. */
   .lin-rag { width: 9px; height: 9px; border-radius: 50%; flex: none; margin-right: 2px; }
@@ -2776,6 +2801,21 @@
       <div class="modal-foot">
         <button type="button" class="btn-sm" id="tmCancel">Cancel</button>
         <button type="button" id="tmApply">Apply selection</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Full model-integrity detail, opened from the strip above the diagram. Everything the
+       strip has to compress into one line is shown here in full, nothing truncated. -->
+  <div class="modal-overlay" id="modelIntegrityModal">
+    <div class="modal" style="width:1080px;max-width:96vw;">
+      <div class="modal-head">
+        <h3>Data model integrity</h3>
+        <button class="x-close" id="miClose" type="button" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body" id="miBody"></div>
+      <div class="modal-foot">
+        <button type="button" class="btn-sm" id="miCloseFoot">Close</button>
       </div>
     </div>
   </div>
@@ -11800,6 +11840,17 @@ $('#schChooseTables').addEventListener('click', openTableModal);
 $('#tmClose').addEventListener('click', closeTableModal);
 $('#tmCancel').addEventListener('click', closeTableModal);
 $('#tableModal').addEventListener('click', e => { if (e.target.id === 'tableModal') closeTableModal(); });
+
+$('#miClose').addEventListener('click', closeModelIntegrityModal);
+$('#miCloseFoot').addEventListener('click', closeModelIntegrityModal);
+$('#modelIntegrityModal').addEventListener('click', e => {
+  if (e.target.id === 'modelIntegrityModal') closeModelIntegrityModal();
+});
+$('#modelIntegrity').addEventListener('click', openModelIntegrityModal);
+// Reachable without a mouse: the strip is a button, so it answers to a keyboard like one.
+$('#modelIntegrity').addEventListener('keydown', e => {
+  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openModelIntegrityModal(); }
+});
 $('#dfClose').addEventListener('click', closeDashFilterModal);
 $('#dfDone').addEventListener('click', closeDashFilterModal);
 $('#dfClear').addEventListener('click', clearDashFilters);
@@ -12884,21 +12935,100 @@ function renderModelIntegrityStrip() {
     return;
   }
   const col = r.status === 'green' ? 'var(--ok)' : (r.status === 'amber' ? 'var(--run)' : 'var(--err)');
+  // HEADLINE FIGURES ONLY. This line used to also list island tables and truncate them, so it
+  // could say "5 island tables" and then name four - a count disagreeing with the list beside it,
+  // which makes a reader doubt the count. Everything that needs room is in the modal.
+  const bad = (r.verdicts || []).filter(v => v.status === 'red' || v.status === 'amber').length;
   const bits = [];
   bits.push(`<span class="mi-score" style="color:${col}">${r.score == null ? '-' : num1(r.score)}</span>`
     + `<span class="mi-note">&nbsp;model integrity</span>`);
-  bits.push(`${r.links} association${r.links === 1 ? '' : 's'} checked`);
+  bits.push(`${r.links} association${r.links === 1 ? '' : 's'}`);
+  bits.push(bad ? `<strong style="color:var(--err)">${bad}</strong> with findings`
+                : 'all resolve');
   if (r.unmatched_rows)
-    bits.push(`<strong style="color:var(--err)">${numInt(r.unmatched_rows)}</strong> rows drop out of `
-      + `charts combining their tables`);
-  else
-    bits.push('every association resolves');
+    bits.push(`<strong style="color:var(--err)">${numInt(r.unmatched_rows)}</strong> rows excluded`);
   if ((r.islands || []).length)
-    bits.push(`<span title="Associated to nothing. Either deliberate or a modelling bug.">`
-      + `${r.islands.length} island table${r.islands.length === 1 ? '' : 's'}: `
-      + `${esc(r.islands.slice(0, 4).join(', '))}</span>`);
-  host.innerHTML = bits.join('<span class="mi-note">\u00b7</span>');
+    bits.push(`${r.islands.length} island table${r.islands.length === 1 ? '' : 's'}`);
+  host.className = 'mi-strip mi-clickable';
+  host.setAttribute('role', 'button');
+  host.setAttribute('tabindex', '0');
+  host.title = 'Open the full model integrity detail';
+  host.innerHTML = bits.join('<span class="mi-note">\u00b7</span>')
+    + '<span class="mi-more">Details &rsaquo;</span>';
 }
+
+/** Everything the strip compresses, in full. Nothing here is truncated or summarised. */
+function renderModelIntegrityModal() {
+  const body = $('#miBody'), r = modelIntegrity;
+  if (!body) return;
+  if (!r || !r.links) {
+    body.innerHTML = '<p class="dash-muted">No verdict yet. Run an assessment of this app to '
+      + 'find out which of these associations actually hold.</p>';
+    return;
+  }
+  const pill = (st) => `<span class="mi-pill ${esc(st || 'unknown')}">${esc(st || 'unknown')}</span>`;
+  const n = (v) => (v == null ? '-' : numInt(v));
+
+  const head = `<div class="mi-strip" style="margin-top:6px;">`
+    + `<span class="mi-score">${r.score == null ? '-' : num1(r.score)}</span>`
+    + `<span class="mi-note">&nbsp;model integrity</span>`
+    + `<span class="mi-note">\u00b7</span>${r.links} association${r.links === 1 ? '' : 's'} checked`
+    + `<span class="mi-note">\u00b7</span>${n(r.unmatched_rows)} rows excluded`
+    + `</div>`;
+
+  // Worst first: the association somebody needs to look at should not be the one they scroll for.
+  const RANK = { red: 3, amber: 2, unknown: 1, green: 0 };
+  const rows = (r.verdicts || []).slice().sort((a, b) =>
+    (RANK[b.status] || 0) - (RANK[a.status] || 0) || (b.unmatched_rows || 0) - (a.unmatched_rows || 0));
+
+  const tbl = `<table class="mi-tbl">
+      <tr><th>Status</th><th>Field</th><th>Tables</th><th>Shape</th>
+          <th style="text-align:right;">Rows excluded</th><th>What it means</th></tr>` +
+    rows.map(v => {
+      const pair = v.parent
+        ? `${esc(v.parent)} <span class="mi-note">&rarr;</span> ${esc(v.child)}`
+        : `${esc(v.from)} <span class="mi-note">&harr;</span> ${esc(v.to)}`;
+      const pct = (v.unmatched_pct != null && v.unmatched_rows)
+        ? `<div class="hint">${num1(v.unmatched_pct)}% of ${esc(v.child || '')}</div>` : '';
+      return `<tr><td>${pill(v.status)}</td><td><strong>${esc(v.field)}</strong></td>` +
+        `<td>${pair}</td><td>${esc((v.shape || '').replace(/_/g, ' '))}</td>` +
+        `<td style="text-align:right;">${v.unmatched_rows ? `<strong style="color:var(--err)">` +
+          `${n(v.unmatched_rows)}</strong>` : '0'}${pct}</td>` +
+        `<td>${esc(v.reason || (v.status === 'green' ? 'Every value resolves.' : ''))}</td></tr>`;
+    }).join('') + `</table>`;
+
+  const chips = (list) => `<div class="mi-chips">${(list || []).map(x =>
+    `<span>${esc(x)}</span>`).join('')}</div>`;
+
+  // Listed in FULL, which is the whole reason this modal exists.
+  const islands = (r.islands || []).length
+    ? `<div class="mi-sec">Island tables (${r.islands.length})</div>`
+      + `<p class="hint" style="margin:0 0 7px;">Associated to nothing. Either deliberate, or a `
+      + `table whose key never matched and was left stranded.</p>${chips(r.islands)}` : '';
+  const notUnique = (r.keys_not_unique || []).length
+    ? `<div class="mi-sec">Keys that are not unique (${r.keys_not_unique.length})</div>`
+      + `<p class="hint" style="margin:0 0 7px;">Qlik types these as keys, but the values repeat `
+      + `wherever they appear, so joining on them multiplies rows.</p>${chips(r.keys_not_unique)}` : '';
+
+  const note = `<p class="hint" style="margin:16px 0 4px;">`
+    + `Qlik declares no foreign keys. A finding here means values on one side have no match on the `
+    + `other, so those rows are excluded from any chart combining the two tables. Counted on the `
+    + `full table, before any sampling.</p>`
+    // fmtWhen parses the RUN-ID shape (dashes in the time), which is exactly what run_id is.
+    // generated_at_utc is standard ISO and would fall straight through it unformatted.
+    + (r.run_id ? `<p class="hint" style="margin:0;">From the assessment of `
+        + `${esc(fmtWhen(r.run_id))}.</p>` : '');
+
+  body.innerHTML = head + `<div class="mi-sec">Associations (${rows.length})</div>` + tbl
+    + islands + notUnique + note;
+}
+
+function openModelIntegrityModal() {
+  if (!modelIntegrity || !modelIntegrity.links) return;   // nothing to show yet
+  renderModelIntegrityModal();
+  $('#modelIntegrityModal').classList.add('open');
+}
+function closeModelIntegrityModal() { $('#modelIntegrityModal').classList.remove('open'); }
 
 function layoutModel() {
   const saved = loadModelPos(), T = modelData.tables, W = 1500, H = 820;
