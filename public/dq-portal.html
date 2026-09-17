@@ -3148,20 +3148,13 @@ const SOURCE_FMT_SVG = {
     '<rect x="11.4" y="9.3" width="1.15" height="3.4" rx=".3"/></g>' +
     '<circle cx="10.5" cy="10.6" r="4.2" fill="none" stroke="#fff" stroke-width="1.5"/>' +
     '<line x1="13.7" y1="13.8" x2="17.2" y2="17.3" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/>'),
-  // Microsoft Fabric: the three stacked, left-leaning bands of the official mark, each sweeping
-  // teal to green. The gradients share one user-space axis so the sweep lines up across bands
-  // instead of restarting inside each one.
-  fabric: _svg('<defs>' +
-    '<linearGradient id="fbT" gradientUnits="userSpaceOnUse" x1="1" y1="0" x2="23" y2="0">' +
-    '<stop offset="0" stop-color="#5BE0C4"/><stop offset="1" stop-color="#C6EC6B"/></linearGradient>' +
-    '<linearGradient id="fbM" gradientUnits="userSpaceOnUse" x1="1" y1="0" x2="23" y2="0">' +
-    '<stop offset="0" stop-color="#1FB5A7"/><stop offset="1" stop-color="#8ED04E"/></linearGradient>' +
-    '<linearGradient id="fbB" gradientUnits="userSpaceOnUse" x1="1" y1="0" x2="23" y2="0">' +
-    '<stop offset="0" stop-color="#0C7A74"/><stop offset="1" stop-color="#2FA886"/></linearGradient>' +
-    '</defs>' +
-    '<path d="M9.2 2.6 H22.4 L19.3 8.2 H6.1 Z" fill="url(#fbT)"/>' +
-    '<path d="M6.6 9.5 H17.6 L14.5 15.1 H3.5 Z" fill="url(#fbM)"/>' +
-    '<path d="M4.0 16.4 H11.6 L8.5 22.0 H0.9 Z" fill="url(#fbB)"/>'),
+  // Microsoft Fabric: the three stacked, left-leaning bands of the official mark. The real
+  // artwork sweeps teal to green with a gradient; these are flat fills stepping the same descent,
+  // because a <defs> + fill="url(#id)" is the one thing no other mark here depends on, and it was
+  // reported rendering blank. At 13px the quantised sweep is indistinguishable from the smooth one.
+  fabric: _svg('<path d="M9.2 2.6 H22.4 L19.3 8.2 H6.1 Z" fill="#8FE39A"/>' +
+    '<path d="M6.6 9.5 H17.6 L14.5 15.1 H3.5 Z" fill="#40BE86"/>' +
+    '<path d="M4.0 16.4 H11.6 L8.5 22.0 H0.9 Z" fill="#12857A"/>'),
   // SharePoint: overlapping teal circles + a dark-teal "S" tile
   sharepoint: _svg('<circle cx="15.4" cy="7" r="5" fill="#0B6A6E"/><circle cx="18" cy="14.4" r="5" fill="#1CA6AD"/>' +
     '<circle cx="13.4" cy="18.6" r="4.3" fill="#37C6CE"/>' +
@@ -12073,10 +12066,13 @@ const SCHED_SOURCE_FIELDS = {
   fabric: [
     { f: 'host', label: 'SQL analytics endpoint', full: true }, { f: 'port', label: 'Port', value: '1433' },
     { f: 'database', label: 'Warehouse / lakehouse' },
-    { f: 'auth', label: 'Authentication', value: 'sql' },
-    { f: 'user', label: 'User' }, { f: 'password', label: 'Password', type: 'password' },
-    { f: 'tenant', label: 'Entra tenant' }, { f: 'client_id', label: 'Client ID' },
-    { f: 'client_secret', label: 'Client secret', type: 'password' },
+    { f: 'auth', label: 'Authentication', type: 'select',
+      options: [['sql', 'SQL login'], ['entra', 'Entra service principal']] },
+    { f: 'user', label: 'User', cls: 'fab-sql' },
+    { f: 'password', label: 'Password', type: 'password', cls: 'fab-sql' },
+    { f: 'tenant', label: 'Entra tenant', cls: 'fab-entra' },
+    { f: 'client_id', label: 'Client ID', cls: 'fab-entra' },
+    { f: 'client_secret', label: 'Client secret', type: 'password', cls: 'fab-entra' },
     { f: 'schema', label: 'Schema', value: 'dbo' }, { f: 'table', label: 'Table' },
     { f: 'sample_rows', label: 'Sample rows', type: 'number' },
   ],
@@ -12176,13 +12172,38 @@ function renderSchedSourceFields(kind) {
       : fld.type === 'textarea'
         ? `<textarea data-f="${fld.f}" rows="4" style="font-family:ui-monospace,Menlo,monospace;font-size:12px;resize:vertical;"${fld.placeholder ? ` placeholder="${esc(fld.placeholder)}"` : ''}></textarea>`
         : `<input data-f="${fld.f}"${fld.type ? ` type="${fld.type}"` : ''}${fld.value ? ` value="${esc(fld.value)}"` : ''}>`;
-    return `<div class="src-field${fld.full ? ' full' : ''}"><label>${esc(fld.label)}${ic}</label>${input}</div>`;
+    const cls = (fld.full ? ' full' : '') + (fld.cls ? ' ' + fld.cls : '');
+    return `<div class="src-field${cls}"><label>${esc(fld.label)}${ic}</label>${input}</div>`;
   }).join('');
+  wireSchedFabricAuth(wrap);
+}
+
+// The source tab hides the credentials the chosen mode does not use; this form is built from a
+// list, so it has to do the same thing rather than inherit it. Showing both sets at once asks for
+// a password AND a client secret for one connection, and only one of them will ever be read.
+function wireSchedFabricAuth(wrap) {
+  const sel = wrap.querySelector('select[data-f="auth"]');
+  if (!sel) return;
+  const apply = () => {
+    const entra = sel.value === 'entra';
+    wrap.querySelectorAll('.fab-sql').forEach(el => { el.style.display = entra ? 'none' : ''; });
+    wrap.querySelectorAll('.fab-entra').forEach(el => { el.style.display = entra ? '' : 'none'; });
+  };
+  sel.addEventListener('change', apply);
+  apply();
 }
 
 function collectSchedSource() {
   const wrap = $('#schedSourceFields'), cfg = {};
-  if (wrap) wrap.querySelectorAll('[data-f]').forEach(el => { const v = (el.value || '').trim(); if (v) cfg[el.dataset.f] = v; });
+  // A field the form is hiding is not part of this configuration. Without this, typing a
+  // password and then switching to Entra would store that password on the schedule for a
+  // connection that authenticates with a token and will never read it.
+  if (wrap) wrap.querySelectorAll('[data-f]').forEach(el => {
+    const row = el.closest('.src-field');
+    if (row && row.style.display === 'none') return;
+    const v = (el.value || '').trim();
+    if (v) cfg[el.dataset.f] = v;
+  });
   if (schedProfile) cfg.credential_profile = schedProfile;   // secrets injected server-side at create
   return cfg;
 }
