@@ -1256,6 +1256,15 @@
     border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; background: var(--card); }
   .lin-appnode { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
   .lin-ico { font-size: 20px; flex: none; }
+  /* Quality of the dataset this source feeds. `unknown` is deliberately hollow rather than a
+     colour: it must never be mistaken for a healthy reading. */
+  .lin-rag { width: 9px; height: 9px; border-radius: 50%; flex: none; margin-right: 2px; }
+  .lin-rag.green { background: var(--ok); }
+  .lin-rag.amber { background: var(--run); }
+  .lin-rag.red { background: var(--err); }
+  .lin-rag.unknown { background: transparent; border: 1px dashed var(--idle); }
+  .lin-node.lin-red { border-color: rgba(251,113,133,.5); }
+  .lin-node.lin-amber { border-color: rgba(251,191,36,.42); }
   .lin-label { font-weight: 600; font-size: 13px; word-break: break-word; }
 
   /* Micro-interactions: a gentle grow/lift on hover for clickable things */
@@ -9021,10 +9030,83 @@ function _linItem(s) {
   if (typeof s.tables === 'number') meta.push(esc(String(s.tables)) + ' table(s)');
   if (typeof s.fields === 'number') meta.push(esc(String(s.fields)) + ' field(s)');
   if (s.appId) meta.push('id ' + esc(s.appId));       // app name is the label; keep the id visible
-  return `<div class="lin-node"><span class="lin-ico">${_linIcon(s)}</span>` +
-    `<div><div class="lin-label">${esc(s.label || s.qri || '-')}</div>` +
-    `<div class="hint">${meta.join(' · ')}</div></div></div>`;
+
+  // Quality of the table this source feeds, when we can honestly say which table that is.
+  const m = _linMatch(s.label, dashDatasetsAll || []);
+  const rag = _linRag(m);
+  let quality, tip;
+  if (m && rag !== 'unknown') {
+    quality = `<span style="font-weight:600;">${num1(m.d.score)}</span> · ${esc(rag)}`
+      + (m.d.lastSeen ? ` · assessed ${esc(fmtWhen(m.d.lastSeen))}` : '');
+    tip = `${esc(m.d.name)} (${esc(m.how)})`;
+  } else if (m) {
+    // The table exists but has never produced a score. Saying so is the useful answer; colouring
+    // it in would be inventing one.
+    quality = 'matched, not assessed yet';
+    tip = `${esc(m.d.name)} (${esc(m.how)}) - no assessment yet`;
+  } else {
+    quality = 'no matching dataset';
+    tip = 'This source could not be matched to an assessed table in this app, so its quality is '
+        + 'unknown. It is not necessarily healthy.';
+  }
+  const cls = rag === 'red' ? ' lin-red' : (rag === 'amber' ? ' lin-amber' : '');
+  return `<div class="lin-node${cls}" title="${tip}"><span class="lin-ico">${_linIcon(s)}</span>` +
+    `<div style="min-width:0;"><div class="lin-label">${esc(s.label || s.qri || '-')}</div>` +
+    `<div class="hint">${meta.join(' · ')}</div>` +
+    `<div class="hint" style="display:flex;align-items:center;gap:6px;margin-top:3px;">` +
+      `<span class="lin-rag ${rag}"></span>${quality}</div></div></div>`;
 }
+// ---- Lineage <-> dataset matching ---------------------------------------- //
+// Built and measured against real cached lineage before it was wired to anything: 18 of 21
+// upstream nodes resolved on the app that has assessments, with all three misses correct.
+const _LIN_EXT = /\.(qvd|parquet|pq|csv|tsv|xlsx?|json|ndjson|jsonl|txt)$/i;
+
+function _linLeaf(label) {
+  const t = String(label || '').trim().split(/[\\/]/).pop();
+  return t.replace(_LIN_EXT, '');
+}
+function _linNorm(v) { return _linLeaf(v).toLowerCase().replace(/[^a-z0-9]+/g, ''); }
+
+/**
+ * The dataset a lineage node feeds, or null.
+ *
+ * Two rules, both evidenced by real graphs, and deliberately no more:
+ *   exact   the source's name IS the table's name        (reloadLog.qvd -> ReloadLog)
+ *   prefix  a SHORT delimited layer marker is dropped    (s2_grr.qvd -> grr)
+ *
+ * A looser "either name ends with the other" rule was measured first and produced
+ * RestConnectorMasterTable -> MasterTable, which nothing supports. Refusing to guess is the point:
+ * a wrong match paints a source with an unrelated table's score.
+ */
+function _linMatch(label, datasets) {
+  const leaf = _linLeaf(label), n = _linNorm(label);
+  if (!n) return null;
+  const by = new Map();
+  (datasets || []).forEach(d => {
+    const k = _linNorm(d.name || d.slug || '');
+    if (!k) return;
+    if (!by.has(k)) by.set(k, []);
+    by.get(k).push(d);
+  });
+  const uniq = (k) => (by.get(k) && by.get(k).length === 1) ? by.get(k)[0] : null;
+
+  const exact = uniq(n);
+  if (exact) return { d: exact, how: 'name' };
+  const us = leaf.indexOf('_');
+  if (us > 0 && us <= 3) {
+    const tail = uniq(_linNorm(leaf.slice(us + 1)));
+    if (tail) return { d: tail, how: 'matched on ' + leaf.slice(0, us) + '_ prefix' };
+  }
+  return null;
+}
+
+/** The RAG class for a node: only ever a colour when there is a real score behind it. */
+function _linRag(m) {
+  if (!m || !m.d) return 'unknown';
+  const st = String(m.d.status || '').toLowerCase();
+  return (st === 'green' || st === 'amber' || st === 'red') ? st : 'unknown';
+}
+
 async function loadLineage(refresh) {
   if (!configOK) return;
   const body = $('#lineageBody');
@@ -9033,6 +9115,12 @@ async function loadLineage(refresh) {
   $('#lineageCtx').textContent = 'App: ' + APP_ID;
   body.innerHTML = `<p class="dash-muted"><span class="spin"></span> ${refresh ? 'Re-pulling from Qlik…' : 'Loading lineage…'}</p>`;
   try {
+    // The colours come from the dashboard's dataset list. Landing on Lineage first would otherwise
+    // render every node "no matching dataset" - which looks like a finding and is really just an
+    // empty cache.
+    if (!(dashDatasetsAll || []).length) {
+      try { await loadDashboard(); } catch (_) { /* colouring degrades to unknown, graph still shows */ }
+    }
     const hdr = { ...HEADERS, 'X-Qlik-Bearer': BEARER };
     const r = await postJSON(`${API_BASE}/data-quality/lineage`, hdr, { app_id: APP_ID, refresh: !!refresh });
     renderLineage(r);
@@ -9040,11 +9128,30 @@ async function loadLineage(refresh) {
     body.innerHTML = `<p class="dash-muted" style="color:var(--err)">${esc(e.message)}</p>`;
   }
 }
+/** How much of this graph we can actually speak to. Shown, because silence reads as "all fine". */
+function _linCoverage(nodes) {
+  const ds = dashDatasetsAll || [];
+  let scored = 0, matched = 0;
+  (nodes || []).forEach(n => {
+    const m = _linMatch(n.label, ds);
+    if (m) { matched++; if (_linRag(m) !== 'unknown') scored++; }
+  });
+  return { total: (nodes || []).length, matched, scored };
+}
+
 function renderLineage(r) {
   const up = r.upstream || [], down = r.downstream || [];
   const upHtml = up.length ? up.map(_linItem).join('') : '<p class="dash-muted">No upstream sources found for this app.</p>';
   const downHtml = down.length ? down.map(_linItem).join('')
     : '<p class="dash-muted">No downstream consumers - this app is a leaf (nothing else depends on it).</p>';
+  const cov = _linCoverage(up.concat(down));
+  const covNote = cov.total
+    ? `<p class="hint" style="margin-top:12px;">` +
+      `<span class="lin-rag unknown" style="display:inline-block;vertical-align:middle;margin-right:6px;"></span>` +
+      `${cov.scored} of ${cov.total} source${cov.total === 1 ? '' : 's'} carry a data-quality score. ` +
+      `The rest could not be matched to an assessed table in this app, or have not been assessed yet. ` +
+      `<strong>Unknown is not the same as healthy.</strong></p>`
+    : '';
   const stamp = (r.fetchedAt ? `Last refreshed ${esc(fmtWhen(r.fetchedAt))}` : '') +
     (r.stale ? ' · <span style="color:var(--run)">stale - Qlik unreachable, showing cache</span>'
       : (r.cached ? ' · <span class="hint">cached</span>' : ''));
@@ -9057,7 +9164,8 @@ function renderLineage(r) {
       `<div class="lin-arrow">→</div>` +
       `<div class="lin-col"><div class="chart-title">Downstream consumers (${down.length})</div>${downHtml}</div>` +
     `</div>` +
-    (stamp ? `<p class="hint" style="margin-top:14px;">${stamp}</p>` : '');
+    covNote +
+    (stamp ? `<p class="hint" style="margin-top:8px;">${stamp}</p>` : '');
 }
 $('#lineageRefresh').addEventListener('click', e => { e.preventDefault(); loadLineage(true); });
 
