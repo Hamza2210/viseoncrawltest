@@ -14,6 +14,7 @@
     --ok: #34d399; --ok-bg: rgba(52,211,153,.16); --run: #fbbf24; --run-bg: rgba(251,191,36,.16);
     --err: #fb7185; --err-bg: rgba(251,113,133,.17); --idle: #94a2be; --idle-bg: #1a2338;
     --code-bg: #060a12; --code-fg: #cbd5e1;
+    --dq-ease: cubic-bezier(.22, .61, .36, 1);
     --shadow-sm: 0 1px 2px rgba(0,0,0,.35);
     --shadow: 0 1px 3px rgba(0,0,0,.45), 0 8px 22px rgba(0,0,0,.30);
     --shadow-md: 0 8px 28px rgba(0,0,0,.50);
@@ -92,6 +93,45 @@
     .bs-ring { animation: none; border-top-color: #5b8cff; border-right-color: #a78bfa; }
     #bootSplash { transition: none; }
   }
+  /* ---- Motion ----------------------------------------------------------------------- //
+     One vocabulary for the whole app, matching the two animations that were already here
+     (cmpSecIn, medalin): a fade plus a small upward translate. Everything animates OPACITY and
+     TRANSFORM only, so it composites and never triggers layout.
+
+     Using translate on a whole panel is safe here because all four .modal-overlay elements are
+     top-level: a transformed ancestor becomes the containing block for its position:fixed
+     descendants, so a nested overlay would otherwise be dragged along by the panel.
+
+     Applied on NAVIGATION - a tab becoming visible, a modal opening, a graph being drawn - and
+     deliberately NOT on every re-render: the dataset table and the lineage picker rebuild on each
+     keystroke of their search boxes, and a fade replaying per keystroke reads as flicker. */
+  @keyframes dqIn   { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  @keyframes dqFade { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes dqPop  { from { opacity: 0; transform: translateY(8px) scale(.985); } to { opacity: 1; transform: none; } }
+  .dq-in { animation: dqIn .26s var(--dq-ease) both; }
+  /* Staggered entry for a rendered list. Capped at ten steps: past that the delay stops reading
+     as a flourish and starts reading as the page being slow. */
+  .dq-stagger > * { animation: dqIn .28s var(--dq-ease) both; }
+  .dq-stagger > *:nth-child(1) { animation-delay: 0.012s; }
+  .dq-stagger > *:nth-child(2) { animation-delay: 0.024s; }
+  .dq-stagger > *:nth-child(3) { animation-delay: 0.036s; }
+  .dq-stagger > *:nth-child(4) { animation-delay: 0.048s; }
+  .dq-stagger > *:nth-child(5) { animation-delay: 0.060s; }
+  .dq-stagger > *:nth-child(6) { animation-delay: 0.072s; }
+  .dq-stagger > *:nth-child(7) { animation-delay: 0.084s; }
+  .dq-stagger > *:nth-child(8) { animation-delay: 0.096s; }
+  .dq-stagger > *:nth-child(9) { animation-delay: 0.108s; }
+  .dq-stagger > *:nth-child(10) { animation-delay: 0.120s; }
+  .dq-stagger > *:nth-child(n+11) { animation-delay: .13s; }
+  /* Modals need no JS hook: .open is added to the overlay each time it is shown, and that is
+     enough to start the animation. */
+  .modal-overlay.open { animation: dqFade .15s var(--dq-ease) both; }
+  .modal-overlay.open .modal { animation: dqPop .22s var(--dq-ease) both; }
+  @media (prefers-reduced-motion: reduce) {
+    .dq-in, .dq-stagger > *, .modal-overlay.open, .modal-overlay.open .modal,
+    .medal-card-in, .cmp-sec-detail { animation: none !important; }
+  }
+
   .brand-title { font-size: 21px; font-weight: 800; letter-spacing: -.02em;
     background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
   .brand-sub { color: var(--muted); font-size: 11px; margin-top: 3px; line-height: 1.4; }
@@ -2539,7 +2579,7 @@
     <div class="card" id="historyAppCard">
       <h2>Full app assessments <button class="linkbtn" id="historyAppRefresh">Refresh</button></h2>
       <p class="dash-muted" style="margin:-4px 0 12px;font-size:12px;">Assessments where <strong>every</strong> table in the app was selected, grouped by run. Click a run to see each table's result.</p>
-      <div class="dash-tiles" id="historyAppTiles" style="margin-bottom:16px;"></div>
+      <div class="dash-tiles dq-stagger" id="historyAppTiles" style="margin-bottom:16px;"></div>
       <div id="historyAppList"><p class="hint">Loading…</p></div>
       <div class="pager" id="historyAppPager"></div>
     </div>
@@ -2547,7 +2587,7 @@
     <!-- By dataset: the individual per-table / per-upload runs (original view) -->
     <div class="card" id="historyListCard" style="display:none;">
       <h2>Historic runs (by dataset) <button class="linkbtn" id="historyRefresh">Refresh</button></h2>
-      <div class="dash-tiles" id="historyTiles" style="margin-bottom:16px;"></div>
+      <div class="dash-tiles dq-stagger" id="historyTiles" style="margin-bottom:16px;"></div>
       <div id="historyList"><p class="hint">Loading…</p></div>
       <div class="pager" id="historyPager"></div>
     </div>
@@ -2690,7 +2730,7 @@
         <button class="linkbtn" id="dashRefresh">Refresh</button>
       </h2>
       <p class="dash-muted" id="dashCtx">Loading…</p>
-      <div class="dash-tiles" id="dashTiles"></div>
+      <div class="dash-tiles dq-stagger" id="dashTiles"></div>
     </div>
 
     <!-- Galaxy (left) + selected-dataset detail (right), side by side. -->
@@ -9640,17 +9680,20 @@ function renderSourceLineage(r, label) {
     `<div class="lin2-sum"><div class="lin2-sum-h"><strong>${esc(g.headline || '')}</strong></div>` +
       `<div class="lin2-pills">${warn}${pills}</div></div>` +
     `<div class="lin2-graph"><svg class="lin2-edges" preserveAspectRatio="none" aria-hidden="true"></svg>` +
-      `<div class="lin2-col" data-side="up"><div class="lin2-ch">Built from</div>${upHtml}</div>` +
+      `<div class="lin2-col dq-stagger" data-side="up"><div class="lin2-ch">Built from</div>${upHtml}</div>` +
       `<div class="lin2-col" data-side="focus">` +
         `<div class="lin2-node lin2-focus"><span class="lin2-ico">${_srcLinIcon(g.relkind)}</span><div class="lin2-nb">` +
         `<div class="lin2-name">${esc(label || g.table || '')}</div>` +
         `<div class="lin2-meta"><span class="lin2-kind">${esc(g.relkind && g.relkind !== 'unknown' ? _srcLinKind(g.relkind) : 'relation')}</span>` +
         `<span class="lin2-score">${esc(sourceLabel(g.engine))}</span></div></div></div></div>` +
-      `<div class="lin2-col" data-side="down"><div class="lin2-ch">Built on it</div>${downHtml}</div>` +
+      `<div class="lin2-col dq-stagger" data-side="down"><div class="lin2-ch">Built on it</div>${downHtml}</div>` +
     `</div>` +
     (notes || stamp ? `<div class="lin2-notes">${notes}${stamp}</div>` : '');
 
-  // After layout, not during: the curves are measured from where the cards actually landed.
+  dqIn(body);
+  // After layout, not during: the curves are measured from where the cards actually landed. The
+  // entry animation is a uniform translate on a shared ancestor, so it shifts the graph box and
+  // every node by the same amount and the measured offsets between them are unaffected.
   requestAnimationFrame(() => _lin2DrawEdges(body));
 }
 
@@ -11796,6 +11839,20 @@ function _gxDrillOut() {
   _gxRender(GALAXY.datasets);
 }
 
+/**
+ * Restart an entry animation on an element that is already in the DOM.
+ *
+ * A CSS animation does not replay when `display` changes, so the class has to come off, layout be
+ * forced, and the class go back on. The `void el.offsetWidth` is that forced reflow and is load-
+ * bearing: without it the browser coalesces both class changes into one frame and nothing plays.
+ */
+function dqIn(el) {
+  if (!el || !el.classList) return;
+  el.classList.remove('dq-in');
+  void el.offsetWidth;
+  el.classList.add('dq-in');
+}
+
 function switchTab(name) {
   // Portal mode: the Qlik-only tabs don't exist here - redirect any programmatic
   // navigation to them (e.g. "Assess this app's data" CTAs) to the source flow.
@@ -11823,6 +11880,11 @@ function switchTab(name) {
   // The standards/methodology footer is only relevant where you run assessments.
   const footEl = document.querySelector('.standards');
   if (footEl) footEl.style.display = (name === 'upload' || name === 'appdata') ? 'block' : 'none';
+  // Whichever panel the assignments above just revealed is the one to animate. Found by asking
+  // the DOM rather than by keeping a second list of tab-to-panel names in step with the first.
+  dqIn([...document.querySelectorAll('[id$="Panel"], #complianceTab')]
+       .find(p => p.style.display && p.style.display !== 'none'));
+
   if (name === 'assistant') initAssistantTab();
   if (name === 'incidents') loadIncidents();
   if (name === 'sourcewatch') loadSourceWatch();
