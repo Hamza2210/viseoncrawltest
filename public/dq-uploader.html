@@ -109,6 +109,36 @@
   @keyframes dqFade { from { opacity: 0; } to { opacity: 1; } }
   @keyframes dqPop  { from { opacity: 0; transform: translateY(8px) scale(.985); } to { opacity: 1; transform: none; } }
   @keyframes dqPage { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+
+  /* ---- Skeletons -------------------------------------------------------------------- //
+     A spinner says "wait". A skeleton says "wait, and here is the shape of what is coming",
+     which measurably shortens the WAIT AS FELT even when the latency is identical. The sweep is
+     a background-position animation on a gradient: no layout, no repaint of anything else. */
+  @keyframes dqShimmer { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+  .sk { border-radius: 6px; display: inline-block; vertical-align: middle;
+    background: linear-gradient(90deg, var(--idle-bg) 25%, color-mix(in srgb, var(--accent) 11%, var(--idle-bg)) 37%, var(--idle-bg) 63%);
+    background-size: 400% 100%; animation: dqShimmer 1.4s ease infinite; }
+  .dq-sk { padding: 2px 0; }
+  .dq-sk-msg { font-size: 12.5px; color: var(--muted); margin-bottom: 12px; }
+  .dq-sk-row { display: flex; align-items: center; gap: 12px; padding: 7px 0; }
+  .dq-sk-row .sk-ico { width: 28px; height: 28px; border-radius: 7px; flex: none; }
+  .dq-sk-row .sk-main { flex: 1; }
+  .dq-sk-row .sk-l1 { display: block; height: 10px; margin-bottom: 6px; }
+  .dq-sk-row .sk-l2 { display: block; height: 8px; }
+  .dq-sk-row .sk-pill { width: 54px; height: 20px; border-radius: 999px; flex: none; }
+
+  /* ---- Hover growth ----------------------------------------------------------------- //
+     Extends the scale vocabulary the buttons already used (.btn-sm scale(1.03), .linkbtn
+     scale(1.06)) to the card-shaped things you click. Kept at 1.012-1.02: enough to confirm the
+     target under the cursor, not enough to reflow anything around it. Table rows are excluded
+     deliberately - a transform on a <tr> fights the sticky header and the collapsed borders. */
+  .source-card, .cmp-item { transition: transform .12s var(--dq-ease), border-color .12s var(--dq-ease), background-color .12s var(--dq-ease); }
+  .tile:hover       { transform: translateY(-3px) scale(1.015); }
+  .dsp-card:hover   { transform: translateY(-1px) scale(1.012); }
+  .lin2-node:hover  { transform: translateY(-1px) scale(1.012); }
+  .source-card:hover{ transform: translateY(-1px) scale(1.02); }
+  .cmp-item:hover   { transform: translateY(-1px) scale(1.01); }
+  .lin2-focus:hover { transform: none; }        /* the focus node is not a target, it is the subject */
   .dq-in { animation: dqIn .26s var(--dq-ease) both; }
   /* Page-level entry is deliberately bigger than content-level: a whole tab changing should read
      as a change of place, and at 6px it did not register at all. */
@@ -137,6 +167,10 @@
   @media (prefers-reduced-motion: reduce) {
     .dq-in, .dq-page, .dq-stagger > *, .modal-overlay.open, .modal-overlay.open .modal,
     details[open] > *:not(summary), .medal-card-in, .cmp-sec-detail { animation: none !important; }
+    /* The shimmer keeps its shape but stops moving, and nothing grows under the cursor. */
+    .sk { animation: none !important; background: var(--idle-bg) !important; }
+    .tile:hover, .dsp-card:hover, .lin2-node:hover, .source-card:hover, .cmp-item:hover,
+    .btn-sm:not(:disabled):hover, .linkbtn:hover { transform: none !important; }
   }
 
   .brand-title { font-size: 21px; font-weight: 800; letter-spacing: -.02em;
@@ -3993,7 +4027,7 @@ function renderAssessment(r, bodyEl, opts) {
   const frEl = body.querySelector('.assess-failed');
   if (frEl) {
     const loadFR = async () => {
-      frEl.innerHTML = dqLoader('Loading failed records', null, true);
+      frEl.innerHTML = dqSkeleton('Loading failed records');
       try {
         const data = await postJSON(`${API_BASE}/data-quality/failed-records`, HEADERS,
           { result_prefix: frEl.dataset.prefix, limit: 500, app_id: APP_ID });
@@ -4070,7 +4104,7 @@ if ($('#pinRulesModal')) $('#pinRulesModal').addEventListener('click', e => { if
 let arRefsOpen = false;
 
 async function editActiveRules(prefix, outEl) {
-  outEl.innerHTML = dqLoader('Loading the active ruleset', null, true);
+  outEl.innerHTML = dqSkeleton('Loading the active ruleset', 5);
   let data;
   try {
     data = await postJSON(`${API_BASE}/data-quality/active-ruleset`, HEADERS, { result_prefix: prefix });
@@ -4331,6 +4365,82 @@ function pollDelay(start) {
 
 // A themed loader (glowing orbital system) matching the galaxy aesthetic. `compact` = smaller,
 // for quick panel loads; full size for a running assessment.
+/** Does this visitor want motion kept to a minimum? Checked at call time, not cached. */
+function dqReduced() {
+  try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; }
+}
+
+/**
+ * A content-shaped placeholder, for the panels where what arrives IS a list of rows.
+ *
+ * The message is kept: "Loading compliance" tells you what is coming in a way no arrangement of
+ * grey boxes can. What the boxes add is that the wait has a shape, so the panel does not jump
+ * from a spinner to a full report.
+ */
+function dqSkeleton(msg, rows) {
+  const n = rows || 4;
+  const widths = ['62%', '48%', '71%', '55%', '66%', '44%'];
+  const body = Array.from({ length: n }, (_, i) =>
+    `<div class="dq-sk-row"><span class="sk sk-ico"></span>` +
+    `<span class="sk-main"><span class="sk sk-l1" style="width:${widths[i % widths.length]}"></span>` +
+    `<span class="sk sk-l2" style="width:${30 + (i % 3) * 9}%"></span></span>` +
+    `<span class="sk sk-pill"></span></div>`).join('');
+  return `<div class="dq-sk" role="status" aria-live="polite">` +
+    `<div class="dq-sk-msg">${esc(msg || 'Loading')}</div>${body}</div>`;
+}
+
+/**
+ * Count a rendered number up to the value already in the element.
+ *
+ * Reads the FINAL text and restores it verbatim at the end, so whatever formatting the caller
+ * used - thousands separators, a % suffix, one decimal place - is what remains on screen. A
+ * value that does not parse as a number ("-", "n/a") is left completely alone rather than
+ * animated to zero.
+ */
+function countUp(el, ms) {
+  if (!el || dqReduced()) return;
+  const final = el.textContent;
+  const m = /^(-?[\d,]*\.?\d+)(.*)$/.exec(final.trim());
+  if (!m) return;
+  const target = parseFloat(m[1].replace(/,/g, ''));
+  if (!isFinite(target)) return;
+  const dp = (m[1].split('.')[1] || '').length, suffix = m[2] || '';
+  const dur = ms || 700, t0 = performance.now();
+  const step = now => {
+    const p = Math.min(1, (now - t0) / dur);
+    const v = target * (1 - Math.pow(1 - p, 3));            // ease-out cubic
+    el.textContent = (dp ? v.toFixed(dp) : Math.round(v).toLocaleString()) + suffix;
+    if (p < 1) requestAnimationFrame(step);
+    else el.textContent = final;                            // exact, not re-derived
+  };
+  requestAnimationFrame(step);
+}
+
+/**
+ * Open `target` as though it grew out of `src` - the row you clicked becoming the panel.
+ *
+ * Transform only: the panel is scaled from the row's footprint to its own rather than having its
+ * width and height animated, which would run layout on every frame of a panel full of charts.
+ * The trade is that content is briefly squashed, which is why it starts near-transparent and the
+ * fade finishes well before the movement does.
+ *
+ * Falls back to the standard entry animation when there is no origin (the galaxy orb is drawn on
+ * a canvas and has no element) or when motion is not wanted.
+ */
+function morphFrom(src, target) {
+  if (!target) return;
+  if (!src || dqReduced() || !target.animate) { dqIn(target, 'dq-page'); return; }
+  const s = src.getBoundingClientRect(), t = target.getBoundingClientRect();
+  if (!s.width || !s.height || !t.width || !t.height) { dqIn(target, 'dq-page'); return; }
+  target.animate([
+    { transformOrigin: 'top left', opacity: .25,
+      transform: `translate(${(s.left - t.left).toFixed(1)}px, ${(s.top - t.top).toFixed(1)}px) ` +
+                 `scale(${(s.width / t.width).toFixed(4)}, ${(s.height / t.height).toFixed(4)})` },
+    { transformOrigin: 'top left', opacity: 1, offset: .55, transform: 'none' },
+    { transformOrigin: 'top left', opacity: 1, transform: 'none' },
+  ], { duration: 420, easing: 'cubic-bezier(.2, 0, 0, 1)' });
+}
+
 function dqLoader(msg, sub, compact) {
   return `<div class="dq-loader${compact ? ' compact' : ''}">
       <div class="dq-orbit"><div class="ring r1"></div><div class="ring r2"></div><div class="core"></div><div class="sat"></div><div class="sat s2"></div></div>
@@ -4606,7 +4716,7 @@ async function openHistoryRun(prefix) {
   const detail = $('#historyDetail'), body = $('#historyDetailBody');
   detail.style.display = 'block';
   dqIn(detail, 'dq-page');                              // a run replaces the whole view
-  body.innerHTML = dqLoader('Loading result', null, true);
+  body.innerHTML = dqSkeleton('Loading result', 4);
   window.scrollTo({ top: 0, behavior: 'smooth' });
   try {
     const r = await postJSON(`${API_BASE}/data-quality/result`, HEADERS, { result_prefix: prefix });
@@ -5698,7 +5808,7 @@ async function submitForApproval(prefix, btn) {
 }
 async function loadApprovals() {
   const body = $('#approvalsBody'); if (!body) return;
-  body.innerHTML = dqLoader('Loading approvals', null, true);
+  body.innerHTML = dqSkeleton('Loading approvals', 3);
   try {
     const [r] = await Promise.all([
       postJSON(`${API_BASE}/data-quality/approvals`, HEADERS, { action: 'list', app_id: APP_ID }),
@@ -5977,6 +6087,9 @@ function renderTiles(t) {
   ];
   $('#dashTiles').innerHTML = tiles.map(x =>
     `<div class="tile"><div class="n">${esc(x.n)}</div><div class="l">${esc(x.l)}</div></div>`).join('');
+  // Counted AFTER rendering, from the value already on screen, so the tile is correct even if
+  // the animation never runs.
+  $('#dashTiles').querySelectorAll('.n').forEach(n => countUp(n));
 }
 
 function renderHealthTable(datasets) {
@@ -6019,7 +6132,7 @@ function renderHealthTable(datasets) {
     tr.addEventListener('click', () => {
       $('#dashTableWrap').querySelectorAll('.dash-row').forEach(x => x.classList.remove('sel'));
       tr.classList.add('sel');
-      selectDataset(tr.getAttribute('data-key'), tr.getAttribute('data-name'));
+      selectDataset(tr.getAttribute('data-key'), tr.getAttribute('data-name'), null, tr);
     }));
   $('#dashTableWrap').querySelectorAll('button[data-rerun]').forEach(b =>
     b.addEventListener('click', e => { e.stopPropagation(); reRunTable(b.dataset.rerun, b.dataset.fmt, b.dataset.prefix); }));
@@ -6159,12 +6272,14 @@ function openDeepLinkedDataset() {
 }
 
 
-async function selectDataset(key, name, initialTab) {
+async function selectDataset(key, name, initialTab, originEl) {
   const ds = dashDatasets.find(x => x.key === key);
   dashSelected = { key, name, prefix: ds && ds.resultPrefix };
   if (GALAXY.orbs && GALAXY.orbs.length) GALAXY.selected = GALAXY.orbs.find(o => o.key === key) || null;
   setOverviewSplit(true);                                        // reveal the detail beside the galaxy
-  dqIn($('#dashDetail'), 'dq-page');                             // the detail view is a new place
+  // Grown out of the row that was clicked where there is one; morphFrom falls back to the plain
+  // entry animation for the galaxy orb, which is canvas and has no element to grow from.
+  morphFrom(originEl, $('#dashDetail'));
   // Open the requested sub-tab from the START so only ONE panel render happens - otherwise a later
   // 'scores' fetch can resolve after and clobber a drill-in that wanted the Compliance tab.
   dsTrends = null; dsTab = (initialTab && DS_TABS.some(([k]) => k === initialTab)) ? initialTab : 'scores';
@@ -6178,7 +6293,7 @@ async function selectDataset(key, name, initialTab) {
     `<div class="actions" style="margin-bottom:12px;"><button class="btn-sm" id="dsBack">← All datasets</button>` +
     `<button class="btn-sm" id="dsExport" data-tip="Export this dataset's summary as parquet">⬇ Export (parquet)</button></div>` +
     `<div class="rd-tabs" id="dsSubtabs">${bar}</div>` +
-    `<div id="dsPanel">${dqLoader('Loading dataset', null, true)}</div>`;
+    `<div id="dsPanel">${dqSkeleton('Loading dataset', 4)}</div>`;
   $('#dashRunDetail').innerHTML = '';
   const back = $('#dsBack');
   if (back) back.addEventListener('click', () => deselectDataset());   // collapse back to the full-width galaxy
@@ -6258,11 +6373,11 @@ function selectDsTab() {
   }
   if (dsTab === 'history') { renderDatasetHistory(panel); return; }
   if (!prefix) { panel.innerHTML = `<p class="dash-muted">No completed run yet for this dataset - run an assessment to populate this.</p>`; return; }
-  if (dsTab === 'scores') { panel.innerHTML = dqLoader('Loading run', null, true); loadDsScores(panel, prefix); }
-  else if (dsTab === 'metadata') { panel.innerHTML = dqLoader('Assessing metadata', null, true); loadDsMetadata(panel, prefix); }
-  else if (dsTab === 'compliance') { panel.innerHTML = dqLoader('Loading compliance', null, true); loadDsCompliance(panel, prefix); }
+  if (dsTab === 'scores') { panel.innerHTML = dqSkeleton('Loading run'); loadDsScores(panel, prefix); }
+  else if (dsTab === 'metadata') { panel.innerHTML = dqSkeleton('Assessing metadata'); loadDsMetadata(panel, prefix); }
+  else if (dsTab === 'compliance') { panel.innerHTML = dqSkeleton('Loading compliance'); loadDsCompliance(panel, prefix); }
   else if (dsTab === 'rules') { loadDsRules(panel, prefix); }
-  else if (dsTab === 'failed') { panel.innerHTML = dqLoader('Loading failed records', null, true); loadDsFailed(panel, prefix); }
+  else if (dsTab === 'failed') { panel.innerHTML = dqSkeleton('Loading failed records'); loadDsFailed(panel, prefix); }
 }
 
 async function loadDsScores(panel, prefix) {
@@ -6278,7 +6393,7 @@ async function loadDsRules(panel, prefix) {
   panel.innerHTML =
     `<div class="actions" style="margin-bottom:12px;"><button class="btn-sm" id="dsReviewRules">✨ Review rules with AI</button>` +
     `<span id="dashQueued" style="display:none;align-items:center;gap:8px;"></span></div>` +
-    `<div id="dsRulesBody">${dqLoader('Loading the active ruleset', null, true)}</div>`;
+    `<div id="dsRulesBody">${dqSkeleton('Loading the active ruleset', 5)}</div>`;
   editActiveRules(prefix, $('#dsRulesBody'));
   const rev = $('#dsReviewRules');
   if (rev) rev.addEventListener('click', () => reviewRuleset(prefix, $('#dsRulesBody'), false));
@@ -6688,9 +6803,9 @@ async function viewLatestRun() {
     `<button type="button" class="rd-tab" data-rdtab="profile">Column profile</button>` +
     `<button type="button" class="rd-tab" data-rdtab="failed">Failed records</button>` +
     `</div>` +
-    `<div id="dashRunScores" data-rdpanel="scores">${dqLoader('Loading run', null, true)}</div>` +
-    `<div id="dashRunProfile" data-rdpanel="profile" style="display:none;">${dqLoader('Loading profile', null, true)}</div>` +
-    `<div id="dashRunFailed" data-rdpanel="failed" style="display:none;">${dqLoader('Loading failed records', null, true)}</div>` +
+    `<div id="dashRunScores" data-rdpanel="scores">${dqSkeleton('Loading run')}</div>` +
+    `<div id="dashRunProfile" data-rdpanel="profile" style="display:none;">${dqSkeleton('Loading profile', 5)}</div>` +
+    `<div id="dashRunFailed" data-rdpanel="failed" style="display:none;">${dqSkeleton('Loading failed records')}</div>` +
     `</div>`;
   box.querySelectorAll('.rd-tab').forEach(t => t.addEventListener('click', () => {
     box.querySelectorAll('.rd-tab').forEach(x => x.classList.toggle('active', x === t));
@@ -6963,7 +7078,7 @@ function observeInlineMetadata(el) {
 }
 async function loadInlineMetadata(container, prefix) {
   if (!container || !prefix) return;
-  container.innerHTML = dqLoader('Assessing metadata', null, true);
+  container.innerHTML = dqSkeleton('Assessing metadata');
   try {
     const pr = await postJSON(`${API_BASE}/data-quality/profile`, HEADERS, { result_prefix: prefix });
     const prof = pr && pr.profile;
@@ -7109,7 +7224,7 @@ async function loadComplianceEstate() {
   loadOrgRecordsPolicy();                       // admin-only, independent of the estate load
   const wrap = $('#cmpEstate'); if (!wrap) return;
   if (!APP_ID) { wrap.innerHTML = `<p class="dash-muted">Open this from inside a Qlik app to see its compliance posture.</p>`; return; }
-  if (!dashDatasetsAll || !dashDatasetsAll.length) { wrap.innerHTML = dqLoader('Loading compliance posture', null, true); await loadDashboard(); }
+  if (!dashDatasetsAll || !dashDatasetsAll.length) { wrap.innerHTML = dqSkeleton('Loading compliance posture', 4); await loadDashboard(); }
   renderComplianceEstate();
 }
 // Pull fresh dashboard data (which carries the compliance grades) and re-render the estate +
@@ -7280,7 +7395,7 @@ async function loadComplianceCardDetail(pane, prefix, key, name) {
       <h3>${esc(name)}</h3>
       <button type="button" class="cmp-open" data-cmpopen="${esc(key)}" data-cmpname="${esc(name)}" data-tip="Open in dashboard">⧉ Dashboard</button>
       <button type="button" class="cmp-detail-close">✕ Close</button></div>
-    <div class="cmp-detail-body">${dqLoader('Loading compliance', null, true)}</div></div>`;
+    <div class="cmp-detail-body">${dqSkeleton('Loading compliance')}</div></div>`;
   const body = pane.querySelector('.cmp-detail-body');
   pane.querySelector('.cmp-detail-close').addEventListener('click', () => {
     pane.innerHTML = ''; document.querySelectorAll('.cmp-item.sel').forEach(c => c.classList.remove('sel'));
@@ -11070,7 +11185,7 @@ async function selectMedalDataset(stage, key) {
   if (!key) { medalRuns[stage] = null; renderMedallionCols(); return; }
   const ds = dashDatasetsAll.find(d => d.key === key);
   const body = document.querySelector(`.medal-col.${stage} .medal-col-body`);
-  if (body) body.innerHTML = dqLoader('Loading run', null, true);
+  if (body) body.innerHTML = dqSkeleton('Loading run');
   const prefix = ds && ds.resultPrefix;
   if (!prefix) { medalRuns[stage] = { _error: 'No completed run found for this dataset.', _name: ds ? ds.name : key }; renderMedallionCols(); return; }
   try {
