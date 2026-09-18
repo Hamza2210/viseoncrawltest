@@ -109,7 +109,14 @@
   @keyframes dqIn   { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
   @keyframes dqFade { from { opacity: 0; } to { opacity: 1; } }
   @keyframes dqPop  { from { opacity: 0; transform: translateY(8px) scale(.985); } to { opacity: 1; transform: none; } }
+  @keyframes dqPage { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
   .dq-in { animation: dqIn .26s var(--dq-ease) both; }
+  /* Page-level entry is deliberately bigger than content-level: a whole tab changing should read
+     as a change of place, and at 6px it did not register at all. */
+  .dq-page { animation: dqPage .36s var(--dq-ease) both; }
+  /* Every <details> in the file, in one rule. The disclosure triangle stays instant; what fades
+     in is the content it reveals. Height is NOT animated - that would run layout per frame. */
+  details[open] > *:not(summary) { animation: dqIn .24s var(--dq-ease) both; }
   /* Staggered entry for a rendered list. Capped at ten steps: past that the delay stops reading
      as a flourish and starts reading as the page being slow. */
   .dq-stagger > * { animation: dqIn .28s var(--dq-ease) both; }
@@ -129,8 +136,8 @@
   .modal-overlay.open { animation: dqFade .15s var(--dq-ease) both; }
   .modal-overlay.open .modal { animation: dqPop .22s var(--dq-ease) both; }
   @media (prefers-reduced-motion: reduce) {
-    .dq-in, .dq-stagger > *, .modal-overlay.open, .modal-overlay.open .modal,
-    .medal-card-in, .cmp-sec-detail { animation: none !important; }
+    .dq-in, .dq-page, .dq-stagger > *, .modal-overlay.open, .modal-overlay.open .modal,
+    details[open] > *:not(summary), .medal-card-in, .cmp-sec-detail { animation: none !important; }
   }
 
   .brand-title { font-size: 21px; font-weight: 800; letter-spacing: -.02em;
@@ -4599,6 +4606,7 @@ async function openHistoryRun(prefix) {
   $('#historyListCard').style.display = 'none';
   const detail = $('#historyDetail'), body = $('#historyDetailBody');
   detail.style.display = 'block';
+  dqIn(detail, 'dq-page');                              // a run replaces the whole view
   body.innerHTML = dqLoader('Loading result', null, true);
   window.scrollTo({ top: 0, behavior: 'smooth' });
   try {
@@ -4729,6 +4737,7 @@ function setHistorySub(sub) {
   $('#historySubtabs').style.display = 'flex';
   $('#historyAppCard').style.display = sub === 'app' ? 'block' : 'none';
   $('#historyListCard').style.display = sub === 'dataset' ? 'block' : 'none';
+  dqIn(sub === 'app' ? $('#historyAppCard') : $('#historyListCard'));
   if (sub === 'app') loadHistoryApp(); else loadHistory();
 }
 document.querySelectorAll('#historySubtabs .subtab').forEach(b =>
@@ -6156,6 +6165,7 @@ async function selectDataset(key, name, initialTab) {
   dashSelected = { key, name, prefix: ds && ds.resultPrefix };
   if (GALAXY.orbs && GALAXY.orbs.length) GALAXY.selected = GALAXY.orbs.find(o => o.key === key) || null;
   setOverviewSplit(true);                                        // reveal the detail beside the galaxy
+  dqIn($('#dashDetail'), 'dq-page');                             // the detail view is a new place
   // Open the requested sub-tab from the START so only ONE panel render happens - otherwise a later
   // 'scores' fetch can resolve after and clobber a drill-in that wanted the Compliance tab.
   dsTrends = null; dsTab = (initialTab && DS_TABS.some(([k]) => k === initialTab)) ? initialTab : 'scores';
@@ -6235,6 +6245,9 @@ function selectDsTab() {
   const bar = $('#dsSubtabs');
   if (bar) bar.querySelectorAll('[data-dstab]').forEach(b => b.classList.toggle('active', b.dataset.dstab === dsTab));
   const panel = $('#dsPanel'); if (!panel) return;
+  // One hook for all six sub-tabs. Every branch below either renders straight into this panel or
+  // puts a loader in it first, so animating the container here covers both without six calls.
+  dqIn(panel);
   const prefix = dashSelected && dashSelected.prefix;
   if (dsTab === 'trends') {
     const head = `<div style="margin-bottom:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
@@ -6683,6 +6696,7 @@ async function viewLatestRun() {
   box.querySelectorAll('.rd-tab').forEach(t => t.addEventListener('click', () => {
     box.querySelectorAll('.rd-tab').forEach(x => x.classList.toggle('active', x === t));
     box.querySelectorAll('[data-rdpanel]').forEach(p => { p.style.display = p.dataset.rdpanel === t.dataset.rdtab ? '' : 'none'; });
+    dqIn(box.querySelector(`[data-rdpanel="${t.dataset.rdtab}"]`));
   }));
   box.scrollIntoView({ behavior: 'smooth', block: 'start' });
   try {
@@ -7254,6 +7268,7 @@ function renderComplianceEstate() {
     wrap.querySelectorAll('.cmp-item.sel').forEach(c => c.classList.remove('sel'));
     if (already) { pane.innerHTML = ''; return; }              // toggle off
     card.classList.add('sel');
+    dqIn(pane, 'dq-page');                              // opening a compliance run changes the view
     loadComplianceCardDetail(pane, card.dataset.prefix, card.dataset.key, card.dataset.name);
   }));
   wrap.querySelectorAll('.cmp-open').forEach(b => b.addEventListener('click', e => {
@@ -9889,6 +9904,7 @@ function selectSource(key) {
   const bodyKey = key === 'excel' ? 'file' : key;
   document.querySelectorAll('.source-card').forEach(c => c.classList.toggle('active', c.dataset.source === key));
   document.querySelectorAll('.source-body').forEach(b => { b.style.display = (b.id === 'src-' + bodyKey) ? 'block' : 'none'; });
+  dqIn(document.getElementById('src-' + bodyKey));      // one hook, every connector
   if (bodyKey === 'file') _applyFileMode(key === 'excel');   // recast the shared card as Excel vs generic
   // Fabric is the one form whose fields depend on a choice inside it, so its toggle is wired the
   // first time the card is shown rather than at boot (the markup may not have been reached yet).
@@ -11847,11 +11863,12 @@ function _gxDrillOut() {
  * forced, and the class go back on. The `void el.offsetWidth` is that forced reflow and is load-
  * bearing: without it the browser coalesces both class changes into one frame and nothing plays.
  */
-function dqIn(el) {
+function dqIn(el, cls) {
   if (!el || !el.classList) return;
-  el.classList.remove('dq-in');
+  const c = cls || 'dq-in';
+  el.classList.remove(c);
   void el.offsetWidth;
-  el.classList.add('dq-in');
+  el.classList.add(c);
 }
 
 function switchTab(name) {
@@ -11884,7 +11901,7 @@ function switchTab(name) {
   // Whichever panel the assignments above just revealed is the one to animate. Found by asking
   // the DOM rather than by keeping a second list of tab-to-panel names in step with the first.
   dqIn([...document.querySelectorAll('[id$="Panel"], #complianceTab')]
-       .find(p => p.style.display && p.style.display !== 'none'));
+       .find(p => p.style.display && p.style.display !== 'none'), 'dq-page');
 
   if (name === 'assistant') initAssistantTab();
   if (name === 'incidents') loadIncidents();
