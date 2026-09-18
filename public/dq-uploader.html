@@ -99,11 +99,14 @@
   body.portal .side-item[data-tab="appdata"],
   body.portal .side-item[data-tab="model"],
   body.portal .side-item[data-tab="lineage"],
-  body.portal #dqExploreGroup,
   body.portal #dashScopeToggle,
   body.portal #incScopeToggle,
   body.portal #cmpScopeToggle { display: none !important; }
   body.portal #historySubtabs { display: none !important; }   /* no Qlik full-app view in the portal */
+  /* Source lineage is the portal's answer to a tab it otherwise would not have. The Qlik surface
+     already has a Lineage tab meaning the app graph, and two tabs with that name on one surface
+     is worse than not offering it there. */
+  body:not(.portal) .side-item[data-tab="srclineage"] { display: none !important; }
   #portalShell { display: none; align-items: center; gap: 12px; margin: 0 0 10px; }
   body.portal #portalShell { display: flex; }
   #portalShell .pu-email { color: var(--muted); font-size: 13px; }
@@ -1721,6 +1724,7 @@
     <div class="side-group" id="dqExploreGroup">Explore</div>
     <button class="side-item sub" data-tab="model"><span class="si-ico">🧩</span>Data model</button>
     <button class="side-item sub" data-tab="lineage"><span class="si-ico">🔗</span>Lineage</button>
+    <button class="side-item sub" data-tab="srclineage"><span class="si-ico">🔗</span>Lineage</button>
 
     <div class="side-group">Audit</div>
     <button class="side-item sub" data-tab="history"><span class="si-ico">📜</span>Assessment history</button>
@@ -2459,6 +2463,17 @@
   </div>
 
   <!-- ============ LINEAGE ============ -->
+  <div id="srcLineagePanel" style="display:none;">
+    <div class="card">
+      <h2>Lineage <span class="src-tag betatag">Beta</span> <button class="linkbtn" id="srcLineageRefresh">Refresh</button></h2>
+      <p class="src-note">What each assessed relation is <strong>built from</strong>, and what is <strong>built on</strong> it, read from the warehouse's own catalog during the assessment. Each object is coloured by its own data-quality score where it has one.</p>
+      <p class="hint" style="margin:-4px 0 12px;">This is <strong>object dependency lineage</strong>: what the catalog records about defining queries. It is not pipeline lineage - a warehouse does not know which job loaded a table, so neither do we.</p>
+      <label for="srcLinSel">Dataset</label>
+      <select id="srcLinSel"></select>
+      <div id="srcLineageBody" style="margin-top:14px;"><p class="dash-muted">Loading…</p></div>
+    </div>
+  </div>
+
   <div id="lineagePanel" style="display:none;">
     <div class="tab-intro">
       <h2>Data lineage</h2>
@@ -9147,12 +9162,118 @@ function _linItem(s) {
         + 'unknown. It is not necessarily healthy.';
   }
   const cls = rag === 'red' ? ' lin-red' : (rag === 'amber' ? ' lin-amber' : '');
-  return `<div class="lin-node${cls}" title="${tip}"><span class="lin-ico">${_linIcon(s)}</span>` +
+  return `<div class="lin-node${cls}" title="${tip}"><span class="lin-ico">${s.icon || _linIcon(s)}</span>` +
     `<div style="min-width:0;"><div class="lin-label">${esc(s.label || s.qri || '-')}</div>` +
     `<div class="hint">${meta.join(' · ')}</div>` +
     `<div class="hint" style="display:flex;align-items:center;gap:6px;margin-top:3px;">` +
       `<span class="lin-rag ${rag}"></span>${quality}</div></div></div>`;
 }
+// ---- Source lineage: the portal's own lineage tab ------------------------ //
+// 5a colours a graph Qlik hands us. This one draws a graph that did not exist: the worker reads
+// the warehouse's dependency catalog during each assessment and writes it beside the report, and
+// this renders it. The honest limit is object dependency - what a view is DEFINED over - and the
+// panel copy says so, because "lineage" will otherwise be heard in the Qlik sense.
+
+// What kind of object each node is. A view breaking because its table changed is a different
+// story from a stored procedure breaking, so the kind is shown rather than assumed.
+const _SRCLIN_ICO = { table: '🗄️', view: '🪟', matview: '🧊', external: '🔗', foreign: '🔗' };
+function _srcLinIcon(kind) { return _SRCLIN_ICO[String(kind || '').toLowerCase()] || '⚙️'; }
+
+/** One dependency node, through 5a's renderer so the colouring rules stay in ONE place. */
+function _srcLinItem(n) {
+  const label = n.schema ? `${n.schema}.${n.name}` : n.name;
+  return _linItem({ label, subtype: n.kind && n.kind !== 'unknown' ? n.kind : '',
+                    icon: _srcLinIcon(n.kind) });
+}
+
+/** A direction that produced no graph. Each reason gets its own wording - see sql_lineage.py. */
+function _srcLinEmpty(block, whatIsIt) {
+  const st = (block && block.status) || 'unreadable';
+  if (st === 'read') return `<p class="dash-muted">Nothing ${whatIsIt}.</p>`;
+  if (st === 'not_applicable') return `<p class="dash-muted">This is a base table, so it is not built from anything.</p>`;
+  if (st === 'unsupported') return `<p class="dash-muted">Not available for this source type.</p>`;
+  return `<p class="dash-muted" style="color:var(--run)">Could not be read from the catalog. That is not the same as nothing being there.</p>`;
+}
+
+async function loadSourceLineage() {
+  if (!configOK) return;
+  const body = $('#srcLineageBody'), sel = $('#srcLinSel');
+  // The colours come from the dashboard's dataset list, exactly as the Qlik lineage tab does.
+  // Landing here first would otherwise paint every node "no matching dataset", which looks like
+  // a finding and is really just an empty cache.
+  if (!(dashDatasetsAll || []).length) {
+    body.innerHTML = `<p class="dash-muted"><span class="spin"></span> Loading datasets…</p>`;
+    try { await loadDashboard(); } catch (_) { /* colouring degrades to unknown */ }
+  }
+  const ds = (dashDatasetsAll || []).filter(d => isSourceDataset(d) && d.resultPrefix);
+  if (!ds.length) {
+    sel.style.display = 'none';
+    body.innerHTML = `<p class="dash-muted">No source datasets have been assessed yet. Lineage is read from the warehouse's catalog while an assessment runs, so there is nothing to show until one has.</p>`;
+    return;
+  }
+  sel.style.display = '';
+  const prev = sel.value;
+  sel.innerHTML = ds.map(d =>
+    `<option value="${esc(d.resultPrefix)}" data-fmt="${esc(d.sourceFormat || '')}">${esc(d.name || d.slug || '')}</option>`).join('');
+  if (prev && ds.some(d => d.resultPrefix === prev)) sel.value = prev;
+  if (!sel._wired) { sel._wired = true; sel.addEventListener('change', () => showSourceLineage()); }
+  showSourceLineage();
+}
+
+async function showSourceLineage() {
+  const sel = $('#srcLinSel'), body = $('#srcLineageBody');
+  const opt = sel.options[sel.selectedIndex];
+  if (!opt) return;
+  body.innerHTML = `<p class="dash-muted"><span class="spin"></span> Reading the dependency graph…</p>`;
+  try {
+    const r = await postJSON(`${API_BASE}/data-quality/source-lineage`, HEADERS,
+      { result_prefix: opt.value, source_format: opt.dataset.fmt || undefined });
+    renderSourceLineage(r, opt.textContent);
+  } catch (e) {
+    body.innerHTML = `<p class="dash-muted" style="color:var(--err)">${esc(e.message)}</p>`;
+  }
+}
+
+function renderSourceLineage(r, label) {
+  const body = $('#srcLineageBody');
+  if (!r || !r.available) {
+    body.innerHTML = `<p class="dash-muted">${esc((r && r.reason) || 'No dependency lineage for this dataset.')}</p>`;
+    return;
+  }
+  const g = r.lineage || {};
+  const up = (g.upstream || {}).nodes || [], down = (g.downstream || {}).nodes || [];
+  const upHtml = up.length ? up.map(_srcLinItem).join('') : _srcLinEmpty(g.upstream, 'it is built from');
+  const downHtml = down.length ? down.map(_srcLinItem).join('') : _srcLinEmpty(g.downstream, 'else is built on it');
+  const caveats = (g.caveats || []).length
+    ? `<div class="hint" style="margin-top:12px;">` +
+      (g.caveats || []).map(c =>
+        `<div style="display:flex;gap:6px;align-items:flex-start;margin-top:4px;">` +
+        `<span class="lin-rag unknown" style="margin-top:4px;"></span><span>${esc(c)}</span></div>`).join('') +
+      `</div>`
+    : '';
+  // The downstream count IS the blast radius, so it leads. Said plainly, not as a score.
+  const head = g.headline
+    ? `<p class="hint" style="margin:0 0 12px;"><strong>${esc(g.headline)}</strong>` +
+      (g.complete ? '' : ' <span style="color:var(--run)">This graph is known to be incomplete.</span>') + `</p>`
+    : '';
+  body.innerHTML = head +
+    `<div class="lin-flow">` +
+      `<div class="lin-col"><div class="chart-title">Built from (${up.length})</div>${upHtml}</div>` +
+      `<div class="lin-arrow">→</div>` +
+      `<div class="lin-app"><div class="lin-node lin-appnode"><span class="lin-ico">${_srcLinIcon(g.relkind)}</span>` +
+        `<div><div class="lin-label">${esc(label || g.table || '')}</div>` +
+        `<div class="hint">${esc(g.engine || '')}${g.relkind && g.relkind !== 'unknown' ? ' · ' + esc(g.relkind) : ''}</div></div></div></div>` +
+      `<div class="lin-arrow">→</div>` +
+      `<div class="lin-col"><div class="chart-title">Built on it (${down.length})</div>${downHtml}</div>` +
+    `</div>` +
+    caveats +
+    // The run id, not generated_at_utc: fmtWhen parses the run-id shape only, and an ISO
+    // timestamp goes through it unchanged and prints raw. The catalog is read during the run,
+    // so the two mean the same thing anyway.
+    (g.run_id ? `<p class="hint" style="margin-top:8px;">Read from the catalog ${esc(fmtWhen(g.run_id))}</p>` : '');
+}
+$('#srcLineageRefresh').addEventListener('click', e => { e.preventDefault(); loadSourceLineage(); });
+
 // ---- Lineage <-> dataset matching ---------------------------------------- //
 // Built and measured against real cached lineage before it was wired to anything: 18 of 21
 // upstream nodes resolved on the app that has assessments, with all three misses correct.
@@ -11273,6 +11394,9 @@ function switchTab(name) {
   // Portal mode: the Qlik-only tabs don't exist here - redirect any programmatic
   // navigation to them (e.g. "Assess this app's data" CTAs) to the source flow.
   if (PORTAL && (name === 'appdata' || name === 'model' || name === 'lineage')) name = 'upload';
+  // ...and the reverse: source lineage is not offered on the Qlik surface, where "Lineage"
+  // already means the app graph.
+  if (!PORTAL && name === 'srclineage') name = 'lineage';
   document.querySelectorAll('.side-item').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
   $('#uploadPanel').style.display = name === 'upload' ? 'block' : 'none';
   $('#historyPanel').style.display = name === 'history' ? 'block' : 'none';
@@ -11287,6 +11411,7 @@ function switchTab(name) {
   $('#sourceWatchPanel').style.display = name === 'sourcewatch' ? 'block' : 'none';
   $('#complianceTab').style.display = name === 'compliance' ? 'block' : 'none';
   $('#lineagePanel').style.display = name === 'lineage' ? 'block' : 'none';
+  $('#srcLineagePanel').style.display = name === 'srclineage' ? 'block' : 'none';
   $('#profilePanel').style.display = name === 'profile' ? 'block' : 'none';
   $('#assistantPanel').style.display = name === 'assistant' ? 'block' : 'none';
   $('#aboutPanel').style.display = name === 'about' ? 'block' : 'none';
@@ -11301,6 +11426,7 @@ function switchTab(name) {
   if (name === 'sourcewatch') loadSourceWatch();
   if (name === 'compliance') loadComplianceEstate();
   if (name === 'lineage') loadLineage();
+  if (name === 'srclineage') loadSourceLineage();
   if (name === 'model') loadModel();
   if (name === 'history') setHistorySub(PORTAL ? 'dataset' : 'app');   // portal has no Qlik full-app view
   if (name === 'tagrun') initTagRun();
