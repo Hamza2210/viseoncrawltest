@@ -127,6 +127,15 @@
   .dq-sk-row .sk-l2 { display: block; height: 8px; }
   .dq-sk-row .sk-pill { width: 54px; height: 20px; border-radius: 999px; flex: none; }
 
+  /* ---- Source switching --------------------------------------------------------------- //
+     The card stays put and only its contents change, so the page does not jump between
+     connectors. The real content is faded, NOT removed: half-typed credentials have to survive
+     somebody clicking through the connector list. */
+  .source-body .card > *:not(.src-sk) { transition: opacity .22s var(--dq-ease); }
+  .source-body .card.src-swapping > *:not(.src-sk) { opacity: 0; }
+  .src-sk { position: absolute; left: 16px; right: 16px; top: 14px;
+    transition: opacity .18s var(--dq-ease); pointer-events: none; }
+
   /* ---- Hover growth ----------------------------------------------------------------- //
      Extends the scale vocabulary the buttons already used (.btn-sm scale(1.03), .linkbtn
      scale(1.06)) to the card-shaped things you click. Kept at 1.012-1.02: enough to confirm the
@@ -4417,28 +4426,38 @@ function countUp(el, ms) {
 }
 
 /**
- * Open `target` as though it grew out of `src` - the row you clicked becoming the panel.
+ * Slide a panel in from the right.
  *
- * Transform only: the panel is scaled from the row's footprint to its own rather than having its
- * width and height animated, which would run layout on every frame of a panel full of charts.
- * The trade is that content is briefly squashed, which is why it starts near-transparent and the
- * fade finishes well before the movement does.
+ * The dataset detail lives in the right-hand column, so it arrives and leaves on that axis:
+ * entering from the right reads as "this opened beside the list", where a fade reads as the page
+ * having simply changed. Transform and opacity only, so it composites.
  *
- * Falls back to the standard entry animation when there is no origin (the galaxy orb is drawn on
- * a canvas and has no element) or when motion is not wanted.
+ * `dist` is small on purpose. The panel is already in its final position; the slide is a hint of
+ * direction, not a journey across the screen.
  */
-function morphFrom(src, target) {
-  if (!target) return;
-  if (!src || dqReduced() || !target.animate) { dqIn(target, 'dq-page'); return; }
-  const s = src.getBoundingClientRect(), t = target.getBoundingClientRect();
-  if (!s.width || !s.height || !t.width || !t.height) { dqIn(target, 'dq-page'); return; }
-  target.animate([
-    { transformOrigin: 'top left', opacity: .25,
-      transform: `translate(${(s.left - t.left).toFixed(1)}px, ${(s.top - t.top).toFixed(1)}px) ` +
-                 `scale(${(s.width / t.width).toFixed(4)}, ${(s.height / t.height).toFixed(4)})` },
-    { transformOrigin: 'top left', opacity: 1, offset: .55, transform: 'none' },
-    { transformOrigin: 'top left', opacity: 1, transform: 'none' },
-  ], { duration: 420, easing: 'cubic-bezier(.2, 0, 0, 1)' });
+function slideInRight(el, dist) {
+  if (!el) return;
+  if (dqReduced() || !el.animate) { dqIn(el, 'dq-page'); return; }
+  el.animate(
+    [{ transform: `translateX(${dist || 38}px)`, opacity: 0 }, { transform: 'none', opacity: 1 }],
+    { duration: 360, easing: 'cubic-bezier(.2, 0, 0, 1)' });
+}
+
+/**
+ * Slide a panel back out to the right, THEN run `done` to actually remove it.
+ *
+ * The callback is what drops the split class, so the layout does not collapse until the panel has
+ * visually left. A token guards the case that matters: clicking another dataset during the 220ms
+ * would otherwise let a finished exit tear down the selection that replaced it.
+ */
+let _dashExitToken = 0;
+function slideOutRight(el, done) {
+  const token = ++_dashExitToken;
+  if (!el || dqReduced() || !el.animate) { done(); return; }
+  const a = el.animate(
+    [{ transform: 'none', opacity: 1 }, { transform: 'translateX(38px)', opacity: 0 }],
+    { duration: 220, easing: 'cubic-bezier(.4, 0, 1, 1)' });
+  a.onfinish = () => { if (token === _dashExitToken) done(); };
 }
 
 function dqLoader(msg, sub, compact) {
@@ -6132,7 +6151,7 @@ function renderHealthTable(datasets) {
     tr.addEventListener('click', () => {
       $('#dashTableWrap').querySelectorAll('.dash-row').forEach(x => x.classList.remove('sel'));
       tr.classList.add('sel');
-      selectDataset(tr.getAttribute('data-key'), tr.getAttribute('data-name'), null, tr);
+      selectDataset(tr.getAttribute('data-key'), tr.getAttribute('data-name'));
     }));
   $('#dashTableWrap').querySelectorAll('button[data-rerun]').forEach(b =>
     b.addEventListener('click', e => { e.stopPropagation(); reRunTable(b.dataset.rerun, b.dataset.fmt, b.dataset.prefix); }));
@@ -6272,14 +6291,14 @@ function openDeepLinkedDataset() {
 }
 
 
-async function selectDataset(key, name, initialTab, originEl) {
+async function selectDataset(key, name, initialTab) {
   const ds = dashDatasets.find(x => x.key === key);
   dashSelected = { key, name, prefix: ds && ds.resultPrefix };
   if (GALAXY.orbs && GALAXY.orbs.length) GALAXY.selected = GALAXY.orbs.find(o => o.key === key) || null;
   setOverviewSplit(true);                                        // reveal the detail beside the galaxy
-  // Grown out of the row that was clicked where there is one; morphFrom falls back to the plain
-  // entry animation for the galaxy orb, which is canvas and has no element to grow from.
-  morphFrom(originEl, $('#dashDetail'));
+  // Same entrance from a row click and from an orb click: the panel belongs to the right-hand
+  // column, and where the click came from does not change where the panel appears.
+  slideInRight($('#dashDetail'));
   // Open the requested sub-tab from the START so only ONE panel render happens - otherwise a later
   // 'scores' fetch can resolve after and clobber a drill-in that wanted the Compliance tab.
   dsTrends = null; dsTab = (initialTab && DS_TABS.some(([k]) => k === initialTab)) ? initialTab : 'scores';
@@ -10012,17 +10031,53 @@ function requiredFields(key, cfg) {
   return (typeof r === 'function' ? r(cfg || {}) : r) || [];
 }
 
+// The connector body last shown, so re-clicking the card you are already on does not replay the
+// swap, and so the very first paint is not masked by a skeleton for content that is already there.
+let _srcShown = '';
+
+/**
+ * Swap the contents of the connector card behind a skeleton, leaving the card itself in place.
+ *
+ * Deliberately a fixed short beat rather than a real load: these forms are static markup and
+ * there is nothing to wait for. What it buys is that the card reads as re-populating instead of
+ * one dense form being instantly substituted for another. Kept to ~260ms for that reason; any
+ * longer and it stops being a transition and becomes a delay.
+ *
+ * The real content is faded, never detached, so a half-typed host or password survives somebody
+ * clicking along the connector list and back.
+ */
+function srcSkeletonSwap(body, key) {
+  const first = !_srcShown;
+  const same = _srcShown === (body && body.id);
+  _srcShown = (body && body.id) || '';
+  if (!body || first || same || dqReduced()) return;
+  const card = body.querySelector('.card');
+  if (!card || card._skBusy) return;
+  card._skBusy = true;
+  const sk = document.createElement('div');
+  sk.className = 'src-sk';
+  sk.innerHTML = dqSkeleton('Loading ' + sourceLabel(key), 3);
+  card.style.position = 'relative';
+  card.classList.add('src-swapping');
+  card.appendChild(sk);
+  setTimeout(() => {
+    card.classList.remove('src-swapping');
+    sk.style.opacity = '0';
+    setTimeout(() => { sk.remove(); card._skBusy = false; }, 200);
+  }, 260);
+}
+
 function selectSource(key) {
   // Excel reuses the file-upload flow (a plain upload with an optional worksheet), so it maps to
   // the 'file' body while keeping its own card highlighted.
   const bodyKey = key === 'excel' ? 'file' : key;
   document.querySelectorAll('.source-card').forEach(c => c.classList.toggle('active', c.dataset.source === key));
   document.querySelectorAll('.source-body').forEach(b => { b.style.display = (b.id === 'src-' + bodyKey) ? 'block' : 'none'; });
-  dqIn(document.getElementById('src-' + bodyKey));      // one hook, every connector
   if (bodyKey === 'file') _applyFileMode(key === 'excel');   // recast the shared card as Excel vs generic
   // Fabric is the one form whose fields depend on a choice inside it, so its toggle is wired the
   // first time the card is shown rather than at boot (the markup may not have been reached yet).
   if (bodyKey === 'fabric') wireFabricAuthToggle();
+  srcSkeletonSwap(document.getElementById('src-' + bodyKey), key);
   if (key === 'excel') { const fi = $('#file'); if (fi && !fi.files.length) fi.focus(); }
   // The file-upload assessment/results cards only make sense for the file source.
   _SRC_FILE_ONLY.forEach(id => { const el = document.getElementById(id); if (el) el.classList.toggle('src-hidden', bodyKey !== 'file'); });
@@ -11835,6 +11890,9 @@ function applyDashMax() {
   // The canvas is sized from its wrapper, which just changed (or went to display:none), so refit
   // on the next frame. Restoring from maximised is the case that needs this.
   requestAnimationFrame(() => { if (GALAXY.onResize) GALAXY.onResize(); });
+  // The panel's footprint just changed, so it re-enters from the right into its new one. Only
+  // when a dataset is actually open: applyDashMax also runs on every split change and on load.
+  if (top && top.classList.contains('split')) slideInRight($('#dashDetail'), 26);
 }
 if ($('#dashMaxBtn')) $('#dashMaxBtn').addEventListener('click', () => {
   dashMaxed = !dashMaxed;
@@ -11848,10 +11906,11 @@ function setOverviewSplit(on) {
   applyDashMax();          // re-assert the maximised choice, and refit the canvas
 }
 function deselectDataset() {
-  dashSelected = null; GALAXY.selected = null;
+  dashSelected = null; GALAXY.selected = null;                   // state clears at once...
   const wrap = $('#dashTableWrap');
   if (wrap) wrap.querySelectorAll('.dash-row').forEach(x => x.classList.remove('sel'));
-  setOverviewSplit(false);                                       // galaxy back to full width
+  // ...the layout waits for the panel to leave, or it would vanish and then animate nothing.
+  slideOutRight($('#dashDetail'), () => setOverviewSplit(false));
 }
 // Force-select a dataset (never toggles closed) - used by the orb click AND programmatic opens.
 function selectGalaxyDataset(key, name) {
