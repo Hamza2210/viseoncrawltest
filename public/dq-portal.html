@@ -16,6 +16,9 @@
     --err: #fb7185; --err-bg: rgba(251,113,133,.17); --idle: #94a2be; --idle-bg: #1a2338;
     --code-bg: #060a12; --code-fg: #cbd5e1;
     --dq-ease: cubic-bezier(.22, .61, .36, 1);
+    /* For layout-sized moves. --dq-ease is a hard decelerate, fine for a 6px entry and far too
+       front-loaded for a column crossing half the screen. */
+    --dq-move: cubic-bezier(.4, 0, .2, 1);
     --shadow-sm: 0 1px 2px rgba(0,0,0,.35);
     --shadow: 0 1px 3px rgba(0,0,0,.45), 0 8px 22px rgba(0,0,0,.30);
     --shadow-md: 0 8px 28px rgba(0,0,0,.50);
@@ -181,6 +184,9 @@
     .sk { animation: none !important; background: var(--idle-bg) !important; }
     .tile:hover, .dsp-card:hover, .lin2-node:hover, .source-card:hover, .cmp-item:hover,
     .btn-sm:not(:disabled):hover, .linkbtn:hover { transform: none !important; }
+    /* The layout still changes, it just stops sliding there. */
+    .overview-top, .overview-top > #dashDetail, .overview-top > .galaxy-card,
+    .source-body .card > *:not(.src-sk), .src-sk { transition: none !important; }
   }
 
   .brand-title { font-size: 21px; font-weight: 800; letter-spacing: -.02em;
@@ -1811,16 +1817,33 @@
   .gx-group { width: auto; min-width: 150px; }
   /* Galaxy (left) + selected-dataset detail (right), side by side; stacks on narrow screens. */
   /* Galaxy is full-width until a dataset is selected, then it splits: galaxy | detail. */
-  .overview-top { display: grid; grid-template-columns: 1fr; gap: 18px; align-items: start; margin-bottom: 18px; }
+  /* TWO tracks in every state, always. A grid track list only interpolates against another of
+     the same length, so `1fr` -> `3fr 7fr` cannot animate and the galaxy snaps to its new width
+     while the panel slides: exactly the "teleport" this avoids. The closed and maximised states
+     are therefore a ZERO-width track, not display:none.
+     The column gap is animated with it, or an 18px gutter would sit against a 0-width column and
+     the galaxy would never quite reach full width. */
+  .overview-top { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 0fr);
+    row-gap: 18px; column-gap: 0; align-items: start; margin-bottom: 18px;
+    transition: grid-template-columns .42s var(--dq-move), column-gap .42s var(--dq-move),
+      padding .42s var(--dq-move); }
   /* 30 / 70: the galaxy is an index, the detail panel is where the work happens - so the
      detail gets the room. Order in the DOM is galaxy first, #dashDetail second. */
-  .overview-top.split { grid-template-columns: minmax(0, 3fr) minmax(0, 7fr); }
-  .overview-top:not(.split) > #dashDetail { display: none; }
+  .overview-top.split { grid-template-columns: minmax(0, 3fr) minmax(0, 7fr); column-gap: 18px; }
+  /* Closed: zero-width, faded and nudged right, so opening is a slide IN from the right and
+     closing is the same move reversed - both in step with the column that carries it. */
+  .overview-top > #dashDetail { transition: opacity .3s var(--dq-ease), transform .3s var(--dq-ease); }
+  .overview-top > #dashDetail, .overview-top > .galaxy-card { transition: padding .42s var(--dq-move); }
+  .overview-top:not(.split) > #dashDetail {
+    opacity: 0; transform: translateX(26px); pointer-events: none; overflow: hidden;
+    padding-left: 0; padding-right: 0; }
   /* Maximised detail: hide the galaxy so the panel gets the whole width. Scoped to .split on
      purpose - deselecting a dataset drops .split, which brings the galaxy back at full width
      without the user having to un-maximise first. */
-  .overview-top.split.maxed { grid-template-columns: 1fr; }
-  .overview-top.split.maxed > .galaxy-card { display: none; }
+  .overview-top.split.maxed { grid-template-columns: minmax(0, 0fr) minmax(0, 1fr); column-gap: 0; }
+  .overview-top > .galaxy-card { transition: opacity .3s var(--dq-ease); }
+  .overview-top.split.maxed > .galaxy-card {
+    opacity: 0; pointer-events: none; overflow: hidden; padding-left: 0; padding-right: 0; }
   .overview-top > * { margin-bottom: 0; }
   #dashDetail { max-height: 640px; overflow-y: auto; scroll-margin-top: 240px; }
   /* Charts carry a natural cap so they do not stretch absurdly wide on the full-width estate
@@ -4426,41 +4449,6 @@ function countUp(el, ms) {
   requestAnimationFrame(step);
 }
 
-/**
- * Slide a panel in from the right.
- *
- * The dataset detail lives in the right-hand column, so it arrives and leaves on that axis:
- * entering from the right reads as "this opened beside the list", where a fade reads as the page
- * having simply changed. Transform and opacity only, so it composites.
- *
- * `dist` is small on purpose. The panel is already in its final position; the slide is a hint of
- * direction, not a journey across the screen.
- */
-function slideInRight(el, dist) {
-  if (!el) return;
-  if (dqReduced() || !el.animate) { dqIn(el, 'dq-page'); return; }
-  el.animate(
-    [{ transform: `translateX(${dist || 38}px)`, opacity: 0 }, { transform: 'none', opacity: 1 }],
-    { duration: 360, easing: 'cubic-bezier(.2, 0, 0, 1)' });
-}
-
-/**
- * Slide a panel back out to the right, THEN run `done` to actually remove it.
- *
- * The callback is what drops the split class, so the layout does not collapse until the panel has
- * visually left. A token guards the case that matters: clicking another dataset during the 220ms
- * would otherwise let a finished exit tear down the selection that replaced it.
- */
-let _dashExitToken = 0;
-function slideOutRight(el, done) {
-  const token = ++_dashExitToken;
-  if (!el || dqReduced() || !el.animate) { done(); return; }
-  const a = el.animate(
-    [{ transform: 'none', opacity: 1 }, { transform: 'translateX(38px)', opacity: 0 }],
-    { duration: 220, easing: 'cubic-bezier(.4, 0, 1, 1)' });
-  a.onfinish = () => { if (token === _dashExitToken) done(); };
-}
-
 function dqLoader(msg, sub, compact) {
   return `<div class="dq-loader${compact ? ' compact' : ''}">
       <div class="dq-orbit"><div class="ring r1"></div><div class="ring r2"></div><div class="core"></div><div class="sat"></div><div class="sat s2"></div></div>
@@ -6296,10 +6284,9 @@ async function selectDataset(key, name, initialTab) {
   const ds = dashDatasets.find(x => x.key === key);
   dashSelected = { key, name, prefix: ds && ds.resultPrefix };
   if (GALAXY.orbs && GALAXY.orbs.length) GALAXY.selected = GALAXY.orbs.find(o => o.key === key) || null;
-  setOverviewSplit(true);                                        // reveal the detail beside the galaxy
-  // Same entrance from a row click and from an orb click: the panel belongs to the right-hand
-  // column, and where the click came from does not change where the panel appears.
-  slideInRight($('#dashDetail'));
+  // The grid carries the motion now: adding .split widens the detail column from zero while the
+  // galaxy column narrows, and the panel's own opacity/transform transition rides along with it.
+  setOverviewSplit(true);
   // Open the requested sub-tab from the START so only ONE panel render happens - otherwise a later
   // 'scores' fetch can resolve after and clobber a drill-in that wanted the Compliance tab.
   dsTrends = null; dsTab = (initialTab && DS_TABS.some(([k]) => k === initialTab)) ? initialTab : 'scores';
@@ -11568,7 +11555,15 @@ function initGalaxyScene(wrap) {
   g.selRing.visible = false; g.group.add(g.selRing);
   g.ray = new THREE.Raycaster(); g.mouse = new THREE.Vector2();
   _wireGalaxyControls(wrap);
-  g.onResize = () => { const w = wrap.clientWidth || 600, h = wrap.clientHeight || 460; g.camera.aspect = w / h; g.camera.updateProjectionMatrix(); g.renderer.setSize(w, h); };
+  // Called once per frame by the ResizeObserver below, which is what lets the canvas track the
+  // column as it animates rather than jumping once at the end. Skipped at zero width: the
+  // maximised layout collapses this column to nothing, and `|| 600` would otherwise resize the
+  // buffer to a made-up width and hand the camera a nonsense aspect.
+  g.onResize = () => {
+    const w = wrap.clientWidth, h = wrap.clientHeight || 460;
+    if (w < 2) return;
+    g.camera.aspect = w / h; g.camera.updateProjectionMatrix(); g.renderer.setSize(w, h);
+  };
   window.addEventListener('resize', g.onResize);
   // The canvas now stretches to the detail panel's height, so it has to refit whenever that
   // changes too (a detail tab switch, a report loading in) - not just on a window resize.
@@ -11846,6 +11841,9 @@ function startGalaxyLoop() {
   let last = performance.now();
   const loop = (now) => {
     g.raf = requestAnimationFrame(loop);
+    // Collapsed to nothing by the maximised layout: keep the loop alive so restoring is instant,
+    // but do not pay to render a canvas of zero width.
+    if (g.wrap && g.wrap.clientWidth < 2) return;
     now = now || performance.now();
     const dt = Math.min(0.05, (now - last) / 1000); last = now;  // seconds since last frame (clamped for tab-switch gaps)
     if (!g.wrap || !g.wrap.offsetParent) return;                 // paused when the Overview isn't visible
@@ -11891,9 +11889,6 @@ function applyDashMax() {
   // The canvas is sized from its wrapper, which just changed (or went to display:none), so refit
   // on the next frame. Restoring from maximised is the case that needs this.
   requestAnimationFrame(() => { if (GALAXY.onResize) GALAXY.onResize(); });
-  // The panel's footprint just changed, so it re-enters from the right into its new one. Only
-  // when a dataset is actually open: applyDashMax also runs on every split change and on load.
-  if (top && top.classList.contains('split')) slideInRight($('#dashDetail'), 26);
 }
 if ($('#dashMaxBtn')) $('#dashMaxBtn').addEventListener('click', () => {
   dashMaxed = !dashMaxed;
@@ -11907,11 +11902,12 @@ function setOverviewSplit(on) {
   applyDashMax();          // re-assert the maximised choice, and refit the canvas
 }
 function deselectDataset() {
-  dashSelected = null; GALAXY.selected = null;                   // state clears at once...
+  dashSelected = null; GALAXY.selected = null;
   const wrap = $('#dashTableWrap');
   if (wrap) wrap.querySelectorAll('.dash-row').forEach(x => x.classList.remove('sel'));
-  // ...the layout waits for the panel to leave, or it would vanish and then animate nothing.
-  slideOutRight($('#dashDetail'), () => setOverviewSplit(false));
+  // Dropping .split no longer removes the panel outright, it animates the column back to zero
+  // while the panel fades and slides right, so there is nothing to wait for.
+  setOverviewSplit(false);
 }
 // Force-select a dataset (never toggles closed) - used by the orb click AND programmatic opens.
 function selectGalaxyDataset(key, name) {
