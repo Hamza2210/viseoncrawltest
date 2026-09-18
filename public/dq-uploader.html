@@ -1316,6 +1316,60 @@
 
   /* Summary strip: the focus object on the left, the two counts on the right. Downstream is
      given the emphasis because it is the blast radius, which is the question worth asking. */
+  /* Dataset picker. A <select> cannot show a score, a stage and tags, which are exactly the
+     things you choose a dataset BY, so the control shows them and filters on them. */
+  .dsp { border: 1px solid var(--border); border-radius: 12px; background: var(--card-2);
+    padding: 12px; margin-bottom: 18px; }
+  .dsp-top { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .dsp-search { position: relative; flex: 1 1 260px; display: flex; align-items: center; }
+  .dsp-mag { position: absolute; left: 11px; font-size: 12px; opacity: .65; pointer-events: none; }
+  .dsp-search input { width: 100%; box-sizing: border-box; padding: 9px 12px 9px 32px; margin: 0;
+    font: inherit; font-size: 13px; border-radius: 9px; border: 1px solid var(--border);
+    background: var(--card); color: var(--text); }
+  .dsp-search input:focus { outline: none; border-color: var(--accent); }
+  .dsp-search input::-webkit-search-cancel-button { filter: invert(.6); }
+  .dsp-count { font-size: 12px; color: var(--muted); white-space: nowrap; }
+
+  .dsp-filters { display: flex; flex-direction: column; gap: 6px; margin-top: 11px; }
+  .dsp-filters:empty { display: none; }
+  .dsp-fg { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .dsp-fl { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
+    color: var(--muted); width: 52px; flex: none; }
+  .dsp-chip { cursor: pointer; font: inherit; font-size: 11px; padding: 3px 9px; border-radius: 999px;
+    border: 1px solid var(--border); background: var(--card); color: var(--muted);
+    white-space: nowrap; opacity: .62; transition: opacity .12s ease, border-color .12s ease; }
+  .dsp-chip:hover { opacity: .9; }
+  .dsp-chip.on { opacity: 1; color: var(--text); border-color: var(--accent); }
+  .dsp-chip.medal { opacity: .55; }
+  .dsp-chip.medal.on { opacity: 1; }
+
+  .dsp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(232px, 1fr));
+    gap: 9px; margin-top: 12px; max-height: 296px; overflow-y: auto; padding-right: 2px; }
+  .dsp-card { display: block; width: 100%; text-align: left; cursor: pointer; font: inherit;
+    padding: 10px 11px; border-radius: 10px; border: 1px solid var(--border);
+    border-left: 3px solid var(--idle); background: var(--card); color: var(--text);
+    transition: transform .12s ease, border-color .12s ease, box-shadow .12s ease; }
+  .dsp-card:hover { transform: translateY(-1px); box-shadow: var(--shadow-sm); border-color: var(--accent); }
+  .dsp-card[data-rag="green"] { border-left-color: var(--ok); }
+  .dsp-card[data-rag="amber"] { border-left-color: var(--run); }
+  .dsp-card[data-rag="red"]   { border-left-color: var(--err); }
+  .dsp-card.on { border-top-color: var(--accent); border-right-color: var(--accent);
+    border-bottom-color: var(--accent); background: var(--accent-soft);
+    box-shadow: 0 0 0 1px var(--accent) inset; }
+  .dsp-ch { display: flex; align-items: center; gap: 7px; min-width: 0; }
+  .dsp-ico { font-size: 14px; flex: none; line-height: 1; }
+  .dsp-name { font-size: 13px; font-weight: 650; word-break: break-word; line-height: 1.3; }
+  .dsp-sch { color: var(--muted); font-weight: 500; }
+  .dsp-cm { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; margin-top: 6px;
+    font-size: 11px; color: var(--muted); }
+  .dsp-score { display: inline-flex; align-items: center; gap: 4px; }
+  .dsp-score b { color: var(--text); font-weight: 650; }
+  .dsp-ct { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 6px; }
+  .dsp-ct span { font-size: 10px; padding: 1px 6px; border-radius: 999px; color: var(--muted);
+    background: var(--card-2); border: 1px solid var(--border); }
+  .dsp .lin2-skip { display: block; margin-top: 11px; }
+  .dsp-none { grid-column: 1 / -1; font-size: 12.5px; color: var(--muted); padding: 14px;
+    text-align: center; border: 1px dashed var(--border); border-radius: 10px; }
   .lin2-sum { display: flex; align-items: center; justify-content: space-between; gap: 16px;
     flex-wrap: wrap; padding: 13px 15px; margin-bottom: 18px; border: 1px solid var(--border);
     border-radius: 12px; background: var(--card-2); }
@@ -2555,10 +2609,16 @@
       <p class="dash-muted" id="lineageCtx"></p>
       <div id="lineageBody"><p class="dash-muted">Loading…</p></div>
       <div id="srcLinWrap" style="display:none;">
-        <div class="lin2-bar">
-          <label for="srcLinSel">Dataset</label>
-          <select id="srcLinSel"></select>
-          <span class="lin2-skip" id="srcLinSkip"></span>
+        <div class="dsp" id="linPick">
+          <div class="dsp-top">
+            <span class="dsp-search"><span class="dsp-mag" aria-hidden="true">🔍</span>
+              <input type="search" id="linPickQ" autocomplete="off" placeholder="Search by name, schema or tag…" aria-label="Search datasets">
+            </span>
+            <span class="dsp-count" id="linPickCount"></span>
+          </div>
+          <div class="dsp-filters" id="linPickFilters"></div>
+          <div class="dsp-grid" id="linPickGrid"></div>
+          <div class="lin2-skip" id="srcLinSkip"></div>
         </div>
         <div id="srcLineageBody"><p class="dash-muted">Loading…</p></div>
       </div>
@@ -9355,9 +9415,109 @@ window.addEventListener('resize', () => {
   });
 });
 
+// The picker's state. `all` is the offered set; everything else narrows it.
+const linPick = { all: [], q: '', stages: new Set(), tags: new Set(), sources: new Set(), sel: '' };
+
+/** The offered datasets after search and every active filter. */
+function linPickList() {
+  const q = linPick.q.trim().toLowerCase();
+  return linPick.all.filter(d => {
+    const e = entryFor(d.key);
+    const hay = ((d.name || '') + ' ' + (e.tags || []).join(' ')).toLowerCase();
+    return (!q || hay.includes(q))
+      && (!linPick.stages.size || linPick.stages.has(e.stage))
+      && (!linPick.sources.size || linPick.sources.has(String(d.sourceFormat || '').toLowerCase()))
+      && (!linPick.tags.size || (e.tags || []).some(t => linPick.tags.has(t)));
+  });
+}
+
+/** One dataset card: the score, the stage and the tags you would choose it BY. */
+function linPickCard(d) {
+  const e = entryFor(d.key), name = d.name || d.slug || '';
+  const dot = name.lastIndexOf('.');
+  const rag = ['green', 'amber', 'red'].includes(String(d.status || '')) ? d.status : 'unknown';
+  const score = (typeof d.score === 'number')
+    ? `<span class="dsp-score"><span class="lin-rag ${rag}"></span><b>${num1(d.score)}</b></span>`
+    : `<span class="dsp-score"><span class="lin-rag unknown"></span>not assessed</span>`;
+  const stage = e.stage ? `<span class="medal ${e.stage}">${MEDAL_LABEL[e.stage]}</span>` : '';
+  const tags = (e.tags || []).length
+    ? `<div class="dsp-ct">${(e.tags || []).map(t => `<span>🏷️ ${esc(t)}</span>`).join('')}</div>` : '';
+  return `<button type="button" class="dsp-card${d.resultPrefix === linPick.sel ? ' on' : ''}" ` +
+    `data-rag="${rag}" data-prefix="${esc(d.resultPrefix)}" data-fmt="${esc(d.sourceFormat || '')}">` +
+    `<span class="dsp-ch"><span class="dsp-ico">${srcIcon(d.sourceFormat)}</span>` +
+    `<span class="dsp-name">${dot > 0 ? `<span class="dsp-sch">${esc(name.slice(0, dot + 1))}</span>` : ''}${esc(dot > 0 ? name.slice(dot + 1) : name)}</span></span>` +
+    `<span class="dsp-cm">${esc(sourceLabel(d.sourceFormat))}${stage}${score}</span>${tags}</button>`;
+}
+
+/** The filter rows. A group with fewer than two choices is not a filter, so it is not shown. */
+function renderLinPickFilters() {
+  const rows = [];
+  const grp = (label, chips) => chips.length >= 2
+    ? `<div class="dsp-fg"><span class="dsp-fl">${label}</span>${chips.join('')}</div>` : '';
+  const chip = (kind, v, label, cls) =>
+    `<button type="button" class="dsp-chip${cls ? ' ' + cls : ''}${linPick[kind].has(v) ? ' on' : ''}" ` +
+    `data-fk="${kind}" data-fv="${esc(v)}">${label}</button>`;
+
+  const stages = MEDALLIONS.filter(m => linPick.all.some(d => entryFor(d.key).stage === m));
+  rows.push(grp('Stage', stages.map(m => chip('stages', m, MEDAL_LABEL[m], 'medal ' + m))));
+
+  const tags = [...new Set(linPick.all.flatMap(d => entryFor(d.key).tags || []))].sort();
+  rows.push(grp('Tag', tags.map(t => chip('tags', t, '🏷️ ' + esc(t)))));
+
+  const srcs = [...new Set(linPick.all.map(d => String(d.sourceFormat || '').toLowerCase()).filter(Boolean))].sort();
+  rows.push(grp('Source', srcs.map(f => chip('sources', f, srcIcon(f) + ' ' + esc(sourceLabel(f))))));
+
+  $('#linPickFilters').innerHTML = rows.filter(Boolean).join('');
+}
+
+function renderLinPicker() {
+  const list = linPickList();
+  renderLinPickFilters();
+  const narrowed = !!(linPick.q.trim() || linPick.stages.size || linPick.tags.size || linPick.sources.size);
+  $('#linPickCount').innerHTML =
+    (list.length === linPick.all.length
+      ? `${linPick.all.length} dataset${linPick.all.length === 1 ? '' : 's'}`
+      : `${list.length} of ${linPick.all.length}`)
+    // "No dataset matches" with no visible cause is a support call, so the way out is always shown.
+    + (narrowed ? ` <button type="button" class="linkbtn" id="linPickClear">Clear</button>` : '');
+  $('#linPickGrid').innerHTML = list.length
+    ? list.map(linPickCard).join('')
+    : `<div class="dsp-none">No dataset matches this search or filter.</div>`;
+}
+
+// Delegated, because the grid and the chips are both rebuilt on every keystroke.
+function wireLinPicker() {
+  const host = $('#linPick');
+  if (!host || host._wired) return;
+  host._wired = true;
+  $('#linPickQ').addEventListener('input', e => { linPick.q = e.target.value; renderLinPicker(); });
+  host.addEventListener('click', e => {
+    if (e.target.id === 'linPickClear') {
+      linPick.q = ''; $('#linPickQ').value = '';
+      linPick.stages.clear(); linPick.tags.clear(); linPick.sources.clear();
+      renderLinPicker();
+      return;
+    }
+    const chip = e.target.closest('.dsp-chip');
+    if (chip) {
+      const set = linPick[chip.dataset.fk], v = chip.dataset.fv;
+      if (set.has(v)) set.delete(v); else set.add(v);
+      renderLinPicker();
+      return;
+    }
+    const card = e.target.closest('.dsp-card');
+    if (card && card.dataset.prefix !== linPick.sel) {
+      linPick.sel = card.dataset.prefix;
+      linPick.selFmt = card.dataset.fmt || '';
+      renderLinPicker();
+      showSourceLineage();
+    }
+  });
+}
+
 async function loadSourceLineage() {
   if (!configOK) return;
-  const body = $('#srcLineageBody'), sel = $('#srcLinSel'), skip = $('#srcLinSkip');
+  const body = $('#srcLineageBody'), skip = $('#srcLinSkip');
   // The colours come from the dashboard's dataset list, exactly as the Qlik lineage tab does.
   // Landing here first would otherwise paint every node "no matching dataset", which looks like
   // a finding and is really just an empty cache.
@@ -9373,29 +9533,37 @@ async function loadSourceLineage() {
     ? `${other.length} dataset${other.length === 1 ? '' : 's'} not listed: ${names.join(', ')} `
       + `${names.length === 1 ? 'does' : 'do'} not publish dependency metadata.`
     : '';
+  $('#linPick').style.display = ds.length ? '' : 'none';
   if (!ds.length) {
-    sel.style.display = 'none';
     body.innerHTML = `<div class="lin2-empty">No assessed dataset on this ${esc(SCOPE_NOUN)} comes from a warehouse that publishes dependency metadata. The ones that do are PostgreSQL, Amazon Redshift, SQL Server, Azure Synapse and Microsoft Fabric.</div>`;
     return;
   }
-  sel.style.display = '';
-  const prev = sel.value;
-  sel.innerHTML = ds.map(d =>
-    `<option value="${esc(d.resultPrefix)}" data-fmt="${esc(d.sourceFormat || '')}">${esc(d.name || d.slug || '')}</option>`).join('');
-  if (prev && ds.some(d => d.resultPrefix === prev)) sel.value = prev;
-  if (!sel._wired) { sel._wired = true; sel.addEventListener('change', () => showSourceLineage()); }
+  linPick.all = ds;
+  // Drop filter selections whose value no longer exists in the estate, rather than silently
+  // narrowing to nothing against something that is not there any more.
+  const liveTags = new Set(ds.flatMap(d => entryFor(d.key).tags || []));
+  const liveSrc = new Set(ds.map(d => String(d.sourceFormat || '').toLowerCase()));
+  linPick.tags.forEach(t => { if (!liveTags.has(t)) linPick.tags.delete(t); });
+  linPick.sources.forEach(f => { if (!liveSrc.has(f)) linPick.sources.delete(f); });
+  if (!ds.some(d => d.resultPrefix === linPick.sel)) {
+    linPick.sel = ds[0].resultPrefix;
+    linPick.selFmt = ds[0].sourceFormat || '';
+  }
+  wireLinPicker();
+  renderLinPicker();
   showSourceLineage();
 }
 
 async function showSourceLineage() {
-  const sel = $('#srcLinSel'), body = $('#srcLineageBody');
-  const opt = sel.options[sel.selectedIndex];
+  const body = $('#srcLineageBody');
+  const opt = linPick.sel ? { value: linPick.sel, dataset: { fmt: linPick.selFmt || '' } } : null;
   if (!opt) return;
   body.innerHTML = `<p class="dash-muted"><span class="spin"></span> Reading the dependency graph…</p>`;
   try {
     const r = await postJSON(`${API_BASE}/data-quality/source-lineage`, HEADERS,
       { result_prefix: opt.value, source_format: opt.dataset.fmt || undefined });
-    renderSourceLineage(r, opt.textContent);
+    const d = linPick.all.find(x => x.resultPrefix === opt.value);
+    renderSourceLineage(r, (d && (d.name || d.slug)) || '');
   } catch (e) {
     body.innerHTML = `<p class="dash-muted" style="color:var(--err)">${esc(e.message)}</p>`;
   }
