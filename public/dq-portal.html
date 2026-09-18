@@ -1823,8 +1823,17 @@
      are therefore a ZERO-width track, not display:none.
      The column gap is animated with it, or an 18px gutter would sit against a 0-width column and
      the galaxy would never quite reach full width. */
-  .overview-top { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 0fr);
-    row-gap: 18px; column-gap: 0; align-items: start; margin-bottom: 18px;
+  /* AT REST: one track, and the detail panel is out of flow entirely.
+     A second track at rest looked harmless and was not: a zero-WIDTH grid item still has its full
+     HEIGHT, so the row stayed as tall as the hidden panel's content while the start-aligned
+     galaxy card kept its own height, leaving a large empty gap underneath it. */
+  .overview-top { display: grid; grid-template-columns: 1fr;
+    row-gap: 18px; column-gap: 0; align-items: start; margin-bottom: 18px; }
+  .overview-top:not(.anim):not(.split) > #dashDetail { display: none; }
+  /* WHILE ANIMATING: the second track exists so there is something to interpolate FROM. A track
+     list only interpolates against another of the same length, which is the whole reason this
+     class exists; it is added one frame before .split and removed once the closing move ends. */
+  .overview-top.anim { grid-template-columns: minmax(0, 1fr) minmax(0, 0fr);
     transition: grid-template-columns .42s var(--dq-move), column-gap .42s var(--dq-move),
       padding .42s var(--dq-move); }
   /* 30 / 70: the galaxy is an index, the detail panel is where the work happens - so the
@@ -11563,6 +11572,11 @@ function initGalaxyScene(wrap) {
     const w = wrap.clientWidth, h = wrap.clientHeight || 460;
     if (w < 2) return;
     g.camera.aspect = w / h; g.camera.updateProjectionMatrix(); g.renderer.setSize(w, h);
+    // Draw straight away. setSize reallocates the drawing buffer, which CLEARS it, and this runs
+    // once per frame while the column animates - so without an immediate render the cleared
+    // buffer is what gets presented, every frame, and the galaxy reads as blank for the whole
+    // transition.
+    if (g.scene && g.camera) g.renderer.render(g.scene, g.camera);
   };
   window.addEventListener('resize', g.onResize);
   // The canvas now stretches to the detail panel's height, so it has to refit whenever that
@@ -11896,9 +11910,29 @@ if ($('#dashMaxBtn')) $('#dashMaxBtn').addEventListener('click', () => {
 });
 
 // Split the Overview (galaxy | detail) when a dataset is picked; full-width galaxy otherwise.
+//
+// `.anim` carries the second grid track and the transition. It goes on a frame BEFORE `.split`,
+// because a class that adds the track and a class that changes its width applied in the same
+// frame coalesce into one style change with nothing to interpolate from. It comes off again once
+// the closing move has finished, so that at rest the panel is display:none and contributes no
+// height - which is what keeps the row from being as tall as a panel nobody can see.
 function setOverviewSplit(on) {
   const top = document.querySelector('.overview-top');
-  if (top) top.classList.toggle('split', !!on);
+  if (top) {
+    clearTimeout(top._animT);
+    if (on) {
+      top.classList.add('anim');
+      void top.offsetWidth;                       // flush, or the two changes land in one frame
+      top.classList.add('split');
+    } else if (top.classList.contains('split')) {
+      top.classList.remove('split');
+      // A timeout rather than transitionend: several properties transition here, reduced motion
+      // suppresses the event entirely, and this only has to outlast the .42s move.
+      top._animT = setTimeout(() => top.classList.remove('anim'), 480);
+    } else {
+      top.classList.remove('anim');
+    }
+  }
   applyDashMax();          // re-assert the maximised choice, and refit the canvas
 }
 function deselectDataset() {
