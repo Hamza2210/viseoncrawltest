@@ -122,6 +122,28 @@
 
       </div>
 
+      <div class="card" id="tagCard" style="margin-top:18px">
+        <h2>Tag access</h2>
+        <p class="hint">Restrict who can see a dataset by its tags. A tag is ordinary metadata
+          until you list it here, so nothing changes until you do - and tags you already use for
+          grouping keep working as they are.</p>
+        <label>Tags that restrict</label>
+        <input id="tRestricted" placeholder="finance, hr" autocomplete="off">
+        <p class="hint">Comma separated. A dataset carrying one of these is visible only to members
+          granted that tag. Admins always see everything.</p>
+        <label>Datasets with none of those tags</label>
+        <select id="tPolicy">
+          <option value="open">are visible to everyone (recommended)</option>
+          <option value="closed">are visible to nobody (deny by default)</option>
+        </select>
+        <button class="btn" id="saveOrgTags">Save</button>
+        <div class="msg" id="tagMsg"></div>
+        <h2 style="margin-top:22px;font-size:15px;">Who holds what</h2>
+        <p class="hint">Grant each member the tags they may see. Leave empty for a member who
+          should see only unrestricted datasets.</p>
+        <div id="tagMembers" class="userstable"></div>
+      </div>
+
       <div class="card" id="usersCard" style="margin-top:18px">
         <h2>Users</h2>
         <p class="hint">Everyone provisioned for <span id="usersScopeLabel">your organisation</span>.
@@ -230,6 +252,108 @@
       wrap.appendChild(row);
     });
   }
+  // --- Tag access ------------------------------------------------------------------- //
+  let TAGS = { restricted: [], policy: 'open', members: [] };
+
+  const parseTags = v => [...new Set(String(v || '').split(',')
+    .map(t => t.trim().toLowerCase()).filter(Boolean))].sort();
+
+  async function loadTagSettings() {
+    const wrap = $('#tagMembers');
+    wrap.innerHTML = ''; wrap.appendChild(el('div', 'uempty', 'Loading…'));
+    try {
+      TAGS = await api('/portal/admin/tags');
+      $('#tRestricted').value = (TAGS.restricted_tags || []).join(', ');
+      $('#tPolicy').value = TAGS.policy || 'open';
+      renderTagMembers();
+    } catch (e) { wrap.innerHTML = ''; show($('#tagMsg'), 'err', e.message); }
+  }
+
+  function renderTagMembers() {
+    const wrap = $('#tagMembers'); wrap.innerHTML = '';
+    const members = (TAGS.members || []).filter(m => m.role !== 'admin');
+    if (!(TAGS.members || []).length) {
+      wrap.appendChild(el('div', 'uempty', 'No users yet.')); return;
+    }
+    (TAGS.members || []).forEach(m => {
+      const row = el('div', 'urow');
+      row.appendChild(el('span', 'uemail', m.email));
+      if (m.role === 'admin') {
+        // Stating this is worth a line: an admin seeing everything regardless is the single most
+        // common surprise when somebody tests a restriction with their own account.
+        const t = el('span', 'utag admin', 'admin - sees everything');
+        t.title = 'Admins are never restricted by tags.';
+        row.appendChild(t);
+        wrap.appendChild(row);
+        return;
+      }
+      const inp = el('input', 'urole');
+      inp.value = (m.tags || []).join(', ');
+      inp.placeholder = 'no tags';
+      inp.style.minWidth = '180px';
+      const save = el('button', 'udel', 'Save');
+      save.addEventListener('click', () => saveUserTags(m, inp, save));
+      row.appendChild(inp); row.appendChild(save);
+      wrap.appendChild(row);
+    });
+    if (!members.length) {
+      wrap.appendChild(el('div', 'uempty',
+        'Every user here is an admin, so nothing is restricted for anyone yet.'));
+    }
+  }
+
+  async function saveUserTags(m, inp, btn) {
+    btn.disabled = true; const msg = $('#tagMsg'); msg.className = 'msg';
+    const tags = parseTags(inp.value);
+    try {
+      await api('/portal/admin/users/tags',
+                { method: 'POST', body: JSON.stringify({ email: m.email, tags: tags }) });
+      m.tags = tags; inp.value = tags.join(', ');
+      show(msg, 'ok', tags.length
+        ? 'Granted ' + m.email + ': ' + tags.join(', ') + '.'
+        : m.email + ' now sees only unrestricted datasets.');
+    } catch (e) { show(msg, 'err', e.message); }
+    btn.disabled = false;
+  }
+
+  async function saveOrgTags() {
+    const btn = $('#saveOrgTags'); const msg = $('#tagMsg'); msg.className = 'msg';
+    const restricted = parseTags($('#tRestricted').value);
+    const policy = $('#tPolicy').value;
+
+    // Who would lose access the moment this is saved? Declaring a tag restricting before anyone
+    // has been granted it locks every member out of those datasets. The card knows both halves,
+    // so it names them rather than leaving an admin to find out from a support call.
+    const added = restricted.filter(t => !(TAGS.restricted_tags || []).includes(t));
+    if (added.length) {
+      const exposed = (TAGS.members || [])
+        .filter(m => m.role !== 'admin' && !added.some(t => (m.tags || []).includes(t)))
+        .map(m => m.email);
+      if (exposed.length) {
+        const who = exposed.slice(0, 6).join(', ') + (exposed.length > 6
+          ? ' and ' + (exposed.length - 6) + ' more' : '');
+        if (!confirm('Restricting ' + added.join(', ') + ' will hide those datasets from '
+                     + exposed.length + ' member' + (exposed.length === 1 ? '' : 's') + ':\n\n'
+                     + who + '\n\nGrant the tag first if they should keep access. Continue?')) {
+          return;
+        }
+      }
+    }
+    btn.disabled = true;
+    try {
+      const r = await api('/portal/admin/org/tags',
+                          { method: 'POST', body: JSON.stringify({ restricted_tags: restricted, policy: policy }) });
+      TAGS.restricted_tags = r.restricted_tags || [];
+      TAGS.policy = r.policy || 'open';
+      show(msg, 'ok', (TAGS.restricted_tags.length
+        ? 'Restricting: ' + TAGS.restricted_tags.join(', ') + '.'
+        : 'Nothing restricts any more - every dataset is visible to every member.')
+        + (TAGS.policy === 'closed'
+           ? ' Datasets with none of these tags are hidden from members.' : ''));
+    } catch (e) { show(msg, 'err', e.message); }
+    btn.disabled = false;
+  }
+
   async function setRole(email, role, sel, prev) {
     sel.disabled = true; const m = $('#usersMsg'); m.className = 'msg';
     try {
@@ -280,6 +404,7 @@
   });
 
   const _uos = $('#usersOrgSel'); if (_uos) _uos.addEventListener('change', () => loadUsers());
+  $('#saveOrgTags').addEventListener('click', saveOrgTags);
 
   function wireLogout(el) { el.addEventListener('click', e => { e.preventDefault(); location.href = API_BASE + '/portal/auth/logout'; }); }
   wireLogout($('#logout')); wireLogout($('#deniedLogout'));
@@ -308,6 +433,8 @@
     }
     try { await loadOrgs(); } catch (e) { show($('#orgMsg'), 'err', 'Could not load orgs: ' + e.message); }
     try { await loadUsers(); } catch (e) { /* surfaced in usersMsg */ }
+    // Last, and independently: a failure here must not stop the rest of the page working.
+    try { await loadTagSettings(); } catch (e) { /* surfaced in tagMsg */ }
   })();
 </script>
 </body>
