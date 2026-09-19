@@ -1832,24 +1832,31 @@
   /* WHILE ANIMATING: the second track exists so there is something to interpolate FROM. A track
      list only interpolates against another of the same length, which is the whole reason this
      class exists; it is added one frame before .split and removed once the closing move ends. */
-  .overview-top.anim { grid-template-columns: minmax(0, 1fr) minmax(0, 0fr);
+  .overview-top.anim { grid-template-columns: minmax(0, 100%) minmax(0, 0%);
     transition: grid-template-columns .42s var(--dq-move), column-gap .42s var(--dq-move),
       padding .42s var(--dq-move); }
   /* 30 / 70: the galaxy is an index, the detail panel is where the work happens - so the
      detail gets the room. Order in the DOM is galaxy first, #dashDetail second. */
-  .overview-top.split { grid-template-columns: minmax(0, 3fr) minmax(0, 7fr); column-gap: 18px; }
+  .overview-top.split { grid-template-columns: minmax(0, calc(30% - 9px)) minmax(0, calc(70% - 9px));
+    column-gap: 18px; }
   /* Closed: zero-width, faded and nudged right, so opening is a slide IN from the right and
      closing is the same move reversed - both in step with the column that carries it. */
-  .overview-top > #dashDetail { transition: opacity .3s var(--dq-ease), transform .3s var(--dq-ease); }
-  .overview-top > #dashDetail, .overview-top > .galaxy-card { transition: padding .42s var(--dq-move); }
+  /* ONE transition declaration per element. `transition` is a SHORTHAND, so a second rule at the
+     same specificity does not add to the first, it replaces it outright. A later
+     `transition: padding` here silently wiped out opacity and transform, which is why the panel
+     vanished on close instead of sliding away. Transform is on the same .42s clock as the grid so
+     the panel travels while the galaxy expands back; opacity is a touch quicker so it is gone
+     before the column finishes closing. */
+  .overview-top > #dashDetail { transition: opacity .42s var(--dq-move),
+    transform .42s var(--dq-move), padding .42s var(--dq-move); }
   .overview-top:not(.split) > #dashDetail {
-    opacity: 0; transform: translateX(26px); pointer-events: none; overflow: hidden;
+    opacity: 0; transform: translateX(48px); pointer-events: none; overflow: hidden;
     padding-left: 0; padding-right: 0; }
   /* Maximised detail: hide the galaxy so the panel gets the whole width. Scoped to .split on
      purpose - deselecting a dataset drops .split, which brings the galaxy back at full width
      without the user having to un-maximise first. */
-  .overview-top.split.maxed { grid-template-columns: minmax(0, 0fr) minmax(0, 1fr); column-gap: 0; }
-  .overview-top > .galaxy-card { transition: opacity .3s var(--dq-ease); }
+  .overview-top.split.maxed { grid-template-columns: minmax(0, 0%) minmax(0, 100%); column-gap: 0; }
+  .overview-top > .galaxy-card { transition: opacity .3s var(--dq-ease), padding .42s var(--dq-move); }
   .overview-top.split.maxed > .galaxy-card {
     opacity: 0; pointer-events: none; overflow: hidden; padding-left: 0; padding-right: 0; }
   .overview-top > * { margin-bottom: 0; }
