@@ -61,6 +61,24 @@
   .urow .udel:hover{background:rgba(255,107,125,.12)}
   .urow .udel:disabled{opacity:.35;cursor:default}
   .uempty{color:var(--muted);font-size:12.5px;padding:8px 2px}
+  /* Tag catalogue: add on one line, then one row per tag with its restricts toggle + remove. */
+  .tagadd{display:flex;gap:8px;align-items:center}
+  .tagadd input{flex:1;min-width:0}
+  .taglist{display:flex;flex-direction:column;gap:6px;margin:10px 0 4px}
+  .tagrow{display:flex;align-items:center;gap:10px;padding:7px 11px;border:1px solid var(--line);border-radius:9px;background:rgba(9,15,32,.35)}
+  .tagrow .tname{flex:1;font-size:13px;word-break:break-all}
+  .tagrow .tres{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:var(--muted);cursor:pointer;white-space:nowrap}
+  .tagrow .tres input{accent-color:var(--accent);cursor:pointer}
+  .tagrow.on{border-color:rgba(255,170,60,.45)}
+  .tagrow.on .tres{color:#ffd8a8}
+  .tagrow .tdel{padding:3px 9px;border:1px solid var(--line);background:transparent;color:var(--muted);border-radius:7px;cursor:pointer;font-size:12px}
+  .tagrow .tdel:hover{border-color:rgba(255,107,125,.5);color:var(--danger)}
+  /* Member grants: toggle chips instead of a comma-separated box. */
+  .grantchips{display:flex;flex-wrap:wrap;gap:6px;flex:1;min-width:0}
+  .grantchip{font-size:11.5px;padding:3px 10px;border:1px solid var(--line);border-radius:999px;background:transparent;color:var(--muted);cursor:pointer;white-space:nowrap}
+  .grantchip:hover{color:var(--ink)}
+  .grantchip.on{color:#0b1020;background:var(--accent);border-color:var(--accent);font-weight:700}
+  .grantchip:disabled{opacity:.4;cursor:default}
   #denied,#loading{max-width:520px;margin:16vh auto;text-align:center;color:var(--muted)}
   #denied h1{color:var(--ink)}
   a{color:var(--accent2);text-decoration:none}
@@ -127,11 +145,17 @@
         <p class="hint">Restrict who can see a dataset by its tags. A tag is ordinary metadata
           until you list it here, so nothing changes until you do - and tags you already use for
           grouping keep working as they are.</p>
-        <label>Tags that restrict</label>
-        <input id="tRestricted" placeholder="finance, hr" autocomplete="off">
-        <p class="hint">Comma separated. A dataset carrying one of these is visible only to members
-          granted that tag. Admins always see everything.</p>
-        <label>Datasets with none of those tags</label>
+        <label>Your organisation's tags</label>
+        <div class="tagadd">
+          <input id="tNew" placeholder="Add a tag, e.g. finance" autocomplete="off" maxlength="40">
+          <button class="btn-sm" id="tAdd" type="button">Add</button>
+        </div>
+        <div id="tList" class="taglist"></div>
+        <p class="hint">This is the list people choose from when tagging a dataset, so a tag can
+          never be declared here under a spelling the data does not use. Tick <em>restricts</em>
+          to turn one into an access control: a dataset carrying it is then visible only to
+          members granted it. Admins always see everything.</p>
+        <label>Datasets with none of the restricting tags</label>
         <select id="tPolicy">
           <option value="open">are visible to everyone (recommended)</option>
           <option value="closed">are visible to nobody (deny by default)</option>
@@ -253,20 +277,78 @@
     });
   }
   // --- Tag access ------------------------------------------------------------------- //
-  let TAGS = { restricted: [], policy: 'open', members: [] };
+  // CAT is the org's tag catalogue: [{name, restricts}]. It is the authoring list and the only
+  // thing this card edits; `restricted_tags` is derived from it server-side. Two independently
+  // typed lists were the previous shape, and they drifted - a tag could be declared restricting
+  // under a spelling no dataset used, and would then gate nothing at all.
+  let TAGS = { restricted_tags: [], policy: 'open', members: [] };
+  let CAT = [];
 
-  const parseTags = v => [...new Set(String(v || '').split(',')
-    .map(t => t.trim().toLowerCase()).filter(Boolean))].sort();
+  const normTag = v => String(v || '').trim().toLowerCase().slice(0, 40);
+  const restrictingNow = () => CAT.filter(t => t.restricts).map(t => t.name).sort();
 
   async function loadTagSettings() {
     const wrap = $('#tagMembers');
     wrap.innerHTML = ''; wrap.appendChild(el('div', 'uempty', 'Loading…'));
     try {
       TAGS = await api('/portal/admin/tags');
-      $('#tRestricted').value = (TAGS.restricted_tags || []).join(', ');
+      CAT = (TAGS.tags || []).map(t => ({ name: t.name, restricts: !!t.restricts }));
       $('#tPolicy').value = TAGS.policy || 'open';
+      renderTagList();
       renderTagMembers();
     } catch (e) { wrap.innerHTML = ''; show($('#tagMsg'), 'err', e.message); }
+  }
+
+  function renderTagList() {
+    const wrap = $('#tList'); wrap.innerHTML = '';
+    if (!CAT.length) {
+      wrap.appendChild(el('div', 'uempty',
+        'No tags yet. Add one above, then it can be applied to a dataset.'));
+      return;
+    }
+    CAT.slice().sort((a, b) => a.name.localeCompare(b.name)).forEach(t => {
+      const row = el('div', 'tagrow' + (t.restricts ? ' on' : ''));
+      row.appendChild(el('span', 'tname', '🏷️ ' + t.name));
+
+      const lab = el('label', 'tres');
+      const cb = el('input'); cb.type = 'checkbox'; cb.checked = t.restricts;
+      cb.addEventListener('change', () => {
+        t.restricts = cb.checked;
+        row.classList.toggle('on', t.restricts);
+        renderTagMembers();      // a grant can only name a RESTRICTING tag, so the chips change
+      });
+      lab.appendChild(cb); lab.appendChild(document.createTextNode('restricts'));
+      lab.title = 'Only members granted this tag can see a dataset carrying it.';
+      row.appendChild(lab);
+
+      const del = el('button', 'tdel', 'Remove'); del.type = 'button';
+      del.addEventListener('click', () => {
+        // Removing a RESTRICTING tag is the dangerous direction: those datasets stop being
+        // restricted by it, and under `open` that hands them to everybody. Say so before doing it.
+        if (t.restricts && !confirm('"' + t.name + '" currently restricts access.\n\nRemoving it '
+            + 'from the list stops it restricting anything, so datasets carrying it become visible '
+            + 'to every member' + ((TAGS.policy || 'open') === 'open' ? '' : ' holding another of their tags')
+            + '.\n\nRemove it?')) return;
+        CAT = CAT.filter(x => x.name !== t.name);
+        renderTagList(); renderTagMembers();
+      });
+      row.appendChild(del);
+      wrap.appendChild(row);
+    });
+    wrap.appendChild(el('div', 'uempty', 'Changes here are saved when you press Save below.'));
+  }
+
+  function addTagToCatalogue() {
+    const inp = $('#tNew'), name = normTag(inp.value);
+    const msg = $('#tagMsg'); msg.className = 'msg';
+    if (!name) return;
+    if (CAT.some(t => t.name === name)) { show(msg, 'err', '"' + name + '" is already in the list.'); return; }
+    // New tags never restrict on creation. A tag that started restricting the moment it was typed
+    // would hide those datasets from everyone before anybody could be granted it.
+    CAT.push({ name: name, restricts: false });
+    inp.value = '';
+    renderTagList();
+    inp.focus();
   }
 
   function renderTagMembers() {
@@ -287,13 +369,32 @@
         wrap.appendChild(row);
         return;
       }
-      const inp = el('input', 'urole');
-      inp.value = (m.tags || []).join(', ');
-      inp.placeholder = 'no tags';
-      inp.style.minWidth = '180px';
-      const save = el('button', 'udel', 'Save');
-      save.addEventListener('click', () => saveUserTags(m, inp, save));
-      row.appendChild(inp); row.appendChild(save);
+      // Only a RESTRICTING tag can be granted: granting a tag that gates nothing does nothing,
+      // and offering it invites an admin to think they have secured something. Tags the member
+      // already holds are shown even if they no longer restrict, so a stale grant is visible
+      // rather than silently dropped the next time anyone touches this row.
+      const held = new Set(m.tags || []);
+      const offer = [...new Set(restrictingNow().concat([...held]))].sort();
+      if (!offer.length) {
+        row.appendChild(el('span', 'utag', 'nothing restricts yet'));
+        wrap.appendChild(row);
+        return;
+      }
+      const chips = el('div', 'grantchips');
+      offer.forEach(t => {
+        const b = el('button', 'grantchip' + (held.has(t) ? ' on' : ''), t);
+        b.type = 'button';
+        b.title = restrictingNow().includes(t)
+          ? 'Click to ' + (held.has(t) ? 'revoke' : 'grant') + ' "' + t + '".'
+          : '"' + t + '" no longer restricts anything. Click to remove this leftover grant.';
+        b.addEventListener('click', () => {
+          if (held.has(t)) held.delete(t); else held.add(t);
+          b.classList.toggle('on', held.has(t));
+          saveUserTags(m, [...held].sort(), chips);   // saved on click: no second button to forget
+        });
+        chips.appendChild(b);
+      });
+      row.appendChild(chips);
       wrap.appendChild(row);
     });
     if (!members.length) {
@@ -302,23 +403,27 @@
     }
   }
 
-  async function saveUserTags(m, inp, btn) {
-    btn.disabled = true; const msg = $('#tagMsg'); msg.className = 'msg';
-    const tags = parseTags(inp.value);
+  async function saveUserTags(m, tags, chips) {
+    const msg = $('#tagMsg'); msg.className = 'msg';
+    const btns = [...chips.querySelectorAll('.grantchip')];
+    btns.forEach(b => { b.disabled = true; });
     try {
       await api('/portal/admin/users/tags',
                 { method: 'POST', body: JSON.stringify({ email: m.email, tags: tags }) });
-      m.tags = tags; inp.value = tags.join(', ');
+      m.tags = tags;
       show(msg, 'ok', tags.length
         ? 'Granted ' + m.email + ': ' + tags.join(', ') + '.'
         : m.email + ' now sees only unrestricted datasets.');
-    } catch (e) { show(msg, 'err', e.message); }
-    btn.disabled = false;
+    } catch (e) {
+      show(msg, 'err', e.message);
+      renderTagMembers();      // the write failed, so redraw from what is actually stored
+    }
+    btns.forEach(b => { b.disabled = false; });
   }
 
   async function saveOrgTags() {
     const btn = $('#saveOrgTags'); const msg = $('#tagMsg'); msg.className = 'msg';
-    const restricted = parseTags($('#tRestricted').value);
+    const restricted = restrictingNow();
     const policy = $('#tPolicy').value;
 
     // Who would lose access the moment this is saved? Declaring a tag restricting before anyone
@@ -341,13 +446,19 @@
     }
     btn.disabled = true;
     try {
+      // The catalogue is what is sent; the server derives restricted_tags from it, so the two
+      // cannot disagree. Sending both would create a second source of truth for the same fact.
       const r = await api('/portal/admin/org/tags',
-                          { method: 'POST', body: JSON.stringify({ restricted_tags: restricted, policy: policy }) });
+                          { method: 'POST', body: JSON.stringify({ tags: CAT, policy: policy }) });
+      CAT = (r.tags || []).map(t => ({ name: t.name, restricts: !!t.restricts }));
+      TAGS.tags = r.tags || [];
       TAGS.restricted_tags = r.restricted_tags || [];
       TAGS.policy = r.policy || 'open';
-      show(msg, 'ok', (TAGS.restricted_tags.length
-        ? 'Restricting: ' + TAGS.restricted_tags.join(', ') + '.'
-        : 'Nothing restricts any more - every dataset is visible to every member.')
+      renderTagList(); renderTagMembers();
+      show(msg, 'ok', 'Saved ' + CAT.length + ' tag' + (CAT.length === 1 ? '' : 's') + '. '
+        + (TAGS.restricted_tags.length
+           ? 'Restricting: ' + TAGS.restricted_tags.join(', ') + '.'
+           : 'None of them restrict, so every dataset is visible to every member.')
         + (TAGS.policy === 'closed'
            ? ' Datasets with none of these tags are hidden from members.' : ''));
     } catch (e) { show(msg, 'err', e.message); }
@@ -405,6 +516,11 @@
 
   const _uos = $('#usersOrgSel'); if (_uos) _uos.addEventListener('change', () => loadUsers());
   $('#saveOrgTags').addEventListener('click', saveOrgTags);
+  $('#tAdd').addEventListener('click', addTagToCatalogue);
+  // Enter adds, so a run of tags can be typed without reaching for the mouse each time.
+  $('#tNew').addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); addTagToCatalogue(); }
+  });
 
   function wireLogout(el) { el.addEventListener('click', e => { e.preventDefault(); location.href = API_BASE + '/portal/auth/logout'; }); }
   wireLogout($('#logout')); wireLogout($('#deniedLogout'));

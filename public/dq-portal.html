@@ -1619,6 +1619,21 @@
   .ds-tag-add { cursor: pointer; font: inherit; font-size: 11px; color: var(--muted); background: transparent;
     border: 1px dashed var(--border); border-radius: 999px; padding: 1px 8px; }
   .ds-tag-add:hover { color: var(--text); border-color: var(--accent2); }
+  /* Tag picker (portal): choose a dataset's tags from the org catalogue, with search. */
+  .tagpick .tagpick-search { margin: 2px 0 10px; }
+  .tagpick-list { max-height: 44vh; overflow: auto; display: flex; flex-direction: column; gap: 2px;
+    border: 1px solid var(--border); border-radius: 10px; padding: 6px; }
+  .tagpick-row { display: flex; align-items: center; gap: 9px; padding: 7px 9px; border-radius: 8px;
+    cursor: pointer; font-size: 13px; color: var(--muted); transition: background var(--dq-move) var(--dq-ease), color var(--dq-move) var(--dq-ease); }
+  .tagpick-row:hover { background: var(--idle-bg); color: var(--text); }
+  .tagpick-row.on { color: var(--text); background: color-mix(in srgb, var(--accent2) 11%, transparent); }
+  .tagpick-row input { accent-color: var(--accent2); cursor: pointer; }
+  .tagpick-name { flex: 1 1 auto; }
+  .tagpick-flag { font-size: 10px; font-weight: 700; letter-spacing: .02em; padding: 2px 7px; border-radius: 999px;
+    white-space: nowrap; color: #e8b76b; border: 1px solid color-mix(in srgb, #e8b76b 40%, transparent);
+    background: color-mix(in srgb, #e8b76b 12%, transparent); }
+  .tagpick-flag.orphan { color: var(--muted); border-color: var(--border); background: transparent; }
+  .tagpick-count { margin-right: auto; }
   /* Trust / certification flags */
   .trust-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 700;
     padding: 3px 9px; border-radius: 999px; border: 1px solid; white-space: nowrap; }
@@ -4946,6 +4961,102 @@ const dqAlert = (message, opts = {}) => dqModal({ kind: 'alert', message, ...opt
 const dqSelect = (message, options, value = '', opts = {}) =>
   dqModal({ kind: 'select', message, options, value, ...opts });
 
+// ---- The org's tag catalogue + the picker that applies it ------------------------------------
+// Tags used to be free text on both surfaces, which meant the list an admin declared restricting
+// was typed independently of the list actually on datasets - so a restricting tag could be spelled
+// one way in the admin page and another on the data, and silently gate nothing. The catalogue is
+// now the single list, and this picker is the only way to apply it in the portal.
+//
+// Refetched each time the dialog opens rather than cached for the session: a tag added a minute
+// ago in another tab has to be pickable now, and this is one small read.
+let _orgTags = null;
+async function orgTagCatalogue(force) {
+  if (_orgTags && !force) return _orgTags;
+  if (!PORTAL) return (_orgTags = []);           // Qlik has no org, so no catalogue: free text
+  try {
+    const res = await fetch(`${API_BASE}/portal/auth/tags`, { credentials: 'include' });
+    const j = await res.json();
+    _orgTags = Array.isArray(j && j.tags) ? j.tags : [];
+  } catch (e) { _orgTags = []; }
+  return _orgTags;
+}
+
+// Choose this dataset's tags from the catalogue. Returns the chosen array, or null if cancelled.
+// Handles ADD and REMOVE in one dialog, which is why the row's x is only a shortcut.
+function dqTagPicker(opts) {
+  const o = opts || {}, chosen = new Set((o.value || []).map(t => t.toLowerCase()));
+  // A tag already on the dataset but absent from the catalogue is shown and kept. It was free
+  // typed before the catalogue existed, or an admin has since deleted it from the list; either
+  // way, dropping it silently on the next save would be a data loss nobody asked for.
+  const known = new Set((o.tags || []).map(t => t.name));
+  const extra = [...chosen].filter(t => !known.has(t)).sort()
+    .map(t => ({ name: t, restricts: false, orphan: true }));
+  const all = extra.concat(o.tags || []);
+  return new Promise(resolve => {
+    const ov = document.createElement('div');
+    ov.className = 'modal-overlay dq-ov open';
+    ov.innerHTML =
+      `<div class="modal dq-dialog tagpick" role="dialog" aria-modal="true">
+        <div class="modal-head"><h3>${esc(o.title || 'Tags')}</h3>
+          <button class="x-close" type="button" data-dq="cancel" aria-label="Close">&times;</button></div>
+        <div class="modal-body">
+          ${o.message ? `<p class="dq-modal-msg">${esc(o.message)}</p>` : ''}
+          <input class="dqin tagpick-search" type="text" placeholder="Search tags…" autocomplete="off">
+          <div class="tagpick-list"></div>
+          <p class="tagpick-none hint" style="display:none;">No tag matches that.</p>
+        </div>
+        <div class="modal-foot">
+          <span class="tagpick-count hint"></span>
+          <button type="button" class="btn-sm" data-dq="cancel">Cancel</button>
+          <button type="button" class="dq-ok" data-dq="ok">Save</button>
+        </div>
+      </div>`;
+    document.body.appendChild(ov);
+    const list = ov.querySelector('.tagpick-list');
+    const search = ov.querySelector('.tagpick-search');
+    const none = ov.querySelector('.tagpick-none');
+    const count = ov.querySelector('.tagpick-count');
+
+    function draw() {
+      const q = (search.value || '').trim().toLowerCase();
+      const shown = all.filter(t => !q || t.name.indexOf(q) !== -1);
+      list.innerHTML = shown.map(t =>
+        `<label class="tagpick-row${chosen.has(t.name) ? ' on' : ''}" data-t="${esc(t.name)}">` +
+        `<input type="checkbox"${chosen.has(t.name) ? ' checked' : ''}>` +
+        `<span class="tagpick-name">🏷️ ${esc(t.name)}</span>` +
+        (t.restricts ? `<span class="tagpick-flag" title="Only members granted this tag can see the dataset">restricts access</span>` : '') +
+        (t.orphan ? `<span class="tagpick-flag orphan" title="Not in your organisation's tag list. Kept so it is not lost, but it cannot be added to another dataset.">not in your list</span>` : '') +
+        `</label>`).join('');
+      none.style.display = shown.length ? 'none' : '';
+      const n = chosen.size;
+      count.textContent = n ? `${n} selected` : 'None selected';
+    }
+    draw();
+
+    const finish = v => { ov.remove(); document.removeEventListener('keydown', onKey, true); resolve(v); };
+    list.addEventListener('change', e => {
+      const row = e.target.closest('.tagpick-row'); if (!row) return;
+      const t = row.dataset.t;
+      if (chosen.has(t)) chosen.delete(t); else chosen.add(t);
+      row.classList.toggle('on', chosen.has(t));
+      count.textContent = chosen.size ? `${chosen.size} selected` : 'None selected';
+    });
+    search.addEventListener('input', draw);
+    ov.addEventListener('click', e => {
+      const b = e.target.closest('[data-dq]');
+      if (b) { e.preventDefault(); finish(b.dataset.dq === 'ok' ? [...chosen].sort() : null); }
+      else if (e.target === ov) finish(null);
+    });
+    function onKey(e) {
+      if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); finish(null); }
+      // Enter saves, but not while typing in the search box - there it would submit a filter.
+      else if (e.key === 'Enter' && document.activeElement !== search) { e.preventDefault(); finish([...chosen].sort()); }
+    }
+    document.addEventListener('keydown', onKey, true);
+    setTimeout(() => search.focus(), 20);
+  });
+}
+
 // The org's assignable people, fetched once. [] on the Qlik surface, which has no user directory
 // and no portal session, and [] if the directory cannot be read - both fall back to free text
 // rather than blocking the assignment.
@@ -5981,11 +6092,26 @@ async function saveEntry(key) {
   catch (err) { /* non-fatal; local state already updated */ }
 }
 function setStage(key, stage) { const e = entryFor(key); e.stage = stage; dashEntries[key] = e; saveEntry(key); }
+// Apply tags to a dataset. In the portal this is a pick from the org's catalogue, so the tags on
+// the data and the tags an admin declared restricting are the same list by construction. On Qlik
+// (no org, no catalogue) and in an org that has not defined any tags yet, it falls back to free
+// text rather than presenting an empty list nobody can get past.
 async function addTagTo(key) {
-  const t = (await dqPrompt('Add a tag to group/search this dataset (e.g. finance, pii, weekly):', '', { title: 'Add tag' }) || '').trim();
-  if (!t) return;
   const e = entryFor(key);
-  if (!e.tags.some(x => x.toLowerCase() === t.toLowerCase())) e.tags.push(t);
+  const cat = await orgTagCatalogue(true);
+  if (!cat.length) {
+    const t = (await dqPrompt('Add a tag to group/search this dataset (e.g. finance, pii, weekly):', '',
+      { title: 'Add tag' }) || '').trim();
+    if (!t) return;
+    if (!e.tags.some(x => x.toLowerCase() === t.toLowerCase())) e.tags.push(t);
+  } else {
+    const picked = await dqTagPicker({
+      title: 'Tags', tags: cat, value: e.tags,
+      message: 'Choose from the tags your organisation has defined. A tag marked "restricts access" ' +
+               'limits the dataset to members granted it.' });
+    if (picked === null) return;                    // cancelled: leave the dataset alone
+    e.tags = picked;
+  }
   dashEntries[key] = e; saveEntry(key); refreshDatasetsTable();
 }
 function removeTagFrom(key, t) {
@@ -6007,11 +6133,21 @@ function medalCell(key) {
   ).join('') + `</span>`;
 }
 // Custom-tag chips (+ an add button) for a row's name cell.
+// Editing is admin-only in the portal: once an org declares a tag restricting, that tag decides
+// who can see the dataset, so a member adding or removing one would be editing their own access.
+// Members still SEE the tags and can still click one to filter - it is the write that is theirs
+// to lose. The server refuses a member's tag write too; this only keeps the UI honest.
 function tagChips(key) {
   const e = entryFor(key);
   const chips = e.tags.map(t =>
-    `<span class="ds-tag" data-tagfilter="${esc(t)}" data-tip="Filter by “${esc(t)}”">🏷️ ${esc(t)}<span class="ds-tag-x" data-tagrm="${esc(t)}" data-key="${esc(key)}" title="Remove">✕</span></span>`).join('');
-  return `<span class="ds-tags">${chips}<button type="button" class="ds-tag-add" data-tagadd="1" data-key="${esc(key)}">＋ tag</button></span>`;
+    `<span class="ds-tag" data-tagfilter="${esc(t)}" data-tip="Filter by “${esc(t)}”">🏷️ ${esc(t)}` +
+    (IS_PORTAL_ADMIN ? `<span class="ds-tag-x" data-tagrm="${esc(t)}" data-key="${esc(key)}" title="Remove">✕</span>` : '') +
+    `</span>`).join('');
+  if (!IS_PORTAL_ADMIN) return chips ? `<span class="ds-tags">${chips}</span>` : '';
+  // One control for add AND remove now that the portal opens a picker: "+ tag" reads wrong once
+  // the dataset already has some, because the dialog it opens can take them away too.
+  const label = e.tags.length ? '✎ tags' : '＋ tag';
+  return `<span class="ds-tags">${chips}<button type="button" class="ds-tag-add" data-tagadd="1" data-key="${esc(key)}">${label}</button></span>`;
 }
 
 // Concurrency guard: switchTab('dashboard') and a drill-in can both call loadDashboard at once;
