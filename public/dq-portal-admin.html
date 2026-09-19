@@ -403,6 +403,22 @@
     }
   }
 
+  // The Users card and the Tag access card show the same people from one fetched list, so a role
+  // changed or a user deleted in the card below has to be reflected up here. Otherwise the admin
+  // is looking at a grant row for a role that no longer exists - chips for someone who is now an
+  // admin and unrestricted, or a row for someone who has been removed entirely.
+  //
+  // Patched LOCALLY rather than by refetching: /portal/admin/tags also returns the stored
+  // catalogue, so a refetch would overwrite CAT and silently discard tag rows the admin has added
+  // but not yet saved. The card says those changes are pending until Save, and it has to mean it.
+  function syncTagMember(email, patch) {
+    const list = TAGS.members || [];
+    const i = list.findIndex(m => m.email === email);
+    if (i === -1) return;                 // not in this org's list (super-admin viewing another)
+    if (patch === null) list.splice(i, 1); else Object.assign(list[i], patch);
+    renderTagMembers();
+  }
+
   async function saveUserTags(m, tags, chips) {
     const msg = $('#tagMsg'); msg.className = 'msg';
     const btns = [...chips.querySelectorAll('.grantchip')];
@@ -470,6 +486,7 @@
     try {
       await api('/portal/admin/users/role', { method: 'POST', body: JSON.stringify({ email: email, role: role }) });
       show(m, 'ok', 'Set ' + email + ' to ' + role + '.');
+      syncTagMember(email, { role: role });
       sel.disabled = false;
     } catch (e) { show(m, 'err', e.message); sel.value = prev; sel.disabled = false; }
   }
@@ -486,6 +503,7 @@
     try {
       await api('/portal/admin/users/delete', { method: 'POST', body: JSON.stringify({ email: email }) });
       show(m, 'ok', (pending ? 'Revoked the invite for ' : 'Deleted ') + email + '.');
+      syncTagMember(email, null);      // same list: a deleted user must not leave a grant row
       await loadUsers();
     } catch (e) { show(m, 'err', e.message); btn.disabled = false; }
   }
