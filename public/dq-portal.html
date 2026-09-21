@@ -1001,65 +1001,121 @@
      different kind of page. */
 
   /* ---- Assess by tag ------------------------------------------------------------------
-     Picker (left) beside a sticky live preview that carries the run action (right), the same
-     master-detail shape the Schedules tab uses. */
-  /* .tagrun-top is gone: the tab is one column now. */
+     One column, read top to bottom: pick a tag, see what it covers, see what it has run.
+     The old shape was a picker beside a preview pane - selecting on the left and reading on the
+     right made the eye cross the page for every tag, and left the bottom half of the tab empty. */
 
-  /* Full width now, so the tiles lay out across the page instead of stacking in a narrow
-     column. No fixed height and no inner scroll - the card is as tall as its tags. */
-  .tagrun-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(215px, 1fr));
-    gap: 8px; align-content: start; padding: 1px; max-height: 260px; overflow-y: auto; }
-  .tagrun-tile { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
-    padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--card);
-    color: var(--text); font: inherit; cursor: pointer;
-    transition: border-color .12s, background-color .12s, box-shadow .12s; }
-  .tagrun-tile:hover { border-color: var(--accent); background: var(--idle-bg); }
-  .tagrun-tile.active { border-color: var(--accent); background: var(--accent-soft);
-    box-shadow: var(--shadow-sm); }
-  .tagrun-tile .tt-ico { flex: none; font-size: 15px; line-height: 20px; }
-  .tagrun-tile .tt-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
-  .tagrun-tile .tt-name { font-size: 13.5px; font-weight: 700; white-space: nowrap;
-    overflow: hidden; text-overflow: ellipsis; }
-  .tagrun-tile .tt-meta { font-size: 11px; color: var(--muted); }
-  .tt-badge { flex: none; font-size: 9px; font-weight: 700; text-transform: uppercase;
-    letter-spacing: .02em; padding: 2px 6px; border-radius: 5px;
-    background: var(--ok-bg); color: var(--ok); }
-  .tt-badge.none { background: var(--idle-bg); color: var(--muted); }
+  .tr2-head { display: flex; align-items: flex-start; gap: 20px; margin: 0 0 18px; }
+  .tr2-head-l { display: flex; gap: 14px; flex: 1; min-width: 0; }
+  .tr2-head h2 { margin: 0 0 4px; font-size: 22px; }
+  .tr2-head p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.6; max-width: 66ch; }
+  .tr2-badge { flex: none; display: grid; place-items: center; width: 46px; height: 46px;
+    border-radius: 13px; font-size: 21px; background: var(--accent-soft);
+    border: 1px solid color-mix(in srgb, var(--accent2) 28%, transparent); }
+  .tr2-badge.sm { width: 38px; height: 38px; border-radius: 11px; font-size: 17px; }
+  .tr2-stat { flex: none; display: flex; align-items: center; gap: 11px; padding: 11px 16px;
+    border: 1px solid var(--border); border-radius: 12px; background: var(--card); }
+  .tr2-stat-ic { font-size: 18px; }
+  .tr2-stat .l { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: .05em;
+    color: var(--muted); }
+  .tr2-stat .n { display: block; font-size: 21px; font-weight: 700; line-height: 1.15;
+    font-variant-numeric: tabular-nums; }
 
-  /* Its own card now, laid out ACROSS rather than as a stack: it is a short reference strip,
-     and a full-width column of three rows was mostly empty space. */
-  .tagrun-recent { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-  .trr-hd { flex: 0 0 100%; font-size: 10.5px; font-weight: 700; letter-spacing: .05em;
-    text-transform: uppercase; color: var(--dim, var(--muted)); margin-bottom: 4px; }
-  .trr-row { display: flex; align-items: center; gap: 10px; padding: 7px 12px;
-    border: 1px solid transparent; border-radius: 8px; background: transparent; color: var(--muted);
-    font: inherit; font-size: 12.5px; cursor: pointer; text-align: left;
-    transition: background var(--dq-move) var(--dq-ease), color var(--dq-move) var(--dq-ease); }
-  .trr-row:hover { background: var(--idle-bg); color: var(--text); }
-  .trr-row.on { color: var(--text); border-color: color-mix(in srgb, var(--accent) 38%, transparent); }
-  .trr-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .trr-when { flex: none; font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
-  .tagrun-email { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--border); }
-  .tagrun-email input { width: 100%; }
+  .tr2-search { display: flex; gap: 14px; align-items: flex-start; }
+  .tr2-search-body { flex: 1; min-width: 0; }
+  .tr2-search-row input { width: 100%; box-sizing: border-box; padding: 11px 14px; font: inherit;
+    font-size: 14px; border-radius: 10px; border: 1px solid var(--border);
+    background: var(--idle-bg); color: var(--text); }
+  .tr2-search-row input:focus { outline: none; border-color: var(--accent); background: var(--card); }
+  .tr2-pop { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 13px; }
+  .tr2-pop-l { font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+    color: var(--muted); }
+  /* `display: contents` so the pills are direct flex children of .tr2-pop and wrap alongside the
+     label, rather than the whole group wrapping as one block below it. */
+  .tr2-pills { display: contents; }
 
-  /* Not sticky: sticky and a stretched row fight, and the pair is now the same height anyway. */
-  .tagrun-preview-card { background: linear-gradient(180deg, var(--idle-bg), var(--card) 130px); }
-  .tr-headline { font-size: 15px; font-weight: 600; line-height: 1.55; margin: 2px 0 15px; }
-  .tr-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px; }
-  .tr-stat { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px;
-    background: var(--card); }
-  .tr-stat .n { font-size: 22px; font-weight: 700; line-height: 1.1; }
-  .tr-stat .l { font-size: 10px; color: var(--muted); text-transform: uppercase;
-    letter-spacing: .04em; margin-top: 2px; }
-  .tr-stat.ready { border-left: 3px solid var(--ok); }
-  /* The list takes the slack and the footer pins to the bottom, so the run button sits at the
-     end of the card rather than halfway down it with empty space underneath. */
-  .tr-list-grow { flex: 1 1 auto; min-height: 90px; overflow-y: auto; }
-  .tr-foot { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border); }
-  .tr-foot .src-run { width: 100%; justify-content: center; }
-  .tr-stat.ready .n { color: var(--ok); }
-  .tr-stat.skip { border-left: 3px solid var(--run); }
-  .tr-stat.skip .n { color: var(--run); }
+  /* One stable hue per tag, from the same function the owner avatars use - a tag is then
+     recognisable by colour across the whole tab, with no palette to maintain and no risk of two
+     tags colliding on a hand-picked list. */
+  .tr2-pill, .tr2-more { display: inline-flex; align-items: center; gap: 7px; padding: 6px 12px;
+    border-radius: 999px; border: 1px solid var(--border); background: var(--card); color: var(--text);
+    font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer;
+    transition: border-color var(--dq-move) var(--dq-ease), background var(--dq-move) var(--dq-ease); }
+  .tr2-pill:hover, .tr2-more:hover { border-color: var(--accent); background: var(--idle-bg); }
+  .tr2-pill.on { border-color: var(--pill); background: color-mix(in srgb, var(--pill) 20%, transparent); }
+  .tr2-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--pill, var(--accent)); }
+  .tr2-n { font-size: 11px; font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .tr2-pill.on .tr2-n { color: var(--text); }
+  .tr2-more { font-weight: 500; color: var(--muted); }
+  .tr2-none { font-size: 12.5px; color: var(--muted); }
+
+  .tr2-card-hd { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
+  .tr2-hd-ic { font-size: 16px; }
+  .tr2-hd-t { font-size: 16px; font-weight: 700; }
+  .tr2-hd-spacer { flex: 1 1 auto; }
+  .tr2-chip { display: inline-flex; align-items: center; gap: 7px; padding: 4px 6px 4px 11px;
+    border-radius: 999px; font-size: 12.5px; font-weight: 700;
+    background: color-mix(in srgb, var(--pill) 20%, transparent);
+    border: 1px solid color-mix(in srgb, var(--pill) 45%, transparent); }
+  .tr2-chip button { border: 0; background: transparent; color: inherit; font: inherit;
+    font-size: 15px; line-height: 1; cursor: pointer; padding: 0 4px; opacity: .6; }
+  .tr2-chip button:hover { opacity: 1; }
+
+  .tr2-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(268px, 1fr));
+    gap: 12px; margin-top: 14px; }
+  .tr2-wide { grid-column: 1 / -1; }
+  .tr2-card { display: flex; flex-direction: column; gap: 9px; padding: 14px;
+    border: 1px solid var(--border); border-radius: 12px; background: var(--card);
+    transition: border-color var(--dq-move) var(--dq-ease), box-shadow var(--dq-move) var(--dq-ease); }
+  .tr2-card:hover { border-color: var(--accent); box-shadow: var(--shadow-sm); }
+  .tr2-card.off { background: var(--card-2); }
+  .tr2-c-hd { display: flex; align-items: flex-start; gap: 10px; }
+  .tr2-c-ic { flex: none; display: grid; place-items: center; width: 34px; height: 34px;
+    border-radius: 9px; background: var(--idle-bg); border: 1px solid var(--border); font-size: 16px; }
+  .tr2-c-ic svg { width: 18px; height: 18px; }
+  .tr2-c-t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .tr2-c-name { font-size: 14px; font-weight: 700; overflow: hidden; text-overflow: ellipsis;
+    white-space: nowrap; }
+  .tr2-c-path { font-size: 10.5px; color: var(--muted); font-family: ui-monospace, SFMono-Regular,
+    Menlo, Consolas, monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tr2-c-score { flex: none; font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums;
+    padding: 2px 9px; border-radius: 8px; background: var(--idle-bg); color: var(--muted); }
+  .tr2-c-score.green { color: var(--ok); background: var(--ok-bg); }
+  .tr2-c-score.amber { color: var(--run); background: color-mix(in srgb, var(--run) 16%, transparent); }
+  .tr2-c-score.red { color: var(--err); background: var(--err-bg); }
+  .tr2-c-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+  .tr2-c-age { font-size: 11.5px; color: var(--muted); }
+  .tr2-c-tags { display: flex; flex-wrap: wrap; gap: 5px; }
+  .tr2-mini { font-size: 10.5px; font-weight: 600; padding: 2px 8px; border-radius: 999px;
+    background: color-mix(in srgb, var(--pill) 18%, transparent);
+    border: 1px solid color-mix(in srgb, var(--pill) 38%, transparent); }
+  /* margin-top:auto pins the action to the bottom, so cards of different heights still line their
+     buttons up across a row. */
+  .tr2-c-foot { margin-top: auto; padding-top: 3px; }
+  .tr2-c-run { display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+    width: 100%; box-sizing: border-box; padding: 8px 12px; border-radius: 9px;
+    border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+    background: var(--accent-soft); color: var(--accent2); font: inherit; font-size: 12.5px;
+    font-weight: 600; cursor: pointer;
+    transition: background var(--dq-move) var(--dq-ease); }
+  .tr2-c-run:hover { background: color-mix(in srgb, var(--accent) 24%, transparent); }
+  .tr2-c-why { display: block; font-size: 11.5px; color: var(--muted); text-align: center;
+    padding: 8px 12px; border: 1px dashed var(--border); border-radius: 9px; }
+
+  .tr2-tblwrap { overflow-x: auto; margin-top: 12px; }
+  .tr2-tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .tr2-tbl th { text-align: left; font-size: 10.5px; font-weight: 700; letter-spacing: .05em;
+    text-transform: uppercase; color: var(--muted); padding: 0 12px 9px; white-space: nowrap; }
+  .tr2-tbl th.r, .tr2-tbl td.r { text-align: right; }
+  .tr2-tbl td { padding: 10px 12px; border-top: 1px solid var(--border); vertical-align: middle; }
+  .tr2-tbl tbody tr:hover { background: var(--idle-bg); }
+  .tr2-when { color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .tr2-dsname { font-weight: 600; }
+
+  @media (max-width: 880px) {
+    .tr2-head, .tr2-search { flex-direction: column; }
+    .tr2-stat { align-self: stretch; }
+  }
 
   .tr-list { border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
     max-height: 268px; overflow-y: auto; margin-bottom: 16px; background: var(--card); }
@@ -1073,24 +1129,19 @@
     text-overflow: ellipsis; }
   .tr-row.off .tr-name { color: var(--muted); font-weight: 500; }
   .tr-why { flex: none; font-size: 11px; color: var(--muted); }
-  .tagrun-chip { display: inline-flex; align-items: center; gap: 5px; padding: 1px 10px;
-    border-radius: 999px; font-size: 12.5px; font-weight: 700; background: var(--accent-soft);
-    color: var(--accent2); border: 1px solid color-mix(in srgb, var(--accent2) 30%, transparent); }
   .tr-msg { margin-top: 12px; padding: 10px 12px; border-radius: 9px; font-size: 13px;
     line-height: 1.5; border: 1px solid transparent; }
   .tr-msg.ok { background: var(--ok-bg); color: var(--ok); border-color: color-mix(in srgb, var(--ok) 35%, transparent); }
   .tr-msg.info { background: var(--idle-bg); color: var(--text); border-color: var(--border); }
   .tr-msg.err { background: var(--err-bg); color: var(--err); border-color: color-mix(in srgb, var(--err) 35%, transparent); }
 
-  /* Empty states carry the same weight as content here - this tab is useless without tags, so
-     saying so properly (and linking to where you add them) matters more than a grey line. */
-  /* The tag-run tab already had a decent empty state while three panels used a bare grey line,
-     so this is that pattern promoted rather than a new one invented. `.tagrun-empty` is kept as
-     an alias so the existing markup does not have to change. */
-  .dq-empty, .tagrun-empty { border: 1px dashed var(--border); border-radius: 12px; padding: 30px 22px;
+  /* Empty states carry the same weight as content here - a panel with nothing in it is where a
+     reader most needs telling what would put something there, so saying so properly (and linking
+     to where you do it) matters more than a grey line. The `.tagrun-empty` alias is gone with the
+     markup that used it; every empty state now goes through dqEmpty(). */
+  .dq-empty { border: 1px dashed var(--border); border-radius: 12px; padding: 30px 22px;
     text-align: center; color: var(--muted); font-size: 13px; line-height: 1.6; }
-  .dq-empty .tre-ico, .tagrun-empty .tre-ico { font-size: 26px; line-height: 1; margin-bottom: 8px; opacity: .85; }
-  .dq-empty .tre-title, .tagrun-empty .tre-title { font-size: 14.5px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+  .dq-empty .tre-title { font-size: 14.5px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
   .dq-empty .tre-ico { display: grid; place-items: center; width: 54px; height: 54px; margin: 0 auto 12px;
     border-radius: 14px; background: var(--idle-bg); border: 1px solid var(--border); opacity: 1; }
   .dq-empty .tre-body { max-width: 380px; margin: 0 auto; }
@@ -3372,30 +3423,57 @@
 
   <!-- ============ APP DATA ============ -->
   <div id="tagrunPanel" style="display:none;">
-    <div class="tab-intro">
-      <h2>Assess by tag</h2>
-      <p>Run a data-quality assessment on <strong>every source dataset carrying a tag</strong> - Redshift, S3, Snowflake and the rest - together in a <strong>single</strong> task. Ideal for scoring a whole domain (e.g. <em>finance</em>) across all its sources at once.</p>
-    </div>
-
-    <!-- One column, top to bottom: pick a tag, then read what that means directly underneath.
-         The two-column version put the choice on the left and its consequence on the right, so
-         the eye had to cross the page on every click and the shorter side left a tall gap. -->
-    <div class="card">
-      <h2>Choose a tag</h2>
-      <p class="dash-muted">Tags group datasets across every connected source. Pick one to assess
-        everything it covers in a single task.</p>
-
-      <div id="tagrunSearchWrap">
-        <input type="search" id="tagrunSearch" class="src-search" placeholder="🔎 Search tags…" autocomplete="off">
+    <!-- Header: what the tab is, and the one number that frames it. -->
+    <div class="tr2-head">
+      <div class="tr2-head-l">
+        <span class="tr2-badge">🛡️</span>
+        <div>
+          <h2>Assess by Tag</h2>
+          <p>Select a tag to see every dataset carrying it. Run them together in one task, run any
+             one on its own, and read the history of previous runs below.</p>
+        </div>
       </div>
-      <div id="tagrunTags" class="tagrun-grid"></div>
-      <div class="hint" id="tagrunAlertNote" style="margin-top:14px;"></div>
+      <div class="tr2-stat" data-tip="Datasets in this workspace">
+        <span class="tr2-stat-ic">🗄️</span>
+        <span><span class="l">Total datasets</span><span class="n" id="tr2Total">-</span></span>
+      </div>
     </div>
 
-    <div class="card tagrun-preview-card" id="tagrunPreview"></div>
+    <div class="card tr2-search">
+      <span class="tr2-badge sm">🏷️</span>
+      <div class="tr2-search-body">
+        <div id="tagrunSearchWrap" class="tr2-search-row">
+          <input type="search" id="tagrunSearch" placeholder="Search or select a tag..." autocomplete="off">
+        </div>
+        <div class="tr2-pop">
+          <span class="tr2-pop-l">Popular tags:</span>
+          <span id="tagrunTags" class="tr2-pills"></span>
+        </div>
+      </div>
+    </div>
 
-    <div class="card" id="tagrunRecentCard" style="display:none;">
-      <div id="tagrunRecent" class="tagrun-recent"></div>
+    <div class="card" id="tr2DsCard" style="display:none;">
+      <div class="tr2-card-hd">
+        <span class="tr2-hd-ic">🏷️</span>
+        <span class="tr2-hd-t">Datasets with tag</span>
+        <span id="tr2TagChip"></span>
+        <span class="tr2-hd-spacer"></span>
+        <span id="tr2RunAll"></span>
+      </div>
+      <div class="hint" id="tr2Count"></div>
+      <div id="tagrunGrid" class="tr2-grid"></div>
+      <div id="tagrunMsg" class="tr-msg" style="display:none;"></div>
+      <div class="hint" id="tagrunAlertNote" style="margin-top:16px;"></div>
+    </div>
+
+    <div class="card" id="tr2HistCard" style="display:none;">
+      <div class="tr2-card-hd">
+        <span class="tr2-hd-ic">🕓</span>
+        <span class="tr2-hd-t">Historic assessment runs</span>
+        <span class="tr2-hd-spacer"></span>
+        <button type="button" class="linkbtn" id="tr2AllRuns">View all runs →</button>
+      </div>
+      <div id="tr2Hist"></div>
     </div>
 
     <div id="tagrunSkipped" class="tagrun-skipped" style="display:none;"></div>
@@ -6058,6 +6136,13 @@ async function exportParquet(scope, datasetKey, btn) {
 // that gets re-rendered (by search, or when the dataset list reloads).
 let tagrunSelected = '';
 let tagrunQuery = '';
+// The pill row is a shortcut, not the full list. Everything beyond this is behind "+N more" or
+// the search box, so a workspace with sixty tags does not open on six rows of pills.
+const TR2_PILLS = 8;
+// The history table is a summary, not the History tab. Ten rows answers "has this tag been
+// looked at lately"; the rest is one click away rather than an unbounded table on this page.
+const TR2_RUNS = 10;
+let tagrunShowAll = false;
 
 // [{tag, total, runnable}] for every tag in use, sorted. `runnable` is a best-effort count:
 // the server has the final say (saved credentials are not visible from here), which is why the
@@ -6085,25 +6170,38 @@ async function initTagRun() {
   if (!APP_ID) return;
   if (!dashEntries || !Object.keys(dashEntries).length) { try { await loadDashEntries(); } catch (e) {} }
   if (!dashDatasetsAll || !dashDatasetsAll.length) { try { await loadDashboard(); } catch (e) {} }
+  // The runs table below is the History tab's own list, filtered - not a second fetch with its
+  // own limit, which would let the two tabs disagree about what has run.
+  if (!historyRuns || !historyRuns.length) { try { await loadHistory(); } catch (e) {} }
   // One delegated listener for the whole tab: the tiles and the run button are both re-rendered,
   // so binding them individually would mean re-wiring on every render.
   const panel = $('#tagrunPanel');
   if (panel && !panel._wired) {
     panel._wired = true;
     panel.addEventListener('click', e => {
-      const tile = e.target.closest('.tagrun-tile');
-      if (tile) { selectTagRunTag(tile.getAttribute('data-tag')); return; }
-      // The recent rows are re-rendered, so they use the same delegated handler as the tiles
-      // rather than being bound individually on every render.
-      const recent = e.target.closest('.trr-row');
-      if (recent) { selectTagRunTag(recent.getAttribute('data-tag')); return; }
+      const pill = e.target.closest('.tr2-pill');
+      if (pill) { selectTagRunTag(pill.getAttribute('data-tag')); return; }
+      if (e.target.closest('#tr2More')) { tagrunShowAll = true; renderTagRunTags(); return; }
+      if (e.target.closest('#tr2ClearTag')) { selectTagRunTag(''); return; }
       if (e.target.closest('#tagrunGo')) { runTagAssessment(); return; }
+      // Run ONE dataset from the grid. Same call the Overview table's re-run makes, so a single
+      // dataset behaves identically whichever tab it is started from.
+      const one = e.target.closest('[data-tr2run]');
+      if (one) { reRunTable(one.getAttribute('data-tr2run'), one.getAttribute('data-fmt'),
+                            one.getAttribute('data-prefix')); return; }
+      // A past run opens in the History tab's own detail view - that view owns the back button
+      // and the sub-tab state, so rendering a second copy here would fork them.
+      const view = e.target.closest('[data-tr2view]');
+      if (view) { switchTab('history'); openHistoryRun(view.getAttribute('data-tr2view')); return; }
+      if (e.target.closest('#tr2AllRuns')) { switchTab('history'); return; }
       const go = e.target.closest('[data-goto]');
       if (go) switchTab(go.getAttribute('data-goto'));
     });
     const srch = $('#tagrunSearch');
     if (srch) srch.addEventListener('input', () => {
-      tagrunQuery = srch.value.trim().toLowerCase(); renderTagRunTags();
+      tagrunQuery = srch.value.trim().toLowerCase();
+      tagrunShowAll = !!tagrunQuery;          // a search shows everything it matched, not the top 8
+      renderTagRunTags();
     });
   }
 
@@ -6111,45 +6209,47 @@ async function initTagRun() {
   // Keep the current pick across reloads, but drop it if the tag no longer exists.
   if (tagrunSelected && !tags.some(t => t.tag === tagrunSelected)) tagrunSelected = '';
   if (!tagrunSelected && tags.length === 1) tagrunSelected = tags[0].tag;   // nothing to choose
+  const tot = $('#tr2Total');
+  if (tot) tot.textContent = String((dashDatasetsAll || []).length);
   renderTagRunTags();
-  renderTagRunPreview();
+  renderTagRunDatasets();
+  renderTagRunHistory();
 }
 
 function selectTagRunTag(tag) {
-  if (!tag || tag === tagrunSelected) return;
-  tagrunSelected = tag;
+  // Clicking the active pill (or the chip's x) clears the selection and collapses both cards.
+  tagrunSelected = (tag && tag !== tagrunSelected) ? tag : '';
   renderTagRunTags();
-  renderTagRunPreview();
+  renderTagRunDatasets();
+  renderTagRunHistory();
 }
 
 function renderTagRunTags() {
   const wrap = $('#tagrunTags'); if (!wrap) return;
   const all = tagRunTags();
-  // The search box only earns its place once the grid is long enough to need it.
-  const sw = $('#tagrunSearchWrap'); if (sw) sw.style.display = all.length > 1 ? 'block' : 'none';
-
   if (!all.length) {
-    wrap.innerHTML = `<div class="tagrun-empty" style="grid-column:1/-1;">` +
-      `<div class="tre-ico">🏷️</div><div class="tre-title">No tags yet</div>` +
-      `<div>Tags group datasets across sources so you can score a whole domain at once.<br>` +
-      `Add one to a dataset on the <button type="button" class="linkbtn" data-goto="dashboard">Overview</button> tab, then come back.</div></div>`;
+    wrap.innerHTML = `<span class="tr2-none">No tags yet. Tag a dataset on the ` +
+      `<button type="button" class="linkbtn" data-goto="dashboard">Overview</button> tab ` +
+      `and it becomes selectable here.</span>`;
     return;
   }
   const list = tagrunQuery ? all.filter(t => t.tag.toLowerCase().includes(tagrunQuery)) : all;
   if (!list.length) {
-    wrap.innerHTML = `<p class="hint" style="grid-column:1/-1;">No tag matches “${esc(tagrunQuery)}”.</p>`;
+    wrap.innerHTML = `<span class="tr2-none">No tag matches \u201c${esc(tagrunQuery)}\u201d.</span>`;
     return;
   }
-  wrap.innerHTML = list.map(t =>
-    `<button type="button" class="tagrun-tile${t.tag === tagrunSelected ? ' active' : ''}" ` +
-      `data-tag="${esc(t.tag)}" data-tip="Assess every dataset tagged \u201c${esc(t.tag)}\u201d">` +
-      `<span class="tt-ico">🏷️</span>` +
-      `<span class="tt-body"><span class="tt-name">${esc(t.tag)}</span>` +
-      `<span class="tt-meta">${t.total} dataset${t.total === 1 ? '' : 's'}</span></span>` +
-      (t.runnable ? `<span class="tt-badge">${t.runnable} ready</span>`
-                  : `<span class="tt-badge none">none</span>`) +
-    `</button>`).join('');
-  renderTagRunRecent(all);
+  // Busiest tag first: the pills are a shortcut, so the tags covering the most datasets earn the
+  // visible slots. Alphabetical would bury the big ones behind whatever starts with "a".
+  const sorted = list.slice().sort((a, b) => (b.total - a.total) || a.tag.localeCompare(b.tag));
+  const shown = tagrunShowAll ? sorted : sorted.slice(0, TR2_PILLS);
+  wrap.innerHTML = shown.map(t =>
+    `<button type="button" class="tr2-pill${t.tag === tagrunSelected ? ' on' : ''}" ` +
+      `data-tag="${esc(t.tag)}" style="--pill:${_avatarTint(t.tag)}" ` +
+      `data-tip="${t.runnable} of ${t.total} can be assessed from here">` +
+      `<span class="tr2-dot"></span>${esc(t.tag)}<span class="tr2-n">${t.total}</span></button>`).join('') +
+    (sorted.length > shown.length
+      ? `<button type="button" class="tr2-more" id="tr2More">+ ${sorted.length - shown.length} more</button>`
+      : '');
 }
 
 // "Recently assessed", not "recently run". A dataset under a tag may have been assessed on its
@@ -6164,23 +6264,6 @@ function tagAge(days) {
   return Math.round(days / 30) + 'mo ago';
 }
 
-function renderTagRunRecent(all) {
-  const host = $('#tagrunRecent'); if (!host) return;
-  const run = (all || []).filter(t => t.ageDays != null)
-    .sort((a, b) => a.ageDays - b.ageDays).slice(0, 5);
-  // Hidden entirely when nothing has run: an empty "Recently assessed" heading reads as a broken
-  // panel rather than an absence of history.
-  const card = $('#tagrunRecentCard');
-  if (!run.length) { host.innerHTML = ''; if (card) card.style.display = 'none'; return; }
-  if (card) card.style.display = '';
-  host.innerHTML = '<div class="trr-hd">Recently assessed</div>' +
-    run.map(t =>
-      `<button type="button" class="trr-row${t.tag === tagrunSelected ? ' on' : ''}" ` +
-        `data-tag="${esc(t.tag)}" data-tip="Select this tag">` +
-        `<span class="trr-name">🏷️ ${esc(t.tag)}</span>` +
-        `<span class="trr-when">${esc(tagAge(t.ageDays))}</span></button>`).join('');
-}
-
 // Which datasets a tag covers, and whether each can actually run. Shared by the By-tag preview
 // and the schedule form's preview, so the two can never disagree about what a tag means.
 function tagDatasetRows(tag) {
@@ -6190,7 +6273,8 @@ function tagDatasetRows(tag) {
     .map(k => {
       const d = byKey[k];
       const ok = d ? isSourceDataset(d) : false;
-      return { name: (d && d.name) || (k.split('/').pop() || k),
+      return { key: k, ds: d || null,
+               name: (d && d.name) || (k.split('/').pop() || k),
                fmt: d ? d.sourceFormat : '',
                ok: ok,
                why: d ? (ok ? '' : 'Qlik-app table') : 'not assessed yet' };
@@ -6275,57 +6359,121 @@ function dqTagDatasets(tag) {
           `in one task.</p>` + body });
 }
 
-function renderTagRunPreview() {
-  const wrap = $('#tagrunPreview'); if (!wrap) return;
+// The datasets carrying the selected tag, as cards. This is the middle of the tab: what the tag
+// covers, what each dataset is, and the two ways to act - all of them at once via the header
+// button, or any single one on its own.
+function renderTagRunDatasets() {
+  const card = $('#tr2DsCard'), grid = $('#tagrunGrid'); if (!card || !grid) return;
   // A new selection invalidates the previous run's output.
   const res = $('#tagrunResults'); if (res) res.style.display = 'none';
   const sk = $('#tagrunSkipped'); if (sk) { sk.style.display = 'none'; sk.innerHTML = ''; }
+  const msg = $('#tagrunMsg'); if (msg) { msg.style.display = 'none'; msg.textContent = ''; }
 
   const tag = tagrunSelected;
-  if (!tag) {
-    wrap.innerHTML = `<h2>Run preview</h2>` +
-      `<div class="tagrun-empty"><div class="tre-ico">👀</div>` +
-      `<div class="tre-title">Pick a tag to preview</div>` +
-      `<div>Everything the tag covers is listed here, with what will run and what will not,<br>` +
-      `before anything starts.</div></div>`;
-    return;
-  }
+  if (!tag) { card.style.display = 'none'; return; }
+  card.style.display = '';
+
+  const chip = $('#tr2TagChip');
+  if (chip) chip.innerHTML = `<span class="tr2-chip" style="--pill:${_avatarTint(tag)}">` +
+    `<span class="tr2-dot"></span>${esc(tag)}` +
+    `<button type="button" id="tr2ClearTag" aria-label="Clear this tag" data-tip="Clear this tag">&times;</button></span>`;
 
   const rows = tagDatasetRows(tag);
+  const ready = rows.filter(r => r.ok).length, skipped = rows.length - ready;
 
+  const cnt = $('#tr2Count');
+  if (cnt) cnt.innerHTML = rows.length
+    ? `<strong>${rows.length}</strong> dataset${rows.length === 1 ? '' : 's'} found. ` +
+      `<strong>${ready}</strong> can be assessed from here` +
+      (skipped ? `; ${skipped} cannot, and each says why below.` : '.') +
+      ` Each runs on its own stored credential profile, so anything without saved credentials is ` +
+      `skipped too and the final list is confirmed when the run starts.`
+    : 'Nothing carries this tag yet.';
+
+  const runHost = $('#tr2RunAll');
+  if (runHost) runHost.innerHTML =
+    `<button class="src-run" id="tagrunGo"${ready ? '' : ' disabled'} ` +
+    `data-tip="${ready ? 'Assess every ready dataset under this tag, in one task'
+                       : 'Nothing under this tag can be assessed from here yet'}">` +
+    `\u25B6 Run assessment${ready ? ` on ${ready} dataset${ready === 1 ? '' : 's'}` : ''}</button>`;
+
+  grid.innerHTML = rows.length
+    ? rows.map(r => tagDatasetCard(r, tag)).join('')
+    : `<div class="tr2-wide">` + dqEmpty({ icon: '\u{1F3F7}\uFE0F', title: 'Nothing carries this tag',
+        body: 'No dataset is tagged \u201c' + esc(tag) + '\u201d yet. Tag one on the Overview tab and it appears here.' }) + `</div>`;
+}
+
+// One dataset. Every line on it is a recorded field - there is deliberately no blurb, because the
+// product stores no description for a dataset and inventing one would misdescribe the data.
+function tagDatasetCard(r, tag) {
+  const d = r.ds, key = r.key || '';
+  const others = (((dashEntries || {})[key] || {}).tags || []).filter(t => t !== tag);
+  const fmt = (d && d.sourceFormat) || '';
+  const scored = d && typeof d.score === 'number';
+  const age = (d && d.ageDays != null) ? tagAge(d.ageDays) : '';
+  return `<div class="tr2-card${r.ok ? '' : ' off'}">
+      <div class="tr2-c-hd">
+        <span class="tr2-c-ic">${srcIcon(fmt)}</span>
+        <span class="tr2-c-t">
+          <span class="tr2-c-name">${esc(r.name)}</span>
+          <span class="tr2-c-path" title="${esc(key)}">${esc(key)}</span>
+        </span>
+        ${scored ? `<span class="tr2-c-score ${esc(tagClass(d.status))}" data-tip="Latest overall score">${fmtScore(d.score)}</span>` : ''}
+      </div>
+      <div class="tr2-c-meta">${fmt ? sourceChip(fmt) : ''}
+        <span class="tr2-c-age">${age ? 'Last assessed ' + esc(age) : 'Never assessed'}</span></div>
+      ${others.length ? `<div class="tr2-c-tags">` + others.map(t =>
+        `<span class="tr2-mini" style="--pill:${_avatarTint(t)}">${esc(t)}</span>`).join('') + `</div>` : ''}
+      <div class="tr2-c-foot">${r.ok
+        ? `<button type="button" class="tr2-c-run" data-tr2run="${esc(r.name)}" data-fmt="${esc(fmt)}" ` +
+          `data-prefix="${esc((d && d.resultPrefix) || '')}" data-tip="Assess just this dataset">\u25B6 Run assessment</button>`
+        : `<span class="tr2-c-why">${esc(r.why)}</span>`}</div>
+    </div>`;
+}
+
+// Past runs of the datasets this tag covers. A run does NOT record the tag it was launched under -
+// `slug` is the only link there is - so this is honestly "runs of the datasets carrying this tag
+// now". Run duration is not recorded anywhere, so there is no duration column: a made-up one
+// would be read as a measurement.
+function renderTagRunHistory() {
+  const card = $('#tr2HistCard'), host = $('#tr2Hist'); if (!card || !host) return;
+  const tag = tagrunSelected;
+  if (!tag) { card.style.display = 'none'; return; }
+  card.style.display = '';
+
+  // dataset_key is `{tenant}/{slug}` and history reports the slug, so the leading tenant segment
+  // is the whole difference between the two (app.py: `slug = dk.split("/", 1)[1]`).
+  const slugs = {};
+  Object.keys(dashEntries || {})
+    .filter(k => ((dashEntries[k] || {}).tags || []).includes(tag))
+    .forEach(k => { slugs[k.split('/').slice(1).join('/')] = true; });
+
+  const all = (historyRuns || []).filter(r => r && slugs[r.slug]);
+  const rows = all.slice(0, TR2_RUNS);
   if (!rows.length) {
-    wrap.innerHTML = `<h2>Run preview</h2>` +
-      `<div class="tagrun-empty"><div class="tre-ico">🏷️</div>` +
-      `<div class="tre-title">Nothing carries this tag</div>` +
-      `<div>No dataset is tagged “${esc(tag)}” yet.</div></div>`;
+    host.innerHTML = `<p class="hint">No assessment has run yet for any dataset tagged ` +
+      `\u201c${esc(tag)}\u201d. Runs appear here as soon as one finishes.</p>`;
     return;
   }
-
-  const ready = rows.filter(r => r.ok).length, skipped = rows.length - ready;
-  const chip = `<span class="tagrun-chip">🏷️ ${esc(tag)}</span>`;
-  wrap.innerHTML =
-    `<h2>Run preview</h2>` +
-    `<div class="tr-headline">` + (ready
-      ? `<strong>${ready}</strong> of ${rows.length} dataset${rows.length === 1 ? '' : 's'} tagged ${chip} will be assessed together, in one task.`
-      : `Nothing tagged ${chip} can be assessed from here yet.`) + `</div>` +
-    `<div class="tr-stats">` +
-      `<div class="tr-stat"><div class="n">${rows.length}</div><div class="l">Tagged</div></div>` +
-      `<div class="tr-stat ready"><div class="n">${ready}</div><div class="l">Will run</div></div>` +
-      `<div class="tr-stat skip"><div class="n">${skipped}</div><div class="l">Skipped</div></div>` +
-    `</div>` +
-    `<div class="tr-list tr-list-grow">` + rows.map(r =>
-      `<div class="tr-row${r.ok ? '' : ' off'}"><span class="tr-dot"></span>` +
-      `<span class="tr-name">${esc(r.name)}</span>` +
-      (r.fmt ? sourceChip(r.fmt) : '') +
-      (r.ok ? '' : `<span class="tr-why">${esc(r.why)}</span>`) +
-      `</div>`).join('') + `</div>` +
-    `<div class="tr-foot">` +
-    `<button class="src-run" id="tagrunGo"${ready ? '' : ' disabled'}>▶ Run assessment` +
-      (ready ? ` on ${ready} dataset${ready === 1 ? '' : 's'}` : '') + `</button>` +
-    `<div class="hint" style="margin-top:10px;">Each dataset runs on its own <strong>stored credential ` +
-      `profile</strong>. Anything without saved credentials is skipped too, so the final list is ` +
-      `confirmed when the run starts.</div></div>` +
-    `<div id="tagrunMsg" class="tr-msg" style="display:none;"></div>`;
+  host.innerHTML =
+    `<div class="tr2-tblwrap"><table class="tr2-tbl">` +
+    `<thead><tr><th>Date &amp; time</th><th>Dataset</th><th>Source</th><th>Status</th>` +
+    `<th class="r">Score</th><th></th></tr></thead><tbody>` +
+    rows.map(r =>
+      `<tr><td class="tr2-when">${esc(fmtWhen(r.runId))}</td>` +
+      `<td class="tr2-dsname">${esc(r.dataset || r.slug || '')}</td>` +
+      `<td>${r.sourceFormat ? sourceChip(r.sourceFormat) : '<span class="dash-muted">-</span>'}</td>` +
+      `<td>${r.overallStatus ? `<span class="tag ${tagClass(r.overallStatus)}">${esc(r.overallStatus)}</span>`
+                             : (r.state ? `<span class="tag">${esc(String(r.state).toLowerCase())}</span>` : '')}` +
+        `${r.approvalStatus ? apprChip(r.approvalStatus) : ''}</td>` +
+      `<td class="r"><strong>${r.overallScore != null ? fmtScore(r.overallScore) : '-'}</strong></td>` +
+      `<td class="r"><button type="button" class="btn-sm" data-tr2view="${esc(r.resultPrefix || '')}" ` +
+        `data-tip="Open this run">\u{1F441} View</button></td></tr>`).join('') +
+    `</tbody></table></div>` +
+    (all.length > rows.length
+      ? `<p class="hint" style="margin:12px 0 0;">Showing the ${rows.length} most recent of ` +
+        `${all.length} runs under this tag.</p>`
+      : '');
 }
 
 // Alerts route PER DATASET, and BOTH steps of the chain are per dataset: its owner, then
