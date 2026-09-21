@@ -5846,17 +5846,17 @@ function renderTagRunPreview() {
     `<div id="tagrunMsg" class="tr-msg" style="display:none;"></div>`;
 }
 
-// Alerts route PER DATASET to its owner. A tag run covers many datasets with different
-// owners, so one typed address was always the wrong shape: it sent every dataset's alerts to
-// whoever launched the run. The owner is resolved at ALERT time, not now, so assigning an owner
-// after the run still routes correctly. The submitter is only the fallback for a dataset that
-// has no owner (observability/handler.py `_recipients_for`).
+// Alerts route PER DATASET, and BOTH steps of the chain are per dataset: its owner, then
+// whoever submitted that dataset. Neither is the person launching the run - a tag run or a
+// schedule covers many datasets belonging to many people, and naming the launcher here would be
+// describing the one routing that is wrong.
+//
+// So this names nobody. It cannot: which address a given dataset falls back to is a fact about
+// that dataset, resolved at ALERT time (observability/handler.py `_recipients_for`), which is
+// also why assigning an owner after the run still routes correctly.
 function alertRoutingNote() {
-  return EMAIL
-    ? `Alerts go to each dataset's <strong>owner</strong>. Any dataset without one falls back to `
-      + `<strong>${esc(EMAIL)}</strong>.`
-    : `Alerts go to each dataset's <strong>owner</strong>. There is no fallback address for this `
-      + `session, so a dataset with no owner raises no email.`;
+  return `Alerts go to each dataset's <strong>owner</strong>. Any dataset without one falls back `
+    + `to whoever <strong>submitted that dataset</strong>. A dataset with neither raises no email.`;
 }
 function paintAlertNotes() {
   ['#schAlertNote', '#tagrunAlertNote'].forEach(sel => {
@@ -5871,8 +5871,10 @@ async function runTagAssessment() {
   if (go) { go.disabled = true; go.innerHTML = '<span class="spin"></span>Launching…'; }
   const byKey = {}; (dashDatasetsAll || []).forEach(d => byKey[d.key] = d);
   try {
+    // No notify_email ON PURPOSE. Stamping the launcher would route every dataset in the tag
+    // to them, and would overwrite each dataset's own submitter for future runs.
     const r = await postJSON(`${API_BASE}/data-quality/run-by-tag`, HEADERS,
-      { app_id: APP_ID, tag: tag, notify_email: EMAIL || '' });
+      { app_id: APP_ID, tag: tag, notify_email: '' });
     renderTagSkipped(r.skipped, byKey);          // name each skipped dataset + why
     const launched = (r.launched || []).map(x => ({
       dataset_key: x.dataset_key, resultPrefix: x.resultPrefix,
@@ -13480,9 +13482,10 @@ async function saveSchedule() {
   if (!APP_ID) { schBanner('err', 'Open from inside a Qlik app to schedule its checks.'); return; }
   const kind = ($('#schSourceKind') && $('#schSourceKind').value) || 'qlik';
   const label = $('#schLabel').value.trim();
-  // The CREATOR is the fallback, recorded now because the schedule runs unattended later and
-  // there is nobody to ask then. It is only ever used for a dataset with no owner.
-  const email = EMAIL || '';
+  // Deliberately EMPTY. A schedule runs over many datasets; stamping its creator would send
+  // every one of their alerts to that person and overwrite each dataset's own routing. The API
+  // still requires the field, so it is sent blank rather than omitted.
+  const email = '';
   const cron = schBuildCron();
   if (!label) { schBanner('err', 'Give the schedule a name.'); return; }
   if (!cron) { schBanner('err', 'Set a frequency / cron expression.'); return; }
@@ -14016,9 +14019,7 @@ function renderSchedulePreview() {
     `<div class="sp-meta">` +
     `<span class="k">Assesses</span><span>${esc(tablesTxt)}</span>` +
     `<span class="k">Sample</span><span>${esc(sampleTxt)}</span>` +
-    `<span class="k">Alerts</span><span>${EMAIL
-        ? 'Dataset owner, else ' + esc(EMAIL)
-        : '<span class="dash-muted">Dataset owner only</span>'}</span>` +
+    `<span class="k">Alerts</span><span>Dataset owner, else whoever submitted it</span>` +
     `</div>` +
     `<div class="sp-next-h">Next ${runs.length > 1 ? runs.length + ' runs' : 'run'}</div>` +
     runsHtml;
@@ -14080,10 +14081,10 @@ function renderSchedules(list) {
     exp.querySelector('.v-tables').textContent = (s.sourceKind && s.sourceKind !== 'qlik')
       ? `${SOURCE_LABEL[s.sourceKind] || s.sourceKind}${s.sourceSummary ? ' · ' + s.sourceSummary : ''}`
       : ((s.tables && s.tables.length) ? s.tables.join(', ') : 'All tables');
-    // What the schedule will actually do, not the address stored on it: the owner decides, and
-    // the stored address is only the fallback for a dataset that has none.
+    // What the schedule will actually do. Older schedules may still carry a stored address from
+    // when the form asked for one; it is shown because it IS still what those runs will use.
     exp.querySelector('.v-email').textContent =
-      s.email ? 'Dataset owner, else ' + s.email : 'Dataset owner only';
+      s.email ? 'Dataset owner, else ' + s.email : 'Dataset owner, else whoever submitted it';
     exp.querySelector('.v-sample').textContent = s.sampleRows ? `${s.sampleRows} rows` : 'Whole tables';
   });
   $('#schList').querySelectorAll('.sched-caret').forEach(c => c.addEventListener('click', () => {
