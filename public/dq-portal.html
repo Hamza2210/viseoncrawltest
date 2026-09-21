@@ -1032,6 +1032,19 @@
     background: var(--ok-bg); color: var(--ok); }
   .tt-badge.none { background: var(--idle-bg); color: var(--muted); }
 
+  /* Fills what the stretched card leaves under the tag tiles, and answers a question the tiles
+     do not: which of these has actually been looked at lately. */
+  .tagrun-recent { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border); }
+  .trr-hd { font-size: 10.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+    color: var(--dim, var(--muted)); margin-bottom: 8px; }
+  .trr-row { display: flex; width: 100%; align-items: center; gap: 10px; padding: 6px 9px;
+    border: 1px solid transparent; border-radius: 8px; background: transparent; color: var(--muted);
+    font: inherit; font-size: 12.5px; cursor: pointer; text-align: left;
+    transition: background var(--dq-move) var(--dq-ease), color var(--dq-move) var(--dq-ease); }
+  .trr-row:hover { background: var(--idle-bg); color: var(--text); }
+  .trr-row.on { color: var(--text); border-color: color-mix(in srgb, var(--accent) 38%, transparent); }
+  .trr-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .trr-when { flex: none; font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
   .tagrun-email { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--border); }
   .tagrun-email input { width: 100%; }
 
@@ -3366,6 +3379,7 @@
           <input type="search" id="tagrunSearch" class="src-search" placeholder="🔎 Search tags…" autocomplete="off">
         </div>
         <div id="tagrunTags" class="tagrun-grid"></div>
+        <div id="tagrunRecent" class="tagrun-recent" style="display:none;"></div>
 
         <div class="tagrun-email">
           <div class="hint" id="tagrunAlertNote"></div>
@@ -6040,9 +6054,15 @@ function tagRunTags() {
   const m = {};
   for (const k in (dashEntries || {})) {
     ((dashEntries[k] || {}).tags || []).forEach(t => {
-      const e = m[t] || (m[t] = { tag: t, total: 0, runnable: 0 });
+      const e = m[t] || (m[t] = { tag: t, total: 0, runnable: 0, ageDays: null });
       e.total++;
-      if (byKey[k] && isSourceDataset(byKey[k])) e.runnable++;
+      const d = byKey[k];
+      if (d && isSourceDataset(d)) e.runnable++;
+      // A tag's recency is its MOST RECENTLY assessed dataset - the smallest age, not an average.
+      // The question is "when was anything under this tag last checked".
+      if (d && typeof d.ageDays === 'number') {
+        e.ageDays = e.ageDays == null ? d.ageDays : Math.min(e.ageDays, d.ageDays);
+      }
     });
   }
   return Object.keys(m).map(k => m[k]).sort((a, b) => a.tag.localeCompare(b.tag));
@@ -6060,6 +6080,10 @@ async function initTagRun() {
     panel.addEventListener('click', e => {
       const tile = e.target.closest('.tagrun-tile');
       if (tile) { selectTagRunTag(tile.getAttribute('data-tag')); return; }
+      // The recent rows are re-rendered, so they use the same delegated handler as the tiles
+      // rather than being bound individually on every render.
+      const recent = e.target.closest('.trr-row');
+      if (recent) { selectTagRunTag(recent.getAttribute('data-tag')); return; }
       if (e.target.closest('#tagrunGo')) { runTagAssessment(); return; }
       const go = e.target.closest('[data-goto]');
       if (go) switchTab(go.getAttribute('data-goto'));
@@ -6112,6 +6136,35 @@ function renderTagRunTags() {
       (t.runnable ? `<span class="tt-badge">${t.runnable} ready</span>`
                   : `<span class="tt-badge none">none</span>`) +
     `</button>`).join('');
+  renderTagRunRecent(all);
+}
+
+// "Recently assessed", not "recently run". A dataset under a tag may have been assessed on its
+// own, by a schedule, or as part of a tag run, and nothing distinguishes those afterwards -
+// claiming the TAG was run would be inventing a record the product does not keep.
+function tagAge(days) {
+  if (days == null) return '';
+  if (days < 1) return 'today';
+  if (days < 2) return 'yesterday';
+  if (days < 14) return Math.round(days) + 'd ago';
+  if (days < 60) return Math.round(days / 7) + 'w ago';
+  return Math.round(days / 30) + 'mo ago';
+}
+
+function renderTagRunRecent(all) {
+  const host = $('#tagrunRecent'); if (!host) return;
+  const run = (all || []).filter(t => t.ageDays != null)
+    .sort((a, b) => a.ageDays - b.ageDays).slice(0, 5);
+  // Hidden entirely when nothing has run: an empty "Recently assessed" heading reads as a broken
+  // panel rather than an absence of history.
+  if (!run.length) { host.innerHTML = ''; host.style.display = 'none'; return; }
+  host.style.display = '';
+  host.innerHTML = '<div class="trr-hd">Recently assessed</div>' +
+    run.map(t =>
+      `<button type="button" class="trr-row${t.tag === tagrunSelected ? ' on' : ''}" ` +
+        `data-tag="${esc(t.tag)}" data-tip="Select this tag">` +
+        `<span class="trr-name">🏷️ ${esc(t.tag)}</span>` +
+        `<span class="trr-when">${esc(tagAge(t.ageDays))}</span></button>`).join('');
 }
 
 function renderTagRunPreview() {
