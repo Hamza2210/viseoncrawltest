@@ -1002,12 +1002,18 @@
   /* ---- Assess by tag ------------------------------------------------------------------
      Picker (left) beside a sticky live preview that carries the run action (right), the same
      master-detail shape the Schedules tab uses. */
+  /* The tag list is short and the preview is tall, so `start` left one card floating beside a
+     column of dead space. The pair stretches to the same height, and the tag list grows to fill
+     what it is given rather than stopping halfway down its own card. */
   .tagrun-top { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    gap: 24px; align-items: start; }
+    gap: 24px; align-items: stretch; }
+  .tagrun-top > .card { display: flex; flex-direction: column; }
   @media (max-width: 1100px) { .tagrun-top { grid-template-columns: 1fr; } }
 
+  /* flex:1 so the tag list takes the height the stretched card gives it. min-height:0 is what
+     makes that scrollable rather than overflowing the card. */
   .tagrun-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(215px, 1fr));
-    gap: 8px; max-height: 336px; overflow-y: auto; padding: 1px; }
+    gap: 8px; align-content: start; flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 1px; }
   .tagrun-tile { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
     padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--card);
     color: var(--text); font: inherit; cursor: pointer;
@@ -1028,8 +1034,8 @@
   .tagrun-email { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--border); }
   .tagrun-email input { width: 100%; }
 
-  .tagrun-preview-card { position: sticky; top: 12px;
-    background: linear-gradient(180deg, var(--idle-bg), var(--card) 130px); }
+  /* Not sticky: sticky and a stretched row fight, and the pair is now the same height anyway. */
+  .tagrun-preview-card { background: linear-gradient(180deg, var(--idle-bg), var(--card) 130px); }
   .tr-headline { font-size: 15px; font-weight: 600; line-height: 1.55; margin: 2px 0 15px; }
   .tr-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px; }
   .tr-stat { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px;
@@ -1038,6 +1044,11 @@
   .tr-stat .l { font-size: 10px; color: var(--muted); text-transform: uppercase;
     letter-spacing: .04em; margin-top: 2px; }
   .tr-stat.ready { border-left: 3px solid var(--ok); }
+  /* The list takes the slack and the footer pins to the bottom, so the run button sits at the
+     end of the card rather than halfway down it with empty space underneath. */
+  .tr-list-grow { flex: 1 1 auto; min-height: 90px; overflow-y: auto; }
+  .tr-foot { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border); }
+  .tr-foot .src-run { width: 100%; justify-content: center; }
   .tr-stat.ready .n { color: var(--ok); }
   .tr-stat.skip { border-left: 3px solid var(--run); }
   .tr-stat.skip .n { color: var(--run); }
@@ -1081,6 +1092,20 @@
     font: inherit; font-size: 12.5px; font-weight: 600; border: 1px solid var(--border);
     background: var(--idle-bg); color: var(--text); }
   .dq-empty .tre-act:hover { border-color: var(--accent); }
+  /* Three identical grey rectangles said nothing about which one was destructive. Icon + label,
+     and the state-changing one carries the state it moves TO. */
+  .sched-acts { display: flex; gap: 6px; justify-content: flex-end; }
+  .sact { display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border-radius: 8px;
+    border: 1px solid var(--border); background: transparent; color: var(--muted);
+    font: inherit; font-size: 12px; cursor: pointer; white-space: nowrap;
+    transition: border-color var(--dq-move) var(--dq-ease), color var(--dq-move) var(--dq-ease),
+                background var(--dq-move) var(--dq-ease); }
+  .sact:hover { color: var(--text); border-color: var(--accent); background: var(--idle-bg); }
+  .sact.on { color: #9fe8b0; border-color: color-mix(in srgb, var(--ok) 40%, transparent); }
+  .sact.danger:hover { color: var(--err); border-color: color-mix(in srgb, var(--err) 55%, transparent);
+    background: color-mix(in srgb, var(--err) 10%, transparent); }
+  .sact:disabled { opacity: .45; cursor: default; }
+  @media (max-width: 1180px) { .sact span { display: none; } .sact { padding: 5px 9px; } }
   .sched-src { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
   .sched-src .sched-det { color: var(--muted); font-size: 11.5px; }
 
@@ -1276,8 +1301,21 @@
   #schedulePanel .sched-form > input, #schedulePanel .sched-form > select,
   #schedulePanel .sched-form > .tzc,
   #schedulePanel #schCustomWrap input { width: 100%; }
-  #schWhen { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 14px; margin-top: 4px; }
+  /* The frequency dropdown and its time sat on two lines with the time as a bare browser-default
+     control pressed against the select. They are one decision, so they read as one strip. */
+  .sched-freq { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .sched-freq > select { flex: 1 1 200px; min-width: 0; }
+  #schWhen { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 14px; }
   #schWhen input, #schWhen select { width: auto; }
+  .sched-at { color: var(--muted); font-size: 13px; }
+  /* Only what is SPECIFIC to a time input. The box, padding and focus ring come from the shared
+     field rule - overriding the padding here made it 4px taller than the select beside it, which
+     is exactly the mismatched look this was meant to remove. */
+  #schTime { font-variant-numeric: tabular-nums; min-width: 122px; }
+  #schTime::-webkit-calendar-picker-indicator { filter: invert(.7); cursor: pointer; opacity: .75; }
+  #schTime::-webkit-calendar-picker-indicator:hover { opacity: 1; }
+  #schDom { padding: 9px 10px; border: 1px solid var(--border); border-radius: 10px;
+    background: var(--card-2); color: var(--text); font: inherit; }
   .chooser { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 4px; }
   .chooser .summary { color: var(--muted); font-size: 13px; }
   .sched-table { width: 100%; border-collapse: collapse; font-size: 13px; }
@@ -1290,10 +1328,14 @@
   .kv .k { color: var(--muted); }
 
   /* Schedules: two-column top (form | live preview) */
+  /* stretch, not start: the creator and the preview are a pair, and leaving them to find their
+     own heights made one card float short beside a tall one. */
   .sched-top { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    gap: 24px; align-items: start; }
+    gap: 24px; align-items: stretch; }
   @media (max-width: 900px) { .sched-top { grid-template-columns: 1fr; } }
-  .sched-preview-card { position: sticky; top: 12px;
+  /* Not sticky any more: sticky positioning and a stretched grid row fight each other, and the
+     card no longer needs to follow the page now that the pair is the same height. */
+  .sched-preview-card {
     background: linear-gradient(180deg, var(--idle-bg), var(--card) 120px); }
   #schPreview .sp-summary { font-size: 15px; font-weight: 600; line-height: 1.5; margin: 2px 0 14px; }
   #schPreview .sp-summary .sp-accent { color: var(--accent); }
@@ -3102,6 +3144,14 @@
       <p>Automate this <span class="scope-n">app</span>'s quality checks, run an assessment on a recurring schedule so scores, trends and incidents stay up to date without manual runs.</p>
     </div>
 
+    <!-- What is ALREADY running comes first. It was below the creator and the preview, so the
+         answer to "what is scheduled here?" - the question most visits are asking - was two
+         cards down the page. Creating one is the rarer act. -->
+    <div class="card" id="schActiveCard">
+      <h2>Active schedules <button class="linkbtn" id="schRefresh">Refresh</button></h2>
+      <div id="schList"><p class="dash-muted">Loading…</p></div>
+    </div>
+
     <div class="sched-top">
     <div class="card">
       <h2 id="schFormTitle">New schedule</h2>
@@ -3112,14 +3162,15 @@
         <input id="schLabel" placeholder="e.g. Nightly quality check" />
 
         <label for="schFreq">Frequency</label>
-        <select id="schFreq">
-          <option value="daily">Daily</option>
-          <option value="weekly">Weekly</option>
-          <option value="monthly">Monthly</option>
-          <option value="custom">Custom (cron / rate)</option>
-        </select>
+        <div class="sched-freq">
+          <select id="schFreq">
+            <option value="daily">Daily</option>
+            <option value="weekly">Weekly</option>
+            <option value="monthly">Monthly</option>
+            <option value="custom">Custom (cron / rate)</option>
+          </select>
         <div id="schWhen">
-          <span id="schTimeWrap">at <input type="time" id="schTime" value="06:00" /></span>
+          <span id="schTimeWrap"><span class="sched-at">at</span><input type="time" id="schTime" value="06:00" /></span>
           <span id="schDowWrap" style="display:none;"> on
             <select id="schDow">
               <option value="MON">Monday</option><option value="TUE">Tuesday</option>
@@ -3130,6 +3181,7 @@
           <span id="schDomWrap" style="display:none;"> on day
             <input type="number" id="schDom" min="1" max="28" value="1" style="width:70px;" /></span>
         </div>
+        </div><!-- /.sched-freq -->
         <div id="schCustomWrap" style="display:none;">
           <input id="schCustom" placeholder="cron(0 6 * * ? *)  or  rate(1 day)" />
           <div class="hint" style="margin-top:4px;">EventBridge Scheduler format - 6-field cron
@@ -3217,11 +3269,6 @@
       <div id="schPreview"></div>
     </div>
     </div><!-- /.sched-top -->
-
-    <div class="card">
-      <h2>Current schedules <button class="linkbtn" id="schRefresh">Refresh</button></h2>
-      <div id="schList"><p class="dash-muted">Loading…</p></div>
-    </div>
 
   </div>
 
@@ -6115,17 +6162,18 @@ function renderTagRunPreview() {
       `<div class="tr-stat ready"><div class="n">${ready}</div><div class="l">Will run</div></div>` +
       `<div class="tr-stat skip"><div class="n">${skipped}</div><div class="l">Skipped</div></div>` +
     `</div>` +
-    `<div class="tr-list">` + rows.map(r =>
+    `<div class="tr-list tr-list-grow">` + rows.map(r =>
       `<div class="tr-row${r.ok ? '' : ' off'}"><span class="tr-dot"></span>` +
       `<span class="tr-name">${esc(r.name)}</span>` +
       (r.fmt ? sourceChip(r.fmt) : '') +
       (r.ok ? '' : `<span class="tr-why">${esc(r.why)}</span>`) +
       `</div>`).join('') + `</div>` +
+    `<div class="tr-foot">` +
     `<button class="src-run" id="tagrunGo"${ready ? '' : ' disabled'}>▶ Run assessment` +
       (ready ? ` on ${ready} dataset${ready === 1 ? '' : 's'}` : '') + `</button>` +
     `<div class="hint" style="margin-top:10px;">Each dataset runs on its own <strong>stored credential ` +
       `profile</strong>. Anything without saved credentials is skipped too, so the final list is ` +
-      `confirmed when the run starts.</div>` +
+      `confirmed when the run starts.</div></div>` +
     `<div id="tagrunMsg" class="tr-msg" style="display:none;"></div>`;
 }
 
@@ -14512,10 +14560,10 @@ function renderSchedules(list) {
         <td class="hint c-next"></td>
         <td>${stateChip}</td>
         <td class="sched-src">${tables}</td>
-        <td><div class="actions">
-          <button class="btn-sm" data-act="toggle" data-i="${i}">${on ? 'Disable' : 'Enable'}</button>
-          <button class="btn-sm" data-act="edit" data-i="${i}">Edit</button>
-          <button class="btn-sm btn-danger" data-act="del" data-i="${i}">Delete</button>
+        <td><div class="sched-acts">
+          <button class="sact${on ? '' : ' on'}" data-act="toggle" data-i="${i}" data-tip="${on ? 'Pause this schedule - it stops firing but keeps its settings' : 'Resume this schedule'}">${on ? '⏸' : '▶'}<span>${on ? 'Pause' : 'Resume'}</span></button>
+          <button class="sact" data-act="edit" data-i="${i}" data-tip="Load this schedule into the form above">✎<span>Edit</span></button>
+          <button class="sact danger" data-act="del" data-i="${i}" data-tip="Delete this schedule">🗑<span>Delete</span></button>
         </div></td>
       </tr>
       <tr class="exp-row" data-exp="${i}" style="display:none;">
@@ -14567,17 +14615,34 @@ async function schAction(act, s) {
   try {
     if (act === 'toggle') {
       const nowEnabled = s.state !== 'ENABLED';
+      // Pausing is confirmed; resuming is not. Stopping a schedule means checks silently stop
+      // happening, and nothing announces the absence of a run - so it deserves the question.
+      // Turning one back on announces itself on the next run.
+      if (!nowEnabled && !await dqConfirm(
+            `Pause "${s.label}"?
+
+It stops firing and keeps its settings. Nothing will be `
+            + `assessed on this schedule until you resume it.`,
+            { title: 'Pause schedule', okLabel: 'Pause' })) return;
       await postJSON(`${API_BASE}/data-quality/schedules/set-state`, HEADERS,
         { app_id: APP_ID, name: s.name, enabled: nowEnabled });
-      schBanner(nowEnabled ? 'ok' : 'warn',       // enabled → green, disabled → amber
-        `Schedule "${s.label}" ${nowEnabled ? 'enabled' : 'disabled'}.`);
-      loadSchedules();
+      await loadSchedules();
+      await dqDone(nowEnabled ? 'Schedule resumed' : 'Schedule paused',
+        nowEnabled
+          ? `<strong>${esc(s.label)}</strong> is running again. Next run ${esc(fmtNextRun(s.cron, s.timezone))}.`
+          : `<strong>${esc(s.label)}</strong> will not fire until you resume it.`);
     } else if (act === 'del') {
-      if (!await dqConfirm(`Delete schedule "${s.label}"?`, { title: 'Delete schedule', danger: true })) return;
+      if (!await dqConfirm(
+            `Delete "${s.label}"?
+
+This cannot be undone. Assessments already run keep their `
+            + `history; only the schedule goes.`,
+            { title: 'Delete schedule', danger: true, okLabel: 'Delete' })) return;
       await postJSON(`${API_BASE}/data-quality/schedules/delete`, HEADERS,
         { app_id: APP_ID, name: s.name });
-      schBanner('err', `Schedule "${s.label}" deleted.`);   // destructive → red
-      loadSchedules();
+      await loadSchedules();
+      await dqDone('Schedule deleted',
+        `<strong>${esc(s.label)}</strong> is gone. Runs it already made keep their history.`);
     } else if (act === 'edit') {
       editSchedule(s);
     }
