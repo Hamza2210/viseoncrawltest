@@ -1034,10 +1034,24 @@
 
   /* Empty states carry the same weight as content here - this tab is useless without tags, so
      saying so properly (and linking to where you add them) matters more than a grey line. */
-  .tagrun-empty { border: 1px dashed var(--border); border-radius: 12px; padding: 26px 20px;
+  /* The tag-run tab already had a decent empty state while three panels used a bare grey line,
+     so this is that pattern promoted rather than a new one invented. `.tagrun-empty` is kept as
+     an alias so the existing markup does not have to change. */
+  .dq-empty, .tagrun-empty { border: 1px dashed var(--border); border-radius: 12px; padding: 30px 22px;
     text-align: center; color: var(--muted); font-size: 13px; line-height: 1.6; }
-  .tagrun-empty .tre-ico { font-size: 26px; line-height: 1; margin-bottom: 8px; opacity: .85; }
-  .tagrun-empty .tre-title { font-size: 14.5px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+  .dq-empty .tre-ico, .tagrun-empty .tre-ico { font-size: 26px; line-height: 1; margin-bottom: 8px; opacity: .85; }
+  .dq-empty .tre-title, .tagrun-empty .tre-title { font-size: 14.5px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+  .dq-empty .tre-ico { display: grid; place-items: center; width: 54px; height: 54px; margin: 0 auto 12px;
+    border-radius: 14px; background: var(--idle-bg); border: 1px solid var(--border); opacity: 1; }
+  .dq-empty .tre-body { max-width: 380px; margin: 0 auto; }
+  /* The action is the point: an empty panel that only says "nothing here" leaves the reader to
+     work out what would put something here. */
+  .dq-empty .tre-act { margin-top: 14px; padding: 8px 15px; border-radius: 9px; cursor: pointer;
+    font: inherit; font-size: 12.5px; font-weight: 600; border: 1px solid var(--border);
+    background: var(--idle-bg); color: var(--text); }
+  .dq-empty .tre-act:hover { border-color: var(--accent); }
+  .sched-src { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+  .sched-src .sched-det { color: var(--muted); font-size: 11.5px; }
 
   .tagrun-skipped { margin-top: 16px; border: 1px solid var(--border);
     border-left: 4px solid var(--run); border-radius: 13px; padding: 15px 18px;
@@ -1286,9 +1300,77 @@
   .modal-overlay.dq-ov { z-index: 1200; }
   .dq-dialog { width: 440px; }
   .dq-modal-msg { font-size: 14px; line-height: 1.55; color: var(--text); margin: 12px 0 12px; white-space: pre-wrap; }
-  .modal input.dqin { width: 100%; padding: 9px 12px; border: 1px solid var(--border); border-radius: 9px;
+  /* `input.dqin` rather than `.dqin` was a real bug, not a style choice: the select rendered by
+     dqSelect() never matched it, so every picker (owner, incident assignee) showed a stub-width
+     control floating in a full-width dialog. Element-agnostic now. */
+  .modal .dqin { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px;
     background: var(--card-2); color: var(--text); font: inherit; font-size: 14px; margin-bottom: 8px; }
-  .modal input.dqin:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+  .modal select.dqin { appearance: none; cursor: pointer; padding-right: 34px;
+    background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%),
+      linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+    background-position: calc(100% - 18px) 50%, calc(100% - 13px) 50%;
+    background-size: 5px 5px, 5px 5px; background-repeat: no-repeat; }
+  .modal .dqin:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+
+  /* ---- People picker: the owner dialog, and anything else that chooses a person ------------ */
+  .pp-search { margin: 2px 0 10px; }
+  .pp-list { max-height: 46vh; overflow: auto; display: flex; flex-direction: column; gap: 2px;
+    border: 1px solid var(--border); border-radius: 12px; padding: 6px; }
+  .pp-row { display: flex; align-items: center; gap: 11px; padding: 9px 10px; border-radius: 10px;
+    cursor: pointer; color: var(--muted); border: 1px solid transparent;
+    transition: background var(--dq-move) var(--dq-ease), color var(--dq-move) var(--dq-ease); }
+  .pp-row:hover { background: var(--idle-bg); color: var(--text); }
+  .pp-row.on { color: var(--text); background: color-mix(in srgb, var(--accent) 13%, transparent);
+    border-color: color-mix(in srgb, var(--accent) 38%, transparent); }
+  /* Initials, tinted from the address itself - a face-less list of emails is hard to scan. */
+  .pp-av { flex: none; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center;
+    font-size: 11.5px; font-weight: 700; letter-spacing: .02em; color: #0b1020; }
+  .pp-av.none { background: transparent; border: 1px dashed var(--border); color: var(--muted); font-size: 14px; }
+  .pp-who { flex: 1 1 auto; min-width: 0; }
+  /* Both BLOCK: as inline spans the role ran straight on from the address
+     ("...consultingadmin"), which read as part of the email. */
+  .pp-mail { display: block; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pp-sub { display: block; font-size: 11px; color: var(--muted); margin-top: 2px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pp-tick { flex: none; color: var(--accent); font-weight: 700; opacity: 0; }
+  .pp-row.on .pp-tick { opacity: 1; }
+  .pp-none { display: none; }
+
+  /* ---- Confirm / alert icon ---------------------------------------------------------------
+     A destructive question rendered as a bare paragraph reads exactly like an informational one,
+     so the reader's eye has nothing to catch on. The ring is the tell. */
+  .dq-ask { display: flex; gap: 15px; align-items: flex-start; margin: 14px 0 6px; }
+  .dq-ask-ring { flex: none; width: 42px; height: 42px; border-radius: 50%; display: grid;
+    place-items: center; font-size: 19px; line-height: 1; }
+  .dq-ask-ring.warn { background: color-mix(in srgb, var(--err) 14%, transparent);
+    border: 1px solid color-mix(in srgb, var(--err) 42%, transparent); }
+  .dq-ask-ring.ask { background: color-mix(in srgb, var(--accent) 14%, transparent);
+    border: 1px solid color-mix(in srgb, var(--accent) 42%, transparent); }
+  .dq-ask-ring.info { background: color-mix(in srgb, var(--accent2) 14%, transparent);
+    border: 1px solid color-mix(in srgb, var(--accent2) 42%, transparent); }
+  .dq-ask .dq-modal-msg { margin: 0; padding-top: 2px; }
+  /* A danger dialog should not have its destructive button sitting under the reader's cursor by
+     default, so Cancel is the one that looks pressable. */
+  .dq-dialog.danger .modal-foot .btn-sm { border-color: var(--accent); color: var(--text); }
+
+  /* ---- Success confirmation ---------------------------------------------------------------- */
+  .dq-done { width: 360px; text-align: center; }
+  .dq-done .modal-body { padding: 26px 24px 20px; }
+  .dq-done-ring { width: 68px; height: 68px; margin: 0 auto 14px; border-radius: 50%;
+    display: grid; place-items: center;
+    background: color-mix(in srgb, var(--ok) 15%, transparent);
+    border: 1px solid color-mix(in srgb, var(--ok) 45%, transparent); }
+  .dq-done-ring svg { width: 34px; height: 34px; }
+  .dq-done-ring path { stroke: var(--ok); stroke-width: 3.2; fill: none;
+    stroke-linecap: round; stroke-linejoin: round;
+    stroke-dasharray: 32; stroke-dashoffset: 32; animation: dqTick .42s var(--dq-ease) .08s forwards; }
+  @keyframes dqTick { to { stroke-dashoffset: 0; } }
+  .dq-done h3 { margin: 0 0 6px; font-size: 16.5px; color: var(--text); }
+  .dq-done p { margin: 0; font-size: 13.5px; line-height: 1.55; color: var(--muted); }
+  .dq-done p strong { color: var(--text); font-weight: 600; }
+  @media (prefers-reduced-motion: reduce) {
+    .dq-done-ring path { animation: none; stroke-dashoffset: 0; }
+  }
   .dq-ok { padding: 8px 16px; border: none; border-radius: 8px; background: var(--accent); color: var(--accent-fg);
     font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
   .dq-ok:hover { filter: brightness(1.07); }
@@ -4733,7 +4815,9 @@ function renderHistoryPage() {
   ]) : '';
   if (!historyRuns.length) {
     const ctaLabel = PORTAL ? 'Assess a data source →' : 'Assess this app\'s data →';
-    list.innerHTML = '<p class="dash-muted" style="margin:0;">No runs yet - assessments you run will appear here.</p>'
+    list.innerHTML = dqEmpty({ icon: '\u{1F4DC}', title: 'No runs yet',
+      body: 'Assessments you run appear here, newest first, with the score and failing checks for each.',
+      action: { id: 'run', label: 'Assess a data source' } })
       + (APP_ID ? ' <button id="histAssessCta" style="margin-top:12px;">' + ctaLabel + '</button>' : '');
     const c = $('#histAssessCta'); if (c) c.addEventListener('click', () => switchTab(PORTAL ? 'upload' : 'appdata'));
     pager.innerHTML = ''; return;
@@ -4928,10 +5012,14 @@ function dqModal(opts) {
     const ov = document.createElement('div');
     ov.className = 'modal-overlay dq-ov open';
     ov.innerHTML =
-      `<div class="modal dq-dialog" role="dialog" aria-modal="true">
+      `<div class="modal dq-dialog${o.danger ? ' danger' : ''}" role="dialog" aria-modal="true">
         ${o.title ? `<div class="modal-head"><h3>${esc(o.title)}</h3><button class="x-close" type="button" data-dq="cancel" aria-label="Close">&times;</button></div>` : ''}
         <div class="modal-body">
-          ${o.message ? `<p class="dq-modal-msg">${esc(o.message)}</p>` : ''}
+          ${o.message ? (kind === 'confirm' || kind === 'alert'
+            ? `<div class="dq-ask"><div class="dq-ask-ring ${o.danger ? 'warn' : (kind === 'alert' ? 'info' : 'ask')}">`
+              + `${o.danger ? '&#9888;' : (kind === 'alert' ? '&#8505;' : '?')}</div>`
+              + `<p class="dq-modal-msg">${esc(o.message)}</p></div>`
+            : `<p class="dq-modal-msg">${esc(o.message)}</p>`) : ''}
           ${isPrompt ? `<input class="dqin" type="text"${o.placeholder ? ` placeholder="${esc(o.placeholder)}"` : ''}>` : ''}
           ${kind === 'select' ? `<select class="dqin dqsel">${(o.options || []).map(op =>
               `<option value="${esc(op.value)}"${op.value === (o.value || '') ? ' selected' : ''}>${esc(op.label)}</option>`).join('')}</select>` : ''}
@@ -5109,6 +5197,134 @@ async function orgMembers() {
   return _orgMembers;
 }
 
+// One empty state, used wherever a panel has nothing to show. `action` is optional; the caller
+// wires it via the data-emptyact hook, so this stays pure HTML and can be dropped into innerHTML.
+function dqEmpty(o) {
+  const a = o.action;
+  return `<div class="dq-empty">` +
+    `<div class="tre-ico">${o.icon || '\u{1F4C2}'}</div>` +
+    `<div class="tre-title">${esc(o.title)}</div>` +
+    `<div class="tre-body">${esc(o.body || '')}</div>` +
+    (a ? `<button type="button" class="tre-act" data-emptyact="${esc(a.id)}">${esc(a.label)}</button>` : '') +
+    `</div>`;
+}
+
+// A stable tint per address, so the same person is the same colour everywhere. Hue only - the
+// saturation and lightness are fixed, which keeps every avatar legible against the dark card
+// instead of letting a hash pick an unreadable one.
+function _avatarTint(email) {
+  let h = 0;
+  for (let i = 0; i < email.length; i++) h = (h * 31 + email.charCodeAt(i)) >>> 0;
+  return `hsl(${h % 360} 62% 68%)`;
+}
+function _initials(email) {
+  const name = (email || '').split('@')[0].replace(/[._-]+/g, ' ').trim();
+  const parts = name.split(/\s+/).filter(Boolean);
+  if (!parts.length) return '?';
+  return (parts[0][0] + (parts[1] ? parts[1][0] : '')).toUpperCase();
+}
+
+// Choose one person from a list, with search. Returns the email, '' for Unassigned, or null if
+// cancelled - the same three-way contract pickAssignee already had, so callers are unchanged.
+function dqPeoplePicker(opts) {
+  const o = opts || {}, people = o.people || [];
+  let chosen = o.value || '';
+  return new Promise(resolve => {
+    const ov = document.createElement('div');
+    ov.className = 'modal-overlay dq-ov open';
+    ov.innerHTML =
+      `<div class="modal dq-dialog" role="dialog" aria-modal="true">
+        <div class="modal-head"><h3>${esc(o.title || 'Assign')}</h3>
+          <button class="x-close" type="button" data-dq="cancel" aria-label="Close">&times;</button></div>
+        <div class="modal-body">
+          ${o.message ? `<p class="dq-modal-msg">${esc(o.message)}</p>` : ''}
+          <input class="dqin pp-search" type="text" placeholder="Search people…" autocomplete="off">
+          <div class="pp-list"></div>
+          <p class="pp-none hint">Nobody matches that.</p>
+        </div>
+        <div class="modal-foot">
+          <button type="button" class="btn-sm" data-dq="cancel">Cancel</button>
+          <button type="button" class="dq-ok" data-dq="ok">Assign</button>
+        </div>
+      </div>`;
+    document.body.appendChild(ov);
+    const list = ov.querySelector('.pp-list'), search = ov.querySelector('.pp-search');
+    const none = ov.querySelector('.pp-none');
+
+    function draw() {
+      const q = (search.value || '').trim().toLowerCase();
+      const rows = people.filter(p => !q || (p.email || '').toLowerCase().indexOf(q) !== -1);
+      // Unassigned is always offered and never filtered out: clearing an owner is a deliberate
+      // act, and hiding it behind a search for a word nobody would type would strand the user.
+      list.innerHTML =
+        `<label class="pp-row${chosen === '' ? ' on' : ''}" data-e="">` +
+        `<span class="pp-av none">-</span>` +
+        `<span class="pp-who"><span class="pp-mail">Unassigned</span>` +
+        `<span class="pp-sub">Alerts fall back to whoever submitted the dataset</span></span>` +
+        `<span class="pp-tick">&#10003;</span></label>` +
+        rows.map(p => {
+          const e = p.email;
+          return `<label class="pp-row${chosen === e ? ' on' : ''}" data-e="${esc(e)}">` +
+            `<span class="pp-av" style="background:${_avatarTint(e)}">${esc(_initials(e))}</span>` +
+            `<span class="pp-who"><span class="pp-mail">${esc(e)}</span>` +
+            (p.sub ? `<span class="pp-sub">${esc(p.sub)}</span>` : '') + `</span>` +
+            `<span class="pp-tick">&#10003;</span></label>`;
+        }).join('');
+      none.style.display = rows.length ? 'none' : '';
+    }
+    draw();
+
+    const finish = v => { ov.remove(); document.removeEventListener('keydown', onKey, true); resolve(v); };
+    list.addEventListener('click', e => {
+      const row = e.target.closest('.pp-row'); if (!row) return;
+      chosen = row.dataset.e; draw();
+    });
+    search.addEventListener('input', draw);
+    ov.addEventListener('click', e => {
+      const b = e.target.closest('[data-dq]');
+      if (b) { e.preventDefault(); finish(b.dataset.dq === 'ok' ? chosen : null); }
+      else if (e.target === ov) finish(null);
+    });
+    function onKey(e) {
+      if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); finish(null); }
+      else if (e.key === 'Enter' && document.activeElement !== search) { e.preventDefault(); finish(chosen); }
+    }
+    document.addEventListener('keydown', onKey, true);
+    setTimeout(() => search.focus(), 20);
+  });
+}
+
+// A short, self-dismissing confirmation. Deliberately not a dqAlert: an alert demands a click to
+// acknowledge something that already worked, which is friction charged for success. This states
+// the outcome and gets out of the way, and stays put while hovered so it can actually be read.
+function dqDone(title, message, opts) {
+  const o = opts || {};
+  return new Promise(resolve => {
+    const ov = document.createElement('div');
+    ov.className = 'modal-overlay dq-ov open';
+    ov.innerHTML =
+      `<div class="modal dq-dialog dq-done" role="dialog" aria-modal="true" aria-live="polite">
+        <div class="modal-body">
+          <div class="dq-done-ring"><svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4.5 12.5 L10 18 L19.5 6.5"/></svg></div>
+          <h3>${esc(title)}</h3>
+          ${message ? `<p>${message}</p>` : ''}
+        </div>
+      </div>`;
+    document.body.appendChild(ov);
+    let timer = null;
+    const close = () => { if (timer) clearTimeout(timer); ov.remove();
+      document.removeEventListener('keydown', onKey, true); resolve(); };
+    const arm = () => { timer = setTimeout(close, o.ms || 1800); };
+    arm();
+    ov.addEventListener('click', close);
+    ov.addEventListener('mouseenter', () => { if (timer) clearTimeout(timer); }, true);
+    ov.addEventListener('mouseleave', arm, true);
+    function onKey(e) { if (e.key === 'Escape' || e.key === 'Enter') { e.preventDefault(); close(); } }
+    document.addEventListener('keydown', onKey, true);
+  });
+}
+
 // Ask who to assign. Returns the chosen email, '' to clear, or null if cancelled.
 async function pickAssignee(title, message, current) {
   const members = await orgMembers();
@@ -5116,14 +5332,14 @@ async function pickAssignee(title, message, current) {
     const v = await dqPrompt(message, current || '', { title });
     return v === null ? null : v.trim();
   }
-  const opts = [{ value: '', label: 'Unassigned' }].concat(members.map(m => ({
-    value: m.email, label: m.role && m.role !== 'member' ? `${m.email} (${m.role})` : m.email })));
+  const people = members.map(m => ({
+    email: m.email, sub: m.role && m.role !== 'member' ? m.role : '' }));
   // Someone assigned before they left the org is not in the list any more; keep them selectable
   // so opening the dialog does not silently reassign the dataset to whoever sorts first.
   if (current && !members.some(m => m.email === current)) {
-    opts.splice(1, 0, { value: current, label: `${current} (no longer in this organisation)` });
+    people.unshift({ email: current, sub: 'no longer in this organisation' });
   }
-  return await dqSelect(message, opts, current || '', { title, okLabel: 'Assign' });
+  return await dqPeoplePicker({ title, message, people, value: current || '' });
 }
 const num1 = v => typeof v === 'number' && isFinite(v) ? v.toFixed(1) : '-';
 const numInt = v => typeof v === 'number' && isFinite(v) ? Math.round(v).toLocaleString() : '-';
@@ -5410,10 +5626,18 @@ async function delNote(key, id) {
 
 // ---- Ownership ---------------------------------------------------------------------------
 // A dataset's owner (email). Alerts route here (falls back to the submitter when unset).
+// Assigning an owner is admin-only in the portal. The owner is who ALERTS ROUTE TO, so a member
+// who could set it could quietly redirect another dataset's alerts to themselves - or away from
+// the person watching it. Members still SEE the owner and can still click it to filter; it is the
+// write they lose, exactly as with tags. The server refuses a member's owner write too.
 function ownerChip(key) {
   const o = entryFor(key).owner;
-  if (!o) return `<button type="button" class="owner-add" data-ownerset="1" data-key="${esc(key)}" data-tip="Assign an owner - alerts for this dataset route to them">👤 ＋ Owner</button>`;
-  return `<span class="owner-chip" data-ownerfilter="${esc(o)}" data-tip="Owner (alerts route here) - click to filter by this owner">👤 ${esc(o)}<span class="owner-edit" data-ownerset="1" data-key="${esc(key)}" title="Change / clear owner">✎</span></span>`;
+  if (!o) return IS_PORTAL_ADMIN
+    ? `<button type="button" class="owner-add" data-ownerset="1" data-key="${esc(key)}" data-tip="Assign an owner - alerts for this dataset route to them">👤 ＋ Owner</button>`
+    : '';
+  return `<span class="owner-chip" data-ownerfilter="${esc(o)}" data-tip="Owner (alerts route here) - click to filter by this owner">👤 ${esc(o)}` +
+    (IS_PORTAL_ADMIN ? `<span class="owner-edit" data-ownerset="1" data-key="${esc(key)}" title="Change / clear owner">✎</span>` : '') +
+    `</span>`;
 }
 async function setOwner(key) {
   const e = entryFor(key);
@@ -5422,8 +5646,18 @@ async function setOwner(key) {
   if (v === null) return;                                    // cancelled
   const t = (v || '').trim();
   if (t && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(t)) { dqAlert('Please enter a valid email address (or leave blank to clear).'); return; }
+  const was = e.owner || '';
   e.owner = t.slice(0, 160);
-  dashEntries[key] = e; saveEntry(key);
+  dashEntries[key] = e;
+  // Only confirm what actually persisted. saveEntry rolls back and reports on failure, so
+  // celebrating before it returns would be announcing an outcome that may not have happened.
+  if (await saveEntry(key) === false) return;
+  if (t === was) return;                                     // reopened and chose the same person
+  refreshDatasetsTable();
+  const ds = dsNameFor(key) || key.split('/').pop();
+  await dqDone(t ? 'Owner assigned' : 'Owner cleared',
+    t ? `Alerts for <strong>${esc(ds)}</strong> now go to <strong>${esc(t)}</strong>.`
+      : `<strong>${esc(ds)}</strong> has no owner. Alerts fall back to whoever submitted it.`);
 }
 
 // ---- Trust / certification flags ---------------------------------------------------------
@@ -5527,7 +5761,26 @@ function datasetsFiltered() {
 
 function refreshDatasetsTable() {
   const rows = datasetsFiltered();
-  if (!rows.length) { $('#dashTableWrap').innerHTML = `<p class="dash-muted">No datasets match your filters.</p>`; return; }
+  if (!rows.length) {
+    // Two different nothings: a workspace with no data at all, and filters that exclude all of
+    // it. Telling them apart is the difference between "get started" and "you hid it".
+    const anyData = (dashDatasetsAll || []).length > 0;
+    $('#dashTableWrap').innerHTML = anyData
+      ? dqEmpty({ icon: '\u{1F50E}', title: 'No datasets match your filters',
+          body: 'Everything here is hidden by the current search, tag or owner filter.',
+          action: { id: 'clearfilters', label: 'Clear filters' } })
+      : dqEmpty({ icon: '\u{1F4CA}', title: 'Nothing assessed yet',
+          body: 'Assess a table and it appears here with its score, its dimensions and its history.',
+          action: { id: 'run', label: 'Assess a data source' } });
+    $('#dashTableWrap').querySelectorAll('[data-emptyact]').forEach(b =>
+      b.addEventListener('click', () => {
+        if (b.dataset.emptyact === 'run') { switchTab('upload'); return; }
+        dashSearch = ''; dashTagSel = []; dashOwnerSel = '';
+        const sb = $('#dashSearch'); if (sb) sb.value = '';
+        refreshDatasetsTable();
+      }));
+    return;
+  }
   renderHealthTable(rows);
 }
 
@@ -6018,7 +6271,11 @@ function renderApprovals(pending, policy) {
   const total = pending.length + policy.length;
   const badge = $('#approvalsBadge');
   if (badge) { if (total) { badge.style.display = ''; badge.textContent = total; } else badge.style.display = 'none'; }
-  if (!total) { body.innerHTML = '<p class="dash-muted">Nothing awaiting approval right now. 🎉</p>'; return; }
+  if (!total) {
+    body.innerHTML = dqEmpty({ icon: '✅', title: 'Nothing awaiting approval',
+      body: 'Every submitted run has been reviewed. New submissions land here for an admin to endorse or reject.' });
+    return;
+  }
   let html = '';
   if (pending.length) {
     html += '<h3 style="margin:0 0 4px;font-size:14px;">Assessment runs</h3>' + pending.map((p, i) => _apprRow(
@@ -6195,9 +6452,22 @@ async function addTagTo(key) {
       message: 'Choose from the tags your organisation has defined. A tag marked "restricts access" ' +
                'limits the dataset to members granted it.' });
     if (picked === null) return;                    // cancelled: leave the dataset alone
+    if (picked.join(' ') === e.tags.join(' ')) return;   // nothing actually changed
     e.tags = picked;
   }
-  dashEntries[key] = e; saveEntry(key); refreshDatasetsTable();
+  dashEntries[key] = e;
+  // Confirm only what persisted. saveEntry rolls back and reports on failure - and the
+  // one-restricting-tag rule gives the server a real reason to refuse.
+  if (await saveEntry(key) === false) return;
+  refreshDatasetsTable();
+  const known = _orgTags || [];            // `cat` is already taken by the catalogue fetch above
+  const gating = e.tags.filter(t => known.some(c => c.name === t && c.restricts));
+  await dqDone(e.tags.length ? 'Tags saved' : 'Tags cleared',
+    e.tags.length
+      ? `<strong>${esc(dsNameFor(key) || key.split('/').pop())}</strong> is tagged `
+        + e.tags.map(t => `<strong>${esc(t)}</strong>`).join(', ') + '.'
+        + (gating.length ? ` Only members granted <strong>${esc(gating[0])}</strong> can see it.` : '')
+      : `<strong>${esc(dsNameFor(key) || key.split('/').pop())}</strong> has no tags.`);
 }
 function removeTagFrom(key, t) {
   const e = entryFor(key); e.tags = e.tags.filter(x => x !== t);
@@ -14026,17 +14296,23 @@ function renderSchedulePreview() {
 
 function renderSchedules(list) {
   if (!list.length) {
-    $('#schList').innerHTML = '<p class="dash-muted">No schedules yet for this app. Create one above.</p>';
+    $('#schList').innerHTML = dqEmpty({ icon: '⏰', title: 'No schedules yet',
+      body: 'A schedule assesses on a cron and alerts the people who own the datasets. '
+          + 'Build one with the form above; the preview shows exactly what it will run.' });
     return;
   }
   const rows = list.map((s, i) => {
     const on = s.state === 'ENABLED';
     const isSrc = s.sourceKind && s.sourceKind !== 'qlik';
+    // Chips, not prose: the same branded mark a dataset row carries, so a Redshift schedule and
+    // a Redshift dataset read as the same kind of thing. The detail stays as muted text beside it.
+    const detail = t => t ? `<span class="sched-det">${esc(t)}</span>` : '';
     const tables = s.sourceKind === 'tag'
-      ? `🏷️ Tag: ${s.tag || s.sourceSummary || '-'}`
+      ? `<span class="ds-tag" style="cursor:default">🏷️ ${esc(s.tag || s.sourceSummary || '-')}</span>`
       : isSrc
-        ? `${SOURCE_LABEL[s.sourceKind] || s.sourceKind}${s.sourceSummary ? ' · ' + s.sourceSummary : ''}`
-        : ((s.tables && s.tables.length) ? `${s.tables.length} table(s)` : 'All tables');
+        ? sourceChip(s.sourceKind) + detail(s.sourceSummary || '')
+        : sourceChip('qlik') + detail((s.tables && s.tables.length)
+            ? `${s.tables.length} table${s.tables.length === 1 ? '' : 's'}` : 'All tables');
     const stateChip = on ? `<span class="chip good"><span class="dot"></span>Enabled</span>`
       : `<span class="chip na"><span class="dot"></span>Disabled</span>`;
     return `<tr class="sched-main">
@@ -14045,7 +14321,7 @@ function renderSchedules(list) {
         <td class="hint c-freq"></td>
         <td class="hint c-next"></td>
         <td>${stateChip}</td>
-        <td class="hint">${esc(tables)}</td>
+        <td class="sched-src">${tables}</td>
         <td><div class="actions">
           <button class="btn-sm" data-act="toggle" data-i="${i}">${on ? 'Disable' : 'Enable'}</button>
           <button class="btn-sm" data-act="edit" data-i="${i}">Edit</button>
