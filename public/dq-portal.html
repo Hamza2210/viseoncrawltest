@@ -1609,7 +1609,10 @@
   .ds-cell { vertical-align: top; }
   .ds-name-line { font-weight: 600; font-size: 13.5px; color: var(--text); padding-top: 2px; }
   .ds-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 7px; }
-  .ds-tags { display: inline-flex; gap: 5px; align-items: center; flex-wrap: wrap; }
+  /* The dataset meta line places tag chips and the add button separately (see tagChips),
+     so there is no wrapper to lay out. Kept as `contents` for any caller that still emits
+     both together: as a flex ITEM the pair wrapped as a unit, which is the bug. */
+  .ds-tags { display: contents; }
   .ds-tag { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; font-size: 11px;
     padding: 1px 6px 1px 7px; border-radius: 999px; background: var(--idle-bg); color: var(--muted);
     border: 1px solid var(--border); }
@@ -6137,17 +6140,32 @@ function medalCell(key) {
 // who can see the dataset, so a member adding or removing one would be editing their own access.
 // Members still SEE the tags and can still click one to filter - it is the write that is theirs
 // to lose. The server refuses a member's tag write too; this only keeps the UI honest.
-function tagChips(key) {
+//
+// Emitted in two PARTS, because the meta line needs to place them in different positions.
+// Everything used to sit in one `<span class="ds-tags">`, which made it a single flex item: when
+// it did not fit, the tag chip and the "+ tag" button wrapped to the next line together. One
+// Endorsed badge was enough to do that, so a tagged dataset showed its tag on a THIRD line while
+// an untagged-but-otherwise-identical one showed it on the second.
+//
+// Split, they compete for space on their own merits. A tag NAMES something about the dataset, so
+// it ranks above the "+ Owner" affordance; the "+ tag" button carries no information at all, so it
+// goes last and is the thing that wraps. Measured across 400-440px columns: the name now stays on
+// line 2 in every case, including with a long owner email set, which the ordering alone did not fix.
+function tagChips(key, part) {
   const e = entryFor(key);
-  const chips = e.tags.map(t =>
-    `<span class="ds-tag" data-tagfilter="${esc(t)}" data-tip="Filter by “${esc(t)}”">🏷️ ${esc(t)}` +
-    (IS_PORTAL_ADMIN ? `<span class="ds-tag-x" data-tagrm="${esc(t)}" data-key="${esc(key)}" title="Remove">✕</span>` : '') +
-    `</span>`).join('');
-  if (!IS_PORTAL_ADMIN) return chips ? `<span class="ds-tags">${chips}</span>` : '';
+  if (part !== 'add') {
+    var chips = e.tags.map(t =>
+      `<span class="ds-tag" data-tagfilter="${esc(t)}" data-tip="Filter by “${esc(t)}”">🏷️ ${esc(t)}` +
+      (IS_PORTAL_ADMIN ? `<span class="ds-tag-x" data-tagrm="${esc(t)}" data-key="${esc(key)}" title="Remove">✕</span>` : '') +
+      `</span>`).join('');
+    if (part === 'chips') return chips;
+  }
+  if (!IS_PORTAL_ADMIN) return part === 'add' ? '' : (chips || '');
   // One control for add AND remove now that the portal opens a picker: "+ tag" reads wrong once
   // the dataset already has some, because the dialog it opens can take them away too.
   const label = e.tags.length ? '✎ tags' : '＋ tag';
-  return `<span class="ds-tags">${chips}<button type="button" class="ds-tag-add" data-tagadd="1" data-key="${esc(key)}">${label}</button></span>`;
+  const add = `<button type="button" class="ds-tag-add" data-tagadd="1" data-key="${esc(key)}">${label}</button>`;
+  return part === 'add' ? add : (chips + add);
 }
 
 // Concurrency guard: switchTab('dashboard') and a drill-in can both call loadDashboard at once;
@@ -6273,7 +6291,7 @@ function renderHealthTable(datasets) {
     const tb = trustBadge(d.key);
     const draftChip = (PORTAL && d.unapproved) ? ' <span class="tag na" data-tip="No approved run yet - awaiting approval">Draft</span>' : '';
     return `<tr class="dash-row" data-key="${esc(d.key)}" data-name="${esc(d.name)}">
-        <td class="ds-cell"><div class="ds-name-line">${esc(d.name)}</div><div class="ds-meta">${srcChip}${stageBadge(d.key)}${tb}${draftChip}${notesBadge(d.key)}${ownerChip(d.key)}${tagChips(d.key)}</div></td>
+        <td class="ds-cell"><div class="ds-name-line">${esc(d.name)}</div><div class="ds-meta">${srcChip}${stageBadge(d.key)}${tb}${draftChip}${notesBadge(d.key)}${tagChips(d.key, 'chips')}${ownerChip(d.key)}${tagChips(d.key, 'add')}</div></td>
         <td><strong>${num1(d.score)}</strong> ${statusChip(d.status)}</td>
         <td>${gateChip(d.gate)}</td>
         <td>${numInt(d.rows)}</td>
