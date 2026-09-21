@@ -960,6 +960,11 @@
     color: var(--muted); margin: 2px 0 7px; }
   .ar-cons { display: flex; flex-wrap: wrap; gap: 8px; }
   .ar-constraint { border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; background: var(--bg); }
+  .cfw-colsrc { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; margin: 0 0 12px; }
+  .cfw-colsrc label { font-size: 12px; color: var(--muted); }
+  .cfw-colsrc select { padding: 6px 10px; border: 1px solid var(--border); border-radius: 8px;
+    background: var(--card-2); color: var(--text); font: inherit; font-size: 12.5px; cursor: pointer; min-width: 210px; }
+  .cfw-colsrc-note { font-size: 11.5px; color: var(--muted); }
   .ar-empty { font-size: 12px; color: var(--muted); }
   .ar-add { margin-top: 10px; display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
   .ar-add select { padding: 4px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); font-size: 12px; }
@@ -8084,6 +8089,51 @@ const CFW_OPS = [
 ];
 const CFW_OP_NEEDS_VALUE = { regex: 1, allowed_values: 1, max_age_days: 1, min: 1, max: 1 };
 
+// ---- Columns for the rule builder ------------------------------------------------------------
+// A rule names a COLUMN, and a typed column name is a silent failure: the engine reports an
+// unknown column as "not evaluated" rather than failed, so a typo produces a rule that looks
+// configured and quietly checks nothing. The list is read from a real assessed dataset instead.
+//
+// A framework is WORKSPACE-wide, though, and each dataset pins one - so it is deliberately not
+// locked to a single dataset. The picker chooses which dataset's columns to author against and
+// can be switched, which is what makes a rule for a column that only exists elsewhere still
+// reachable.
+let CFW_COLS = { key: '', cols: [] };
+
+function cfwDatasetChoices() {
+  // Only datasets with a run: the column list comes from the assessed ruleset, so one that has
+  // never run has nothing to offer.
+  return (dashDatasetsAll || []).filter(d => d && d.prefix)
+    .map(d => ({ key: d.key, name: d.name || String(d.key).split('/').pop(), prefix: d.prefix }));
+}
+
+async function cfwLoadColumns(key) {
+  const ds = cfwDatasetChoices().find(d => d.key === key);
+  if (!ds) { CFW_COLS = { key: '', cols: [] }; return CFW_COLS; }
+  if (CFW_COLS.key === key) return CFW_COLS;
+  try {
+    const data = await postJSON(`${API_BASE}/data-quality/active-ruleset`, HEADERS,
+      { result_prefix: ds.prefix });
+    CFW_COLS = { key: key, cols: Object.keys((data && data.columns) || {}).sort() };
+  } catch (e) { CFW_COLS = { key: key, cols: [] }; }
+  return CFW_COLS;
+}
+
+// The current value is always offered, even when the chosen dataset does not have that column:
+// a rule authored against another dataset must survive being looked at here, and dropping it
+// silently on the next save is how a policy loses a rule nobody noticed.
+function cfwColumnOptions(current) {
+  const cols = CFW_COLS.cols || [];
+  const cur = (current || '').trim();
+  const opts = [`<option value=""${cur ? '' : ' selected'}>Choose a column…</option>`];
+  if (cur && cols.indexOf(cur) === -1) {
+    opts.push(`<option value="${esc(cur)}" selected>${esc(cur)} (not in this dataset)</option>`);
+  }
+  cols.forEach(c => opts.push(
+    `<option value="${esc(c)}"${c === cur ? ' selected' : ''}>${esc(c)}</option>`));
+  return opts.join('');
+}
+
 async function ensureCustomFrameworks(force) {
   if (_cfwLoaded && !force) return CUSTOM_FRAMEWORKS;
   try {
@@ -8145,7 +8195,7 @@ function _cfwRuleRowHtml(r) {
   return `<div class="cfw-rule-row cfw-item" data-rid="${esc(r.id || '')}">
     <button type="button" class="cfw-x cfw-rule-del" data-tip="Remove this rule">✕</button>
     <div class="cfw-rule-main">
-      <input class="cfw-rule-col" placeholder="Column" value="${esc(r.column || '')}" maxlength="160">
+      <select class="cfw-rule-col" data-tip="Columns come from the dataset chosen above - a typed name that does not exist is reported as 'not evaluated', so the rule would silently check nothing">${cfwColumnOptions(r.column)}</select>
       <select class="cfw-rule-op">${CFW_OPS.map(([o, l]) =>
         `<option value="${o}"${o === op ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select>
       <input class="cfw-rule-val" placeholder="Value" value="${esc(String(val))}" maxlength="500"${CFW_OP_NEEDS_VALUE[op] ? '' : ' hidden'}>
@@ -8158,6 +8208,41 @@ function _cfwRuleRowHtml(r) {
       <label class="cfw-pii" data-tip="Treat this column as personal data - its values are redacted from all stored output"><input type="checkbox" class="cfw-rule-pii"${r.pii ? ' checked' : ''}> PII</label>
     </div></div>`;
 }
+// Populate the "Columns from" picker and repaint the column selects when it changes. Separate
+// from cfwEditorHtml because the column list is fetched, and the editor markup has to exist
+// before there is anything to fill in.
+async function cfwInitColumnSource(root) {
+  const sel = root.querySelector('#cfwColDs'), note = root.querySelector('#cfwColNote');
+  if (!sel) return;
+  const choices = cfwDatasetChoices();
+  if (!choices.length) {
+    sel.innerHTML = '<option value="">no assessed dataset</option>';
+    sel.disabled = true;
+    if (note) note.textContent = 'Assess a dataset first and its columns appear here.';
+    return;
+  }
+  const want = choices.some(c => c.key === CFW_COLS.key) ? CFW_COLS.key : choices[0].key;
+  sel.innerHTML = choices.map(c =>
+    `<option value="${esc(c.key)}"${c.key === want ? ' selected' : ''}>${esc(c.name)}</option>`).join('');
+
+  const repaint = async () => {
+    if (note) note.textContent = 'loading columns…';
+    await cfwLoadColumns(sel.value);
+    if (note) note.textContent = CFW_COLS.cols.length
+      ? `${CFW_COLS.cols.length} column${CFW_COLS.cols.length === 1 ? '' : 's'}`
+      : 'no columns found for that dataset';
+    // Keep what is already chosen per row - the picker changes which columns are OFFERED, it
+    // must not silently rewrite rules the user has already written.
+    root.querySelectorAll('.cfw-rule-col').forEach(s2 => {
+      const cur = s2.value;
+      s2.innerHTML = cfwColumnOptions(cur);
+      s2.value = cur;
+    });
+  };
+  sel.addEventListener('change', repaint);
+  await repaint();
+}
+
 function cfwEditorHtml(fw) {
   fw = fw || {};
   // Three plainly separated steps - name it, list what the team attests to, list what the engine
@@ -8187,6 +8272,11 @@ function cfwEditorHtml(fw) {
         <strong>high</strong> or <strong>medium</strong> failure counts toward the compliance grade;
         <strong>low</strong> is advisory only. A rule whose column is not in the dataset is reported
         as not evaluated rather than failed.</p>
+      <div class="cfw-colsrc">
+        <label for="cfwColDs">Columns from</label>
+        <select id="cfwColDs"></select>
+        <span class="cfw-colsrc-note" id="cfwColNote"></span>
+      </div>
       <div id="cfwRuleRows">${((fw.rules || []).map(_cfwRuleRowHtml).join('')) || _cfwRuleRowHtml({})}</div>
       <button type="button" class="btn-sm" id="cfwAddRule">＋ Add data rule</button>
     </div>
@@ -8307,6 +8397,7 @@ function wireCustomFwManager(panel) {
   };
   const openEditor = (fw) => {
     edEl.style.display = ''; edEl.innerHTML = cfwEditorHtml(fw || {});
+    cfwInitColumnSource(edEl);
     wireRows();
     edEl.querySelector('#cfwAddAtt').addEventListener('click', () => {
       edEl.querySelector('#cfwAttRows').insertAdjacentHTML('beforeend', _cfwAttRowHtml({})); wireRows();
