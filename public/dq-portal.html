@@ -860,27 +860,42 @@
   .ahcell.green { background: var(--ok-bg); color: var(--ok); } .ahcell.amber { background: var(--run-bg); color: var(--run); }
   .ahcell.red { background: var(--err-bg); color: var(--err); } .ahcell.na { background: var(--idle-bg); color: var(--muted); }
   /* Incidents: an open-across-all overview, then collapsible groups per dataset */
-  .inc-overview { border: 1px solid var(--border); border-left: 3px solid var(--err); border-radius: 12px;
-    padding: 14px 16px; margin-bottom: 22px; background: color-mix(in srgb, var(--err) 4%, var(--card)); }
-  .inc-overview h3 { margin: 0 0 10px; font-size: 12px; text-transform: uppercase; letter-spacing: .04em;
-    color: var(--muted); display: flex; align-items: center; gap: 8px; font-weight: 600; }
-  .inc-ov-list { display: flex; flex-direction: column; gap: 2px; }
-  .inc-ov-row { display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 8px; cursor: pointer; }
-  .inc-ov-row:hover { background: var(--card); }
-  .inc-ov-ds { font-weight: 600; white-space: nowrap; }
-  .inc-ov-rule { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .inc-ov-when { margin-left: auto; color: var(--muted); font-size: 12px; white-space: nowrap; }
-  .inc-group { margin-bottom: 20px; border-radius: 12px; }
-  .inc-group-head { display: flex; align-items: center; gap: 9px; margin: 0 0 8px; cursor: pointer;
-    user-select: none; padding: 2px; border-radius: 8px; }
-  .inc-group-head:hover { background: var(--idle-bg); }
-  .inc-caret { color: var(--muted); font-size: 11px; flex: none; transition: transform .12s; }
-  .inc-group.collapsed .inc-caret { transform: rotate(-90deg); }
-  .inc-group.collapsed .inc-cards { display: none; }
-  .inc-group-name { font-weight: 700; font-size: 15px; word-break: break-word; }
-  .inc-group-meta { color: var(--muted); font-size: 12px; }
-  .inc-cards { display: flex; flex-direction: column; gap: 8px; }
-  .inc-flash { animation: incflash 1.3s ease; }
+  /* ---- Incidents: master-detail -------------------------------------------------------------
+     The tab used to stack an all-open summary on top of one expandable section per dataset, so
+     every dataset's incidents were on screen at once. With three datasets that is long; with
+     thirty it is unusable, and the thing a reader actually wants - one dataset's incidents - is
+     buried in everything else's. A rail picks the dataset; the pane shows only that one. */
+  .inc-split { display: grid; grid-template-columns: 290px 1fr; gap: 16px; align-items: start; }
+  @media (max-width: 900px) { .inc-split { grid-template-columns: 1fr; } }
+  .inc-rail { border: 1px solid var(--border); border-radius: 12px; padding: 6px;
+    max-height: 62vh; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; }
+  .inc-rail-row { display: flex; align-items: center; gap: 9px; padding: 9px 10px; border-radius: 9px;
+    cursor: pointer; border: 1px solid transparent; color: var(--muted);
+    transition: background var(--dq-move) var(--dq-ease), color var(--dq-move) var(--dq-ease); }
+  .inc-rail-row:hover { background: var(--idle-bg); color: var(--text); }
+  .inc-rail-row.on { background: color-mix(in srgb, var(--accent) 13%, transparent);
+    border-color: color-mix(in srgb, var(--accent) 38%, transparent); color: var(--text); }
+  .inc-rail-row.all { border-bottom: 1px solid var(--border); border-radius: 9px 9px 0 0; margin-bottom: 4px; }
+  .inc-rail-name { flex: 1 1 auto; min-width: 0; font-size: 13px; overflow: hidden;
+    text-overflow: ellipsis; white-space: nowrap; }
+  .inc-rail-sub { display: block; font-size: 11px; color: var(--muted); margin-top: 2px; }
+  /* Severity as a count badge, not a word: the rail has to be scannable at a glance, and the
+     worst thing about a dataset is how many blockers it has, not its name. */
+  .inc-pip { flex: none; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 6px;
+    display: grid; place-items: center; font-size: 11px; font-weight: 700; }
+  .inc-pip.blocker { color: #ffd5db; background: color-mix(in srgb, var(--err) 34%, transparent); }
+  .inc-pip.major   { color: #ffe6bd; background: color-mix(in srgb, var(--amber, #fbbf24) 30%, transparent); }
+  .inc-pip.clear   { color: var(--muted); background: var(--idle-bg); }
+  .inc-detail-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    margin: 0 0 12px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+  .inc-detail-name { font-size: 15.5px; font-weight: 700; color: var(--text); }
+  .inc-detail-meta { color: var(--muted); font-size: 12px; }
+  .inc-detail-filter { margin-left: auto; display: flex; gap: 4px; }
+  .inc-fbtn { padding: 4px 10px; border-radius: 999px; border: 1px solid var(--border);
+    background: transparent; color: var(--muted); font: inherit; font-size: 11.5px; cursor: pointer; }
+  .inc-fbtn.on { color: var(--text); border-color: var(--accent); background: var(--idle-bg); }
+  .inc-detail { max-height: 62vh; overflow-y: auto; padding-right: 4px; }
+
   @keyframes incflash { 0%, 100% { background: transparent; } 22% { background: color-mix(in srgb, var(--accent2) 13%, transparent); } }
   .inc-card { border: 1px solid var(--border); border-left-width: 3px; border-radius: 10px; padding: 11px 14px; }
   .inc-card.open { border-left-color: var(--err); }
@@ -9446,71 +9461,135 @@ function incCard(it) {
       </div>
     </div>`;
 }
+// Incidents are shown master-detail: a rail of datasets, a pane for the one selected. The old
+// layout put an all-open summary above one expandable section per dataset, so every dataset's
+// incidents were on screen at once - fine for three, unusable for thirty, and the thing a reader
+// wants (one dataset's incidents) was buried in everything else's.
+//
+// "All open" is kept as the FIRST rail row rather than dropped: triaging across datasets is a
+// real job, it just should not be the only view. The per-dataset rows are what the tab is for.
+let INC_GROUPS = [];
+let incSelected = 'all';            // 'all' | gid
+let incStatusFilter = 'all';        // 'all' | 'open'
+const INC_SEV_RANK = { blocker: 3, major: 2, warning: 1 };
+
 function renderIncidents(r) {
   const list = r.incidents || [];
   if (!list.length) {
-    $('#incList').innerHTML = '<p class="dash-muted">No incidents - every dataset is within its expected range. 🎉</p>';
+    $('#incList').innerHTML = dqEmpty({ icon: '✅', title: 'No incidents',
+      body: 'Every dataset is within its expected range. An incident opens when one breaches it and closes when it returns.' });
     return;
   }
-  // Group by dataset, preserving the API's open-first order so datasets with open issues surface first.
   const groups = new Map();
   list.forEach(it => {
     const k = it.datasetKey || it.dataset;
     if (!groups.has(k)) groups.set(k, { name: it.dataset, items: [] });
     groups.get(k).items.push(it);
   });
-  const groupArr = [...groups.values()];
-  groupArr.forEach((g, i) => { g.gid = i; g.open = g.items.filter(x => x.status === 'OPEN'); });
+  INC_GROUPS = [...groups.values()];
+  INC_GROUPS.forEach((g, i) => {
+    g.gid = String(i);
+    g.open = g.items.filter(x => x.status === 'OPEN');
+    g.blockers = g.open.filter(x => x.severity === 'blocker').length;
+    g.majors = g.open.filter(x => x.severity === 'major').length;
+    g.worst = Math.max(0, ...g.open.map(x => INC_SEV_RANK[x.severity] || 0));
+  });
+  // Worst first, then most open: the rail's job is to put the dataset you should look at next
+  // at the top, not to preserve whatever order the API happened to return.
+  INC_GROUPS.sort((a, b) => (b.worst - a.worst) || (b.open.length - a.open.length)
+    || a.name.localeCompare(b.name));
 
-  // Overview: every OPEN incident across all datasets, worst severity first. Click one
-  // to jump to (and expand) its dataset group below.
-  const sevRank = { blocker: 3, major: 2, warning: 1 };
-  const allOpen = [];
-  groupArr.forEach(g => g.open.forEach(it => allOpen.push({ it, gid: g.gid, dataset: g.name })));
-  allOpen.sort((a, b) => (sevRank[b.it.severity] || 0) - (sevRank[a.it.severity] || 0));
-  const overview = allOpen.length ? `
-    <div class="inc-overview">
-      <h3><span class="chip crit"><span class="dot"></span>${allOpen.length} open</span> across ${new Set(allOpen.map(o => o.gid)).size} dataset(s)</h3>
-      <div class="inc-ov-list">${allOpen.map(o => `
-        <div class="inc-ov-row" data-goto="${o.gid}">
-          ${incSevChip(o.it.severity)}
-          <span class="inc-ov-ds">${esc(o.dataset)}</span>
-          <span class="inc-ov-rule">${esc(ruleLabel(o.it.rule))}</span>
-          <span class="inc-ov-when">opened ${esc(fmtWhen(o.it.openedRun))}</span>
-        </div>`).join('')}
-      </div>
-    </div>` : '';
+  if (incSelected !== 'all' && !INC_GROUPS.some(g => g.gid === incSelected)) incSelected = 'all';
 
-  const groupsHtml = groupArr.map(g => {
-    const openN = g.open.length;
-    const recN = g.items.filter(i => i.status !== 'OPEN' && !i.dismissed).length;
-    const disN = g.items.filter(i => i.dismissed).length;
-    const meta = [openN ? `${openN} open` : '', recN ? `${recN} recovered` : '', disN ? `${disN} dismissed` : '']
-      .filter(Boolean).join(' · ');
-    const collapsed = openN === 0 ? ' collapsed' : '';       // closed-only groups start collapsed
-    return `<div class="inc-group${collapsed}" data-gid="${g.gid}">
-        <div class="inc-group-head">
-          <span class="inc-caret">▾</span>
-          <span class="inc-group-name">${esc(g.name)}</span>
-          <span class="inc-group-meta">${meta}</span>
-        </div>
-        <div class="inc-cards">${g.items.map(incCard).join('')}</div>
-      </div>`;
-  }).join('');
+  $('#incList').innerHTML =
+    `<div class="inc-split">
+       <div class="inc-rail" id="incRail"></div>
+       <div id="incPane"></div>
+     </div>`;
+  renderIncRail();
+  renderIncPane();
+}
 
-  $('#incList').innerHTML = overview + groupsHtml;
-  const listEl = $('#incList');
+function incPip(g) {
+  if (g.blockers) return `<span class="inc-pip blocker" title="${g.blockers} open blocker(s)">${g.blockers}</span>`;
+  if (g.majors) return `<span class="inc-pip major" title="${g.majors} open major(s)">${g.majors}</span>`;
+  if (g.open.length) return `<span class="inc-pip major" title="${g.open.length} open">${g.open.length}</span>`;
+  return `<span class="inc-pip clear" title="nothing open">&#10003;</span>`;
+}
 
-  listEl.querySelectorAll('.inc-group-head').forEach(h =>
-    h.addEventListener('click', () => h.parentElement.classList.toggle('collapsed')));
-  listEl.querySelectorAll('.inc-ov-row').forEach(row => row.addEventListener('click', () => {
-    const g = listEl.querySelector(`.inc-group[data-gid="${row.dataset.goto}"]`);
-    if (!g) return;
-    g.classList.remove('collapsed');
-    g.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    g.classList.remove('inc-flash'); void g.offsetWidth; g.classList.add('inc-flash');   // restart the flash
-    setTimeout(() => g.classList.remove('inc-flash'), 1400);
+function renderIncRail() {
+  const rail = $('#incRail'); if (!rail) return;
+  const allOpen = INC_GROUPS.reduce((n, g) => n + g.open.length, 0);
+  const dsWithOpen = INC_GROUPS.filter(g => g.open.length).length;
+  rail.innerHTML =
+    `<div class="inc-rail-row all${incSelected === 'all' ? ' on' : ''}" data-gid="all">
+       <span class="inc-pip ${allOpen ? 'blocker' : 'clear'}">${allOpen || '&#10003;'}</span>
+       <span class="inc-rail-name">All open
+         <span class="inc-rail-sub">${allOpen ? `across ${dsWithOpen} dataset${dsWithOpen === 1 ? '' : 's'}` : 'nothing open'}</span>
+       </span>
+     </div>` +
+    INC_GROUPS.map(g => {
+      const rec = g.items.filter(i => i.status !== 'OPEN' && !i.dismissed).length;
+      const sub = [g.open.length ? `${g.open.length} open` : '', rec ? `${rec} recovered` : '']
+        .filter(Boolean).join(' · ') || 'no open incidents';
+      return `<div class="inc-rail-row${incSelected === g.gid ? ' on' : ''}" data-gid="${g.gid}">
+          ${incPip(g)}
+          <span class="inc-rail-name">${esc(g.name)}<span class="inc-rail-sub">${esc(sub)}</span></span>
+        </div>`;
+    }).join('');
+  rail.querySelectorAll('.inc-rail-row').forEach(row => row.addEventListener('click', () => {
+    incSelected = row.dataset.gid;
+    renderIncRail();
+    renderIncPane();
   }));
+}
+
+function renderIncPane() {
+  const pane = $('#incPane'); if (!pane) return;
+  const all = incSelected === 'all';
+  const g = all ? null : INC_GROUPS.find(x => x.gid === incSelected);
+  // "All open" shows only what is open, by definition; a per-dataset view can filter.
+  let items = all
+    ? INC_GROUPS.flatMap(x => x.open.map(it => ({ it, ds: x.name })))
+        .sort((a, b) => (INC_SEV_RANK[b.it.severity] || 0) - (INC_SEV_RANK[a.it.severity] || 0))
+        .map(x => x.it)
+    : (g ? g.items : []);
+  if (!all && incStatusFilter === 'open') items = items.filter(i => i.status === 'OPEN');
+
+  const openN = all ? items.length : (g ? g.open.length : 0);
+  const recN = g ? g.items.filter(i => i.status !== 'OPEN' && !i.dismissed).length : 0;
+  const disN = g ? g.items.filter(i => i.dismissed).length : 0;
+  const meta = all
+    ? `${openN} open incident${openN === 1 ? '' : 's'}, worst first`
+    : [openN ? `${openN} open` : '', recN ? `${recN} recovered` : '', disN ? `${disN} dismissed` : '']
+        .filter(Boolean).join(' · ') || 'nothing open';
+
+  const filter = all ? '' :
+    `<span class="inc-detail-filter">
+       <button type="button" class="inc-fbtn${incStatusFilter === 'all' ? ' on' : ''}" data-f="all">All</button>
+       <button type="button" class="inc-fbtn${incStatusFilter === 'open' ? ' on' : ''}" data-f="open">Open only</button>
+     </span>`;
+
+  pane.innerHTML =
+    `<div class="inc-detail-head">
+       <span class="inc-detail-name">${esc(all ? 'All open incidents' : (g ? g.name : ''))}</span>
+       <span class="inc-detail-meta">${esc(meta)}</span>${filter}
+     </div>` +
+    (items.length
+      ? `<div class="inc-detail dq-stagger">${items.map(incCard).join('')}</div>`
+      : dqEmpty({ icon: '✅', title: all ? 'Nothing open' : 'Nothing matches',
+          body: all ? 'No dataset is currently outside its expected range.'
+                    : 'This dataset has no incidents with that status.' }));
+
+  pane.querySelectorAll('.inc-fbtn').forEach(b => b.addEventListener('click', () => {
+    incStatusFilter = b.dataset.f; renderIncPane();
+  }));
+  wireIncidentCards(pane);
+}
+
+// The card actions are wired per RENDER, not once at load: the pane is rebuilt every time the
+// selection or the filter changes, and listeners attached to the old nodes go with them.
+function wireIncidentCards(listEl) {
   listEl.querySelectorAll('.inc-kebab').forEach(k => k.addEventListener('click', e => {
     e.stopPropagation();
     const menu = k.nextElementSibling, wasOpen = menu.classList.contains('open');
