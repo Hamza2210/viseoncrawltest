@@ -19,11 +19,7 @@
        every tab, so borrowing it would make these icons read as controls. --tr2-neon-ink is the
        text that sits ON the neon fills - the fills are translucent over a navy card, so the
        readable ink is a lighter step of the same hue, not white. */
-    --tr2-neon: #38bdf8; --tr2-neon-ink: #bfe9ff;
-    /* The deeper end of the tile gradient, and the ink that sits ON a solid neon fill - dark,
-       because the fill is opaque and bright. (--tr2-neon-ink is for text beside the TRANSLUCENT
-       fills, which sit on the navy card.) */
-    --tr2-neon-deep: #0e7fc4; --tr2-neon-on: #051a2b;
+    --tr2-neon: #3b82f6; --tr2-neon-ink: #cfe2ff;
     --dq-ease: cubic-bezier(.22, .61, .36, 1);
     /* For layout-sized moves. --dq-ease is a hard decelerate, fine for a 6px entry and far too
        front-loaded for a column crossing half the screen. */
@@ -1018,20 +1014,18 @@
   .tr2-head-l { display: flex; gap: 14px; flex: 1; min-width: 0; }
   .tr2-head h2 { margin: 0 0 4px; font-size: 22px; }
   .tr2-head p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.6; max-width: 66ch; }
-  /* The container icons are the sketch's one strong accent: a solid electric-blue tile in the
-     top-left of each card. Deliberately NOT the theme accent - `--accent` also paints buttons,
-     focus rings and links, so reusing it would make the icons read as something clickable.
-     This is its own token, used only here.
+  /* The container icons are the sketch's one strong accent: a bare neon-blue OUTLINE in the
+     top-left of each card, with no tile behind it. Deliberately NOT the theme accent - `--accent`
+     also paints buttons, focus rings and links, so reusing it would make the icons read as
+     something clickable. This is its own token, used only here.
 
      They are STROKED SVG, not emoji. An emoji carries its own colour and ignores everything set
-     here: the tag glyph rendered orange on a blue tile, which is the opposite of one accent. */
-  .tr2-badge { flex: none; display: grid; place-items: center; width: 46px; height: 46px;
-    border-radius: 13px; color: var(--tr2-neon-on);
-    background: linear-gradient(145deg, var(--tr2-neon), var(--tr2-neon-deep));
-    box-shadow: 0 6px 20px -8px var(--tr2-neon); }
-  .tr2-badge svg { width: 23px; height: 23px; }
-  .tr2-badge.sm { width: 38px; height: 38px; border-radius: 11px; }
-  .tr2-badge.sm svg { width: 19px; height: 19px; }
+     here: the tag glyph rendered orange, which is the opposite of one accent. */
+  .tr2-badge { flex: none; display: grid; place-items: center; width: 34px; height: 34px;
+    color: var(--tr2-neon); background: none; border: 0; box-shadow: none; }
+  .tr2-badge svg { width: 30px; height: 30px; }
+  .tr2-badge.sm { width: 26px; height: 26px; }
+  .tr2-badge.sm svg { width: 24px; height: 24px; }
   .tr2-stat { flex: none; display: flex; align-items: center; gap: 11px; padding: 11px 16px;
     border: 1px solid var(--border); border-radius: 12px; background: var(--card); }
   .tr2-stat-ic { display: grid; place-items: center; color: var(--tr2-neon); }
@@ -1064,19 +1058,22 @@
   .tr2-pill:hover, .tr2-more:hover { border-color: var(--accent); background: var(--idle-bg); }
   .tr2-pill.on { border-color: var(--pill); background: color-mix(in srgb, var(--pill) 20%, transparent); }
   .tr2-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--pill, var(--accent)); }
-  .tr2-n { font-size: 11px; font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; }
-  .tr2-pill.on .tr2-n { color: var(--text); }
+  /* The count is its own chip, not a number stuck to the end of the name: "finance 12" reads as
+     part of the label, and a tag whose name ends in a digit reads as nonsense. */
+  .tr2-n { margin-left: 3px; padding: 1px 7px; border-radius: 999px; font-size: 10.5px;
+    font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums;
+    background: color-mix(in srgb, var(--muted) 16%, transparent); }
+  .tr2-pill.on .tr2-n { color: var(--text);
+    background: color-mix(in srgb, var(--pill) 34%, transparent); }
   .tr2-more { font-weight: 500; color: var(--muted); }
   .tr2-none { font-size: 12.5px; color: var(--muted); }
 
   .tr2-card-hd { display: flex; align-items: center; gap: 11px; flex-wrap: wrap; margin-bottom: 6px; }
-  /* Same neon tile as the header badge, one size down: every container on the tab is marked the
-     same way, which is what makes them read as a set rather than three unrelated cards. */
-  .tr2-hd-ic { flex: none; display: grid; place-items: center; width: 34px; height: 34px;
-    border-radius: 10px; color: var(--tr2-neon-on);
-    background: linear-gradient(145deg, var(--tr2-neon), var(--tr2-neon-deep));
-    box-shadow: 0 5px 16px -8px var(--tr2-neon); }
-  .tr2-hd-ic svg { width: 18px; height: 18px; }
+  /* Same bare neon outline as the header badge: every container on the tab is marked the same
+     way, which is what makes them read as a set rather than three unrelated cards. */
+  .tr2-hd-ic { flex: none; display: grid; place-items: center; width: 24px; height: 24px;
+    color: var(--tr2-neon); background: none; border: 0; box-shadow: none; }
+  .tr2-hd-ic svg { width: 22px; height: 22px; }
   .tr2-hd-t { font-size: 16px; font-weight: 700; }
   .tr2-hd-spacer { flex: 1 1 auto; }
   /* The tag-wide action stays in the card HEADER, top-right: it acts on the whole container, so
@@ -1114,11 +1111,14 @@
   /* The open-in-dashboard arrow. Absolutely positioned in the card's top-right corner so it does
      not take part in the header's flex row - the name should use the full width whether or not
      there is a score chip beside it. */
+  /* An SVG chevron, not a text glyph. `\u2197` sits on the font's own baseline and drew visibly
+     off-centre inside the button however the box was aligned; an svg has no baseline to fight. */
   .tr2-c-go { position: absolute; top: 11px; right: 11px; display: grid; place-items: center;
-    width: 26px; height: 26px; border-radius: 8px; border: 1px solid transparent;
-    background: transparent; color: var(--muted); font-size: 15px; line-height: 1; cursor: pointer;
+    width: 26px; height: 26px; padding: 0; border-radius: 8px; border: 1px solid transparent;
+    background: transparent; color: var(--muted); line-height: 0; cursor: pointer;
     transition: color var(--dq-move) var(--dq-ease), background var(--dq-move) var(--dq-ease),
                 border-color var(--dq-move) var(--dq-ease); }
+  .tr2-c-go svg { width: 15px; height: 15px; display: block; }
   .tr2-c-go:hover { color: var(--tr2-neon); background: color-mix(in srgb, var(--tr2-neon) 14%, transparent);
     border-color: color-mix(in srgb, var(--tr2-neon) 40%, transparent); }
   /* The description. Clamped to two lines: it is a label, and a card that grows to fit a
@@ -1138,14 +1138,18 @@
   .tr2-c-score.red { color: var(--err); background: var(--err-bg); }
   .tr2-c-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
   .tr2-c-age { font-size: 11.5px; color: var(--muted); }
-  .tr2-c-tags { display: flex; flex-wrap: wrap; gap: 5px; }
+  .tr2-c-tags { flex: 1 1 auto; min-width: 0; display: flex; flex-wrap: wrap; gap: 5px; }
   .tr2-mini { font-size: 10.5px; font-weight: 600; padding: 2px 8px; border-radius: 999px;
     background: color-mix(in srgb, var(--pill) 18%, transparent);
     border: 1px solid color-mix(in srgb, var(--pill) 38%, transparent); }
-  /* margin-top:auto pins the action to the bottom, and justify-content:flex-end puts it in the
-     card's bottom-RIGHT corner, so every card in a row lines its button up in the same place
-     regardless of how long its name or description ran. */
-  .tr2-c-foot { margin-top: auto; padding-top: 4px; display: flex; justify-content: flex-end; }
+  /* The tag the grid is filtered BY is marked, so the card says which of its tags put it here. */
+  .tr2-mini.on { background: color-mix(in srgb, var(--pill) 32%, transparent);
+    border-color: color-mix(in srgb, var(--pill) 62%, transparent); }
+  /* margin-top:auto pins the footer to the bottom, so every card in a row lines its action up in
+     the same place regardless of how long its name or description ran. The tags take the slack on
+     the left and the action sits hard right. */
+  .tr2-c-foot { margin-top: auto; padding-top: 6px; display: flex; align-items: flex-end;
+    justify-content: space-between; gap: 12px; }
   .tr2-c-run { display: inline-flex; align-items: center; gap: 7px; padding: 9px 15px;
     border-radius: 10px; border: 1px solid color-mix(in srgb, var(--tr2-neon) 55%, transparent);
     background: linear-gradient(145deg, color-mix(in srgb, var(--tr2-neon) 30%, transparent),
@@ -1154,8 +1158,7 @@
     transition: background var(--dq-move) var(--dq-ease), box-shadow var(--dq-move) var(--dq-ease); }
   .tr2-c-run:hover { background: color-mix(in srgb, var(--tr2-neon) 40%, transparent);
     box-shadow: 0 6px 18px -8px var(--tr2-neon); }
-  .tr2-c-why { font-size: 11.5px; color: var(--muted); text-align: right;
-    padding: 8px 0 0; }
+  .tr2-c-why { flex: none; font-size: 11.5px; color: var(--muted); text-align: right; }
 
   /* The run-confirmation preview: the same rows the tab shows, at dialog scale. */
   .tr2-pv { max-height: 34vh; overflow-y: auto; border: 1px solid var(--border); border-radius: 10px;
@@ -1178,6 +1181,10 @@
   .tr2-tbl td { padding: 10px 12px; border-top: 1px solid var(--border); vertical-align: middle; }
   .tr2-tbl tbody tr:hover { background: var(--idle-bg); }
   .tr2-when { color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .tr2-cal { display: inline-grid; place-items: center; vertical-align: -3px; margin-right: 8px;
+    color: var(--tr2-neon); }
+  .tr2-cal svg { width: 15px; height: 15px; display: block; }
+  .tr2-tbl .tr2-mini { margin-right: 4px; }
   .tr2-dsname { font-weight: 600; }
 
   @media (max-width: 880px) {
@@ -1968,6 +1975,8 @@
   /* Description: one line on what the dataset IS, above the notes, which are the running
      commentary on it. Same visual weight as notes because it is the same kind of thing - context
      a person typed - and it sits first because it answers the earlier question. */
+  .ds-actions { margin: 4px 0 14px; }
+  .btn-ico { width: 14px; height: 14px; vertical-align: -2px; margin-right: 5px; }
   .ds-desc { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border); }
   .ds-desc-hd { font-size: 11px; font-weight: 700; letter-spacing: .04em; color: var(--muted); margin-bottom: 6px; }
   .ds-desc-body { font-size: 12.5px; color: var(--text); line-height: 1.5; word-break: break-word; }
@@ -3187,6 +3196,10 @@
               style="position:absolute;top:20px;right:22px;"
               data-tip="Hide the galaxy and use the full width">⤢ Maximise</button>
       <h2 id="dashDetailTitle" style="padding-right:120px;">Trends</h2>
+      <!-- Leaving the dataset and exporting it are actions on the WHOLE panel, so they sit at the
+           top of it. They used to be buried under the description and notes, which meant "back"
+           moved further down the page the more context somebody had written. -->
+      <div id="dashDetailActions"></div>
       <p class="dash-muted" id="dashDetailHint">Click an orb above (or a dataset in the list below) to see its scores, trends, rules, failed records and history.</p>
       <div id="dashTrends"></div>
       <div id="dashRunDetail"></div>
@@ -6562,7 +6575,9 @@ function renderTagRunDatasets() {
 function tagDatasetCard(r, tag) {
   const d = r.ds, key = r.key || '';
   const entry = (dashEntries || {})[key] || {};
-  const others = (entry.tags || []).filter(t => t !== tag);
+  // EVERY tag, including the selected one. The card is a picture of the dataset, and a tag list
+  // that silently omits the tag you are looking at describes a dataset that does not exist.
+  const all = (entry.tags || []).slice().sort((a, b) => (b === tag) - (a === tag));
   const fmt = (d && d.sourceFormat) || '';
   const scored = d && typeof d.score === 'number';
   const age = (d && d.ageDays != null) ? tagAge(d.ageDays) : '';
@@ -6576,7 +6591,10 @@ function tagDatasetCard(r, tag) {
   return `<div class="tr2-card${r.ok ? '' : ' off'}">
       <button type="button" class="tr2-c-go" data-tr2go="${esc(key)}" data-name="${esc(r.name)}"
               aria-label="Open ${esc(r.name)} on the dashboard"
-              data-tip="Open this dataset on the dashboard, selected in the galaxy">\u2197</button>
+              data-tip="Open this dataset on the dashboard, selected in the galaxy">` +
+        `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" ` +
+        `stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>` +
+      `</button>
       <div class="tr2-c-hd">
         <span class="tr2-c-ic">${srcIcon(fmt)}</span>
         <span class="tr2-c-t">
@@ -6588,12 +6606,13 @@ function tagDatasetCard(r, tag) {
       ${desc}
       <div class="tr2-c-meta">${fmt ? sourceChip(fmt) : ''}
         <span class="tr2-c-age">${age ? 'Last assessed ' + esc(age) : 'Never assessed'}</span></div>
-      ${others.length ? `<div class="tr2-c-tags">` + others.map(t =>
-        `<span class="tr2-mini" style="--pill:${tagTint(t)}">${esc(t)}</span>`).join('') + `</div>` : ''}
-      <div class="tr2-c-foot">${r.ok
-        ? `<button type="button" class="tr2-c-run" data-tr2run="${esc(r.name)}" data-fmt="${esc(fmt)}" ` +
-          `data-prefix="${esc((d && d.resultPrefix) || '')}" data-tip="Assess just this dataset">\u25B6 Run assessment</button>`
-        : `<span class="tr2-c-why">${esc(r.why)}</span>`}</div>
+      <div class="tr2-c-foot">
+        <div class="tr2-c-tags">${all.map(t =>
+          `<span class="tr2-mini${t === tag ? ' on' : ''}" style="--pill:${tagTint(t)}">${esc(t)}</span>`).join('')}</div>
+        ${r.ok
+          ? `<button type="button" class="tr2-c-run" data-tr2run="${esc(r.name)}" data-fmt="${esc(fmt)}" ` +
+            `data-prefix="${esc((d && d.resultPrefix) || '')}" data-tip="Assess just this dataset">\u25B6 Run assessment</button>`
+          : `<span class="tr2-c-why">${esc(r.why)}</span>`}</div>
     </div>`;
 }
 
@@ -6638,6 +6657,11 @@ async function openDatasetFromTag(key, name) {
 // `slug` is the only link there is - so this is honestly "runs of the datasets carrying this tag
 // now". Run duration is not recorded anywhere, so there is no duration column: a made-up one
 // would be read as a measurement.
+const TR2_CAL =
+  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" ' +
+  'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+  '<rect x="3.2" y="5" width="17.6" height="16" rx="2.4"/><path d="M3.2 10h17.6M8 3v4M16 3v4"/></svg>';
+
 function renderTagRunHistory() {
   const card = $('#tr2HistCard'), host = $('#tr2Hist'); if (!card || !host) return;
   const tag = tagrunSelected;
@@ -6658,12 +6682,24 @@ function renderTagRunHistory() {
       `\u201c${esc(tag)}\u201d. Runs appear here as soon as one finishes.</p>`;
     return;
   }
+  // dashEntries is keyed by the FULL dataset key while a run reports the slug, so the tag lookup
+  // has to go back the other way - the same tenant segment that separates them above.
+  const tagsBySlug = {};
+  Object.keys(dashEntries || {}).forEach(k => {
+    tagsBySlug[k.split('/').slice(1).join('/')] = ((dashEntries[k] || {}).tags || []);
+  });
   host.innerHTML =
     `<div class="tr2-tblwrap"><table class="tr2-tbl">` +
-    `<thead><tr><th>Date &amp; time</th><th>Dataset</th><th>Source</th><th>Status</th>` +
+    `<thead><tr><th>Date &amp; time</th>` +
+    `<th data-tip="The dataset's tags as they are NOW. A run does not record the tag it was ` +
+      `launched under, so this cannot claim to.">Tag</th>` +
+    `<th>Dataset</th><th>Source</th><th>Status</th>` +
     `<th class="r">Score</th><th></th></tr></thead><tbody>` +
     rows.map(r =>
-      `<tr><td class="tr2-when">${esc(fmtWhen(r.runId))}</td>` +
+      `<tr><td class="tr2-when"><span class="tr2-cal">` + TR2_CAL + `</span>${esc(fmtWhen(r.runId))}</td>` +
+      `<td>${(tagsBySlug[r.slug] || []).map(t =>
+          `<span class="tr2-mini${t === tag ? ' on' : ''}" style="--pill:${tagTint(t)}">${esc(t)}</span>`
+        ).join('') || '<span class="dash-muted">-</span>'}</td>` +
       `<td class="tr2-dsname">${esc(r.dataset || r.slug || '')}</td>` +
       `<td>${r.sourceFormat ? sourceChip(r.sourceFormat) : '<span class="dash-muted">-</span>'}</td>` +
       `<td>${r.overallStatus ? `<span class="tag ${tagClass(r.overallStatus)}">${esc(r.overallStatus)}</span>`
@@ -7353,6 +7389,7 @@ function trendsIn() {
 function renderAppOverview(datasets) {
   dashSelected = null;
   $('#dashRunDetail').innerHTML = '';
+  const _acts = $('#dashDetailActions'); if (_acts) _acts.innerHTML = '';
   $('#dashDetailTitle').textContent = `All tables - ${dashWindowDays}-day trend`;
   $('#dashDetailHint').textContent =
     'Every table\'s trend overlaid. Click a table above for its full breakdown.';
@@ -7430,6 +7467,13 @@ function openDeepLinkedDataset() {
 }
 
 
+// A tray with an arrow leaving it. The old marker was a bare down-arrow glyph, which reads as
+// "download" and sat on the font's baseline rather than the button's.
+const DS_EXPORT_ICON =
+  '<svg class="btn-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" ' +
+  'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+  '<path d="M12 3v11m0 0 4-4m-4 4-4-4"/><path d="M4 16v2.5A2.5 2.5 0 0 0 6.5 21h11a2.5 2.5 0 0 0 2.5-2.5V16"/></svg>';
+
 async function selectDataset(key, name, initialTab) {
   const ds = dashDatasets.find(x => x.key === key);
   dashSelected = { key, name, prefix: ds && ds.resultPrefix };
@@ -7446,9 +7490,11 @@ async function selectDataset(key, name, initialTab) {
   $('#dashDetailTitle').innerHTML = `${esc(name)}${srcChip ? ` <span style="vertical-align:middle;margin-left:6px;">${srcChip}</span>` : ''}`;
   updateDetailTrust(key);
   const bar = DS_TABS.map(([k, l]) => `<button type="button" class="rd-tab${k === dsTab ? ' active' : ''}" data-dstab="${k}">${l}</button>`).join('');
+  $('#dashDetailActions').innerHTML =
+    `<div class="actions ds-actions"><button class="btn-sm" id="dsBack">← All datasets</button>` +
+    `<button class="btn-sm" id="dsExport" data-tip="Export this dataset's summary as parquet">` +
+      DS_EXPORT_ICON + ` Export (parquet)</button></div>`;
   $('#dashTrends').innerHTML =
-    `<div class="actions" style="margin-bottom:12px;"><button class="btn-sm" id="dsBack">← All datasets</button>` +
-    `<button class="btn-sm" id="dsExport" data-tip="Export this dataset's summary as parquet">⬇ Export (parquet)</button></div>` +
     `<div class="rd-tabs" id="dsSubtabs">${bar}</div>` +
     `<div id="dsPanel">${dqSkeleton('Loading dataset', 4)}</div>`;
   $('#dashRunDetail').innerHTML = '';
