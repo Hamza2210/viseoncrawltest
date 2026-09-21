@@ -1629,6 +1629,10 @@
     cursor: pointer; font-size: 13px; color: var(--muted); transition: background var(--dq-move) var(--dq-ease), color var(--dq-move) var(--dq-ease); }
   .tagpick-row:hover { background: var(--idle-bg); color: var(--text); }
   .tagpick-row.on { color: var(--text); background: color-mix(in srgb, var(--accent2) 11%, transparent); }
+  /* Locked: another restricting tag is already on this dataset. Dimmed rather than hidden,
+     so the tag is still findable by search and the reason is on the tooltip. */
+  .tagpick-row.locked { opacity: .42; cursor: not-allowed; }
+  .tagpick-row.locked:hover { background: transparent; color: var(--muted); }
   .tagpick-row input { accent-color: var(--accent2); cursor: pointer; }
   .tagpick-name { flex: 1 1 auto; }
   .tagpick-flag { font-size: 10px; font-weight: 700; letter-spacing: .02em; padding: 2px 7px; border-radius: 999px;
@@ -5019,19 +5023,36 @@ function dqTagPicker(opts) {
     const none = ov.querySelector('.tagpick-none');
     const count = ov.querySelector('.tagpick-count');
 
+    // A dataset may carry at most ONE restricting tag. Two of them are an OR, not an AND: a
+    // dataset tagged `finance` and `hr` is visible to everyone holding EITHER, so the second tag
+    // WIDENS the audience while reading like a further restriction. Blocked here so the rule is
+    // visible at the moment of choosing rather than arriving as an error on save; the server
+    // refuses it too, because a rule enforced only in the browser is not enforced.
+    //
+    // Non-restricting tags are unlimited. They gate nothing (the rule intersects with the org's
+    // restricting list first) and they drive Assess-by-tag, the dashboard filter and search.
+    const heldRestricting = () => all.filter(t => t.restricts && chosen.has(t.name)).map(t => t.name);
+
     function draw() {
       const q = (search.value || '').trim().toLowerCase();
       const shown = all.filter(t => !q || t.name.indexOf(q) !== -1);
-      list.innerHTML = shown.map(t =>
-        `<label class="tagpick-row${chosen.has(t.name) ? ' on' : ''}" data-t="${esc(t.name)}">` +
-        `<input type="checkbox"${chosen.has(t.name) ? ' checked' : ''}>` +
+      const held = heldRestricting();
+      list.innerHTML = shown.map(t => {
+        // Locked only when ANOTHER restricting tag is already on: the one that IS on must stay
+        // clickable, or there is no way to swap it for a different one.
+        const locked = t.restricts && held.length > 0 && !chosen.has(t.name);
+        return `<label class="tagpick-row${chosen.has(t.name) ? ' on' : ''}${locked ? ' locked' : ''}" data-t="${esc(t.name)}"` +
+        (locked ? ` title="This dataset is already restricted by “${esc(held[0])}”. Remove that first - a second restricting tag would widen access, not narrow it."` : '') + `>` +
+        `<input type="checkbox"${chosen.has(t.name) ? ' checked' : ''}${locked ? ' disabled' : ''}>` +
         `<span class="tagpick-name">🏷️ ${esc(t.name)}</span>` +
         (t.restricts ? `<span class="tagpick-flag" title="Only members granted this tag can see the dataset">restricts access</span>` : '') +
         (t.orphan ? `<span class="tagpick-flag orphan" title="Not in your organisation's tag list. Kept so it is not lost, but it cannot be added to another dataset.">not in your list</span>` : '') +
-        `</label>`).join('');
+        `</label>`;
+      }).join('');
       none.style.display = shown.length ? 'none' : '';
       const n = chosen.size;
-      count.textContent = n ? `${n} selected` : 'None selected';
+      count.textContent = (n ? `${n} selected` : 'None selected')
+        + (held.length ? ` · restricted by “${held[0]}”` : '');
     }
     draw();
 
@@ -5041,7 +5062,17 @@ function dqTagPicker(opts) {
       const t = row.dataset.t;
       if (chosen.has(t)) chosen.delete(t); else chosen.add(t);
       row.classList.toggle('on', chosen.has(t));
-      count.textContent = chosen.size ? `${chosen.size} selected` : 'None selected';
+      // Toggling a RESTRICTING tag changes what the others are allowed to be, so the list has to
+      // be rebuilt rather than just reclassed. Scroll is preserved: redrawing under someone who
+      // has scrolled to find a tag and jumping them back to the top is its own small betrayal.
+      if (all.some(x => x.name === t && x.restricts)) {
+        const y = list.scrollTop;
+        draw();
+        list.scrollTop = y;
+      } else {
+        count.textContent = (chosen.size ? `${chosen.size} selected` : 'None selected')
+          + (heldRestricting().length ? ` · restricted by “${heldRestricting()[0]}”` : '');
+      }
     });
     search.addEventListener('input', draw);
     ov.addEventListener('click', e => {
