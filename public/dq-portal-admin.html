@@ -73,6 +73,18 @@
   .tagrow.on .tres{color:#ffd8a8}
   .tagrow .tdel{padding:3px 9px;border:1px solid var(--line);background:transparent;color:var(--muted);border-radius:7px;cursor:pointer;font-size:12px}
   .tagrow .tdel:hover{border-color:rgba(255,107,125,.5);color:var(--danger)}
+  /* Tag colour: a fixed palette of swatches, not a colour wheel. The value is rendered as a pill
+     behind white-ish text on two different surfaces, so a free picker's first gift is an
+     unreadable tag - and nobody asked to express a colour, only to tell two tags apart. */
+  .tagrow .tdot{flex:none;width:14px;height:14px;border-radius:50%;border:1px solid rgba(255,255,255,.25)}
+  .swatches{display:flex;gap:5px;flex:none}
+  .sw{width:17px;height:17px;padding:0;border-radius:50%;border:2px solid transparent;cursor:pointer;
+    box-shadow:0 0 0 1px rgba(255,255,255,.22) inset}
+  .sw:hover{transform:scale(1.12)}
+  .sw.on{border-color:var(--ink)}
+  .sw.auto{background:repeating-conic-gradient(#8899bb 0 25%,#5b6b8a 0 50%)}
+  .tagname-pill{display:inline-flex;align-items:center;gap:7px;padding:2px 11px;border-radius:999px;
+    font-size:12.5px;font-weight:600;background:var(--tint);border:1px solid var(--tintline)}
   /* Member grants: toggle chips instead of a comma-separated box. */
   .grantchips{display:flex;flex-wrap:wrap;gap:6px;flex:1;min-width:0}
   .grantchip{font-size:11.5px;padding:3px 10px;border:1px solid var(--line);border-radius:999px;background:transparent;color:var(--muted);cursor:pointer;white-space:nowrap}
@@ -148,9 +160,14 @@
         <label>Your organisation's tags</label>
         <div class="tagadd">
           <input id="tNew" placeholder="Add a tag, e.g. finance" autocomplete="off" maxlength="40">
+          <span class="swatches" id="tNewSw"></span>
           <button class="btn-sm" id="tAdd" type="button">Add</button>
         </div>
         <div id="tList" class="taglist"></div>
+        <p class="hint">Pick a colour and the tag wears it everywhere it appears - the picker, the
+          dataset rows and the Assess-by-tag page. Leave it on <em>auto</em> and it keeps the
+          colour generated from its name, which is already distinct per tag; choosing one only
+          matters when you want a specific tag to read a specific way.</p>
         <p class="hint">This is the list people choose from when tagging a dataset, so a tag can
           never be declared here under a spelling the data does not use. Tick <em>restricts</em>
           to turn one into an access control: a dataset carrying it is then visible only to
@@ -284,7 +301,38 @@
   let TAGS = { restricted_tags: [], policy: 'open', members: [] };
   let CAT = [];
 
+  // The palette an admin picks from. Chosen for separation at pill size on both the dark admin
+  // surface and the portal's lighter cards; '' is "auto", which keeps the per-name hue.
+  const TAG_COLOURS = ['', '#5b8cff', '#37e0c8', '#7bd88f', '#f4c56b', '#ff8f6b', '#ff6b7d',
+                       '#c98bff', '#8fa3c8'];
+  let NEWCOLOR = '';
+
   const normTag = v => String(v || '').trim().toLowerCase().slice(0, 40);
+  // A colour the SERVER would keep. Anything else is treated as auto rather than sent and
+  // silently dropped, so the row shows what will actually be stored.
+  const normColor = v => /^#[0-9a-f]{6}$/.test(String(v || '').trim().toLowerCase())
+    ? String(v).trim().toLowerCase() : '';
+  // The fallback when no colour is set: the same stable per-name hue the portal uses, so a tag
+  // left on auto looks identical in both places instead of grey here and coloured there.
+  function autoTint(name) {
+    let h = 0;
+    for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+    return 'hsl(' + (h % 360) + ' 62% 68%)';
+  }
+  const tagTint = t => normColor(t.color) || autoTint(t.name);
+
+  // One swatch row, reused by the add line and every tag row.
+  function swatchRow(host, current, onPick) {
+    host.innerHTML = '';
+    TAG_COLOURS.forEach(c => {
+      const b = el('button', 'sw' + (c ? '' : ' auto') + (normColor(current) === c ? ' on' : ''));
+      b.type = 'button';
+      if (c) b.style.background = c;
+      b.title = c ? 'Use ' + c : 'Auto - colour generated from the tag name';
+      b.addEventListener('click', e => { e.preventDefault(); onPick(c); });
+      host.appendChild(b);
+    });
+  }
   const restrictingNow = () => CAT.filter(t => t.restricts).map(t => t.name).sort();
 
   async function loadTagSettings() {
@@ -292,11 +340,17 @@
     wrap.innerHTML = ''; wrap.appendChild(el('div', 'uempty', 'Loading…'));
     try {
       TAGS = await api('/portal/admin/tags');
-      CAT = (TAGS.tags || []).map(t => ({ name: t.name, restricts: !!t.restricts }));
+      CAT = (TAGS.tags || []).map(t => ({ name: t.name, restricts: !!t.restricts,
+                                          color: normColor(t.color) }));
       $('#tPolicy').value = TAGS.policy || 'open';
+      drawNewSwatches();
       renderTagList();
       renderTagMembers();
     } catch (e) { wrap.innerHTML = ''; show($('#tagMsg'), 'err', e.message); }
+  }
+
+  function drawNewSwatches() {
+    swatchRow($('#tNewSw'), NEWCOLOR, c => { NEWCOLOR = c; drawNewSwatches(); });
   }
 
   function renderTagList() {
@@ -308,7 +362,22 @@
     }
     CAT.slice().sort((a, b) => a.name.localeCompare(b.name)).forEach(t => {
       const row = el('div', 'tagrow' + (t.restricts ? ' on' : ''));
-      row.appendChild(el('span', 'tname', '🏷️ ' + t.name));
+      // The name is shown wearing its own colour: the point of setting one is to see it, and a
+      // swatch beside grey text does not tell you what the tag will look like in the portal.
+      const nameCell = el('span', 'tname');
+      const pill = el('span', 'tagname-pill');
+      const tint = tagTint(t);
+      pill.style.setProperty('--tint', 'color-mix(in srgb, ' + tint + ' 22%, transparent)');
+      pill.style.setProperty('--tintline', 'color-mix(in srgb, ' + tint + ' 50%, transparent)');
+      const dot = el('span', 'tdot'); dot.style.background = tint;
+      pill.appendChild(dot);
+      pill.appendChild(document.createTextNode(t.name));
+      nameCell.appendChild(pill);
+      row.appendChild(nameCell);
+
+      const sws = el('span', 'swatches');
+      swatchRow(sws, t.color, c => { t.color = c; renderTagList(); });
+      row.appendChild(sws);
 
       const lab = el('label', 'tres');
       const cb = el('input'); cb.type = 'checkbox'; cb.checked = t.restricts;
@@ -345,7 +414,7 @@
     if (CAT.some(t => t.name === name)) { show(msg, 'err', '"' + name + '" is already in the list.'); return; }
     // New tags never restrict on creation. A tag that started restricting the moment it was typed
     // would hide those datasets from everyone before anybody could be granted it.
-    CAT.push({ name: name, restricts: false });
+    CAT.push({ name: name, restricts: false, color: NEWCOLOR });
     inp.value = '';
     renderTagList();
     inp.focus();
@@ -466,7 +535,8 @@
       // cannot disagree. Sending both would create a second source of truth for the same fact.
       const r = await api('/portal/admin/org/tags',
                           { method: 'POST', body: JSON.stringify({ tags: CAT, policy: policy }) });
-      CAT = (r.tags || []).map(t => ({ name: t.name, restricts: !!t.restricts }));
+      CAT = (r.tags || []).map(t => ({ name: t.name, restricts: !!t.restricts,
+                                       color: normColor(t.color) }));
       TAGS.tags = r.tags || [];
       TAGS.restricted_tags = r.restricted_tags || [];
       TAGS.policy = r.policy || 'open';
