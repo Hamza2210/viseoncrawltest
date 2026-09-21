@@ -1002,18 +1002,12 @@
   /* ---- Assess by tag ------------------------------------------------------------------
      Picker (left) beside a sticky live preview that carries the run action (right), the same
      master-detail shape the Schedules tab uses. */
-  /* The tag list is short and the preview is tall, so `start` left one card floating beside a
-     column of dead space. The pair stretches to the same height, and the tag list grows to fill
-     what it is given rather than stopping halfway down its own card. */
-  .tagrun-top { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    gap: 24px; align-items: stretch; }
-  .tagrun-top > .card { display: flex; flex-direction: column; }
-  @media (max-width: 1100px) { .tagrun-top { grid-template-columns: 1fr; } }
+  /* .tagrun-top is gone: the tab is one column now. */
 
-  /* flex:1 so the tag list takes the height the stretched card gives it. min-height:0 is what
-     makes that scrollable rather than overflowing the card. */
+  /* Full width now, so the tiles lay out across the page instead of stacking in a narrow
+     column. No fixed height and no inner scroll - the card is as tall as its tags. */
   .tagrun-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(215px, 1fr));
-    gap: 8px; align-content: start; flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 1px; }
+    gap: 8px; align-content: start; padding: 1px; max-height: 260px; overflow-y: auto; }
   .tagrun-tile { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
     padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--card);
     color: var(--text); font: inherit; cursor: pointer;
@@ -1031,18 +1025,18 @@
     background: var(--ok-bg); color: var(--ok); }
   .tt-badge.none { background: var(--idle-bg); color: var(--muted); }
 
-  /* Fills what the stretched card leaves under the tag tiles, and answers a question the tiles
-     do not: which of these has actually been looked at lately. */
-  .tagrun-recent { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border); }
-  .trr-hd { font-size: 10.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
-    color: var(--dim, var(--muted)); margin-bottom: 8px; }
-  .trr-row { display: flex; width: 100%; align-items: center; gap: 10px; padding: 6px 9px;
+  /* Its own card now, laid out ACROSS rather than as a stack: it is a short reference strip,
+     and a full-width column of three rows was mostly empty space. */
+  .tagrun-recent { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .trr-hd { flex: 0 0 100%; font-size: 10.5px; font-weight: 700; letter-spacing: .05em;
+    text-transform: uppercase; color: var(--dim, var(--muted)); margin-bottom: 4px; }
+  .trr-row { display: flex; align-items: center; gap: 10px; padding: 7px 12px;
     border: 1px solid transparent; border-radius: 8px; background: transparent; color: var(--muted);
     font: inherit; font-size: 12.5px; cursor: pointer; text-align: left;
     transition: background var(--dq-move) var(--dq-ease), color var(--dq-move) var(--dq-ease); }
   .trr-row:hover { background: var(--idle-bg); color: var(--text); }
   .trr-row.on { color: var(--text); border-color: color-mix(in srgb, var(--accent) 38%, transparent); }
-  .trr-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .trr-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .trr-when { flex: none; font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
   .tagrun-email { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--border); }
   .tagrun-email input { width: 100%; }
@@ -1119,6 +1113,16 @@
     background: color-mix(in srgb, var(--err) 10%, transparent); }
   .sact:disabled { opacity: .45; cursor: default; }
   @media (max-width: 1180px) { .sact span { display: none; } .sact { padding: 5px 9px; } }
+  /* Full width, and a real control rather than a stub select that stopped at 320px while every
+     other field in the form ran the full column. */
+  .sched-tagpick { display: flex; gap: 8px; align-items: stretch; }
+  .sched-tagbtn { flex: 1 1 auto; min-width: 0; text-align: left; padding: 10px 12px;
+    border: 1px solid var(--border); border-radius: 10px; background: var(--card-2);
+    color: var(--text); font: inherit; font-size: 14px; cursor: pointer; }
+  .sched-tagbtn:hover { border-color: var(--accent); }
+  .sched-tagbtn .none { color: var(--muted); }
+  .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+    overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
   .sched-src { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
   .sched-src .sched-det { color: var(--muted); font-size: 11.5px; }
 
@@ -3258,8 +3262,14 @@
         </div>
 
         <div id="schTagWrap" style="display:none;">
-          <label for="schTagSel">Tag</label>
-          <select id="schTagSel" style="max-width:320px;"></select>
+          <label for="schTagBtn">Tag</label>
+          <!-- The native select stays as the VALUE holder so every existing read/write of
+               #schTagSel keeps working; the button is the thing a person uses. -->
+          <select id="schTagSel" class="sr-only" tabindex="-1" aria-hidden="true"></select>
+          <div class="sched-tagpick">
+            <button type="button" id="schTagBtn" class="sched-tagbtn"></button>
+            <button type="button" id="schTagPrev" class="btn-sm" data-tip="Show every dataset this tag would assess">Preview datasets</button>
+          </div>
           <p class="hint" style="margin:8px 0;">Assesses every <strong>source</strong> dataset carrying this tag in <strong>one task</strong>. Membership is captured when you save (re-save to refresh it). Datasets need a saved credential profile.</p>
         </div>
 
@@ -3366,26 +3376,25 @@
       <p>Run a data-quality assessment on <strong>every source dataset carrying a tag</strong> - Redshift, S3, Snowflake and the rest - together in a <strong>single</strong> task. Ideal for scoring a whole domain (e.g. <em>finance</em>) across all its sources at once.</p>
     </div>
 
-    <!-- Same master-detail shape as Schedules: choose on the left, see exactly what will happen
-         on the right. Nothing runs until the preview says what it is going to run. -->
-    <div class="tagrun-top">
-      <div class="card">
-        <h2>Choose a tag</h2>
-        <p class="dash-muted">Tags group datasets across every connected source. Pick one to assess
-          everything it covers in a single task.</p>
+    <!-- One column, top to bottom: pick a tag, then read what that means directly underneath.
+         The two-column version put the choice on the left and its consequence on the right, so
+         the eye had to cross the page on every click and the shorter side left a tall gap. -->
+    <div class="card">
+      <h2>Choose a tag</h2>
+      <p class="dash-muted">Tags group datasets across every connected source. Pick one to assess
+        everything it covers in a single task.</p>
 
-        <div id="tagrunSearchWrap" style="display:none;">
-          <input type="search" id="tagrunSearch" class="src-search" placeholder="🔎 Search tags…" autocomplete="off">
-        </div>
-        <div id="tagrunTags" class="tagrun-grid"></div>
-        <div id="tagrunRecent" class="tagrun-recent" style="display:none;"></div>
-
-        <div class="tagrun-email">
-          <div class="hint" id="tagrunAlertNote"></div>
-        </div>
+      <div id="tagrunSearchWrap">
+        <input type="search" id="tagrunSearch" class="src-search" placeholder="🔎 Search tags…" autocomplete="off">
       </div>
+      <div id="tagrunTags" class="tagrun-grid"></div>
+      <div class="hint" id="tagrunAlertNote" style="margin-top:14px;"></div>
+    </div>
 
-      <div class="card tagrun-preview-card" id="tagrunPreview"></div>
+    <div class="card tagrun-preview-card" id="tagrunPreview"></div>
+
+    <div class="card" id="tagrunRecentCard" style="display:none;">
+      <div id="tagrunRecent" class="tagrun-recent"></div>
     </div>
 
     <div id="tagrunSkipped" class="tagrun-skipped" style="display:none;"></div>
@@ -5097,6 +5106,9 @@ const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c =>
 // In-app prompt / confirm / alert - a themed modal that replaces the native browser dialogs (which
 // leak the domain and don't match the app). Same return contract as the natives so calls are drop-in:
 // dqPrompt -> string|null (null on cancel), dqConfirm -> boolean, dqAlert -> undefined. All async.
+// `o.html` is inserted RAW and is for internal callers that build their own body (a list of
+// datasets, say). Anything user-supplied inside it must already be esc()'d by the caller - this
+// is the one place in the dialog that does not escape for you.
 function dqModal(opts) {
   const o = opts || {}, kind = o.kind || 'prompt', isPrompt = kind === 'prompt';
   const okLabel = o.okLabel || (kind === 'confirm' ? 'Confirm' : (kind === 'alert' ? 'OK' : 'Save'));
@@ -5107,6 +5119,7 @@ function dqModal(opts) {
       `<div class="modal dq-dialog${o.danger ? ' danger' : ''}" role="dialog" aria-modal="true">
         ${o.title ? `<div class="modal-head"><h3>${esc(o.title)}</h3><button class="x-close" type="button" data-dq="cancel" aria-label="Close">&times;</button></div>` : ''}
         <div class="modal-body">
+          ${o.html || ''}
           ${o.message ? (kind === 'confirm' || kind === 'alert'
             ? `<div class="dq-ask"><div class="dq-ask-ring ${o.danger ? 'warn' : (kind === 'alert' ? 'info' : 'ask')}">`
               + `${o.danger ? '&#9888;' : (kind === 'alert' ? '&#8505;' : '?')}</div>`
@@ -6112,7 +6125,7 @@ function renderTagRunTags() {
   const wrap = $('#tagrunTags'); if (!wrap) return;
   const all = tagRunTags();
   // The search box only earns its place once the grid is long enough to need it.
-  const sw = $('#tagrunSearchWrap'); if (sw) sw.style.display = all.length > 8 ? 'block' : 'none';
+  const sw = $('#tagrunSearchWrap'); if (sw) sw.style.display = all.length > 1 ? 'block' : 'none';
 
   if (!all.length) {
     wrap.innerHTML = `<div class="tagrun-empty" style="grid-column:1/-1;">` +
@@ -6156,14 +6169,109 @@ function renderTagRunRecent(all) {
     .sort((a, b) => a.ageDays - b.ageDays).slice(0, 5);
   // Hidden entirely when nothing has run: an empty "Recently assessed" heading reads as a broken
   // panel rather than an absence of history.
-  if (!run.length) { host.innerHTML = ''; host.style.display = 'none'; return; }
-  host.style.display = '';
+  const card = $('#tagrunRecentCard');
+  if (!run.length) { host.innerHTML = ''; if (card) card.style.display = 'none'; return; }
+  if (card) card.style.display = '';
   host.innerHTML = '<div class="trr-hd">Recently assessed</div>' +
     run.map(t =>
       `<button type="button" class="trr-row${t.tag === tagrunSelected ? ' on' : ''}" ` +
         `data-tag="${esc(t.tag)}" data-tip="Select this tag">` +
         `<span class="trr-name">🏷️ ${esc(t.tag)}</span>` +
         `<span class="trr-when">${esc(tagAge(t.ageDays))}</span></button>`).join('');
+}
+
+// Which datasets a tag covers, and whether each can actually run. Shared by the By-tag preview
+// and the schedule form's preview, so the two can never disagree about what a tag means.
+function tagDatasetRows(tag) {
+  const byKey = {}; (dashDatasetsAll || []).forEach(d => byKey[d.key] = d);
+  return Object.keys(dashEntries || {})
+    .filter(k => ((dashEntries[k] || {}).tags || []).includes(tag))
+    .map(k => {
+      const d = byKey[k];
+      const ok = d ? isSourceDataset(d) : false;
+      return { name: (d && d.name) || (k.split('/').pop() || k),
+               fmt: d ? d.sourceFormat : '',
+               ok: ok,
+               why: d ? (ok ? '' : 'Qlik-app table') : 'not assessed yet' };
+    })
+    .sort((a, b) => (b.ok - a.ok) || a.name.localeCompare(b.name));
+}
+
+// Single-select tag picker, with search. Same shape as dqPeoplePicker: returns the tag, or null
+// if cancelled. Shows what each tag actually covers, because "finance" alone does not say
+// whether picking it assesses two tables or two hundred.
+function dqPickTag(opts) {
+  const o = opts || {}, all = o.tags || [];
+  let chosen = o.value || '';
+  return new Promise(resolve => {
+    const ov = document.createElement('div');
+    ov.className = 'modal-overlay dq-ov open';
+    ov.innerHTML =
+      `<div class="modal dq-dialog" role="dialog" aria-modal="true">
+        <div class="modal-head"><h3>${esc(o.title || 'Choose a tag')}</h3>
+          <button class="x-close" type="button" data-dq="cancel" aria-label="Close">&times;</button></div>
+        <div class="modal-body">
+          <input class="dqin pp-search" type="text" placeholder="Search tags…" autocomplete="off">
+          <div class="pp-list"></div>
+          <p class="pp-none hint" style="display:none;">No tag matches that.</p>
+        </div>
+        <div class="modal-foot">
+          <button type="button" class="btn-sm" data-dq="cancel">Cancel</button>
+          <button type="button" class="dq-ok" data-dq="ok">Choose</button>
+        </div>
+      </div>`;
+    document.body.appendChild(ov);
+    const list = ov.querySelector('.pp-list'), search = ov.querySelector('.pp-search');
+    const none = ov.querySelector('.pp-none');
+    function draw() {
+      const q = (search.value || '').trim().toLowerCase();
+      const shown = all.filter(t => !q || t.tag.toLowerCase().indexOf(q) !== -1);
+      list.innerHTML = shown.map(t =>
+        `<label class="pp-row${t.tag === chosen ? ' on' : ''}" data-t="${esc(t.tag)}">` +
+        `<span class="pp-av" style="background:${_avatarTint(t.tag)}">${esc(t.tag.slice(0, 2).toUpperCase())}</span>` +
+        `<span class="pp-who"><span class="pp-mail">${esc(t.tag)}</span>` +
+        `<span class="pp-sub">${t.total} dataset${t.total === 1 ? '' : 's'}` +
+        (t.runnable === t.total ? '' : ` · ${t.runnable} can run`) + `</span></span>` +
+        `<span class="pp-tick">&#10003;</span></label>`).join('');
+      none.style.display = shown.length ? 'none' : '';
+    }
+    draw();
+    const finish = v => { ov.remove(); document.removeEventListener('keydown', onKey, true); resolve(v); };
+    list.addEventListener('click', e => {
+      const row = e.target.closest('.pp-row'); if (!row) return;
+      chosen = row.dataset.t; draw();
+    });
+    search.addEventListener('input', draw);
+    ov.addEventListener('click', e => {
+      const b = e.target.closest('[data-dq]');
+      if (b) { e.preventDefault(); finish(b.dataset.dq === 'ok' ? chosen : null); }
+      else if (e.target === ov) finish(null);
+    });
+    function onKey(e) {
+      if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); finish(null); }
+      else if (e.key === 'Enter' && document.activeElement !== search) { e.preventDefault(); finish(chosen); }
+    }
+    document.addEventListener('keydown', onKey, true);
+    setTimeout(() => search.focus(), 20);
+  });
+}
+
+// What a tag would actually run, as a dialog. A schedule set up once and left alone is exactly
+// where a wrong tag goes unnoticed, so the form can show its membership before it is saved.
+function dqTagDatasets(tag) {
+  const rows = tagDatasetRows(tag);
+  const ready = rows.filter(r => r.ok).length;
+  const body = rows.length
+    ? `<div class="tr-list">` + rows.map(r =>
+        `<div class="tr-row${r.ok ? '' : ' off'}"><span class="tr-dot"></span>` +
+        `<span class="tr-name">${esc(r.name)}</span>` +
+        (r.fmt ? sourceChip(r.fmt) : '') +
+        (r.ok ? '' : `<span class="tr-why">${esc(r.why)}</span>`) + `</div>`).join('') + `</div>`
+    : `<p class="hint">Nothing carries this tag yet.</p>`;
+  return dqModal({ kind: 'alert', title: `Tag “${tag}”`, okLabel: 'Close',
+    html: `<p class="dq-modal-msg"><strong>${ready}</strong> of ${rows.length} dataset` +
+          `${rows.length === 1 ? '' : 's'} tagged <strong>${esc(tag)}</strong> would be assessed, ` +
+          `in one task.</p>` + body });
 }
 
 function renderTagRunPreview() {
@@ -6182,18 +6290,7 @@ function renderTagRunPreview() {
     return;
   }
 
-  const byKey = {}; (dashDatasetsAll || []).forEach(d => byKey[d.key] = d);
-  const rows = Object.keys(dashEntries || {})
-    .filter(k => ((dashEntries[k] || {}).tags || []).includes(tag))
-    .map(k => {
-      const d = byKey[k];
-      const ok = d ? isSourceDataset(d) : false;
-      return { name: (d && d.name) || (k.split('/').pop() || k),
-               fmt: d ? d.sourceFormat : '',
-               ok: ok,
-               why: d ? (ok ? '' : 'Qlik-app table') : 'not assessed yet' };
-    })
-    .sort((a, b) => (b.ok - a.ok) || a.name.localeCompare(b.name));
+  const rows = tagDatasetRows(tag);
 
   if (!rows.length) {
     wrap.innerHTML = `<h2>Run preview</h2>` +
@@ -13838,6 +13935,32 @@ function schSourceUI() {
   else if (!qlik && !watch) renderSchedSourceFields(kind);
 }
 if ($('#schSourceKind')) $('#schSourceKind').addEventListener('change', schSourceUI);
+if ($('#schTagBtn')) $('#schTagBtn').addEventListener('click', async () => {
+  const sel = $('#schTagSel'); if (!sel) return;
+  const tags = tagRunTags();
+  if (!tags.length) { dqAlert('No tags yet. Tag some datasets on the Overview tab first.',
+    { title: 'No tags' }); return; }
+  const picked = await dqPickTag({ title: 'Schedule a tag', tags: tags, value: sel.value });
+  if (picked === null) return;
+  sel.value = picked;
+  syncSchTagBtn();
+  renderSchedulePreview();            // the summary card names the tag, so it has to follow
+});
+if ($('#schTagPrev')) $('#schTagPrev').addEventListener('click', () => {
+  const sel = $('#schTagSel'); if (sel && sel.value) dqTagDatasets(sel.value);
+});
+
+// The button shows what the hidden select holds. Called after every populate and every pick, so
+// the two cannot drift.
+function syncSchTagBtn() {
+  const sel = $('#schTagSel'), btn = $('#schTagBtn'); if (!sel || !btn) return;
+  const tag = sel.value;
+  const t = (typeof tagRunTags === 'function' ? tagRunTags() : []).find(x => x.tag === tag);
+  btn.innerHTML = tag
+    ? `🏷️ ${esc(tag)}` + (t ? ` <span class="none">· ${t.total} dataset${t.total === 1 ? '' : 's'}</span>` : '')
+    : `<span class="none">Choose a tag…</span>`;
+  const prev = $('#schTagPrev'); if (prev) prev.disabled = !tag;
+}
 
 async function populateSchTags() {
   const sel = $('#schTagSel'); if (!sel) return;
@@ -13855,6 +13978,7 @@ async function populateSchTags() {
     const o = document.createElement('option'); o.value = t; o.textContent = t;
     if (t === cur) o.selected = true; sel.appendChild(o);
   });
+  syncSchTagBtn();
 }
 
 // --- Source monitoring (metadata-only sweep) ------------------------------- //
