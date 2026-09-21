@@ -3091,8 +3091,7 @@
           <p class="hint" style="margin:8px 0;">It alerts on a source that has stopped loading, lost rows, changed columns, or become unreachable. Alerts go to the dataset owner (or your organisation's alert recipients), like any other incident.</p>
         </div>
 
-        <label for="schEmail">Alert email</label>
-        <input id="schEmail" placeholder="alerts@company.com" />
+        <p class="hint" id="schAlertNote" style="margin:14px 0 0;"></p>
 
         <div class="actions" style="margin-top:22px;">
           <button id="schSave">Save schedule</button>
@@ -3209,9 +3208,7 @@
         <div id="tagrunTags" class="tagrun-grid"></div>
 
         <div class="tagrun-email">
-          <label for="tagrunEmail">Alert email <span class="hint" style="font-weight:400;">(optional)</span></label>
-          <input id="tagrunEmail" type="email" placeholder="Where to send this run's quality alerts" autocomplete="off" />
-          <div class="hint" style="margin:6px 0 0;">Quality alerts raised by this run are sent here. Leave blank to run without email alerts.</div>
+          <div class="hint" id="tagrunAlertNote"></div>
         </div>
       </div>
 
@@ -5849,6 +5846,24 @@ function renderTagRunPreview() {
     `<div id="tagrunMsg" class="tr-msg" style="display:none;"></div>`;
 }
 
+// Alerts route PER DATASET to its owner. A tag run covers many datasets with different
+// owners, so one typed address was always the wrong shape: it sent every dataset's alerts to
+// whoever launched the run. The owner is resolved at ALERT time, not now, so assigning an owner
+// after the run still routes correctly. The submitter is only the fallback for a dataset that
+// has no owner (observability/handler.py `_recipients_for`).
+function alertRoutingNote() {
+  return EMAIL
+    ? `Alerts go to each dataset's <strong>owner</strong>. Any dataset without one falls back to `
+      + `<strong>${esc(EMAIL)}</strong>.`
+    : `Alerts go to each dataset's <strong>owner</strong>. There is no fallback address for this `
+      + `session, so a dataset with no owner raises no email.`;
+}
+function paintAlertNotes() {
+  ['#schAlertNote', '#tagrunAlertNote'].forEach(sel => {
+    const el = $(sel); if (el) el.innerHTML = alertRoutingNote();
+  });
+}
+
 async function runTagAssessment() {
   const tag = (tagrunSelected || '').trim();
   if (!tag) { showTagMsg('err', 'Pick a tag to run.'); return; }
@@ -5856,8 +5871,8 @@ async function runTagAssessment() {
   if (go) { go.disabled = true; go.innerHTML = '<span class="spin"></span>Launching…'; }
   const byKey = {}; (dashDatasetsAll || []).forEach(d => byKey[d.key] = d);
   try {
-    const email = (($('#tagrunEmail') && $('#tagrunEmail').value) || '').trim();
-    const r = await postJSON(`${API_BASE}/data-quality/run-by-tag`, HEADERS, { app_id: APP_ID, tag: tag, notify_email: email });
+    const r = await postJSON(`${API_BASE}/data-quality/run-by-tag`, HEADERS,
+      { app_id: APP_ID, tag: tag, notify_email: EMAIL || '' });
     renderTagSkipped(r.skipped, byKey);          // name each skipped dataset + why
     const launched = (r.launched || []).map(x => ({
       dataset_key: x.dataset_key, resultPrefix: x.resultPrefix,
@@ -12313,6 +12328,9 @@ function switchTab(name) {
   $('#appDataPanel').style.display = name === 'appdata' ? 'block' : 'none';
   $('#tagrunPanel').style.display = name === 'tagrun' ? 'block' : 'none';
   $('#schedulePanel').style.display = name === 'schedules' ? 'block' : 'none';
+  // Painted on every switch rather than once at boot: EMAIL is resolved asynchronously in portal
+  // mode (/portal/auth/me), so a note written at boot would name nobody.
+  if (name === 'tagrun' || name === 'schedules') paintAlertNotes();
   $('#modelPanel').style.display = name === 'model' ? 'block' : 'none';
   $('#dashboardPanel').style.display = name === 'dashboard' ? 'block' : 'none';
   $('#medallionPanel').style.display = name === 'medallion' ? 'block' : 'none';
@@ -12957,7 +12975,7 @@ function updateTablesSummary() {
 function resetScheduleForm() {
   schEditingName = null;
   $('#schFormTitle').textContent = 'New schedule';
-  $('#schLabel').value = ''; $('#schEmail').value = ''; $('#schSample').value = '';
+  $('#schLabel').value = ''; $('#schSample').value = '';
   $('#schFreq').value = 'daily'; $('#schTime').value = '06:00';
   $('#schDom').value = '1'; $('#schCustom').value = '';
   _tzClose();                   // a reset while the list is open would leave it hanging
@@ -13254,11 +13272,6 @@ function schSourceUI() {
   if ($('#schSourceWrap')) $('#schSourceWrap').style.display = (qlik || tag || watch) ? 'none' : 'block';
   if ($('#schTagWrap')) $('#schTagWrap').style.display = tag ? 'block' : 'none';
   if ($('#schWatchWrap')) $('#schWatchWrap').style.display = watch ? 'block' : 'none';
-  // Monitoring alerts route by dataset owner, not by this form's address, so the field is not
-  // required for it. Left visible (and honoured if filled) rather than hidden, so switching
-  // kinds does not silently discard something the user typed.
-  if ($('#schEmail')) $('#schEmail').placeholder = watch
-    ? 'alerts@company.com (optional for monitoring)' : 'alerts@company.com';
   if (tag) populateSchTags();
   else if (!qlik && !watch) renderSchedSourceFields(kind);
 }
@@ -13467,10 +13480,11 @@ async function saveSchedule() {
   if (!APP_ID) { schBanner('err', 'Open from inside a Qlik app to schedule its checks.'); return; }
   const kind = ($('#schSourceKind') && $('#schSourceKind').value) || 'qlik';
   const label = $('#schLabel').value.trim();
-  const email = $('#schEmail').value.trim();
+  // The CREATOR is the fallback, recorded now because the schedule runs unattended later and
+  // there is nobody to ask then. It is only ever used for a dataset with no owner.
+  const email = EMAIL || '';
   const cron = schBuildCron();
   if (!label) { schBanner('err', 'Give the schedule a name.'); return; }
-  if (!email && kind !== 'source-watch') { schBanner('err', 'Enter an alert email.'); return; }
   if (!cron) { schBanner('err', 'Set a frequency / cron expression.'); return; }
 
   const body = {
@@ -13969,7 +13983,6 @@ function renderSchedulePreview() {
   const cron = schBuildCron();
   const tz = ($('#schTz').value || 'UTC').trim();
   const label = $('#schLabel').value.trim();
-  const email = $('#schEmail').value.trim();
   const sampleN = parseInt($('#schSample').value.trim(), 10);
   const tablesTxt = schSelected.length
     ? (schSelected.length + ' table' + (schSelected.length === 1 ? '' : 's'))
@@ -14003,7 +14016,9 @@ function renderSchedulePreview() {
     `<div class="sp-meta">` +
     `<span class="k">Assesses</span><span>${esc(tablesTxt)}</span>` +
     `<span class="k">Sample</span><span>${esc(sampleTxt)}</span>` +
-    `<span class="k">Alerts</span><span>${email ? esc(email) : '<span class="dash-muted">no email yet</span>'}</span>` +
+    `<span class="k">Alerts</span><span>${EMAIL
+        ? 'Dataset owner, else ' + esc(EMAIL)
+        : '<span class="dash-muted">Dataset owner only</span>'}</span>` +
     `</div>` +
     `<div class="sp-next-h">Next ${runs.length > 1 ? runs.length + ' runs' : 'run'}</div>` +
     runsHtml;
@@ -14043,7 +14058,7 @@ function renderSchedules(list) {
           <div class="k">Expression</div><div class="v-cron"></div>
           <div class="k">Timezone</div><div class="v-tz"></div>
           <div class="k">Tables</div><div class="v-tables"></div>
-          <div class="k">Alert email</div><div class="v-email"></div>
+          <div class="k">Alerts</div><div class="v-email"></div>
           <div class="k">Sample size</div><div class="v-sample"></div>
         </div></td>
       </tr>`;
@@ -14065,7 +14080,10 @@ function renderSchedules(list) {
     exp.querySelector('.v-tables').textContent = (s.sourceKind && s.sourceKind !== 'qlik')
       ? `${SOURCE_LABEL[s.sourceKind] || s.sourceKind}${s.sourceSummary ? ' · ' + s.sourceSummary : ''}`
       : ((s.tables && s.tables.length) ? s.tables.join(', ') : 'All tables');
-    exp.querySelector('.v-email').textContent = s.email || '-';
+    // What the schedule will actually do, not the address stored on it: the owner decides, and
+    // the stored address is only the fallback for a dataset that has none.
+    exp.querySelector('.v-email').textContent =
+      s.email ? 'Dataset owner, else ' + s.email : 'Dataset owner only';
     exp.querySelector('.v-sample').textContent = s.sampleRows ? `${s.sampleRows} rows` : 'Whole tables';
   });
   $('#schList').querySelectorAll('.sched-caret').forEach(c => c.addEventListener('click', () => {
@@ -14105,7 +14123,6 @@ function editSchedule(s) {
   $('#schFormTitle').textContent = 'Edit schedule';
   $('#schCancelEdit').style.display = 'inline-block';
   $('#schLabel').value = s.label || '';
-  $('#schEmail').value = s.email || '';
   $('#schSample').value = s.sampleRows || '';
   setSchTz(s.timezone);          // inserts it if this browser does not list that zone
   // Editing keeps the exact expression via the Custom field (no lossy re-parse).
