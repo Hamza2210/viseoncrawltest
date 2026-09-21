@@ -866,8 +866,11 @@
      buried in everything else's. A rail picks the dataset; the pane shows only that one. */
   .inc-split { display: grid; grid-template-columns: 290px 1fr; gap: 16px; align-items: start; }
   @media (max-width: 900px) { .inc-split { grid-template-columns: 1fr; } }
+  /* Sticky rather than just tall: the pane below scrolls with the PAGE (see .inc-detail), so
+     without this the dataset list scrolls away while you are reading its incidents. */
   .inc-rail { border: 1px solid var(--border); border-radius: 12px; padding: 6px;
-    max-height: 62vh; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; }
+    position: sticky; top: 12px; max-height: 82vh; overflow-y: auto;
+    display: flex; flex-direction: column; gap: 2px; }
   .inc-rail-row { display: flex; align-items: center; gap: 9px; padding: 9px 10px; border-radius: 9px;
     cursor: pointer; border: 1px solid transparent; color: var(--muted);
     transition: background var(--dq-move) var(--dq-ease), color var(--dq-move) var(--dq-ease); }
@@ -893,7 +896,15 @@
   .inc-fbtn { padding: 4px 10px; border-radius: 999px; border: 1px solid var(--border);
     background: transparent; color: var(--muted); font: inherit; font-size: 11.5px; cursor: pointer; }
   .inc-fbtn.on { color: var(--text); border-color: var(--accent); background: var(--idle-bg); }
-  .inc-detail { max-height: 62vh; overflow-y: auto; padding-right: 4px; }
+  /* NO overflow here, deliberately. `overflow-y: auto` clips absolutely positioned children, and
+     the kebab menu is one - it was being cut off at the pane's bottom edge. The pane flows with
+     the page instead and the rail is sticky, which reads better anyway. */
+  .inc-detail { padding-right: 4px; }
+  /* The stagger animation leaves a transform on every card, and a transformed element creates a
+     STACKING CONTEXT - so the menu's z-index was trapped inside its own card and every later card
+     painted on top of it. Nine of nine items were unclickable. Raising the whole CARD while its
+     menu is open lifts the menu with it, which a z-index on the menu alone cannot do. */
+  .inc-card.menu-open { position: relative; z-index: 70; }
 
   @keyframes incflash { 0%, 100% { background: transparent; } 22% { background: color-mix(in srgb, var(--accent2) 13%, transparent); } }
   .inc-card { border: 1px solid var(--border); border-left-width: 3px; border-radius: 10px; padding: 11px 14px; }
@@ -9684,7 +9695,14 @@ function wireIncidentCards(listEl) {
     e.stopPropagation();
     const menu = k.nextElementSibling, wasOpen = menu.classList.contains('open');
     listEl.querySelectorAll('.inc-menu.open').forEach(m => m.classList.remove('open'));
-    if (!wasOpen) menu.classList.add('open');
+    listEl.querySelectorAll('.inc-card.menu-open').forEach(c => c.classList.remove('menu-open'));
+    if (!wasOpen) {
+      menu.classList.add('open');
+      // Raise the whole card, not just the menu: the card carries a transform from the stagger
+      // animation, which traps any z-index set on its descendants.
+      const card = k.closest('.inc-card');
+      if (card) card.classList.add('menu-open');
+    }
   }));
   listEl.querySelectorAll('button[data-prefix]').forEach(b =>
     b.addEventListener('click', () => openIncidentRun(b.dataset.prefix, b.dataset.name)));
@@ -9721,7 +9739,9 @@ function wireIncidentCards(listEl) {
 // Close any open incident action menu when clicking elsewhere.
 document.addEventListener('click', () => {
   const l = document.getElementById('incList');
-  if (l) l.querySelectorAll('.inc-menu.open').forEach(m => m.classList.remove('open'));
+  if (!l) return;
+  l.querySelectorAll('.inc-menu.open').forEach(m => m.classList.remove('open'));
+  l.querySelectorAll('.inc-card.menu-open').forEach(c => c.classList.remove('menu-open'));
 });
 async function incidentAction(datasetKey, key, action, extra) {
   try {
