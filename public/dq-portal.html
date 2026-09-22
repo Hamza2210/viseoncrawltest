@@ -2389,7 +2389,7 @@
      A second track at rest looked harmless and was not: a zero-WIDTH grid item still has its full
      HEIGHT, so the row stayed as tall as the hidden panel's content while the start-aligned
      galaxy card kept its own height, leaving a large empty gap underneath it. */
-  .overview-top { display: grid; grid-template-columns: 1fr;
+  .overview-top { display: grid; grid-template-columns: minmax(0, 1fr);
     row-gap: 18px; column-gap: 0; align-items: start; margin-bottom: 18px; }
   .overview-top:not(.anim):not(.split) > #dashDetail { display: none; }
   /* WHILE ANIMATING: the second track exists so there is something to interpolate FROM. A track
@@ -2444,7 +2444,7 @@
   .overview-top.split .galaxy-card h2 { white-space: nowrap; }
   @media (max-width: 1100px) { .overview-top.split { grid-template-columns: 1fr; } #dashDetail { max-height: none; } }
   #galaxyWrap.grabbing { cursor: grabbing; }
-  #galaxyWrap canvas { display: block; }
+  #galaxyWrap canvas { display: block; width: 100%; height: 100%; }
   .galaxy-msg { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
     color: #8792a6; font-size: 13px; text-align: center; padding: 20px; z-index: 2; }
   .galaxy-tip { position: absolute; z-index: 3; pointer-events: none; background: rgba(10,14,26,.92);
@@ -13168,7 +13168,7 @@ function initGalaxyScene(wrap) {
   g.camera.position.set(0, 0, g.dist);
   g.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
   g.renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
-  g.renderer.setSize(W, H);
+  g.renderer.setSize(W, H, false);        // false = do not write inline width/height; CSS owns the box
   wrap.appendChild(g.renderer.domElement);
   g.group = new THREE.Group(); g.scene.add(g.group);
   g.glowTex = _galaxyGlowTexture();
@@ -13223,7 +13223,7 @@ function initGalaxyScene(wrap) {
   g.onResize = () => {
     const w = wrap.clientWidth, h = wrap.clientHeight || 460;
     if (w < 2) return;
-    g.camera.aspect = w / h; g.camera.updateProjectionMatrix(); g.renderer.setSize(w, h);
+    g.camera.aspect = w / h; g.camera.updateProjectionMatrix(); g.renderer.setSize(w, h, false);
     // Draw straight away. setSize reallocates the drawing buffer, which CLEARS it, and this runs
     // once per frame while the column animates - so without an immediate render the cleared
     // buffer is what gets presented, every frame, and the galaxy reads as blank for the whole
