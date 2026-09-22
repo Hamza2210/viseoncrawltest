@@ -1356,7 +1356,13 @@
   .ab-pill b { color: var(--text); font-weight: 600; }
   .ab-pill i { color: var(--tr2-neon); font-style: normal; opacity: .7; }
 
-  .ab-top { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: 16px;
+  /* The mission column is `auto` - sized to its own content - and the problem card takes every
+     remaining pixel. Both mission tracks are capped, so as a FRACTION the column grew with the
+     window and the surplus piled up as slack to the right of the graphic: the picture looked
+     further from the copy at one browser zoom than at another, which is the one thing a layout
+     must not do. Content-sized, the mission card is identical at every width and only its
+     neighbour flexes. */
+  .ab-top { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 16px;
     margin-bottom: 16px; align-items: stretch; }
   .ab-eyebrow { font-size: 11px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase;
     color: var(--tr2-neon); margin: 0 0 12px; }
@@ -1396,7 +1402,11 @@
      It is also the only form that can be driven in a test without resizing the browser, which is
      how the side-by-side rule went unverified the first time. */
   #aboutPanel { container-type: inline-size; }
-  @container (max-width: 1440px) { .ab-top { grid-template-columns: 1fr; } }
+  @container (max-width: 1360px) { .ab-top { grid-template-columns: 1fr; }
+    /* Stacked, the mission card would stretch to the panel and put its surplus back where it came
+       from - to the right of the graphic. Capped at its own content instead, so it looks the same
+       whether it is beside the problem card or above it. */
+    .ab-mission { max-width: 974px; } }
   @container (max-width: 900px) { .ab-mission { grid-template-columns: 1fr; }
     .ab-art { display: none; } }
 
