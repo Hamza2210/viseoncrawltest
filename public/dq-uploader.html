@@ -6228,88 +6228,63 @@ function initAboutScene() {
   cam.position.set(1.5, 10.3, 33.0); cam.lookAt(1.5, 0.2, 0);
 
   scene.add(new THREE.AmbientLight(0x6f9fd8, 0.85));
-  const key = new THREE.DirectionalLight(0xdff0ff, 1.25); key.position.set(6, 12, 9); scene.add(key);
-  const rim = new THREE.PointLight(0x38bdf8, 1.5, 60); rim.position.set(-9, 4, 6); scene.add(rim);
+  const key = new THREE.DirectionalLight(0xdff0ff, 0.95); key.position.set(6, 12, 9); scene.add(key);
+  const rim = new THREE.PointLight(0x38bdf8, 0.85, 60); rim.position.set(-9, 4, 6); scene.add(rim);
 
+  // The shield does NOT rotate. It sits at the origin and everything else orbits it, because the
+  // point being made is that protection is what the rest of the platform is arranged around. So
+  // there are two groups: `g` turns, `still` does not, and the rotation centre is the shield.
   const g = new THREE.Group(); scene.add(g);
-  ABOUT3D.group = g; ABOUT3D.renderer = r; ABOUT3D.scene = scene; ABOUT3D.camera = cam;
+  const still = new THREE.Group(); scene.add(still);
+  ABOUT3D.group = g; ABOUT3D.still = still;
+  ABOUT3D.renderer = r; ABOUT3D.scene = scene; ABOUT3D.camera = cam;
   ABOUT3D.host = host; ABOUT3D.img = img;
 
-  // The three objects sit APART, as they do in the still: the store left of centre, the shield
-  // clipping only the corner of its base, the panel clear of both. The first pass had all three
-  // on top of each other, which is what made it read as one squashed lump.
-  const STORE_X = -2.6;
+  const ORBIT = 7.4;          // far enough out that the store never reaches the shield at the hub
 
   // ---- the holographic staging ---------------------------------------------------------------
-  // Translucent slabs and outlines, which is most of what makes the still look like a rendering
-  // rather than a clip-art stack. Drawn first so everything else sits in front of them.
-  const paneMat = (op) => new THREE.MeshBasicMaterial({ color: 0x3f8fe0, transparent: true,
-    opacity: op, side: THREE.DoubleSide, depthWrite: false });
-  const edgeMat = new THREE.LineBasicMaterial({ color: 0x8fd4ff, transparent: true, opacity: 0.55 });
-  const slab = (w, h, op) => {
-    const grp = new THREE.Group();
-    grp.add(new THREE.Mesh(new THREE.PlaneGeometry(w, h), paneMat(op)));
-    const pts = [[-w / 2, -h / 2], [w / 2, -h / 2], [w / 2, h / 2], [-w / 2, h / 2], [-w / 2, -h / 2]]
-      .map(([x, y]) => new THREE.Vector3(x, y, 0));
-    grp.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), edgeMat));
-    return grp;
-  };
-  // The platform the store stands on, lying flat.
-  const base = slab(10.2, 10.2, 0.14);
-  base.rotation.x = -Math.PI / 2; base.position.set(STORE_X, -3.5, 0); g.add(base);
-  const base2 = slab(8.2, 8.2, 0.10);
-  base2.rotation.x = -Math.PI / 2; base2.position.set(STORE_X, -1.2, 0); g.add(base2);
-  // Two upright panes behind the panel, the faint rectangles in the still.
-  const pane1 = slab(7.4, 6.2, 0.11); pane1.position.set(5.4, 3.2, -4.0); pane1.rotation.y = -0.34; g.add(pane1);
-  const pane2 = slab(5.8, 5.0, 0.09); pane2.position.set(8.8, 1.2, -2.2); pane2.rotation.y = -0.34; g.add(pane2);
+  // SOFT edges. These were a flat fill with a one-pixel outline, which read as a wireframe box
+  // rather than as light. Canvas2D's blur filter feathers both the fill and the border, so the
+  // planes fade out instead of stopping at a hard line.
+  const holoTex = _about3dCanvasTex((x, w, h) => {
+    const pad = 30, rad = 34;
+    const rr = () => { x.beginPath(); x.moveTo(pad + rad, pad);
+      x.arcTo(w - pad, pad, w - pad, h - pad, rad); x.arcTo(w - pad, h - pad, pad, h - pad, rad);
+      x.arcTo(pad, h - pad, pad, pad, rad); x.arcTo(pad, pad, w - pad, pad, rad); x.closePath(); };
+    x.filter = 'blur(11px)';
+    x.fillStyle = 'rgba(64,146,232,0.34)'; rr(); x.fill();
+    x.filter = 'blur(5px)';
+    x.strokeStyle = 'rgba(170,220,255,0.62)'; x.lineWidth = 5; rr(); x.stroke();
+    x.filter = 'none';
+  }, 256, 256);
+  const slab = (w, h, op) => new THREE.Mesh(new THREE.PlaneGeometry(w, h),
+    new THREE.MeshBasicMaterial({ map: holoTex, transparent: true, opacity: op,
+      side: THREE.DoubleSide, depthWrite: false }));
+  const base = slab(11.5, 11.5, 0.85);
+  base.rotation.x = -Math.PI / 2; base.position.set(0, -3.6, 0); g.add(base);
+  const base2 = slab(9.2, 9.2, 0.6);
+  base2.rotation.x = -Math.PI / 2; base2.position.set(0, -1.4, 0); g.add(base2);
+  const pane1 = slab(7.4, 6.2, 0.75); pane1.position.set(5.0, 3.2, -4.0); pane1.rotation.y = -0.34; g.add(pane1);
+  const pane2 = slab(5.8, 5.0, 0.6); pane2.position.set(8.4, 1.2, -2.2); pane2.rotation.y = -0.34; g.add(pane2);
 
   // ---- the store ------------------------------------------------------------------------------
-  const discMat = new THREE.MeshStandardMaterial({ color: 0x2775d8, emissive: 0x0d3a76,
-    emissiveIntensity: 0.45, metalness: 0.22, roughness: 0.42 });
-  const topMat = new THREE.MeshStandardMaterial({ color: 0x53aef0, emissive: 0x1e6ec4,
-    emissiveIntensity: 0.55, metalness: 0.28, roughness: 0.34 });
+  // Its glow is dialled right down: the light belongs on the shield now, and two lit objects
+  // means neither is the subject.
+  const discMat = new THREE.MeshStandardMaterial({ color: 0x2775d8, emissive: 0x0b2f60,
+    emissiveIntensity: 0.16, metalness: 0.22, roughness: 0.46 });
+  const topMat = new THREE.MeshStandardMaterial({ color: 0x4a9fe4, emissive: 0x134a8c,
+    emissiveIntensity: 0.2, metalness: 0.26, roughness: 0.38 });
   for (let i = 0; i < 4; i++) {
-    const disc = new THREE.Mesh(new THREE.CylinderGeometry(3.9, 3.9, 1.1, 64),
+    const disc = new THREE.Mesh(new THREE.CylinderGeometry(3.3, 3.3, 1.0, 64),
                                 i === 3 ? topMat : discMat);
-    disc.position.set(STORE_X, -2.2 + i * 1.36, 0); g.add(disc);
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(3.92, 0.05, 8, 72),
-      new THREE.MeshBasicMaterial({ color: 0xbfeaff, transparent: true, opacity: 0.7 }));
-    ring.rotation.x = Math.PI / 2; ring.position.set(STORE_X, disc.position.y + 0.55, 0); g.add(ring);
+    disc.position.set(-ORBIT, -1.9 + i * 1.22, 0); g.add(disc);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(3.32, 0.045, 8, 72),
+      new THREE.MeshBasicMaterial({ color: 0x9fd6ff, transparent: true, opacity: 0.55 }));
+    ring.rotation.x = Math.PI / 2; ring.position.set(-ORBIT, disc.position.y + 0.5, 0); g.add(ring);
   }
 
-  // ---- the shield -----------------------------------------------------------------------------
-  // In FRONT of the store and clear to its right, overlapping only the bottom corner.
-  const shieldShape = new THREE.Shape();
-  shieldShape.moveTo(0, 3.2);
-  shieldShape.lineTo(2.5, 2.05); shieldShape.lineTo(2.5, -0.55);
-  shieldShape.quadraticCurveTo(2.5, -2.7, 0, -3.5);
-  shieldShape.quadraticCurveTo(-2.5, -2.7, -2.5, -0.55);
-  shieldShape.lineTo(-2.5, 2.05); shieldShape.closePath();
-  const shield = new THREE.Mesh(
-    new THREE.ExtrudeGeometry(shieldShape, { depth: 0.5, bevelEnabled: true, bevelSize: 0.1,
-                                             bevelThickness: 0.1, bevelSegments: 3, curveSegments: 24 }),
-    new THREE.MeshStandardMaterial({ color: 0x6fe3e8, emissive: 0x1c8fb4, emissiveIntensity: 0.5,
-                                     metalness: 0.18, roughness: 0.3 }));
-  shield.name = 'shield';
-  shield.position.set(1.5, -1.7, 4.6); shield.scale.setScalar(0.82); g.add(shield);
-  const tick = new THREE.Mesh(new THREE.PlaneGeometry(2.7, 2.7),
-    new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false,
-      map: _about3dCanvasTex((x, w, h) => {
-        x.strokeStyle = '#eafcff'; x.lineWidth = w * 0.125;
-        x.lineCap = 'round'; x.lineJoin = 'round';
-        x.beginPath(); x.moveTo(w * 0.27, h * 0.52); x.lineTo(w * 0.45, h * 0.70);
-        x.lineTo(w * 0.75, h * 0.32); x.stroke();
-      }, 128) }));
-  // In FRONT of the shield's extruded face, not level with it. ExtrudeGeometry grows along +Z by
-  // depth plus the bevel, and that lot is then scaled - so the face lands at roughly 4.6 + 0.6 *
-  // 0.82 = 5.09 and a tick at 5.05 sat just inside the solid, invisible.
-  tick.name = 'tick';
-  tick.position.set(1.5, -1.6, 5.32); tick.scale.setScalar(0.82); g.add(tick);
-
   // ---- the record panel -----------------------------------------------------------------------
-  // TWO columns of coloured rows, as in the still. The first pass drew one faint column, which is
-  // why the colour appeared to have been lost - it was there, just small and dim.
-  const panel = new THREE.Mesh(new THREE.PlaneGeometry(8.4, 6.2),
+  const panel = new THREE.Mesh(new THREE.PlaneGeometry(7.8, 5.8),
     new THREE.MeshBasicMaterial({ transparent: true, side: THREE.DoubleSide, depthWrite: false,
       map: _about3dCanvasTex((x, w, h) => {
         const rr = (px, py, pw, ph, rad) => { x.beginPath(); x.moveTo(px + rad, py);
@@ -6331,15 +6306,52 @@ function initAboutScene() {
         }
       }, 460, 340) }));
   panel.name = 'panel';
-  panel.position.set(7.6, 1.0, 0.4); panel.rotation.y = -0.34; g.add(panel);
+  panel.position.set(ORBIT, 1.1, 0); panel.rotation.y = -0.30; g.add(panel);
 
-  // Ambient bloom behind the stack, reusing the galaxy's own glow sprite.
-  const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: _galaxyGlowTexture(),
-    color: 0x2f8ae8, transparent: true, opacity: 0.62, depthWrite: false,
+  // ---- the shield: the hub, and the only thing lit ---------------------------------------------
+  const shieldShape = new THREE.Shape();
+  shieldShape.moveTo(0, 3.2);
+  shieldShape.lineTo(2.5, 2.05); shieldShape.lineTo(2.5, -0.55);
+  shieldShape.quadraticCurveTo(2.5, -2.7, 0, -3.5);
+  shieldShape.quadraticCurveTo(-2.5, -2.7, -2.5, -0.55);
+  shieldShape.lineTo(-2.5, 2.05); shieldShape.closePath();
+  const shield = new THREE.Mesh(
+    new THREE.ExtrudeGeometry(shieldShape, { depth: 0.5, bevelEnabled: true, bevelSize: 0.1,
+                                             bevelThickness: 0.1, bevelSegments: 3, curveSegments: 24 }),
+    new THREE.MeshStandardMaterial({ color: 0x5cc9ff, emissive: 0x1d7fd8, emissiveIntensity: 0.8,
+                                     metalness: 0.15, roughness: 0.26 }));
+  shield.name = 'shield';
+  shield.position.set(0, -0.3, 1.5); shield.scale.setScalar(0.88);
+  shield.material.depthTest = false; shield.renderOrder = 10; still.add(shield);
+  const tick = new THREE.Mesh(new THREE.PlaneGeometry(2.7, 2.7),
+    new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false,
+      map: _about3dCanvasTex((x, w, h) => {
+        x.strokeStyle = '#ffffff'; x.lineWidth = w * 0.125;
+        x.lineCap = 'round'; x.lineJoin = 'round';
+        x.beginPath(); x.moveTo(w * 0.27, h * 0.52); x.lineTo(w * 0.45, h * 0.70);
+        x.lineTo(w * 0.75, h * 0.32); x.stroke();
+      }, 128) }));
+  tick.name = 'tick';
+  // Clear of the extruded face: depth plus bevel, then scaled.
+  tick.position.set(0, -0.2, 2.06); tick.scale.setScalar(0.88);
+  tick.material.depthTest = false; tick.renderOrder = 12; still.add(tick);
+  // The light is ON the shield now - a halo behind it and a lamp in front of it.
+  const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: _galaxyGlowTexture(),
+    color: 0x41b6ff, transparent: true, opacity: 0.5, depthWrite: false,
     blending: THREE.AdditiveBlending }));
-  glow.scale.set(34, 34, 1); glow.position.set(0, 0.3, -5); scene.add(glow);
+  halo.scale.set(13, 13, 1); halo.position.set(0, -0.3, 0.9);
+  halo.material.depthTest = false; halo.renderOrder = 9; still.add(halo);
+  const shieldLamp = new THREE.PointLight(0x6fd0ff, 1.7, 26); shieldLamp.position.set(0, 1.0, 8);
+  still.add(shieldLamp);
+
+  // A soft field behind the whole thing, much dimmer than the shield's own halo.
+  const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: _galaxyGlowTexture(),
+    color: 0x1e5fa8, transparent: true, opacity: 0.32, depthWrite: false,
+    blending: THREE.AdditiveBlending }));
+  glow.scale.set(36, 36, 1); glow.position.set(0, 0.2, -7); scene.add(glow);
 
   g.rotation.x = 0.16;
+  still.rotation.x = 0.16;
 
   // Same idle rate as the galaxy: one turn in about 65 seconds. Framerate-independent, and the
   // loop skips entirely while the About tab is closed - offsetParent is null for a hidden panel,
