@@ -6309,39 +6309,55 @@ function initAboutScene() {
   panel.position.set(ORBIT, 1.1, 0); panel.rotation.y = -0.30; g.add(panel);
 
   // ---- the shield: the hub, and the only thing lit ---------------------------------------------
+  // Two extrusions, not one: a light-blue outer and a smaller dark-blue inner sitting just in
+  // front of it, which is how the thick rim in the reference is made. A border cannot be a stroke
+  // here - there are no strokes in 3D - so it is the silhouette of the larger shape showing past
+  // the smaller one.
   const shieldShape = new THREE.Shape();
   shieldShape.moveTo(0, 3.2);
   shieldShape.lineTo(2.5, 2.05); shieldShape.lineTo(2.5, -0.55);
   shieldShape.quadraticCurveTo(2.5, -2.7, 0, -3.5);
   shieldShape.quadraticCurveTo(-2.5, -2.7, -2.5, -0.55);
   shieldShape.lineTo(-2.5, 2.05); shieldShape.closePath();
-  const shield = new THREE.Mesh(
-    new THREE.ExtrudeGeometry(shieldShape, { depth: 0.5, bevelEnabled: true, bevelSize: 0.1,
-                                             bevelThickness: 0.1, bevelSegments: 3, curveSegments: 24 }),
-    new THREE.MeshStandardMaterial({ color: 0x5cc9ff, emissive: 0x1d7fd8, emissiveIntensity: 0.8,
-                                     metalness: 0.15, roughness: 0.26 }));
+  const shieldGeo = (d) => new THREE.ExtrudeGeometry(shieldShape,
+    { depth: d, bevelEnabled: true, bevelSize: 0.1, bevelThickness: 0.1, bevelSegments: 3,
+      curveSegments: 24 });
+  const SHZ = 1.5, SHS = 0.88;
+
+  const shield = new THREE.Mesh(shieldGeo(0.5),
+    new THREE.MeshStandardMaterial({ color: 0x5a94b4, emissive: 0x0e3450, emissiveIntensity: 0.34,
+                                     metalness: 0.08, roughness: 0.42 }));
   shield.name = 'shield';
-  shield.position.set(0, -0.3, 1.5); shield.scale.setScalar(0.88);
-  shield.material.depthTest = false; shield.renderOrder = 10; still.add(shield);
-  const tick = new THREE.Mesh(new THREE.PlaneGeometry(2.7, 2.7),
+  shield.position.set(0, -0.3, SHZ); shield.scale.setScalar(SHS); still.add(shield);
+
+  // The dark face. 0.82 of the outer leaves a rim about a fifth of the shield's half-width, which
+  // is the weight it has in the reference.
+  const shieldInner = new THREE.Mesh(shieldGeo(0.42),
+    new THREE.MeshBasicMaterial({ color: 0x1b4fa0 }));
+  shieldInner.name = 'shieldInner';
+  shieldInner.position.set(0, -0.3, SHZ + 0.22); shieldInner.scale.setScalar(SHS * 0.82);
+  still.add(shieldInner);
+
+  const tick = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 2.4),
     new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false,
       map: _about3dCanvasTex((x, w, h) => {
-        x.strokeStyle = '#ffffff'; x.lineWidth = w * 0.125;
+        x.strokeStyle = '#ffffff'; x.lineWidth = w * 0.15;
         x.lineCap = 'round'; x.lineJoin = 'round';
-        x.beginPath(); x.moveTo(w * 0.27, h * 0.52); x.lineTo(w * 0.45, h * 0.70);
-        x.lineTo(w * 0.75, h * 0.32); x.stroke();
+        x.beginPath(); x.moveTo(w * 0.26, h * 0.52); x.lineTo(w * 0.45, h * 0.71);
+        x.lineTo(w * 0.76, h * 0.30); x.stroke();
       }, 128) }));
   tick.name = 'tick';
-  // Clear of the extruded face: depth plus bevel, then scaled.
-  tick.position.set(0, -0.2, 2.06); tick.scale.setScalar(0.88);
-  tick.material.depthTest = false; tick.renderOrder = 12; still.add(tick);
-  // The light is ON the shield now - a halo behind it and a lamp in front of it.
+  // Clear of the INNER face: extrusion grows along +Z by depth plus bevel, then scales.
+  tick.position.set(0, -0.35, SHZ + 0.22 + 0.62 * SHS * 0.82 + 0.06);
+  tick.scale.setScalar(SHS * 0.82); still.add(tick);
+
+  // The light is ON the shield - a halo behind it and a lamp in front of it. Both respect depth,
+  // like the shield itself, so the store passing in front of the hub genuinely covers it.
   const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: _galaxyGlowTexture(),
     color: 0x41b6ff, transparent: true, opacity: 0.5, depthWrite: false,
     blending: THREE.AdditiveBlending }));
-  halo.scale.set(13, 13, 1); halo.position.set(0, -0.3, 0.9);
-  halo.material.depthTest = false; halo.renderOrder = 9; still.add(halo);
-  const shieldLamp = new THREE.PointLight(0x6fd0ff, 1.7, 26); shieldLamp.position.set(0, 1.0, 8);
+  halo.scale.set(13, 13, 1); halo.position.set(0, -0.3, SHZ - 0.6); still.add(halo);
+  const shieldLamp = new THREE.PointLight(0xbfe4ff, 0.55, 26); shieldLamp.position.set(0, 1.0, 8);
   still.add(shieldLamp);
 
   // A soft field behind the whole thing, much dimmer than the shield's own halo.
