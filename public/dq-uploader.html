@@ -1361,7 +1361,15 @@
     color: var(--tr2-neon); margin: 0 0 12px; }
   /* Text from the TOP, art centred against it. Centring the whole row left a bank of empty space
      above the eyebrow whenever the card beside it was the taller of the two. */
-  .ab-mission { display: grid; grid-template-columns: minmax(0, 1fr) minmax(240px, min(400px, 38%)); gap: 20px;
+  /* The text column is CAPPED, not 1fr. As a free track it ran to 744px on a wide screen while
+     the copy inside it stops at 470, so the leftover sat as a hole between the words and the
+     picture and pushed the picture right. Capping it puts the two side by side with only the gap
+     between them, and the slack ends up at the outside edge where it reads as margin. */
+  /* 440 is measured, and it is the largest that works. Above it the lede falls to six lines on a
+     1200px screen, and it also starts upscaling a 435px source - at 440 the image renders at
+     essentially native resolution, which for a soft-glow illustration is the difference between
+     crisp and slightly smeared. */
+  .ab-mission { display: grid; grid-template-columns: minmax(0, 470px) minmax(250px, 440px); gap: 18px;
     align-items: start; background:
       radial-gradient(120% 100% at 100% 0%, color-mix(in srgb, var(--tr2-neon) 9%, transparent), transparent 60%),
       var(--card); }
