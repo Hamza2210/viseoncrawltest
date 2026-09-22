@@ -1362,15 +1362,20 @@
     color: var(--tr2-neon); margin: 0 0 12px; }
   /* Text from the TOP, art centred against it. Centring the whole row left a bank of empty space
      above the eyebrow whenever the card beside it was the taller of the two. */
-  .ab-mission { display: grid; grid-template-columns: minmax(0, 1fr) minmax(250px, 400px); gap: 20px;
+  .ab-mission { display: grid; grid-template-columns: minmax(0, 1fr) minmax(240px, min(400px, 38%)); gap: 20px;
     align-items: start; background:
       radial-gradient(120% 100% at 100% 0%, color-mix(in srgb, var(--tr2-neon) 9%, transparent), transparent 60%),
       var(--card); }
+  /* Measured, not guessed. On a wide screen the text column runs to ~740px and the lede fell to
+     three long lines; the sketch has five. 400-480px all give five, so 440 sits in the middle of
+     that band rather than on the edge of it. The paragraph is deliberately a little WIDER than
+     the lede - three lines against five is the shape the sketch has, and it is what stops the two
+     blocks reading as one ragged column. */
   .ab-lede { font-size: 22px; line-height: 1.35; font-weight: 800; letter-spacing: -.02em;
-    color: var(--text); margin: 0 0 16px; }
+    color: var(--text); margin: 0 0 16px; max-width: 440px; }
   .ab-lede em { font-style: normal; color: var(--tr2-neon); }
   .ab-mission p.ab-sub { margin: 0; color: var(--muted); font-size: 13.5px; line-height: 1.65;
-    max-width: 44ch; }
+    max-width: 470px; }
   /* A sized COLUMN rather than a fixed width plus a breakpoint: the art taking a real share of
      the row is what restricts the copy to the left, so the lede wraps taller and the card fills
      vertically instead of leaving a band of empty space under a short paragraph. Sizing it as a
@@ -1378,8 +1383,14 @@
      can be measured at any width, which a breakpoint cannot be. */
   .ab-art { width: 100%; align-self: center; }
   .ab-art img { width: 100%; height: auto; display: block; }
-  @media (max-width: 1150px) { .ab-top { grid-template-columns: 1fr; }
-    .ab-mission { grid-template-columns: 1fr; } .ab-art { display: none; } }
+  /* CONTAINER queries, on the panel. What decides whether the mission and the problem fit beside
+     each other is how wide the PANEL is, and the sidebar changes that without the viewport moving.
+     It is also the only form that can be driven in a test without resizing the browser, which is
+     how the side-by-side rule went unverified the first time. */
+  #aboutPanel { container-type: inline-size; }
+  @container (max-width: 1440px) { .ab-top { grid-template-columns: 1fr; } }
+  @container (max-width: 900px) { .ab-mission { grid-template-columns: 1fr; }
+    .ab-art { display: none; } }
 
   .ab-side { display: flex; flex-direction: column; gap: 14px; }
   .ab-hd { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 10px; }
