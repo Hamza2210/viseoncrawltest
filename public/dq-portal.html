@@ -890,9 +890,16 @@
   .inc-rail-sub { display: block; font-size: 11px; color: var(--muted); margin-top: 2px; }
   /* Severity as a count badge, not a word: the rail has to be scannable at a glance, and the
      worst thing about a dataset is how many blockers it has, not its name. */
-  .inc-pip { flex: none; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 6px;
-    display: grid; place-items: center; font-size: 11px; font-weight: 700; }
-  .inc-pip.blocker { color: #ffd5db; background: color-mix(in srgb, var(--err) 34%, transparent); }
+  .inc-pip { flex: none; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 7px;
+    display: grid; place-items: center; font-size: 11.5px; font-weight: 800;
+    font-variant-numeric: tabular-nums; }
+  /* SOLID red, not a tint. This number is the one thing in the rail that says "look here first",
+     and a 34% wash of it on a navy card read as another grey chip at a glance - which is the
+     opposite of what a blocker count is for. Amber stays a tint deliberately: if both were solid
+     neither would stand out, and the blocker is the one that has to win. */
+  .inc-pip.blocker { color: #fff; background: var(--err);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--err) 55%, transparent),
+                0 2px 8px -2px color-mix(in srgb, var(--err) 70%, transparent); }
   .inc-pip.major   { color: #ffe6bd; background: color-mix(in srgb, var(--amber, #fbbf24) 30%, transparent); }
   .inc-pip.clear   { color: var(--muted); background: var(--idle-bg); }
   .inc-detail-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
@@ -1011,10 +1018,15 @@
      The old shape was a picker beside a preview pane - selecting on the left and reading on the
      right made the eye cross the page for every tag, and left the bottom half of the tab empty. */
 
-  .tr2-head { display: flex; align-items: flex-start; gap: 20px; margin: 0 0 18px; }
-  .tr2-head-l { display: flex; gap: 14px; flex: 1; min-width: 0; }
-  .tr2-head h2 { margin: 0 0 4px; font-size: 22px; }
-  .tr2-head p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.6; max-width: 66ch; }
+  /* The tab header: a neon outline icon beside the title and its one-line explanation. Shared
+     with Incidents (.tab-head) so the tabs read as one system rather than two designs - which is
+     the whole reason it is a named pair and not a style typed twice. */
+  .tr2-head, .tab-head { display: flex; align-items: flex-start; gap: 20px; margin: 0 0 18px; }
+  .tr2-head-l, .tab-head-l { display: flex; gap: 14px; flex: 1; min-width: 0; }
+  .tr2-head h2, .tab-head h2 { margin: 0 0 4px; font-size: 22px; }
+  .tr2-head p, .tab-head p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.6;
+    max-width: 66ch; }
+  .tab-head { position: relative; }
   /* The container icons are the sketch's one strong accent: a bare neon-blue OUTLINE in the
      top-left of each card, with no tile behind it. Deliberately NOT the theme accent - `--accent`
      also paints buttons, focus rings and links, so reusing it would make the icons read as
@@ -1022,9 +1034,9 @@
 
      They are STROKED SVG, not emoji. An emoji carries its own colour and ignores everything set
      here: the tag glyph rendered orange, which is the opposite of one accent. */
-  .tr2-badge { flex: none; display: grid; place-items: center; width: 34px; height: 34px;
+  .tr2-badge, .tab-ico { flex: none; display: grid; place-items: center; width: 34px; height: 34px;
     color: var(--tr2-neon); background: none; border: 0; box-shadow: none; }
-  .tr2-badge svg { width: 30px; height: 30px; }
+  .tr2-badge svg, .tab-ico svg { width: 30px; height: 30px; }
   /* Same box as .tr2-hd-ic so the two line up on the left edge of their cards, which is the
      whole point of the modifier. NOT called `.sm`: that is a global stat-tile utility and it was
      silently adding padding and a border here. */
@@ -2049,21 +2061,50 @@
   .mc-reqcols:focus { outline: none; border-color: var(--accent); }
   .mc-actions { display: flex; align-items: center; gap: 12px; margin-top: 2px; }
   /* Alert channels (Slack / Teams) */
-  .ac-form { display: flex; flex-direction: column; gap: 12px; max-width: 640px; }
-  .ac-row { display: flex; flex-direction: column; gap: 4px; }
+  .ac-hd { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 4px; }
+  .ac-hd h2 { margin: 0 0 2px; }
+  .ac-hd p { margin: 0; font-size: 12.5px; }
+  .tab-ico.sm { width: 26px; height: 26px; }
+  .tab-ico.sm svg { width: 22px; height: 22px; }
+  .ac-blurb { margin: 10px 0 16px; line-height: 1.6; }
+
+  /* Three blocks across: the two channels side by side, then the events and the actions. They
+     were a single narrow column, which made a card that is mostly empty on the right and put
+     Save a full scroll below the field it saves. */
+  .ac-form { display: grid; grid-template-columns: 1fr 1fr auto; gap: 14px 18px;
+    align-items: stretch; max-width: none; }
+  .ac-row { display: flex; align-items: flex-start; gap: 11px; padding: 12px 14px;
+    border: 1px solid var(--border); border-radius: 12px; background: var(--card-2); }
+  /* The brand mark identifies the field at a glance. Two identical text inputs differing only by
+     a word of label is the shape that gets a Teams URL pasted into the Slack box - and the error
+     only surfaces later, as an alert that never arrives. */
+  .ac-brand { flex: none; display: grid; place-items: center; width: 34px; height: 34px;
+    border-radius: 9px; background: var(--card); border: 1px solid var(--border); }
+  .ac-brand svg { width: 21px; height: 21px; display: block; }
+  .ac-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
   .ac-label { font-size: 12px; font-weight: 600; color: var(--muted); }
   .ac-inrow { display: flex; align-items: center; gap: 8px; }
-  .ac-input { flex: 1; padding: 8px 11px; border-radius: 8px; border: 1px solid var(--border); background: var(--card-2); color: var(--text); font: inherit; font-size: 12.5px; }
+  .ac-input { flex: 1; min-width: 0; padding: 8px 11px; border-radius: 8px; border: 1px solid var(--border); background: var(--card); color: var(--text); font: inherit; font-size: 12.5px; }
   .ac-input:focus { outline: none; border-color: var(--accent); }
   .ac-remove { flex: none; cursor: pointer; font-size: 11.5px; padding: 6px 11px; border-radius: 8px;
     border: 1px solid color-mix(in srgb, var(--err) 40%, var(--border)); background: transparent; color: #ff9090; }
   .ac-remove:hover { background: color-mix(in srgb, var(--err) 14%, transparent); border-color: var(--err); }
-  .ac-events { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
-  .ac-chk { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text); cursor: pointer; }
+  .ac-events { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px;
+    border: 1px solid var(--border); border-radius: 12px; background: var(--card-2); }
+  .ac-chks { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  .ac-chk { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text); cursor: pointer; white-space: nowrap; }
   .ac-chk input { accent-color: var(--accent); width: 15px; height: 15px; }
-  .ac-actions { display: flex; align-items: center; gap: 12px; margin-top: 2px; }
+  .ac-actions { display: flex; align-items: center; gap: 12px; align-self: center; }
   #acStatus { font-size: 11.5px; }
+  /* The toggle carries the bell and a caret that flips, so the button says whether the panel it
+     controls is open - it was a static label that looked the same either way. */
+  .ac-toggle { display: inline-flex; align-items: center; gap: 7px; }
+  .ac-toggle svg { width: 15px; height: 15px; }
+  .ac-caret { font-size: 11px; opacity: .8; transition: transform var(--dq-move) var(--dq-ease);
+    display: inline-block; }
   #acToggle.active { border-color: var(--accent); color: var(--text); }
+  #acToggle.active .ac-caret { transform: rotate(180deg); }
+  @media (max-width: 1100px) { .ac-form { grid-template-columns: 1fr; } .ac-actions { align-self: start; } }
   .inc-search { width: 100%; max-width: 440px; margin: 2px 0 14px; padding: 8px 12px; border-radius: 8px;
     border: 1px solid var(--border); background: var(--card-2); color: var(--text); font: inherit; font-size: 13px; box-sizing: border-box; }
   .inc-search:focus { outline: none; border-color: var(--accent); }
@@ -3029,25 +3070,47 @@
 
   <!-- ============ INCIDENTS ============ -->
   <div id="incidentsPanel" style="display:none;">
-    <div class="tab-intro" style="position:relative;">
-      <h2>Incidents</h2>
-      <p>Recurring quality alerts, grouped into tracked issues, opened when a dataset first breaches its expected range, recovered when it returns to normal.</p>
-      <button type="button" class="btn-sm" id="acToggle" style="position:absolute;top:2px;right:0;">🔔 Alert channels</button>
+    <div class="tab-head">
+      <div class="tab-head-l">
+        <span class="tab-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21.5s7.5-3.8 7.5-9.5V5.2L12 2.5 4.5 5.2v6.8c0 5.7 7.5 9.5 7.5 9.5z"/><path d="M12 8.2v4.4"/><path d="M12 15.6v.05"/></svg></span>
+        <div>
+          <h2>Incidents</h2>
+          <p>Recurring quality alerts, grouped into tracked issues, opened when a dataset first
+             breaches its expected range, recovered when it returns to normal.</p>
+        </div>
+      </div>
+      <button type="button" class="btn-sm ac-toggle" id="acToggle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8.8a6 6 0 1 0-12 0c0 6-2.2 7.7-2.2 7.7h16.4S18 14.8 18 8.8z"/><path d="M13.7 20.3a2 2 0 0 1-3.4 0"/></svg> Alert channels <span class="ac-caret">⌃</span></button>
     </div>
     <div class="card" id="alertChannelsCard" style="display:none;">
-      <h2>Alert channels <span class="hint" style="text-transform:none;letter-spacing:0;font-weight:400;margin-left:12px;">Slack / Teams</span></h2>
-      <p class="dash-muted" style="margin:4px 0 16px;line-height:1.6;">Post this <span class="scope-n">app</span>'s failures (opened incidents, recoveries, staleness) to a chat channel - each message shows the <span class="scope-n">app</span>, dataset, score, reasons, owner, and a link.<br>Paste an incoming-webhook URL. <span style="opacity:.8;">Point multiple <span class="scope-n">app</span>s at the same webhook to share one channel.</span></p>
+      <div class="ac-hd">
+        <span class="tab-ico sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8.8a6 6 0 1 0-12 0c0 6-2.2 7.7-2.2 7.7h16.4S18 14.8 18 8.8z"/><path d="M13.7 20.3a2 2 0 0 1-3.4 0"/></svg></span>
+        <div><h2>Alert channels</h2>
+          <p class="dash-muted">Configure how and when you receive incident notifications.</p></div>
+      </div>
+      <p class="dash-muted ac-blurb">Post this <span class="scope-n">app</span>'s failures (opened
+        incidents, recoveries, staleness) to a chat channel - each message shows the
+        <span class="scope-n">app</span>, dataset, score, reasons, owner, and a link. Paste an
+        incoming-webhook URL. <span style="opacity:.8;">Point multiple
+        <span class="scope-n">app</span>s at the same webhook to share one channel.</span></p>
       <div class="ac-form">
-        <label class="ac-row"><span class="ac-label">🔷 Slack webhook</span>
-          <span class="ac-inrow"><input type="text" id="acSlack" class="ac-input" placeholder="https://hooks.slack.com/services/…" autocomplete="off">
-          <button type="button" class="ac-remove" id="acRemoveSlack" style="display:none;" data-tip="Stop sending to Slack">✕ Remove</button></span></label>
-        <label class="ac-row"><span class="ac-label">🟦 Teams webhook</span>
-          <span class="ac-inrow"><input type="text" id="acTeams" class="ac-input" placeholder="https://…webhook.office.com/…" autocomplete="off">
-          <button type="button" class="ac-remove" id="acRemoveTeams" style="display:none;" data-tip="Stop sending to Teams">✕ Remove</button></span></label>
+        <!-- Each channel wears its own mark. Two identical text fields differing only by their
+             label is the shape that gets a Teams URL pasted into the Slack box. -->
+        <label class="ac-row">
+          <span class="ac-brand"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#36C5F0" d="M8.1 14.2a2 2 0 1 1-2-2h2zm1 0a2 2 0 0 1 4 0v5a2 2 0 1 1-4 0z"/><path fill="#2EB67D" d="M9.8 6.1a2 2 0 1 1 2 2h-2zm0 1a2 2 0 0 1 0 4h-5a2 2 0 1 1 0-4z"/><path fill="#ECB22E" d="M17.9 9.8a2 2 0 1 1 2 2h-2zm-1 0a2 2 0 0 1-4 0v-5a2 2 0 1 1 4 0z"/><path fill="#E01E5A" d="M16.2 17.9a2 2 0 1 1-2-2h2zm0-1a2 2 0 0 1 0-4h5a2 2 0 1 1 0 4z"/></svg></span>
+          <span class="ac-body"><span class="ac-label">Slack workspace</span>
+            <span class="ac-inrow"><input type="text" id="acSlack" class="ac-input" placeholder="https://hooks.slack.com/services/…" autocomplete="off">
+            <button type="button" class="ac-remove" id="acRemoveSlack" style="display:none;" data-tip="Stop sending to Slack">✕ Remove</button></span></span></label>
+        <label class="ac-row">
+          <span class="ac-brand"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.2" y="5" width="12.6" height="14" rx="2.2" fill="#5059C9"/><path d="M5 8.6h7.1v1.9H9.7v6.1H7.4v-6.1H5z" fill="#fff"/><circle cx="18.4" cy="6.6" r="2.4" fill="#7B83EB"/><path d="M16.3 10.4h4.1a1.4 1.4 0 0 1 1.4 1.4v3.4a3.5 3.5 0 0 1-3.5 3.5 3.5 3.5 0 0 1-2-.6z" fill="#7B83EB"/></svg></span>
+          <span class="ac-body"><span class="ac-label">Teams webhook</span>
+            <span class="ac-inrow"><input type="text" id="acTeams" class="ac-input" placeholder="https://…webhook.office.com/…" autocomplete="off">
+            <button type="button" class="ac-remove" id="acRemoveTeams" style="display:none;" data-tip="Stop sending to Teams">✕ Remove</button></span></span></label>
         <div class="ac-events"><span class="ac-label">Send on</span>
-          <label class="ac-chk"><input type="checkbox" id="acEvOpened" checked> Incident opened</label>
-          <label class="ac-chk"><input type="checkbox" id="acEvResolved" checked> Recovered</label>
-          <label class="ac-chk"><input type="checkbox" id="acEvStale" checked> Staleness</label>
+          <div class="ac-chks">
+            <label class="ac-chk"><input type="checkbox" id="acEvOpened" checked> Incident opened</label>
+            <label class="ac-chk"><input type="checkbox" id="acEvResolved" checked> Recovered</label>
+            <label class="ac-chk"><input type="checkbox" id="acEvStale" checked> Staleness</label>
+          </div>
         </div>
         <div class="ac-actions">
           <button type="button" id="acSave">Save</button>
