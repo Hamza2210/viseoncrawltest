@@ -6226,7 +6226,7 @@ function initAboutScene() {
 
   const scene = new THREE.Scene();
   const cam = new THREE.PerspectiveCamera(34, W / H, 0.1, 200);
-  cam.position.set(0, 8.2, 25.5); cam.lookAt(0, 0.4, 0);
+  cam.position.set(1.5, 9.4, 30.0); cam.lookAt(1.5, 0.2, 0);
 
   scene.add(new THREE.AmbientLight(0x6f9fd8, 0.85));
   const key = new THREE.DirectionalLight(0xdff0ff, 1.25); key.position.set(6, 12, 9); scene.add(key);
@@ -6236,23 +6236,50 @@ function initAboutScene() {
   ABOUT3D.group = g; ABOUT3D.renderer = r; ABOUT3D.scene = scene; ABOUT3D.camera = cam;
   ABOUT3D.host = host; ABOUT3D.img = img;
 
-  // The store: four discs, brightest at the top, with a lit rim on each so the stack reads as
-  // stacked rather than as one cylinder.
+  // The three objects sit APART, as they do in the still: the store left of centre, the shield
+  // clipping only the corner of its base, the panel clear of both. The first pass had all three
+  // on top of each other, which is what made it read as one squashed lump.
+  const STORE_X = -2.6;
+
+  // ---- the holographic staging ---------------------------------------------------------------
+  // Translucent slabs and outlines, which is most of what makes the still look like a rendering
+  // rather than a clip-art stack. Drawn first so everything else sits in front of them.
+  const paneMat = (op) => new THREE.MeshBasicMaterial({ color: 0x3f8fe0, transparent: true,
+    opacity: op, side: THREE.DoubleSide, depthWrite: false });
+  const edgeMat = new THREE.LineBasicMaterial({ color: 0x8fd4ff, transparent: true, opacity: 0.55 });
+  const slab = (w, h, op) => {
+    const grp = new THREE.Group();
+    grp.add(new THREE.Mesh(new THREE.PlaneGeometry(w, h), paneMat(op)));
+    const pts = [[-w / 2, -h / 2], [w / 2, -h / 2], [w / 2, h / 2], [-w / 2, h / 2], [-w / 2, -h / 2]]
+      .map(([x, y]) => new THREE.Vector3(x, y, 0));
+    grp.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), edgeMat));
+    return grp;
+  };
+  // The platform the store stands on, lying flat.
+  const base = slab(13.5, 13.5, 0.14);
+  base.rotation.x = -Math.PI / 2; base.position.set(STORE_X, -3.5, 0); g.add(base);
+  const base2 = slab(10.5, 10.5, 0.10);
+  base2.rotation.x = -Math.PI / 2; base2.position.set(STORE_X, -1.2, 0); g.add(base2);
+  // Two upright panes behind the panel, the faint rectangles in the still.
+  const pane1 = slab(9, 7.5, 0.11); pane1.position.set(6.2, 3.6, -5.2); pane1.rotation.y = -0.34; g.add(pane1);
+  const pane2 = slab(7, 6, 0.09); pane2.position.set(10.5, 1.4, -3.0); pane2.rotation.y = -0.34; g.add(pane2);
+
+  // ---- the store ------------------------------------------------------------------------------
   const discMat = new THREE.MeshStandardMaterial({ color: 0x2775d8, emissive: 0x0d3a76,
     emissiveIntensity: 0.45, metalness: 0.22, roughness: 0.42 });
   const topMat = new THREE.MeshStandardMaterial({ color: 0x53aef0, emissive: 0x1e6ec4,
     emissiveIntensity: 0.55, metalness: 0.28, roughness: 0.34 });
   for (let i = 0; i < 4; i++) {
-    const disc = new THREE.Mesh(new THREE.CylinderGeometry(4.1, 4.1, 1.15, 64),
+    const disc = new THREE.Mesh(new THREE.CylinderGeometry(3.9, 3.9, 1.1, 64),
                                 i === 3 ? topMat : discMat);
-    disc.position.y = -2.1 + i * 1.42; g.add(disc);
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(4.12, 0.055, 8, 72),
-      new THREE.MeshBasicMaterial({ color: 0xbfeaff, transparent: true, opacity: 0.75 }));
-    ring.rotation.x = Math.PI / 2; ring.position.y = disc.position.y + 0.58; g.add(ring);
+    disc.position.set(STORE_X, -2.2 + i * 1.36, 0); g.add(disc);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(3.92, 0.05, 8, 72),
+      new THREE.MeshBasicMaterial({ color: 0xbfeaff, transparent: true, opacity: 0.7 }));
+    ring.rotation.x = Math.PI / 2; ring.position.set(STORE_X, disc.position.y + 0.55, 0); g.add(ring);
   }
 
-  // The shield, in front and to the right, with its tick drawn as a texture - crisper at this
-  // size than geometry, and it stays crisp because the camera never gets close.
+  // ---- the shield -----------------------------------------------------------------------------
+  // In FRONT of the store and clear to its right, overlapping only the bottom corner.
   const shieldShape = new THREE.Shape();
   shieldShape.moveTo(0, 3.2);
   shieldShape.lineTo(2.5, 2.05); shieldShape.lineTo(2.5, -0.55);
@@ -6260,47 +6287,58 @@ function initAboutScene() {
   shieldShape.quadraticCurveTo(-2.5, -2.7, -2.5, -0.55);
   shieldShape.lineTo(-2.5, 2.05); shieldShape.closePath();
   const shield = new THREE.Mesh(
-    new THREE.ExtrudeGeometry(shieldShape, { depth: 0.55, bevelEnabled: true, bevelSize: 0.12,
-                                             bevelThickness: 0.12, bevelSegments: 3, curveSegments: 24 }),
-    new THREE.MeshStandardMaterial({ color: 0x6fd9f5, emissive: 0x1a76c8, emissiveIntensity: 0.55,
-                                     metalness: 0.2, roughness: 0.28 }));
-  shield.position.set(2.8, -1.0, 3.3); shield.scale.setScalar(0.88); g.add(shield);
-  const tick = new THREE.Mesh(new THREE.PlaneGeometry(3.0, 3.0),
+    new THREE.ExtrudeGeometry(shieldShape, { depth: 0.5, bevelEnabled: true, bevelSize: 0.1,
+                                             bevelThickness: 0.1, bevelSegments: 3, curveSegments: 24 }),
+    new THREE.MeshStandardMaterial({ color: 0x6fe3e8, emissive: 0x1c8fb4, emissiveIntensity: 0.5,
+                                     metalness: 0.18, roughness: 0.3 }));
+  shield.name = 'shield';
+  shield.position.set(1.5, -1.7, 4.6); shield.scale.setScalar(0.82); g.add(shield);
+  const tick = new THREE.Mesh(new THREE.PlaneGeometry(2.7, 2.7),
     new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false,
       map: _about3dCanvasTex((x, w, h) => {
-        x.strokeStyle = '#ffffff'; x.lineWidth = w * 0.13;
+        x.strokeStyle = '#eafcff'; x.lineWidth = w * 0.125;
         x.lineCap = 'round'; x.lineJoin = 'round';
-        x.beginPath(); x.moveTo(w * 0.26, h * 0.52); x.lineTo(w * 0.44, h * 0.70);
-        x.lineTo(w * 0.76, h * 0.32); x.stroke();
+        x.beginPath(); x.moveTo(w * 0.27, h * 0.52); x.lineTo(w * 0.45, h * 0.70);
+        x.lineTo(w * 0.75, h * 0.32); x.stroke();
       }, 128) }));
-  tick.position.set(2.8, -0.9, 3.95); tick.scale.setScalar(0.88); g.add(tick);
+  // In FRONT of the shield's extruded face, not level with it. ExtrudeGeometry grows along +Z by
+  // depth plus the bevel, and that lot is then scaled - so the face lands at roughly 4.6 + 0.6 *
+  // 0.82 = 5.09 and a tick at 5.05 sat just inside the solid, invisible.
+  tick.name = 'tick';
+  tick.position.set(1.5, -1.6, 5.32); tick.scale.setScalar(0.82); g.add(tick);
 
-  // The record panel: one plane carrying the rows as a texture, so four coloured dots and their
-  // bars cost one draw call instead of sixteen meshes.
-  const panel = new THREE.Mesh(new THREE.PlaneGeometry(8.6, 7.2),
+  // ---- the record panel -----------------------------------------------------------------------
+  // TWO columns of coloured rows, as in the still. The first pass drew one faint column, which is
+  // why the colour appeared to have been lost - it was there, just small and dim.
+  const panel = new THREE.Mesh(new THREE.PlaneGeometry(9.6, 7.0),
     new THREE.MeshBasicMaterial({ transparent: true, side: THREE.DoubleSide, depthWrite: false,
       map: _about3dCanvasTex((x, w, h) => {
         const rr = (px, py, pw, ph, rad) => { x.beginPath(); x.moveTo(px + rad, py);
           x.arcTo(px + pw, py, px + pw, py + ph, rad); x.arcTo(px + pw, py + ph, px, py + ph, rad);
           x.arcTo(px, py + ph, px, py, rad); x.arcTo(px, py, px + pw, py, rad); x.closePath(); };
-        x.fillStyle = 'rgba(14,28,56,0.94)'; rr(4, 4, w - 8, h - 8, 26); x.fill();
-        x.strokeStyle = 'rgba(80,140,220,0.85)'; x.lineWidth = 3; x.stroke();
-        const dots = ['#4da3ff', '#34d399', '#fbbf24', '#fb7185'];
-        const lens = [0.62, 0.50, 0.57, 0.43];
-        dots.forEach((col, i) => {
-          const cy = 62 + i * 58;
-          x.fillStyle = col; x.beginPath(); x.arc(46, cy, 11, 0, Math.PI * 2); x.fill();
-          x.fillStyle = 'rgba(46,80,142,0.95)';
-          rr(70, cy - 8, (w - 110) * lens[i], 17, 8); x.fill();
-        });
-      }, 300, 256) }));
-  panel.position.set(7.2, 1.3, -1.2); panel.rotation.y = -0.40; g.add(panel);
+        x.fillStyle = 'rgba(19,42,84,0.93)'; rr(5, 5, w - 10, h - 10, 34); x.fill();
+        x.strokeStyle = 'rgba(120,190,255,0.9)'; x.lineWidth = 4; x.stroke();
+        const left = ['#4da3ff', '#8be36a', '#ffd23f', '#ff5f7e'];
+        const right = ['#4da3ff', '#34d399', '#34d399', '#ffb03a'];
+        const barL = [0.78, 0.62, 0.70, 0.55], barR = [0.72, 0.58, 0.66, 0.50];
+        const colW = (w - 120) / 2;
+        for (let i = 0; i < 4; i++) {
+          const cy = 78 + i * 74;
+          x.fillStyle = left[i]; x.beginPath(); x.arc(52, cy, 13, 0, Math.PI * 2); x.fill();
+          x.fillStyle = 'rgba(90,150,235,0.95)'; rr(76, cy - 9, colW * barL[i], 19, 9); x.fill();
+          const rx = 76 + colW + 40;
+          x.fillStyle = right[i]; x.beginPath(); x.arc(rx, cy, 11, 0, Math.PI * 2); x.fill();
+          x.fillStyle = 'rgba(90,150,235,0.95)'; rr(rx + 22, cy - 9, colW * barR[i] * 0.72, 19, 9); x.fill();
+        }
+      }, 460, 340) }));
+  panel.name = 'panel';
+  panel.position.set(8.6, 0.9, 0.6); panel.rotation.y = -0.34; g.add(panel);
 
   // Ambient bloom behind the stack, reusing the galaxy's own glow sprite.
   const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: _galaxyGlowTexture(),
     color: 0x2f8ae8, transparent: true, opacity: 0.62, depthWrite: false,
     blending: THREE.AdditiveBlending }));
-  glow.scale.set(32, 32, 1); glow.position.set(0, 0.3, -4); scene.add(glow);
+  glow.scale.set(34, 34, 1); glow.position.set(0, 0.3, -5); scene.add(glow);
 
   g.rotation.x = 0.16;
 
