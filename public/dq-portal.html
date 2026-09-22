@@ -512,7 +512,14 @@
   .dimavg td { padding: 6px 8px; border-bottom: 1px solid var(--border); font-size: 13px; }
 
   /* Wide-tab intro header (title + lead line, sits above a tab's content) */
-  .tab-intro { margin: 2px 0 20px; }
+  /* Every tab opens the same way: an icon, the title, and one line on what the tab is for.
+     A GRID rather than a wrapper div, so the icon is a single extra child in each panel's existing
+     markup - the h2 and p stay exactly where they were, and a panel that also carries an action
+     button keeps it. The icon spans both rows so it sits against the title, not the paragraph. */
+  .tab-intro { margin: 2px 0 20px; display: grid; grid-template-columns: auto 1fr;
+    column-gap: 13px; align-items: start; }
+  .tab-intro > .tab-ico { grid-column: 1; grid-row: 1 / -1; margin-top: 1px; }
+  .tab-intro > *:not(.tab-ico) { grid-column: 2; }
   .tab-intro h2 { font-size: 24px; font-weight: 800; text-transform: none; letter-spacing: -.02em;
     color: var(--text); margin: 0 0 5px; display: block; }
   .tab-intro p { color: var(--muted); font-size: 13.5px; margin: 0; max-width: 760px; line-height: 1.5; }
@@ -1018,15 +1025,13 @@
      The old shape was a picker beside a preview pane - selecting on the left and reading on the
      right made the eye cross the page for every tag, and left the bottom half of the tab empty. */
 
-  /* The tab header: a neon outline icon beside the title and its one-line explanation. Shared
-     with Incidents (.tab-head) so the tabs read as one system rather than two designs - which is
-     the whole reason it is a named pair and not a style typed twice. */
-  .tr2-head, .tab-head { display: flex; align-items: flex-start; gap: 20px; margin: 0 0 18px; }
-  .tr2-head-l, .tab-head-l { display: flex; gap: 14px; flex: 1; min-width: 0; }
-  .tr2-head h2, .tab-head h2 { margin: 0 0 4px; font-size: 22px; }
-  .tr2-head p, .tab-head p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.6;
-    max-width: 66ch; }
-  .tab-head { position: relative; }
+  /* Assess by tag keeps its own header because it carries a stat card on the right; everything
+     else - including Incidents - uses .tab-intro. The ICON rules are shared either way, so the
+     two cannot drift apart on the thing that makes them look like one product. */
+  .tr2-head { display: flex; align-items: flex-start; gap: 20px; margin: 0 0 18px; }
+  .tr2-head-l { display: flex; gap: 14px; flex: 1; min-width: 0; }
+  .tr2-head h2 { margin: 0 0 4px; font-size: 22px; }
+  .tr2-head p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.6; max-width: 66ch; }
   /* The container icons are the sketch's one strong accent: a bare neon-blue OUTLINE in the
      top-left of each card, with no tile behind it. Deliberately NOT the theme accent - `--accent`
      also paints buttons, focus rings and links, so reusing it would make the icons read as
@@ -1034,14 +1039,14 @@
 
      They are STROKED SVG, not emoji. An emoji carries its own colour and ignores everything set
      here: the tag glyph rendered orange, which is the opposite of one accent. */
-  .tr2-badge, .tab-ico { flex: none; display: grid; place-items: center; width: 34px; height: 34px;
+  .tr2-badge, .tab-ico { flex: none; display: grid; place-items: center; width: 30px; height: 30px;
     color: var(--tr2-neon); background: none; border: 0; box-shadow: none; }
-  .tr2-badge svg, .tab-ico svg { width: 30px; height: 30px; }
+  .tr2-badge svg, .tab-ico svg { width: 30px; height: 30px; display: block; }
   /* Same box as .tr2-hd-ic so the two line up on the left edge of their cards, which is the
      whole point of the modifier. NOT called `.sm`: that is a global stat-tile utility and it was
      silently adding padding and a border here. */
   .tr2-badge.tr2-sm { width: 24px; height: 24px; }
-  .tr2-badge.tr2-sm svg { width: 22px; height: 22px; }
+  .tr2-badge.tr2-sm svg { width: 24px; height: 24px; }
   .tr2-stat { flex: none; display: flex; align-items: center; gap: 11px; padding: 11px 16px;
     border: 1px solid var(--border); border-radius: 12px; background: var(--card); }
   .tr2-stat-ic { display: grid; place-items: center; color: var(--tr2-neon); }
@@ -1089,7 +1094,7 @@
      way, which is what makes them read as a set rather than three unrelated cards. */
   .tr2-hd-ic { flex: none; display: grid; place-items: center; width: 24px; height: 24px;
     color: var(--tr2-neon); background: none; border: 0; box-shadow: none; }
-  .tr2-hd-ic svg { width: 22px; height: 22px; }
+  .tr2-hd-ic svg { width: 24px; height: 24px; display: block; }
   .tr2-hd-t { font-size: 16px; font-weight: 700; }
   .tr2-hd-spacer { flex: 1 1 auto; }
   /* The tag-wide action stays in the card HEADER, top-right: it acts on the whole container, so
@@ -2061,19 +2066,19 @@
   .mc-reqcols:focus { outline: none; border-color: var(--accent); }
   .mc-actions { display: flex; align-items: center; gap: 12px; margin-top: 2px; }
   /* Alert channels (Slack / Teams) */
-  .ac-hd { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 4px; }
+  .ac-hd { display: flex; align-items: flex-start; gap: 13px; margin-bottom: 4px; }
   .ac-hd h2 { margin: 0 0 2px; }
   .ac-hd p { margin: 0; font-size: 12.5px; }
-  .tab-ico.sm { width: 26px; height: 26px; }
-  .tab-ico.sm svg { width: 22px; height: 22px; }
   .ac-blurb { margin: 10px 0 16px; line-height: 1.6; }
 
-  /* Three blocks across: the two channels side by side, then the events and the actions. They
-     were a single narrow column, which made a card that is mostly empty on the right and put
-     Save a full scroll below the field it saves. */
-  .ac-form { display: grid; grid-template-columns: 1fr 1fr auto; gap: 14px 18px;
-    align-items: stretch; max-width: none; }
-  .ac-row { display: flex; align-items: flex-start; gap: 11px; padding: 12px 14px;
+  /* FOUR blocks on ONE row: the two channels, the events, then Save. With the actions on a
+     second line the card read as two unrelated halves, and Save sat under the events rather than
+     beside the fields it saves. The channels take the slack (1fr each) and the last two columns
+     size to their content, so the inputs are whatever is left - which is plenty for a URL that is
+     elided anyway. */
+  .ac-form { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto auto;
+    gap: 12px; align-items: stretch; max-width: none; }
+  .ac-row { display: flex; align-items: flex-start; gap: 10px; padding: 11px 12px; min-width: 0;
     border: 1px solid var(--border); border-radius: 12px; background: var(--card-2); }
   /* The brand mark identifies the field at a glance. Two identical text inputs differing only by
      a word of label is the shape that gets a Teams URL pasted into the Slack box - and the error
@@ -2089,12 +2094,14 @@
   .ac-remove { flex: none; cursor: pointer; font-size: 11.5px; padding: 6px 11px; border-radius: 8px;
     border: 1px solid color-mix(in srgb, var(--err) 40%, var(--border)); background: transparent; color: #ff9090; }
   .ac-remove:hover { background: color-mix(in srgb, var(--err) 14%, transparent); border-color: var(--err); }
-  .ac-events { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px;
+  .ac-events { display: flex; flex-direction: column; gap: 8px; padding: 11px 12px;
     border: 1px solid var(--border); border-radius: 12px; background: var(--card-2); }
-  .ac-chks { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  .ac-chks { display: flex; align-items: center; gap: 14px; }
   .ac-chk { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text); cursor: pointer; white-space: nowrap; }
   .ac-chk input { accent-color: var(--accent); width: 15px; height: 15px; }
-  .ac-actions { display: flex; align-items: center; gap: 12px; align-self: center; }
+  /* Centred against the channel rows beside it rather than pinned to the top of the grid cell -
+     the buttons are one line tall and the rows are three. */
+  .ac-actions { display: flex; align-items: center; gap: 10px; align-self: center; }
   #acStatus { font-size: 11.5px; }
   /* The toggle carries the bell and a caret that flips, so the button says whether the panel it
      controls is open - it was a static label that looked the same either way. */
@@ -2104,7 +2111,19 @@
     display: inline-block; }
   #acToggle.active { border-color: var(--accent); color: var(--text); }
   #acToggle.active .ac-caret { transform: rotate(180deg); }
-  @media (max-width: 1100px) { .ac-form { grid-template-columns: 1fr; } .ac-actions { align-self: start; } }
+  /* A CONTAINER query, not a media query. What decides whether four columns fit is how wide this
+     CARD is, and that is not the viewport: the sidebar, the page padding and the maximised-galaxy
+     toggle all change it independently. A viewport breakpoint gets this wrong in both directions,
+     and it cannot be measured without resizing the whole browser.
+
+     The threshold is measured, not guessed: four columns share one row and overflow nothing from
+     about 930px of card width up, but the URL field is down to ~50px there. 1130 is where it is
+     still worth reading, so below that the events and the actions drop to a second row rather
+     than squeezing the fields they sit beside. */
+  #alertChannelsCard { container-type: inline-size; }
+  @container (max-width: 1130px) { .ac-form { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+    .ac-actions { align-self: start; } }
+  @container (max-width: 560px) { .ac-form { grid-template-columns: 1fr; } }
   .inc-search { width: 100%; max-width: 440px; margin: 2px 0 14px; padding: 8px 12px; border-radius: 8px;
     border: 1px solid var(--border); background: var(--card-2); color: var(--text); font: inherit; font-size: 13px; box-sizing: border-box; }
   .inc-search:focus { outline: none; border-color: var(--accent); }
@@ -2403,6 +2422,7 @@
   <div id="uploadPanel">
     <div class="banner" id="banner"></div>
     <div class="tab-intro">
+      <span class="tab-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="5.6" rx="7.8" ry="2.9"/><path d="M4.2 5.6v12.8c0 1.6 3.5 2.9 7.8 2.9s7.8-1.3 7.8-2.9V5.6"/><path d="M4.2 12c0 1.6 3.5 2.9 7.8 2.9s7.8-1.3 7.8-2.9"/></svg></span>
       <h2>Data from Source</h2>
       <p>Pick where your data lives, point us at it, and score it against the DAMA data-quality dimensions. The run report, scores and failed records are saved and appear in History.</p>
     </div>
@@ -2901,6 +2921,7 @@
   <!-- ============ PROFILE (portal only) ============ -->
   <div id="profilePanel" style="display:none;">
     <div class="tab-intro">
+      <span class="tab-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8.2" r="3.7"/><path d="M4.6 20.4a7.6 7.6 0 0 1 14.8 0"/></svg></span>
       <h2>Profile</h2>
       <p>Your portal account details.</p>
     </div>
@@ -2919,6 +2940,7 @@
   <!-- ============ AI ASSISTANT (MCP) ============ -->
   <div id="assistantPanel" style="display:none;">
     <div class="tab-intro">
+      <span class="tab-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 3.4l1.7 4.2 4.2 1.7-4.2 1.7L11 15.2l-1.7-4.2L5.1 9.3l4.2-1.7z"/><path d="M18.2 14.8l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z"/></svg></span>
       <h2>AI Assistant</h2>
       <p id="mcpIntro"><strong>Connect to our MCP</strong> from an AI assistant (such as Claude or ChatGPT), then just
         ask - &ldquo;what&rsquo;s the latest score for orders?&rdquo;, &ldquo;which datasets are failing
@@ -2968,6 +2990,7 @@
   <!-- ============ ABOUT ============ -->
   <div id="aboutPanel" style="display:none;">
     <div class="tab-intro">
+      <span class="tab-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11.2v5.4"/><path d="M12 7.8v.05"/></svg></span>
       <h2>About Data Assurance</h2>
       <p>What this platform is for, in one page.</p>
     </div>
@@ -3037,6 +3060,7 @@
   <!-- ============ HISTORY ============ -->
   <div id="historyPanel">
     <div class="tab-intro">
+      <span class="tab-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.6 12a8.4 8.4 0 1 0 2.5-6"/><path d="M3.3 4.4v4.1h4.1"/><path d="M12 7.7V12l3.1 1.9"/></svg></span>
       <h2>History</h2>
       <p id="historyIntro">Every assessment you've run, full-app health checks and individual dataset runs. Open any run to see its full report.</p>
     </div>
@@ -3070,20 +3094,17 @@
 
   <!-- ============ INCIDENTS ============ -->
   <div id="incidentsPanel" style="display:none;">
-    <div class="tab-head">
-      <div class="tab-head-l">
-        <span class="tab-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21.5s7.5-3.8 7.5-9.5V5.2L12 2.5 4.5 5.2v6.8c0 5.7 7.5 9.5 7.5 9.5z"/><path d="M12 8.2v4.4"/><path d="M12 15.6v.05"/></svg></span>
-        <div>
-          <h2>Incidents</h2>
-          <p>Recurring quality alerts, grouped into tracked issues, opened when a dataset first
-             breaches its expected range, recovered when it returns to normal.</p>
-        </div>
-      </div>
-      <button type="button" class="btn-sm ac-toggle" id="acToggle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8.8a6 6 0 1 0-12 0c0 6-2.2 7.7-2.2 7.7h16.4S18 14.8 18 8.8z"/><path d="M13.7 20.3a2 2 0 0 1-3.4 0"/></svg> Alert channels <span class="ac-caret">⌃</span></button>
+    <div class="tab-intro" style="position:relative;">
+      <span class="tab-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21.5s7.5-3.8 7.5-9.5V5.2L12 2.5 4.5 5.2v6.8c0 5.7 7.5 9.5 7.5 9.5z"/><path d="M12 8.2v4.4"/><path d="M12 15.6v.05"/></svg></span>
+      <h2>Incidents</h2>
+      <p>Recurring quality alerts, grouped into tracked issues, opened when a dataset first
+         breaches its expected range, recovered when it returns to normal.</p>
+      <button type="button" class="btn-sm ac-toggle" id="acToggle"
+              style="position:absolute;top:2px;right:0;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8.8a6 6 0 1 0-12 0c0 6-2.2 7.7-2.2 7.7h16.4S18 14.8 18 8.8z"/><path d="M13.7 20.3a2 2 0 0 1-3.4 0"/></svg> Alert channels <span class="ac-caret">⌃</span></button>
     </div>
     <div class="card" id="alertChannelsCard" style="display:none;">
       <div class="ac-hd">
-        <span class="tab-ico sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8.8a6 6 0 1 0-12 0c0 6-2.2 7.7-2.2 7.7h16.4S18 14.8 18 8.8z"/><path d="M13.7 20.3a2 2 0 0 1-3.4 0"/></svg></span>
+        <span class="tab-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8.8a6 6 0 1 0-12 0c0 6-2.2 7.7-2.2 7.7h16.4S18 14.8 18 8.8z"/><path d="M13.7 20.3a2 2 0 0 1-3.4 0"/></svg></span>
         <div><h2>Alert channels</h2>
           <p class="dash-muted">Configure how and when you receive incident notifications.</p></div>
       </div>
@@ -3137,6 +3158,7 @@
   <!-- ============ LINEAGE ============ -->
   <div id="lineagePanel" style="display:none;">
     <div class="tab-intro">
+      <span class="tab-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5.8" cy="12" r="2.5"/><circle cx="18.2" cy="6.6" r="2.5"/><circle cx="18.2" cy="17.4" r="2.5"/><path d="M8.1 10.9l7.8-3.3M8.1 13.1l7.8 3.3"/></svg></span>
       <h2>Data lineage</h2>
       <p id="linIntro">Where this app's data comes from (upstream sources) and what depends on it (downstream), traced from Qlik. Cached for 24h; use Refresh to re-pull.</p>
     </div>
@@ -3170,6 +3192,7 @@
   <!-- ============ SOURCE MONITORING ============ -->
   <div id="sourceWatchPanel" style="display:none;">
     <div class="tab-intro" style="position:relative;">
+      <span class="tab-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.6 12h3.9l2.4-6.9 4.4 13.8 2.4-6.9h5.7"/></svg></span>
       <h2>Source monitoring</h2>
       <p>Whether each source is still <strong>loading</strong>, checked in between assessments. Metadata only: the row count, the column list and the newest record's timestamp. No rows are read and no score is produced, so this is cheap enough to run hourly against a table you assess weekly.</p>
       <button type="button" class="btn-sm" id="watchRun" style="position:absolute;top:2px;right:0;">📡 Check now</button>
@@ -3200,6 +3223,7 @@
   <!-- ============ COMPLIANCE (estate-wide) ============ -->
   <div id="complianceTab" style="display:none;">
     <div class="tab-intro">
+      <span class="tab-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.2 4.6H7.6a2 2 0 0 0-2 2v11.9a2 2 0 0 0 2 2h8.8a2 2 0 0 0 2-2V6.6a2 2 0 0 0-2-2h-1.6"/><rect x="9.2" y="2.7" width="5.6" height="3.8" rx="1.2"/><path d="M9.5 13.3l2 2 3.5-3.8"/></svg></span>
       <h2>Compliance</h2>
       <p>Privacy &amp; regulatory-risk posture across this <span class="scope-n">app</span>'s datasets - anchored on the ISO/IEC 29100 principles with GDPR &amp; PCI DSS citations. Ranked by exposure; open a dataset for its full controls.</p>
     </div>
@@ -3210,6 +3234,7 @@
   <!-- ============ DASHBOARD ============ -->
   <div id="dashboardPanel" style="display:none;">
     <div class="tab-intro">
+      <span class="tab-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.6 20.4h16.8"/><path d="M6.9 17.6v-6.4"/><path d="M12 17.6V6.4"/><path d="M17.1 17.6v-3.9"/></svg></span>
       <h2>Overview</h2>
       <p>Monitor this <span class="scope-n">app</span>'s data quality over time - overall scores, per-dimension health and trends across every assessed table.</p>
     </div>
@@ -3300,6 +3325,7 @@
   <!-- ============ MEDALLION COMPARISON ============ -->
   <div id="approvalsPanel" style="display:none;">
     <div class="tab-intro">
+      <span class="tab-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8.3 12.2l2.6 2.6 4.9-5.2"/></svg></span>
       <h2>Approvals</h2>
       <p>Assessment runs that members have submitted for review. <strong>Approve</strong> to endorse the dataset, or reject it as <strong>Caution</strong> or <strong>Deprecated</strong>. Scoped to your organisation.</p>
     </div>
@@ -3308,6 +3334,7 @@
 
   <div id="medallionPanel" style="display:none;">
     <div class="tab-intro">
+      <span class="tab-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.9l8.8 4.5-8.8 4.5-8.8-4.5z"/><path d="M3.2 12.3l8.8 4.5 8.8-4.5"/><path d="M3.2 16.7l8.8 4.5 8.8-4.5"/></svg></span>
       <h2>Medallion comparison</h2>
       <p>Pick a bronze, silver and gold dataset to see, side by side, how data quality improves as it's refined through the stages. Tag datasets with a stage on the Dashboard first.</p>
     </div>
@@ -3328,6 +3355,7 @@
   <div id="modelPanel" style="display:none;">
     <div class="banner" id="modelBanner"></div>
     <div class="tab-intro">
+      <span class="tab-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="2.9" width="6" height="4.3" rx="1.2"/><rect x="2.9" y="16.8" width="6" height="4.3" rx="1.2"/><rect x="15.1" y="16.8" width="6" height="4.3" rx="1.2"/><path d="M12 7.2v3.6"/><path d="M5.9 16.8v-2.4h12.2v2.4"/><path d="M12 10.8v3.6"/></svg></span>
       <h2>Data model</h2>
       <p>The app's tables, fields and how they associate. The same model Qlik loads. Drag tables to explore; click a field to trace where it's shared.</p>
     </div>
@@ -3370,6 +3398,7 @@
   <div id="schedulePanel" style="display:none;">
     <div class="banner" id="schBanner"></div>
     <div class="tab-intro">
+      <span class="tab-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.3" y="5.1" width="17.4" height="15.8" rx="2.4"/><path d="M3.3 10h17.4M8 3.1v4M16 3.1v4"/><path d="M12 13.1v2.8l2 1.2"/></svg></span>
       <h2>Schedules</h2>
       <p>Automate this <span class="scope-n">app</span>'s quality checks, run an assessment on a recurring schedule so scores, trends and incidents stay up to date without manual runs.</p>
     </div>
@@ -3644,6 +3673,7 @@
   <div id="appDataPanel" style="display:none;">
     <div class="banner" id="appBanner"></div>
     <div class="tab-intro">
+      <span class="tab-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.3" y="4.6" width="17.4" height="14.8" rx="2.2"/><path d="M3.3 9.6h17.4M9.3 9.6v9.8M15.3 9.6v9.8"/></svg></span>
       <h2>Assess this app's data</h2>
       <p id="appCtx"></p>
     </div>
