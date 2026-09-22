@@ -1411,7 +1411,8 @@
 
      transform only, so it composites and never runs layout; `perspective` on the wrapper rather
      than the image so the yaw has depth instead of being a flat squash. */
-  .ab-art { width: 100%; align-self: center; perspective: 820px; }
+  .ab-art { width: 100%; align-self: center; perspective: 820px; position: relative; }
+  .ab-art-3d { display: block; width: 100%; height: auto; }
   .ab-art img { width: 100%; height: auto; display: block;
     animation: abIdle 26s ease-in-out infinite; transform-origin: 50% 58%; }
   @keyframes abIdle {
@@ -6180,6 +6181,152 @@ async function setPiiLabel(key, column, label) {
   } catch (e) { dqAlert('Could not save PII label: ' + e.message); return; }
   selectDsTab();                 // re-render the active dataset sub-tab (Metadata or Scores) with the new label
   refreshDatasetsTable();
+}
+
+// ---- About: the mission graphic as a real 3D scene -------------------------------------------
+// The PNG could only ever be TILTED - it is one baked isometric view, so past a few degrees the
+// lighting stays put while the plane turns. A genuine turn needs geometry, so this builds the same
+// subject (a stacked store, a shield, a panel of records) out of meshes and spins it, at the
+// galaxy's own idle pace.
+//
+// three.js is already on the page for the galaxy, so this adds no weight.
+//
+// The PNG STAYS in the markup and is only hidden once a frame has actually been drawn. WebGL can
+// be missing, blocked, or fail on context creation; on any of those the picture is still there,
+// which is the whole reason the image is not simply replaced.
+const ABOUT3D = { raf: 0, started: false, failed: false };
+
+function _about3dCanvasTex(draw, w, h) {
+  const c = document.createElement('canvas'); c.width = w; c.height = h || w;
+  draw(c.getContext('2d'), c.width, c.height);
+  return new window.THREE.CanvasTexture(c);
+}
+
+function initAboutScene() {
+  const THREE = window.THREE;
+  const host = document.querySelector('.ab-art');
+  if (!host || ABOUT3D.started || ABOUT3D.failed || !THREE) return;
+  // Someone who has asked for less motion gets the still picture, not a permanently turning
+  // object. Checked here rather than by pausing the loop, so nothing is built at all.
+  if (dqReduced()) return;
+  const img = host.querySelector('img');
+  let r;
+  try {
+    r = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  } catch (e) { ABOUT3D.failed = true; return; }        // no WebGL - the PNG stays
+  ABOUT3D.started = true;
+
+  const W = host.clientWidth || 420, H = Math.round((W * 285) / 435);   // the PNG's aspect
+  r.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+  r.setSize(W, H, false);                                // CSS owns the box, as on the galaxy
+  const cv = r.domElement;
+  cv.className = 'ab-art-3d';
+  host.appendChild(cv);
+
+  const scene = new THREE.Scene();
+  const cam = new THREE.PerspectiveCamera(34, W / H, 0.1, 200);
+  cam.position.set(0, 8.2, 25.5); cam.lookAt(0, 0.4, 0);
+
+  scene.add(new THREE.AmbientLight(0x6f9fd8, 0.85));
+  const key = new THREE.DirectionalLight(0xdff0ff, 1.25); key.position.set(6, 12, 9); scene.add(key);
+  const rim = new THREE.PointLight(0x38bdf8, 1.5, 60); rim.position.set(-9, 4, 6); scene.add(rim);
+
+  const g = new THREE.Group(); scene.add(g);
+  ABOUT3D.group = g; ABOUT3D.renderer = r; ABOUT3D.scene = scene; ABOUT3D.camera = cam;
+  ABOUT3D.host = host; ABOUT3D.img = img;
+
+  // The store: four discs, brightest at the top, with a lit rim on each so the stack reads as
+  // stacked rather than as one cylinder.
+  const discMat = new THREE.MeshStandardMaterial({ color: 0x2775d8, emissive: 0x0d3a76,
+    emissiveIntensity: 0.45, metalness: 0.22, roughness: 0.42 });
+  const topMat = new THREE.MeshStandardMaterial({ color: 0x53aef0, emissive: 0x1e6ec4,
+    emissiveIntensity: 0.55, metalness: 0.28, roughness: 0.34 });
+  for (let i = 0; i < 4; i++) {
+    const disc = new THREE.Mesh(new THREE.CylinderGeometry(4.1, 4.1, 1.15, 64),
+                                i === 3 ? topMat : discMat);
+    disc.position.y = -2.1 + i * 1.42; g.add(disc);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(4.12, 0.055, 8, 72),
+      new THREE.MeshBasicMaterial({ color: 0xbfeaff, transparent: true, opacity: 0.75 }));
+    ring.rotation.x = Math.PI / 2; ring.position.y = disc.position.y + 0.58; g.add(ring);
+  }
+
+  // The shield, in front and to the right, with its tick drawn as a texture - crisper at this
+  // size than geometry, and it stays crisp because the camera never gets close.
+  const shieldShape = new THREE.Shape();
+  shieldShape.moveTo(0, 3.2);
+  shieldShape.lineTo(2.5, 2.05); shieldShape.lineTo(2.5, -0.55);
+  shieldShape.quadraticCurveTo(2.5, -2.7, 0, -3.5);
+  shieldShape.quadraticCurveTo(-2.5, -2.7, -2.5, -0.55);
+  shieldShape.lineTo(-2.5, 2.05); shieldShape.closePath();
+  const shield = new THREE.Mesh(
+    new THREE.ExtrudeGeometry(shieldShape, { depth: 0.55, bevelEnabled: true, bevelSize: 0.12,
+                                             bevelThickness: 0.12, bevelSegments: 3, curveSegments: 24 }),
+    new THREE.MeshStandardMaterial({ color: 0x6fd9f5, emissive: 0x1a76c8, emissiveIntensity: 0.55,
+                                     metalness: 0.2, roughness: 0.28 }));
+  shield.position.set(2.8, -1.0, 3.3); shield.scale.setScalar(0.88); g.add(shield);
+  const tick = new THREE.Mesh(new THREE.PlaneGeometry(3.0, 3.0),
+    new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false,
+      map: _about3dCanvasTex((x, w, h) => {
+        x.strokeStyle = '#ffffff'; x.lineWidth = w * 0.13;
+        x.lineCap = 'round'; x.lineJoin = 'round';
+        x.beginPath(); x.moveTo(w * 0.26, h * 0.52); x.lineTo(w * 0.44, h * 0.70);
+        x.lineTo(w * 0.76, h * 0.32); x.stroke();
+      }, 128) }));
+  tick.position.set(2.8, -0.9, 3.95); tick.scale.setScalar(0.88); g.add(tick);
+
+  // The record panel: one plane carrying the rows as a texture, so four coloured dots and their
+  // bars cost one draw call instead of sixteen meshes.
+  const panel = new THREE.Mesh(new THREE.PlaneGeometry(8.6, 7.2),
+    new THREE.MeshBasicMaterial({ transparent: true, side: THREE.DoubleSide, depthWrite: false,
+      map: _about3dCanvasTex((x, w, h) => {
+        const rr = (px, py, pw, ph, rad) => { x.beginPath(); x.moveTo(px + rad, py);
+          x.arcTo(px + pw, py, px + pw, py + ph, rad); x.arcTo(px + pw, py + ph, px, py + ph, rad);
+          x.arcTo(px, py + ph, px, py, rad); x.arcTo(px, py, px + pw, py, rad); x.closePath(); };
+        x.fillStyle = 'rgba(14,28,56,0.94)'; rr(4, 4, w - 8, h - 8, 26); x.fill();
+        x.strokeStyle = 'rgba(80,140,220,0.85)'; x.lineWidth = 3; x.stroke();
+        const dots = ['#4da3ff', '#34d399', '#fbbf24', '#fb7185'];
+        const lens = [0.62, 0.50, 0.57, 0.43];
+        dots.forEach((col, i) => {
+          const cy = 62 + i * 58;
+          x.fillStyle = col; x.beginPath(); x.arc(46, cy, 11, 0, Math.PI * 2); x.fill();
+          x.fillStyle = 'rgba(46,80,142,0.95)';
+          rr(70, cy - 8, (w - 110) * lens[i], 17, 8); x.fill();
+        });
+      }, 300, 256) }));
+  panel.position.set(7.2, 1.3, -1.2); panel.rotation.y = -0.40; g.add(panel);
+
+  // Ambient bloom behind the stack, reusing the galaxy's own glow sprite.
+  const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: _galaxyGlowTexture(),
+    color: 0x2f8ae8, transparent: true, opacity: 0.62, depthWrite: false,
+    blending: THREE.AdditiveBlending }));
+  glow.scale.set(32, 32, 1); glow.position.set(0, 0.3, -4); scene.add(glow);
+
+  g.rotation.x = 0.16;
+
+  // Same idle rate as the galaxy: one turn in about 65 seconds. Framerate-independent, and the
+  // loop skips entirely while the About tab is closed - offsetParent is null for a hidden panel,
+  // so this costs nothing on every other tab.
+  const SPEED = 0.096;
+  let last = performance.now();
+  const loop = (now) => {
+    ABOUT3D.raf = requestAnimationFrame(loop);
+    if (!host.offsetParent) { last = now || performance.now(); return; }
+    now = now || performance.now();
+    const dt = Math.min(0.05, (now - last) / 1000); last = now;
+    g.rotation.y += SPEED * dt;
+    const w = host.clientWidth;
+    if (w > 2 && Math.abs(w - ABOUT3D.w) > 1) {
+      ABOUT3D.w = w;
+      const hh = Math.round((w * 285) / 435);
+      cam.aspect = w / hh; cam.updateProjectionMatrix(); r.setSize(w, hh, false);
+    }
+    r.render(scene, cam);
+    // The still stays until a frame has actually been presented, so a renderer that constructs
+    // and then fails to draw does not leave an empty column.
+    if (img && !img.dataset.swapped) { img.dataset.swapped = '1'; img.style.display = 'none'; }
+  };
+  ABOUT3D.w = W;
+  ABOUT3D.raf = requestAnimationFrame(loop);
 }
 
 // ---- Dataset description --------------------------------------------------------------------
@@ -13764,6 +13911,7 @@ function switchTab(name) {
   dqIn([...document.querySelectorAll('[id$="Panel"], #complianceTab')]
        .find(p => p.style.display && p.style.display !== 'none'), 'dq-page');
 
+  if (name === 'about') initAboutScene();
   if (name === 'assistant') initAssistantTab();
   if (name === 'incidents') loadIncidents();
   if (name === 'sourcewatch') loadSourceWatch();
