@@ -186,6 +186,9 @@
   @media (prefers-reduced-motion: reduce) {
     .dq-in, .dq-page, .dq-stagger > *, .modal-overlay.open, .modal-overlay.open .modal,
     details[open] > *:not(summary), .medal-card-in, .cmp-sec-detail { animation: none !important; }
+    /* A permanently moving object is precisely what this setting exists to stop, so the About
+       graphic holds still - and holds its RENDERED angle, not the animation's first keyframe. */
+    .ab-art img { animation: none !important; transform: none !important; }
     /* The shimmer keeps its shape but stops moving, and nothing grows under the cursor. */
     .sk { animation: none !important; background: var(--idle-bg) !important; }
     .tile:hover, .dsp-card:hover, .lin2-node:hover, .source-card:hover, .cmp-item:hover,
@@ -1395,8 +1398,27 @@
      vertically instead of leaving a band of empty space under a short paragraph. Sizing it as a
      grid track means it flexes between 230 and 330 with no media query to keep in step - and it
      can be measured at any width, which a breakpoint cannot be. */
-  .ab-art { width: 100%; align-self: center; }
-  .ab-art img { width: 100%; height: auto; display: block; }
+  /* The graphic idles, the way the galaxy does and at the same unhurried pace (the galaxy turns
+     once in about 65 seconds).
+
+     It cannot actually TURN. It is a flat raster of one isometric view, and rotating a plane past
+     a few degrees shows it for the plane it is - the shadows and the highlights stay lit from the
+     original angle, so the illusion breaks rather than deepens. So it yaws a few degrees either
+     side of its rendered angle with a slight bob, which reads as an object sitting in space
+     rather than a picture pasted onto the card. Anything more ambitious needs real geometry, not
+     a PNG.
+
+     transform only, so it composites and never runs layout; `perspective` on the wrapper rather
+     than the image so the yaw has depth instead of being a flat squash. */
+  .ab-art { width: 100%; align-self: center; perspective: 820px; }
+  .ab-art img { width: 100%; height: auto; display: block;
+    animation: abIdle 26s ease-in-out infinite; transform-origin: 50% 58%; }
+  @keyframes abIdle {
+    0%, 100% { transform: rotateY(-11deg) rotateX(2.2deg) translateY(0) translateZ(-14px); }
+    25%      { transform: rotateY(0deg) rotateX(0deg) translateY(-7px) translateZ(6px); }
+    50%      { transform: rotateY(11deg) rotateX(-2.2deg) translateY(0) translateZ(-14px); }
+    75%      { transform: rotateY(0deg) rotateX(0deg) translateY(-7px) translateZ(6px); }
+  }
   /* CONTAINER queries, on the panel. What decides whether the mission and the problem fit beside
      each other is how wide the PANEL is, and the sidebar changes that without the viewport moving.
      It is also the only form that can be driven in a test without resizing the browser, which is
