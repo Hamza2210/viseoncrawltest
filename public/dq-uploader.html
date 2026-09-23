@@ -1625,6 +1625,40 @@
   .btn-sm.btn-danger:hover { border-color: var(--err); color: var(--err); }
   .actions { display: flex; gap: 8px; flex-wrap: wrap; }
 
+  /* Agents: who may see the tab.
+     Qlik callers are inside the extension's own trust boundary and the API treats them as
+     unrestricted, so the tab is theirs. In the portal it is admin-only, matching the endpoint -
+     showing a member a panel every button on which 403s is worse than not showing it. Declared in
+     CSS rather than set from script so there is no frame where the wrong nav is painted. */
+  #agentsNav { display: none; }
+  body:not(.portal) #agentsNav, body.portal-admin #agentsNav { display: flex; }
+
+  .agt-add { display: flex; gap: 8px; align-items: center; max-width: 620px; }
+  .agt-add input { flex: 1; min-width: 0; }
+  .agt-list { display: flex; flex-direction: column; gap: 8px; margin-top: 16px; }
+  .agt-row { display: flex; align-items: center; gap: 12px; padding: 11px 14px; flex-wrap: wrap;
+    border: 1px solid var(--border); border-radius: 10px; background: var(--card); }
+  .agt-name { flex: 1; min-width: 160px; font-weight: 600; font-size: 13.5px; }
+  .agt-id { font-size: 12px; color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .agt-tag { font-size: 11.5px; color: var(--muted); padding: 2px 9px; white-space: nowrap;
+    border: 1px solid var(--border); border-radius: 999px; }
+  /* The app's amber is --run. There is no --warn, and a dot painted with an undefined variable is
+     not a wrong colour, it is NO colour - the element renders invisible and nothing in the markup
+     says so. Found by rendering the tab and looking at it. */
+  .agt-tag.queued { color: var(--run); border-color: color-mix(in srgb, var(--run) 45%, transparent); }
+  /* A dot, not a word: the list is scanned rather than read, and an operator wants to see at a
+     glance that one machine is the wrong colour. */
+  .agt-dot { width: 9px; height: 9px; border-radius: 50%; flex: none; background: var(--muted); }
+  .agt-dot.online { background: var(--ok); box-shadow: 0 0 7px color-mix(in srgb, var(--ok) 70%, transparent); }
+  .agt-dot.stale { background: var(--run); }
+  .agt-dot.offline, .agt-dot.revoked { background: var(--err); }
+  .agt-token { margin-top: 14px; padding: 13px 15px; border-radius: 10px; font-size: 13px; line-height: 1.6;
+    border: 1px solid var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--card)); }
+  .agt-token code { display: block; margin: 7px 0; padding: 9px 11px; border-radius: 7px;
+    background: var(--idle-bg); font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 12.5px; overflow-wrap: anywhere; }
+  .agt-empty { color: var(--muted); font-size: 13px; padding: 10px 2px; }
+
   /* Schedule form + list */
   #schedulePanel .sched-form { max-width: 760px; }
   #schedulePanel label { display: block; margin: 16px 0 5px; font-weight: 600; font-size: 13px; }
@@ -2556,6 +2590,7 @@
     <button class="side-item sub" data-tab="compliance"><span class="si-ico">🛡️</span>Compliance <span class="tab-badge" id="cmpBadge" style="display:none;"></span></button>
     <button class="side-item sub" data-tab="sourcewatch"><span class="si-ico">📡</span>Source monitoring <span class="tab-badge" id="watchBadge" style="display:none;"></span></button>
     <button class="side-item sub" data-tab="schedules"><span class="si-ico">⏰</span>Schedules</button>
+    <button class="side-item sub" id="agentsNav" data-tab="agents"><span class="si-ico">🖥️</span>Agents</button>
 
     <div class="side-group" id="dqExploreGroup">Explore</div>
     <button class="side-item sub" data-tab="model"><span class="si-ico">🧩</span>Data model</button>
@@ -3093,6 +3128,26 @@
   </div>
 
   <!-- ============ PROFILE (portal only) ============ -->
+  <div id="agentsPanel" style="display:none;">
+    <div class="tab-intro">
+      <span class="tab-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="7" rx="2"/><rect x="3" y="13" width="18" height="7" rx="2"/><path d="M7 7.5h.01M7 16.5h.01"/></svg></span>
+      <h2>Agents</h2>
+      <p>Assess a database that is not reachable from the internet. The customer runs a small
+         container inside their own network; it polls us for work, runs the assessment locally, and
+         sends the results back. Nothing inbound is opened, and the database password stays on that
+         machine rather than with us.</p>
+    </div>
+    <div class="card">
+      <div class="agt-add">
+        <input type="text" id="agtName" placeholder="Name the machine, e.g. Acme DC1" maxlength="120" autocomplete="off">
+        <button type="button" class="btn-sm" id="agtAdd">Register</button>
+      </div>
+      <div id="agtToken"></div>
+      <div id="agtList" class="agt-list"></div>
+      <div id="agtMsg" class="prof-msg" style="display:none;"></div>
+    </div>
+  </div>
+
   <div id="profilePanel" style="display:none;">
     <div class="tab-intro">
       <span class="tab-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8.2" r="3.7"/><path d="M4.6 20.4a7.6 7.6 0 0 1 14.8 0"/></svg></span>
@@ -11939,6 +11994,173 @@ function srcSkeletonSwap(body, key) {
   }, 260);
 }
 
+// ---- The Agents tab: register, watch, revoke ---------------------------------------------------
+// Lives in the shared file so BOTH surfaces have it. The Qlik extension had no way to register an
+// agent at all - the only panel was on the portal admin page, which an extension-only customer
+// never opens - so the feature was unusable from the surface most of them are on.
+
+// A tiny element builder. textContent rather than innerHTML throughout, so an agent named by a
+// customer cannot carry markup into this page.
+function agtEl(tag, cls, text) {
+  const n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (text != null) n.textContent = text;
+  return n;
+}
+
+function agtAgo(seconds) {
+  if (!seconds) return 'never';
+  const d = Math.max(0, Math.floor(Date.now() / 1000 - seconds));
+  if (d < 60) return d + 's ago';
+  if (d < 3600) return Math.floor(d / 60) + 'm ago';
+  if (d < 86400) return Math.floor(d / 3600) + 'h ago';
+  return Math.floor(d / 86400) + 'd ago';
+}
+
+function agtMsg(text, bad) {
+  const el = $('#agtMsg');
+  if (!el) return;
+  el.style.display = text ? 'block' : 'none';
+  el.textContent = text || '';
+  el.style.color = bad ? 'var(--err)' : 'var(--muted)';
+}
+
+async function agentsApi(payload) {
+  return postJSON(`${API_BASE}/data-quality/agents`, HEADERS, payload);
+}
+
+async function renderAgentsTab() {
+  const list = $('#agtList');
+  if (!list) return;
+  let reply;
+  try {
+    reply = await agentsApi({ action: 'list' });
+  } catch (e) {
+    list.textContent = '';
+    list.appendChild(agtEl('div', 'agt-empty', 'Could not load agents: ' + e.message));
+    return;
+  }
+  const agents = reply.agents || [];
+  list.textContent = '';
+  if (reply.configured === false) {
+    list.appendChild(agtEl('div', 'agt-empty',
+      'Agents are not enabled on this deployment yet. Ask your administrator to configure the '
+      + 'agent upload role on the API.'));
+  }
+  if (!agents.length) {
+    list.appendChild(agtEl('div', 'agt-empty', 'No agents registered yet.'));
+    return;
+  }
+  agents.forEach(a => {
+    const row = agtEl('div', 'agt-row');
+    const dot = agtEl('span', 'agt-dot ' + (a.health || ''));
+    dot.title = a.health || '';
+    row.appendChild(dot);
+    row.appendChild(agtEl('span', 'agt-name', a.name || a.id));
+    row.appendChild(agtEl('span', 'agt-id', a.id));
+    const state = a.revoked ? 'revoked'
+      : (a.health === 'never' ? 'awaiting enrolment' : a.health + ' \u00b7 ' + agtAgo(a.lastSeen));
+    row.appendChild(agtEl('span', 'agt-tag', state));
+    if (a.version) row.appendChild(agtEl('span', 'agt-tag', 'v' + a.version));
+    // A queued count beside an offline agent is what says something is actually being held up,
+    // rather than the machine merely being idle.
+    if (a.queued) row.appendChild(agtEl('span', 'agt-tag queued', a.queued + ' queued'));
+    if (a.running) row.appendChild(agtEl('span', 'agt-tag', 'running'));
+
+    const actions = agtEl('span', 'actions');
+    if (!a.revoked) {
+      const tok = agtEl('button', 'btn-sm', 'New token');
+      tok.type = 'button';
+      tok.title = 'Issue a fresh enrolment token. This agent\u2019s current key stops working at once.';
+      tok.addEventListener('click', () => agtIssueToken(a));
+      actions.appendChild(tok);
+      const rev = agtEl('button', 'btn-sm btn-danger', 'Revoke');
+      rev.type = 'button';
+      rev.title = 'Stop this machine claiming any more work, within seconds.';
+      rev.addEventListener('click', () => agtRevoke(a));
+      actions.appendChild(rev);
+    } else {
+      const del = agtEl('button', 'btn-sm btn-danger', 'Delete');
+      del.type = 'button';
+      del.addEventListener('click', () => agtDelete(a));
+      actions.appendChild(del);
+    }
+    row.appendChild(actions);
+    list.appendChild(row);
+  });
+}
+
+function agtShowToken(agent, token) {
+  // Shown ONCE, because only a hash is stored. Saying so on the screen is the difference between
+  // an admin copying it now and an admin asking support for it tomorrow.
+  const box = $('#agtToken');
+  if (!box) return;
+  box.textContent = '';
+  const card = agtEl('div', 'agt-token');
+  card.appendChild(agtEl('div', null,
+    'Enrolment token for ' + (agent.name || agent.id) + '. Valid for one hour, usable once, and '
+    + 'not shown again - only its hash is stored.'));
+  card.appendChild(agtEl('code', null, token));
+  card.appendChild(agtEl('div', null, 'Run this on the agent machine:'));
+  card.appendChild(agtEl('code', null,
+    'docker exec dq-agent python -m agent enrol --token ' + token
+    + ' --name "' + (agent.name || agent.id) + '"'));
+  card.appendChild(agtEl('div', null,
+    'Then pick "' + (agent.name || agent.id) + '" in the Runs on field of a PostgreSQL or SQL '
+    + 'Server source.'));
+  box.appendChild(card);
+}
+
+async function agtIssueToken(agent) {
+  try {
+    const r = await agentsApi({ action: 'token', agent_id: agent.id });
+    agtShowToken(agent, r.enrolmentToken);
+    agtMsg('');
+    await agtRefresh();
+  } catch (e) { agtMsg('Could not issue a token: ' + e.message, true); }
+}
+
+async function agtRevoke(agent) {
+  const name = agent.name || agent.id;
+  if (!(await dqConfirm('Revoke ' + name + '? It stops claiming work within seconds and has to be '
+                        + 'enrolled again with a new token.', { title: 'Revoke agent', danger: true }))) return;
+  try { await agentsApi({ action: 'revoke', agent_id: agent.id }); agtMsg(''); await agtRefresh(); }
+  catch (e) { agtMsg('Could not revoke: ' + e.message, true); }
+}
+
+async function agtDelete(agent) {
+  const name = agent.name || agent.id;
+  if (!(await dqConfirm('Delete ' + name + ' for good?', { title: 'Delete agent', danger: true }))) return;
+  try { await agentsApi({ action: 'delete', agent_id: agent.id }); agtMsg(''); await agtRefresh(); }
+  catch (e) { agtMsg('Could not delete: ' + e.message, true); }
+}
+
+async function agtRefresh() {
+  // The source form caches the agent list for its dropdown. Drop that cache whenever this tab
+  // changes anything, or a freshly registered agent is missing from the form until a reload.
+  _dqAgents = null;
+  await renderAgentsTab();
+}
+
+function wireAgentsTab() {
+  const add = $('#agtAdd'), name = $('#agtName');
+  if (!add || !name) return;
+  add.addEventListener('click', async () => {
+    const value = (name.value || '').trim();
+    if (!value) { agtMsg('Name the machine first.', true); return; }
+    add.disabled = true;
+    try {
+      const r = await agentsApi({ action: 'create', name: value });
+      name.value = '';
+      agtShowToken({ id: r.id, name: r.name }, r.enrolmentToken);
+      agtMsg('Registered as ' + r.id + '.');
+      await agtRefresh();
+    } catch (e) { agtMsg('Could not register: ' + e.message, true); }
+    finally { add.disabled = false; }
+  });
+  name.addEventListener('keydown', e => { if (e.key === 'Enter') add.click(); });
+}
+
 // ---- On-premises agents: where an assessment EXECUTES ------------------------------------------
 // A source behind a customer's firewall is not a different connector, it is the same connector run
 // somewhere else - so this is a field on the existing form rather than a source of its own. The
@@ -14042,6 +14264,10 @@ function switchTab(name) {
   $('#complianceTab').style.display = name === 'compliance' ? 'block' : 'none';
   $('#lineagePanel').style.display = name === 'lineage' ? 'block' : 'none';
   $('#profilePanel').style.display = name === 'profile' ? 'block' : 'none';
+  $('#agentsPanel').style.display = name === 'agents' ? 'block' : 'none';
+  // Loaded on every visit rather than once: an agent goes offline while you are looking elsewhere,
+  // and a health list that is stale is worse than one that is slow.
+  if (name === 'agents') renderAgentsTab();
   $('#assistantPanel').style.display = name === 'assistant' ? 'block' : 'none';
   $('#aboutPanel').style.display = name === 'about' ? 'block' : 'none';
   // Wide, full-width tabs vs the narrow centered form column.
@@ -14083,6 +14309,7 @@ function switchTab(name) {
   }
 }
 document.querySelectorAll('.side-item').forEach(t => t.addEventListener('click', () => switchTab(t.dataset.tab)));
+wireAgentsTab();
 
 // --- Boot splash ----------------------------------------------------------- //
 // Being stuck on a loading screen is worse than seeing a half-built page, so this is called from
