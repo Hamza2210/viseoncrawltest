@@ -14246,6 +14246,10 @@ function switchTab(name) {
   // Portal mode: the Qlik-only tabs don't exist here - redirect any programmatic
   // navigation to them (e.g. "Assess this app's data" CTAs) to the source flow.
   if (PORTAL && (name === 'appdata' || name === 'model')) name = 'upload';
+  // Agents is admin-only in the portal. The nav is CSS-gated, but a hidden nav is not a control:
+  // a deep link, a stray call, or a console would still open a panel every button on which 403s.
+  // The API is the real boundary - this is so a member never lands on the wrong page at all.
+  if (PORTAL && name === 'agents' && !IS_PORTAL_ADMIN) name = 'dashboard';
   document.querySelectorAll('.side-item').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
   $('#uploadPanel').style.display = name === 'upload' ? 'block' : 'none';
   $('#historyPanel').style.display = name === 'history' ? 'block' : 'none';
