@@ -2669,6 +2669,7 @@
           <div class="src-grid">
             <button type="button" class="source-card active" data-source="file"><span class="src-ico">📄</span><span class="sc-name">Local File</span><span class="src-tag">Ready</span></button>
             <button type="button" class="source-card" data-source="excel"><span class="src-ico" data-ico="excel"></span><span class="sc-name">Excel (.xlsx)</span><span class="src-tag betatag">Beta</span></button>
+            <button type="button" class="source-card" id="agentFileCard" data-source="agentfile" style="display:none"><span class="src-ico">🗄️</span><span class="sc-name">On-premises file</span><span class="src-tag betatag">Beta</span></button>
           </div>
         </div>
       </div>
@@ -2892,6 +2893,31 @@
     </div>
 
     <!-- ===== Source: PostgreSQL ===== -->
+    <div id="src-agentfile" class="source-body" style="display:none;">
+      <div class="card">
+        <h2>On-premises file <span class="src-tag betatag">Beta</span></h2>
+        <p class="src-note">A QVD, parquet or CSV on a share only your own network can see. The
+          agent opens it where it sits and sends back the scores - the file itself never leaves.
+          It must be inside a folder the agent's operator has listed in DQ_AGENT_READ_PATHS, or the
+          agent refuses the run and says so.</p>
+        <div class="src-form">
+          <div class="src-field full"><label>Runs on <span class="hint">(which agent can reach the file)</span></label>
+            <select data-f="agent" data-agentsel="agentfile"><option value="">Choose an agent</option></select>
+            <p class="hint" data-agenthint="agentfile" style="display:none;margin:6px 0 0"></p>
+          </div>
+          <div class="src-field full"><label>Path on that machine</label>
+            <input data-f="path" placeholder="\\fs01\finance\sales.qvd  or  /mnt/qvd/sales.qvd"></div>
+          <div class="src-field"><label>Dataset name <span class="hint">(optional)</span></label>
+            <input data-f="dataset" placeholder="Defaults to the file name"></div>
+          <div class="src-field"><label>Sample rows <span class="hint">(optional)</span></label>
+            <input data-f="sample_rows" type="number" min="1" placeholder="Empty = whole file"></div>
+        </div>
+        <button type="button" class="src-run" data-runsource="agentfile">Run assessment</button>
+        <div class="src-status" data-status="agentfile"></div>
+      </div>
+      <div class="card" id="agentfileResult" style="display:none;"><h2>Assessment</h2><div id="agentfileResultBody"></div></div>
+    </div>
+
     <div id="src-postgres" class="source-body" style="display:none;">
       <div class="card">
         <h2>PostgreSQL <span class="src-tag betatag">Beta</span></h2>
@@ -11916,6 +11942,7 @@ $('#lineageRefresh').addEventListener('click', e => { e.preventDefault(); loadLi
 // File upload is fully wired (existing flow); the connector sources capture +
 // validate their config and report status. Their backends are built per-source.
 const SOURCE_REQUIRED = {
+  agentfile: ['agent', 'path'],
   // Athena needs only WHAT to read: the engine is reached with IAM, and workgroup/catalog/region
   // all have sensible defaults, so nothing else is mandatory.
   athena: ['database', 'table'],
@@ -11938,7 +11965,7 @@ const SOURCE_REQUIRED = {
   gcs: ['bucket', 'object', 'credentials_json'],
   azureblob: ['container', 'blob', 'connection_string'],
 };
-const SOURCE_LABEL = { athena: 'Qlik Open Lakehouse', redshift: 'Amazon Redshift', s3: 'Amazon S3', snowflake: 'Snowflake',
+const SOURCE_LABEL = { agentfile: 'On-premises file', athena: 'Qlik Open Lakehouse', redshift: 'Amazon Redshift', s3: 'Amazon S3', snowflake: 'Snowflake',
   databricks: 'Databricks', oracle: 'Oracle', postgres: 'PostgreSQL', mysql: 'MySQL', sqlserver: 'SQL Server',
   synapse: 'Azure Synapse', fabric: 'Microsoft Fabric', bigquery: 'Google BigQuery', sharepoint: 'SharePoint / OneDrive',
   gcs: 'Google Cloud Storage', azureblob: 'Azure Blob / ADLS',
@@ -12138,7 +12165,7 @@ async function agtDelete(agent) {
 async function agtRefresh() {
   // The source form caches the agent list for its dropdown. Drop that cache whenever this tab
   // changes anything, or a freshly registered agent is missing from the form until a reload.
-  _dqAgents = null;
+  invalidateAgents();
   await renderAgentsTab();
 }
 
@@ -12166,20 +12193,34 @@ function wireAgentsTab() {
 // somewhere else - so this is a field on the existing form rather than a source of its own. The
 // server does the routing off the credential pointer; all the form has to do is name the agent and
 // stop asking for a password we are not going to be given.
-let _dqAgents = null;                       // cached per page load; registering one is rare
+// The in-flight PROMISE is cached, not its result. Two things ask for this list around the same
+// moment - the boot-time lookup that decides whether the on-premises file card exists, and a source
+// form being opened - and caching the RESULT means both fetch, then the slower one overwrites the
+// faster. When the slower is the one that failed, a page with agents ends up believing it has none
+// for the rest of the session, with nothing in the UI saying so.
+//
+// Caching the promise makes concurrent callers share one request and removes the race. Failure
+// resolves to an empty list rather than rejecting: a Qlik caller, a deployment with no agents and
+// a genuine error all mean "no agent to offer here", and none of them is a problem with the form
+// somebody is filling in.
+let _dqAgentsPromise = null;
 
-async function loadAgentsForSources() {
-  if (_dqAgents) return _dqAgents;
-  try {
-    const r = await postJSON(`${API_BASE}/data-quality/agents`, HEADERS, { action: 'list' });
-    _dqAgents = (r.agents || []).filter(a => !a.revoked);
-  } catch (e) {
-    // Not an error worth showing. A Qlik caller, a member rather than an admin, or a deployment
-    // with no agents all land here, and none of them is a problem with the form they are filling in.
-    _dqAgents = [];
+//: The last list that actually resolved. `_agentHint` runs from a change event and cannot await,
+//: so it needs a synchronous view; this is it, written only from the resolved promise.
+let _dqAgentsSeen = [];
+
+function loadAgentsForSources() {
+  if (!_dqAgentsPromise) {
+    _dqAgentsPromise = postJSON(`${API_BASE}/data-quality/agents`, HEADERS, { action: 'list' })
+      .then(r => (r.agents || []).filter(a => !a.revoked))
+      .catch(() => []);
   }
-  return _dqAgents;
+  return _dqAgentsPromise;
 }
+
+//: Forget the cached list, so the next asker fetches again. Called whenever the Agents tab changes
+//: anything - otherwise a freshly registered agent is missing from every source form until reload.
+function invalidateAgents() { _dqAgentsPromise = null; }
 
 function _agentHint(kind) {
   const sel = document.querySelector(`[data-agentsel="${kind}"]`);
@@ -12187,7 +12228,7 @@ function _agentHint(kind) {
   const body = document.getElementById('src-' + kind);
   const pw = body && body.querySelector('[data-f="password"]');
   if (!sel || !hint) return;
-  const agent = (_dqAgents || []).find(a => a.id === sel.value);
+  const agent = _dqAgentsSeen.find(a => a.id === sel.value);
   if (!agent) {
     hint.style.display = 'none';
     if (pw) { pw.disabled = false; pw.placeholder = ''; }
@@ -12207,10 +12248,12 @@ async function renderAgentSelect(kind) {
   const sel = document.querySelector(`[data-agentsel="${kind}"]`);
   if (!sel) return;
   const agents = await loadAgentsForSources();
+  _dqAgentsSeen = agents;
   const current = sel.value;
   sel.innerHTML = '';
   const none = document.createElement('option');
-  none.value = ''; none.textContent = 'Direct from the cloud worker';
+  none.value = '';
+  none.textContent = kind === 'agentfile' ? 'Choose an agent' : 'Direct from the cloud worker';
   sel.appendChild(none);
   agents.forEach(a => {
     const o = document.createElement('option');
@@ -12223,10 +12266,14 @@ async function renderAgentSelect(kind) {
     sel.addEventListener('change', () => _agentHint(kind));
     sel.dataset.wired = '1';
   }
-  // The whole field disappears when the organisation has no agents. An empty dropdown offering
-  // one option is a question nobody needs to be asked.
+  // With no agents the whole field disappears - an empty dropdown offering one option is a
+  // question nobody needs to be asked. The on-premises FILE source is different: the agent is not
+  // an option there, it is the entire source, so its card comes off the picker instead and the
+  // field stays put for when one is registered.
   const field = sel.closest('.src-field');
-  if (field) field.style.display = agents.length ? '' : 'none';
+  if (field && kind !== 'agentfile') field.style.display = agents.length ? '' : 'none';
+  const card = document.getElementById('agentFileCard');
+  if (card) card.style.display = agents.length ? '' : 'none';
   _agentHint(kind);
 }
 
@@ -12269,7 +12316,7 @@ function selectSource(key) {
   const saveWrap = document.getElementById('srcSaveWrap');
   if (saveWrap) saveWrap.style.display = 'none';   // saving moved into the credential-profile control
   if (show) updateSourceRunState(key);
-  if (bodyKey === 'postgres' || bodyKey === 'sqlserver') renderAgentSelect(bodyKey);
+  if (bodyKey === 'postgres' || bodyKey === 'sqlserver' || bodyKey === 'agentfile') renderAgentSelect(bodyKey);
 }
 
 // ---- Per-app credential PROFILES (named connections; secrets applied server-side) -------
@@ -12536,6 +12583,7 @@ function runSource(key) {
   if (key === 's3') { runS3(cfg, statusEl); return; }               // wired end-to-end
   if (key === 'snowflake') { runSnowflake(cfg, statusEl); return; } // wired end-to-end
   if (key === 'databricks') { runDatabricks(cfg, statusEl); return; } // wired end-to-end
+  if (key === 'agentfile') { runAgentFile(cfg, statusEl); return; }  // wired end-to-end
   if (key === 'postgres') { runPostgres(cfg, statusEl); return; }    // wired end-to-end
   if (key === 'mysql') { runMySQL(cfg, statusEl); return; }          // wired end-to-end
   if (key === 'sqlserver') { runSQLServer(cfg, statusEl); return; }  // wired end-to-end
@@ -12781,7 +12829,7 @@ async function runDatabricks(cfg, statusEl) {
   } else if (btn) { btn.disabled = false; }
 }
 
-// Launch a full-table PostgreSQL assessment, then poll + render its result.
+// Launch a full-table Oracle assessment, then poll + render its result.
 async function runOracle(cfg, statusEl) {
   const btn = document.querySelector('[data-runsource="oracle"]');
   // One field holds the connect identifier and a select says which KIND it is, because a user
@@ -12818,6 +12866,44 @@ async function runOracle(cfg, statusEl) {
   const bodyEl = document.getElementById('oracleResultBody');
   if (card) card.style.display = 'block';
   if (bodyEl) bodyEl.innerHTML = `<p><span class="spin"></span> Scoring the dataset - this can take a moment…</p>`;
+  if (res.resultPrefix && bodyEl) {
+    pollInto(res.resultPrefix, bodyEl, {}).finally(() => { if (btn) btn.disabled = false; });
+  } else if (btn) { btn.disabled = false; }
+}
+
+// Assess a file only the agent can see. No credential travels because there is none: the agent
+// reaches the file through its own filesystem, bounded by its own allow-list.
+async function runAgentFile(cfg, statusEl) {
+  const btn = document.querySelector('[data-runsource="agentfile"]');
+  const body = {
+    app_id: APP_ID || undefined,
+    agent: cfg.agent, path: cfg.path,
+    dataset: cfg.dataset || undefined,
+    sample_rows: cfg.sample_rows ? Number(cfg.sample_rows) : undefined,
+    notify_email: EMAIL || undefined,
+  };
+  statusEl.className = 'src-status';
+  statusEl.innerHTML = `<p><span class="spin"></span> Queueing the file for the agent…</p>`;
+  if (btn) btn.disabled = true;
+  let res;
+  try {
+    res = await postJSON(`${API_BASE}/data-quality/agent-file-assessment`, HEADERS, body);
+  } catch (e) {
+    statusEl.className = 'src-status err';
+    statusEl.textContent = e.message;
+    if (btn) btn.disabled = false;
+    return;
+  }
+  // "Queued", not "started": the agent polls, so a run waits for its next poll rather than
+  // beginning the moment the button is pressed. Saying started would have somebody watching a
+  // spinner and wondering what is wrong for the first fifteen seconds of every run.
+  statusEl.className = 'src-status dev';
+  statusEl.innerHTML = `Queued for the agent (run <code>${esc(res.runId || '')}</code>). ` +
+    `It starts on that machine's next poll, usually within fifteen seconds.`;
+  const card = document.getElementById('agentfileResult');
+  const bodyEl = document.getElementById('agentfileResultBody');
+  if (card) card.style.display = 'block';
+  if (bodyEl) bodyEl.innerHTML = `<p><span class="spin"></span> Waiting for the agent to pick it up…</p>`;
   if (res.resultPrefix && bodyEl) {
     pollInto(res.resultPrefix, bodyEl, {}).finally(() => { if (btn) btn.disabled = false; });
   } else if (btn) { btn.disabled = false; }
@@ -14314,6 +14400,11 @@ function switchTab(name) {
 }
 document.querySelectorAll('.side-item').forEach(t => t.addEventListener('click', () => switchTab(t.dataset.tab)));
 wireAgentsTab();
+// The On-premises FILE card starts hidden and is revealed only if this organisation has an
+// agent, because without one the source cannot work at all. It has to be decided at boot
+// rather than when the card is opened: the card IS the way in, so nothing else would ever
+// run to reveal it. Fails closed - a call that errors leaves the card hidden.
+renderAgentSelect('agentfile');
 
 // --- Boot splash ----------------------------------------------------------- //
 // Being stuck on a loading screen is worse than seeing a half-built page, so this is called from
