@@ -2668,9 +2668,9 @@
         <div class="src-cat">
           <div class="src-cat-hd">Files</div>
           <div class="src-grid">
+            <button type="button" class="source-card" id="agentFileCard" data-source="agentfile" style="display:none"><span class="src-ico" data-ico="qlik"></span><span class="sc-name">Qlik On Premise Files</span><span class="src-tag betatag">Beta</span></button>
             <button type="button" class="source-card active" data-source="file"><span class="src-ico">📄</span><span class="sc-name">Local File</span><span class="src-tag">Ready</span></button>
             <button type="button" class="source-card" data-source="excel"><span class="src-ico" data-ico="excel"></span><span class="sc-name">Excel (.xlsx)</span><span class="src-tag betatag">Beta</span></button>
-            <button type="button" class="source-card" id="agentFileCard" data-source="agentfile" style="display:none"><span class="src-ico">🗄️</span><span class="sc-name">On-premises file</span><span class="src-tag betatag">Beta</span></button>
           </div>
         </div>
       </div>
@@ -2896,7 +2896,7 @@
     <!-- ===== Source: PostgreSQL ===== -->
     <div id="src-agentfile" class="source-body" style="display:none;">
       <div class="card">
-        <h2>On-premises file <span class="src-tag betatag">Beta</span></h2>
+        <h2>Qlik On Premise Files <span class="src-tag betatag">Beta</span></h2>
         <p class="src-note">A QVD, parquet or CSV on a share only your own network can see. The
           agent opens it where it sits and sends back the scores - the file itself never leaves.
           It must be inside a folder the agent's operator has listed in DQ_AGENT_READ_PATHS, or the
@@ -3768,6 +3768,7 @@
           <option value="gcs">Google Cloud Storage</option>
           <option value="azureblob">Azure Blob / ADLS</option>
           <option value="sharepoint">SharePoint / OneDrive</option>
+          <option value="agentfile" id="schAgentFileOpt" hidden>Qlik On Premise Files</option>
         </select>
           <button type="button" class="tzc-btn" id="schKindBtn" aria-haspopup="listbox" aria-expanded="false"></button>
           <div class="tzc-panel"><div class="tzc-list" id="schKindList" role="listbox" aria-label="Assess"></div></div>
@@ -4212,6 +4213,10 @@ const SOURCE_FMT_SVG = {
     '<text x="6.9" y="14.7" font-size="9.2" font-weight="800" fill="#fff" text-anchor="middle" ' +
     'font-family="Segoe UI,Arial,sans-serif">S</text>'),
 };
+// `agentfile` is Qlik's own file format read off a customer's share, so it wears the Qlik mark.
+// An ALIAS rather than a second copy of the artwork: two drawings of one logo drift apart.
+SOURCE_FMT_SVG.agentfile = SOURCE_FMT_SVG.qlik;
+SOURCE_FMT_LABEL.agentfile = 'Qlik On Premise Files';
 function srcIcon(fmt) { const f = (fmt || '').toLowerCase(); return SOURCE_FMT_SVG[f] || SOURCE_FMT_ICON[f] || '🗄️'; }
 function sourceLabel(fmt) { const f = (fmt || '').toLowerCase(); return SOURCE_FMT_LABEL[f] || (f ? f.toUpperCase() : ''); }
 function sourceChip(fmt) {
@@ -11966,7 +11971,7 @@ const SOURCE_REQUIRED = {
   gcs: ['bucket', 'object', 'credentials_json'],
   azureblob: ['container', 'blob', 'connection_string'],
 };
-const SOURCE_LABEL = { agentfile: 'On-premises file', athena: 'Qlik Open Lakehouse', redshift: 'Amazon Redshift', s3: 'Amazon S3', snowflake: 'Snowflake',
+const SOURCE_LABEL = { agentfile: 'Qlik On Premise Files', athena: 'Qlik Open Lakehouse', redshift: 'Amazon Redshift', s3: 'Amazon S3', snowflake: 'Snowflake',
   databricks: 'Databricks', oracle: 'Oracle', postgres: 'PostgreSQL', mysql: 'MySQL', sqlserver: 'SQL Server',
   synapse: 'Azure Synapse', fabric: 'Microsoft Fabric', bigquery: 'Google BigQuery', sharepoint: 'SharePoint / OneDrive',
   gcs: 'Google Cloud Storage', azureblob: 'Azure Blob / ADLS',
@@ -12223,11 +12228,16 @@ function loadAgentsForSources() {
 //: anything - otherwise a freshly registered agent is missing from every source form until reload.
 function invalidateAgents() { _dqAgentsPromise = null; }
 
-function _agentHint(kind) {
-  const sel = document.querySelector(`[data-agentsel="${kind}"]`);
-  const hint = document.querySelector(`[data-agenthint="${kind}"]`);
-  const body = document.getElementById('src-' + kind);
-  const pw = body && body.querySelector('[data-f="password"]');
+function _agentHint(key) {
+  // Everything is found RELATIVE to the select rather than by source name, because the same
+  // control now appears in two different forms - the source tab and the schedule form - and an
+  // id lookup would find the source tab's password field while the operator is editing a
+  // schedule, and disable it behind their back.
+  const sel = document.querySelector(`[data-agentsel="${key}"]`);
+  const field = sel && sel.closest('.src-field');
+  const hint = field && field.querySelector('[data-agenthint]');
+  const form = sel && sel.closest('.src-form');
+  const pw = form && form.querySelector('[data-f="password"]');
   if (!sel || !hint) return;
   const agent = _dqAgentsSeen.find(a => a.id === sel.value);
   if (!agent) {
@@ -12245,8 +12255,11 @@ function _agentHint(kind) {
     : `This runs on ${agent.name}, which is ${agent.health}. Runs will queue until it polls again.`;
 }
 
-async function renderAgentSelect(kind) {
-  const sel = document.querySelector(`[data-agentsel="${kind}"]`);
+async function renderAgentSelect(kind, key) {
+  // `key` names the CONTROL, `kind` the source. They differ only for the schedule form, which
+  // carries its own copy of the same dropdown.
+  key = key || kind;
+  const sel = document.querySelector(`[data-agentsel="${key}"]`);
   if (!sel) return;
   const agents = await loadAgentsForSources();
   _dqAgentsSeen = agents;
@@ -12264,7 +12277,7 @@ async function renderAgentSelect(kind) {
   });
   sel.value = current;                       // a profile may have set it before the list arrived
   if (!sel.dataset.wired) {
-    sel.addEventListener('change', () => _agentHint(kind));
+    sel.addEventListener('change', () => _agentHint(key));
     sel.dataset.wired = '1';
   }
   // With no agents the whole field disappears - an empty dropdown offering one option is a
@@ -12275,7 +12288,11 @@ async function renderAgentSelect(kind) {
   if (field && kind !== 'agentfile') field.style.display = agents.length ? '' : 'none';
   const card = document.getElementById('agentFileCard');
   if (card) card.style.display = agents.length ? '' : 'none';
-  _agentHint(kind);
+  // Same reasoning for the schedule form's own entry: without an agent the source cannot run at
+  // all, so offering to schedule it is offering a control that can only fail.
+  const schOpt = document.getElementById('schAgentFileOpt');
+  if (schOpt) schOpt.hidden = !agents.length;
+  _agentHint(key);
 }
 
 function selectSource(key) {
@@ -15075,6 +15092,15 @@ $('#tmApply').addEventListener('click', () => {
 // Data-source schedule fields (config-driven so we reuse the same field help/tooltips
 // as the Data-from-Source tab without duplicating the whole forms).
 const SCHED_SOURCE_FIELDS = {
+  // The agent select is rendered empty here and filled in by renderAgentSelect after the form is
+  // built, because its options are this organisation's machines rather than a static list.
+  agentfile: [
+    { f: 'agent', label: 'Runs on', type: 'select', full: true, options: [['', 'Choose an agent']],
+      attrs: 'data-agentsel="sched-agentfile"' },
+    { f: 'path', label: 'Path on that machine', full: true },
+    { f: 'dataset', label: 'Dataset name' },
+    { f: 'sample_rows', label: 'Sample rows', type: 'number' },
+  ],
   redshift: [
     { f: 'region', label: 'AWS region', value: 'eu-west-1' },
     { f: 'role_arn', label: 'Cross-account role ARN' },
@@ -15249,15 +15275,20 @@ function renderSchedSourceFields(kind) {
   wrap.innerHTML = (SCHED_SOURCE_FIELDS[kind] || []).map(fld => {
     const help = _schFieldHelp(kind, fld.f);
     const ic = help ? ` <span class="src-info" data-tip="${esc(help)}">ⓘ</span>` : '';
+    const attrs = fld.attrs ? ' ' + fld.attrs : '';
     const input = fld.type === 'select'
-      ? `<select data-f="${fld.f}">` + fld.options.map(o => `<option value="${esc(o[0])}">${esc(o[1])}</option>`).join('') + `</select>`
+      ? `<select data-f="${fld.f}"${attrs}>` + fld.options.map(o => `<option value="${esc(o[0])}">${esc(o[1])}</option>`).join('') + `</select>`
       : fld.type === 'textarea'
         ? `<textarea data-f="${fld.f}" rows="4" style="font-family:ui-monospace,Menlo,monospace;font-size:12px;resize:vertical;"${fld.placeholder ? ` placeholder="${esc(fld.placeholder)}"` : ''}></textarea>`
         : `<input data-f="${fld.f}"${fld.type ? ` type="${fld.type}"` : ''}${fld.value ? ` value="${esc(fld.value)}"` : ''}>`;
     const cls = (fld.full ? ' full' : '') + (fld.cls ? ' ' + fld.cls : '');
-    return `<div class="src-field${cls}"><label>${esc(fld.label)}${ic}</label>${input}</div>`;
+    const hint = fld.attrs && fld.attrs.indexOf('data-agentsel') >= 0
+      ? '<p class="hint" data-agenthint style="display:none;margin:6px 0 0"></p>' : '';
+    return `<div class="src-field${cls}"><label>${esc(fld.label)}${ic}</label>${input}${hint}</div>`;
   }).join('');
   wireSchedFabricAuth(wrap);
+  // Built markup, so the dropdown has to be filled after the fact rather than at boot.
+  if (kind === 'agentfile') renderAgentSelect('agentfile', 'sched-agentfile');
 }
 
 // The source tab hides the credentials the chosen mode does not use; this form is built from a
