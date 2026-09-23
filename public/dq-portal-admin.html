@@ -61,6 +61,20 @@
   .urow .udel:hover{background:rgba(255,107,125,.12)}
   .urow .udel:disabled{opacity:.35;cursor:default}
   .uempty{color:var(--muted);font-size:12.5px;padding:8px 2px}
+  /* On-premises agents. A dot rather than a word for health: the list is scanned, not read, and
+     an operator wants to see at a glance that one machine is the wrong colour. */
+  .agentadd{display:flex;gap:8px;align-items:center}
+  .agentadd input{flex:1;min-width:0}
+  .adot{width:9px;height:9px;border-radius:50%;flex:0 0 auto;background:var(--muted)}
+  .adot.online{background:#37e0c8;box-shadow:0 0 7px rgba(55,224,200,.7)}
+  .adot.stale{background:#ffaa3c;box-shadow:0 0 7px rgba(255,170,60,.55)}
+  .adot.offline,.adot.revoked{background:#ff6b7d}
+  .arow .aname{flex:1;font-size:13px;word-break:break-all}
+  .arow .aid{font-size:11.5px;color:var(--muted);font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+  .atoken{margin-top:10px;padding:11px 13px;border:1px solid rgba(55,224,200,.35);border-radius:9px;
+    background:rgba(55,224,200,.07);font-size:12.5px;line-height:1.6}
+  .atoken code{display:block;margin:6px 0;padding:8px 10px;border-radius:7px;background:rgba(3,8,20,.6);
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;word-break:break-all;color:#c9fff4}
   /* Tag catalogue: add on one line, then one row per tag with its restricts toggle + remove. */
   .tagadd{display:flex;gap:8px;align-items:center}
   .tagadd input{flex:1;min-width:0}
@@ -195,6 +209,21 @@
         </div>
         <div id="usersTable" class="userstable"></div>
         <div class="msg" id="usersMsg"></div>
+      </div>
+
+      <div class="card" id="agentCard" style="margin-top:18px">
+        <h2>On-premises agents</h2>
+        <p class="hint">An agent lets Data Assurance assess a database that is not reachable from
+          the internet. You run it inside your own network; it polls us for work and opens nothing
+          inbound, and the database password stays on that machine rather than with us. See
+          docs/ONPREM_AGENT_INSTALL.md.</p>
+        <div class="agentadd">
+          <input id="agName" placeholder="Name this machine, e.g. Acme DC1" autocomplete="off" maxlength="120">
+          <button class="btn-sm" id="agAdd" type="button">Register</button>
+        </div>
+        <div id="agToken"></div>
+        <div id="agList" class="userstable"></div>
+        <div class="msg" id="agMsg"></div>
       </div>
     </div>
   </div>
@@ -610,6 +639,133 @@
     if (e.key === 'Enter') { e.preventDefault(); addTagToCatalogue(); }
   });
 
+  /* ------------------------------------------------------------------ on-premises agents */
+  /* Registering an agent is an administrative act in the same class as adding a member: it
+     authorises a machine to run this organisation's assessments and to be handed credentials
+     scoped to its data. The API enforces that; this panel just has to not pretend otherwise. */
+
+  function agentAgo(seconds) {
+    if (!seconds) return 'never';
+    const d = Math.max(0, Math.floor(Date.now() / 1000 - seconds));
+    if (d < 60) return d + 's ago';
+    if (d < 3600) return Math.floor(d / 60) + 'm ago';
+    if (d < 86400) return Math.floor(d / 3600) + 'h ago';
+    return Math.floor(d / 86400) + 'd ago';
+  }
+
+  async function agentsApi(payload) {
+    return api('/data-quality/agents', { method: 'POST', body: JSON.stringify(payload) });
+  }
+
+  function renderAgents(agents, configured) {
+    const wrap = $('#agList'); wrap.innerHTML = '';
+    if (!configured) {
+      wrap.appendChild(el('div', 'uempty',
+        'Agents are not enabled on this deployment yet (the API is missing DQ_AGENT_UPLOAD_ROLE_ARN).'));
+    }
+    if (!agents.length) { wrap.appendChild(el('div', 'uempty', 'No agents registered.')); return; }
+    agents.forEach(a => {
+      const row = el('div', 'urow arow');
+      const dot = el('span', 'adot ' + (a.health || ''));
+      dot.title = a.health;
+      row.appendChild(dot);
+      row.appendChild(el('span', 'aname', a.name || a.id));
+      row.appendChild(el('span', 'aid', a.id));
+      /* Health is the headline, but "queued 3" is what tells an operator the machine being down
+         is actually holding something up rather than merely being idle. */
+      const state = a.revoked ? 'revoked'
+        : (a.health === 'never' ? 'awaiting enrolment' : a.health + ' \u00b7 ' + agentAgo(a.lastSeen));
+      row.appendChild(el('span', 'utag' + (a.health === 'online' ? ' admin' : ''), state));
+      if (a.version) row.appendChild(el('span', 'utag', 'v' + a.version));
+      if (a.queued) row.appendChild(el('span', 'utag pending', a.queued + ' queued'));
+      if (a.running) row.appendChild(el('span', 'utag', 'running'));
+
+      if (!a.revoked) {
+        const tok = el('button', 'udel', 'New token');
+        tok.style.borderColor = 'var(--line)'; tok.style.color = 'var(--muted)';
+        tok.title = 'Issue a fresh enrolment token. The agent\u2019s current key stops working at once.';
+        tok.addEventListener('click', () => issueToken(a));
+        row.appendChild(tok);
+        const rev = el('button', 'udel', 'Revoke');
+        rev.title = 'Stop this machine claiming any more work, within seconds.';
+        rev.addEventListener('click', () => revokeAgent(a, rev));
+        row.appendChild(rev);
+      } else {
+        const del = el('button', 'udel', 'Delete');
+        del.addEventListener('click', () => deleteAgent(a, del));
+        row.appendChild(del);
+      }
+      wrap.appendChild(row);
+    });
+  }
+
+  function showToken(agent, token) {
+    /* Shown ONCE, because only the hash is stored. Saying so on the screen is the difference
+       between an admin copying it now and an admin asking support for it tomorrow. */
+    const box = $('#agToken'); box.innerHTML = '';
+    const card = el('div', 'atoken');
+    card.appendChild(el('div', null,
+      'Enrolment token for ' + (agent.name || agent.id) + '. It is valid for one hour, can be '
+      + 'used once, and is not shown again \u2013 only its hash is stored.'));
+    card.appendChild(el('code', null, token));
+    card.appendChild(el('div', null, 'On the agent machine:'));
+    card.appendChild(el('code', null,
+      'docker exec dq-agent python -m agent enrol --token ' + token + ' --name "' + (agent.name || agent.id) + '"'));
+    card.appendChild(el('div', null,
+      'Then point a credential profile at agent id "' + agent.id + '".'));
+    box.appendChild(card);
+  }
+
+  async function issueToken(agent) {
+    try {
+      const r = await agentsApi({ action: 'token', agent_id: agent.id });
+      showToken(agent, r.enrolmentToken);
+      loadAgents();
+    } catch (e) { show($('#agMsg'), 'err', e.message); }
+  }
+
+  async function revokeAgent(agent, btn) {
+    if (!confirm('Revoke ' + (agent.name || agent.id) + '? It stops claiming work within seconds, '
+                 + 'and has to be enrolled again with a new token.')) return;
+    btn.disabled = true;
+    try { await agentsApi({ action: 'revoke', agent_id: agent.id }); await loadAgents(); }
+    catch (e) { btn.disabled = false; show($('#agMsg'), 'err', e.message); }
+  }
+
+  async function deleteAgent(agent, btn) {
+    if (!confirm('Delete ' + (agent.name || agent.id) + ' for good?')) return;
+    btn.disabled = true;
+    try { await agentsApi({ action: 'delete', agent_id: agent.id }); await loadAgents(); }
+    catch (e) { btn.disabled = false; show($('#agMsg'), 'err', e.message); }
+  }
+
+  async function loadAgents() {
+    try {
+      const r = await agentsApi({ action: 'list' });
+      renderAgents(r.agents || [], r.configured !== false);
+    } catch (e) {
+      $('#agList').innerHTML = '';
+      $('#agList').appendChild(el('div', 'uempty', 'Could not load agents: ' + e.message));
+    }
+  }
+
+  function wireAgents() {
+    $('#agAdd').addEventListener('click', async () => {
+      const name = ($('#agName').value || '').trim();
+      if (!name) { show($('#agMsg'), 'err', 'Name the machine first.'); return; }
+      $('#agAdd').disabled = true;
+      try {
+        const r = await agentsApi({ action: 'create', name: name });
+        $('#agName').value = '';
+        showToken({ id: r.id, name: r.name }, r.enrolmentToken);
+        show($('#agMsg'), 'ok', 'Registered as ' + r.id + '.');
+        await loadAgents();
+      } catch (e) { show($('#agMsg'), 'err', e.message); }
+      finally { $('#agAdd').disabled = false; }
+    });
+    $('#agName').addEventListener('keydown', e => { if (e.key === 'Enter') $('#agAdd').click(); });
+  }
+
   function wireLogout(el) { el.addEventListener('click', e => { e.preventDefault(); location.href = API_BASE + '/portal/auth/logout'; }); }
   wireLogout($('#logout')); wireLogout($('#deniedLogout'));
 
@@ -639,6 +795,10 @@
     try { await loadUsers(); } catch (e) { /* surfaced in usersMsg */ }
     // Last, and independently: a failure here must not stop the rest of the page working.
     try { await loadTagSettings(); } catch (e) { /* surfaced in tagMsg */ }
+    // Same again for agents. Most organisations have none, and a deployment without the upload
+    // role configured cannot have any - neither is a reason for the rest of the page to break.
+    wireAgents();
+    try { await loadAgents(); } catch (e) { /* surfaced in agList */ }
   })();
 </script>
 </body>

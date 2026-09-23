@@ -2861,8 +2861,12 @@
     <div id="src-postgres" class="source-body" style="display:none;">
       <div class="card">
         <h2>PostgreSQL <span class="src-tag betatag">Beta</span></h2>
-        <p class="src-note">Read a Postgres table with a read-only user. The endpoint must be reachable from our worker.</p>
+        <p class="src-note">Read a Postgres table with a read-only user. The endpoint must be reachable from our worker, or from an on-premises agent you run inside your own network.</p>
         <div class="src-form">
+          <div class="src-field full"><label>Runs on <span class="hint">(where the assessment executes)</span></label>
+            <select data-f="agent" data-agentsel="postgres"><option value="">Direct from the cloud worker</option></select>
+            <p class="hint" data-agenthint="postgres" style="display:none;margin:6px 0 0"></p>
+          </div>
           <div class="src-field"><label>Host</label><input data-f="host" placeholder="db.example.com"></div>
           <div class="src-field"><label>Port</label><input data-f="port" placeholder="5432" value="5432"></div>
           <div class="src-field"><label>Database</label><input data-f="database" placeholder="analytics"></div>
@@ -2906,8 +2910,12 @@
     <div id="src-sqlserver" class="source-body" style="display:none;">
       <div class="card">
         <h2>SQL Server <span class="src-tag betatag">Beta</span></h2>
-        <p class="src-note">Read a SQL Server or Azure SQL table with a read-only login. The endpoint must be reachable from our worker. Note: T-SQL has no regex before SQL Server 2025, so pattern/format validity checks are skipped - every other DAMA dimension is assessed in full.</p>
+        <p class="src-note">Read a SQL Server or Azure SQL table with a read-only login. The endpoint must be reachable from our worker, or from an on-premises agent you run inside your own network. Note: T-SQL has no regex before SQL Server 2025, so pattern/format validity checks are skipped - every other DAMA dimension is assessed in full.</p>
         <div class="src-form">
+          <div class="src-field full"><label>Runs on <span class="hint">(where the assessment executes)</span></label>
+            <select data-f="agent" data-agentsel="sqlserver"><option value="">Direct from the cloud worker</option></select>
+            <p class="hint" data-agenthint="sqlserver" style="display:none;margin:6px 0 0"></p>
+          </div>
           <div class="src-field"><label>Host</label><input data-f="host" placeholder="sql.example.com"></div>
           <div class="src-field"><label>Port</label><input data-f="port" placeholder="1433" value="1433"></div>
           <div class="src-field"><label>Database</label><input data-f="database" placeholder="analytics"></div>
@@ -11932,6 +11940,75 @@ function srcSkeletonSwap(body, key) {
   }, 260);
 }
 
+// ---- On-premises agents: where an assessment EXECUTES ------------------------------------------
+// A source behind a customer's firewall is not a different connector, it is the same connector run
+// somewhere else - so this is a field on the existing form rather than a source of its own. The
+// server does the routing off the credential pointer; all the form has to do is name the agent and
+// stop asking for a password we are not going to be given.
+let _dqAgents = null;                       // cached per page load; registering one is rare
+
+async function loadAgentsForSources() {
+  if (_dqAgents) return _dqAgents;
+  try {
+    const r = await postJSON(`${API_BASE}/data-quality/agents`, HEADERS, { action: 'list' });
+    _dqAgents = (r.agents || []).filter(a => !a.revoked);
+  } catch (e) {
+    // Not an error worth showing. A Qlik caller, a member rather than an admin, or a deployment
+    // with no agents all land here, and none of them is a problem with the form they are filling in.
+    _dqAgents = [];
+  }
+  return _dqAgents;
+}
+
+function _agentHint(kind) {
+  const sel = document.querySelector(`[data-agentsel="${kind}"]`);
+  const hint = document.querySelector(`[data-agenthint="${kind}"]`);
+  const body = document.getElementById('src-' + kind);
+  const pw = body && body.querySelector('[data-f="password"]');
+  if (!sel || !hint) return;
+  const agent = (_dqAgents || []).find(a => a.id === sel.value);
+  if (!agent) {
+    hint.style.display = 'none';
+    if (pw) { pw.disabled = false; pw.placeholder = ''; }
+    return;
+  }
+  // The password field is DISABLED rather than hidden. Hidden, an operator types it into the
+  // previous field and wonders why nothing works; disabled with this sentence, they read why.
+  if (pw) { pw.disabled = true; pw.value = ''; pw.placeholder = 'Held on the agent'; }
+  hint.style.display = '';
+  hint.textContent = agent.health === 'online'
+    ? `This runs on ${agent.name}, inside your network. The password lives in that machine's `
+      + `own credential file and is never sent to us.`
+    : `This runs on ${agent.name}, which is ${agent.health}. Runs will queue until it polls again.`;
+}
+
+async function renderAgentSelect(kind) {
+  const sel = document.querySelector(`[data-agentsel="${kind}"]`);
+  if (!sel) return;
+  const agents = await loadAgentsForSources();
+  const current = sel.value;
+  sel.innerHTML = '';
+  const none = document.createElement('option');
+  none.value = ''; none.textContent = 'Direct from the cloud worker';
+  sel.appendChild(none);
+  agents.forEach(a => {
+    const o = document.createElement('option');
+    o.value = a.id;
+    o.textContent = `${a.name} (${a.health})`;
+    sel.appendChild(o);
+  });
+  sel.value = current;                       // a profile may have set it before the list arrived
+  if (!sel.dataset.wired) {
+    sel.addEventListener('change', () => _agentHint(kind));
+    sel.dataset.wired = '1';
+  }
+  // The whole field disappears when the organisation has no agents. An empty dropdown offering
+  // one option is a question nobody needs to be asked.
+  const field = sel.closest('.src-field');
+  if (field) field.style.display = agents.length ? '' : 'none';
+  _agentHint(kind);
+}
+
 function selectSource(key) {
   // Excel reuses the file-upload flow (a plain upload with an optional worksheet), so it maps to
   // the 'file' body while keeping its own card highlighted.
@@ -11971,6 +12048,7 @@ function selectSource(key) {
   const saveWrap = document.getElementById('srcSaveWrap');
   if (saveWrap) saveWrap.style.display = 'none';   // saving moved into the credential-profile control
   if (show) updateSourceRunState(key);
+  if (bodyKey === 'postgres' || bodyKey === 'sqlserver') renderAgentSelect(bodyKey);
 }
 
 // ---- Per-app credential PROFILES (named connections; secrets applied server-side) -------
