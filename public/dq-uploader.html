@@ -1635,6 +1635,17 @@
 
   .agt-add { display: flex; gap: 8px; align-items: center; max-width: 620px; }
   .agt-add input { flex: 1; min-width: 0; }
+  /* The download sits ABOVE the register box, because it is the first thing a new customer needs
+     and the last thing anybody thinks to ask for. Registering an agent that has nowhere to run is
+     a confusing way to find out which order the two steps go in. */
+  .agt-get { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 16px;
+    padding: 13px 15px; border: 1px solid var(--border); border-radius: 10px; background: var(--card); }
+  .agt-get-main { flex: 1; min-width: 240px; }
+  .agt-get-h { font-weight: 600; font-size: 13.5px; }
+  .agt-get-sub { font-size: 12.5px; color: var(--muted); margin-top: 3px; line-height: 1.55; }
+  .agt-get-sha { display: block; margin-top: 8px; padding: 6px 9px; border-radius: 7px;
+    background: var(--idle-bg); font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11.5px; color: var(--muted); overflow-wrap: anywhere; }
   .agt-list { display: flex; flex-direction: column; gap: 8px; margin-top: 16px; }
   .agt-row { display: flex; align-items: center; gap: 12px; padding: 11px 14px; flex-wrap: wrap;
     border: 1px solid var(--border); border-radius: 10px; background: var(--card); }
@@ -3158,12 +3169,20 @@
     <div class="tab-intro">
       <span class="tab-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="7" rx="2"/><rect x="3" y="13" width="18" height="7" rx="2"/><path d="M7 7.5h.01M7 16.5h.01"/></svg></span>
       <h2>Agents</h2>
-      <p>Assess a database that is not reachable from the internet. The customer runs a small
-         container inside their own network; it polls us for work, runs the assessment locally, and
-         sends the results back. Nothing inbound is opened, and the database password stays on that
-         machine rather than with us.</p>
+      <p>Assess a database, or a file, that is not reachable from the internet. The customer runs
+         a small Windows service on a machine inside their own network; it polls us for work, runs
+         the assessment locally, and sends back the scores. Nothing inbound is opened, and the
+         database password stays on that machine rather than with us.</p>
     </div>
     <div class="card">
+      <div class="agt-get" id="agtGet">
+        <div class="agt-get-main">
+          <div class="agt-get-h">1. Install the agent on a Windows machine</div>
+          <div class="agt-get-sub" id="agtGetSub">Looking for a build...</div>
+          <code class="agt-get-sha" id="agtGetSha" style="display:none;"></code>
+        </div>
+        <button type="button" class="btn-sm" id="agtGetBtn" disabled>Download</button>
+      </div>
       <div class="agt-add">
         <input type="text" id="agtName" placeholder="Name the machine, e.g. Acme DC1" maxlength="120" autocomplete="off">
         <button type="button" class="btn-sm" id="agtAdd">Register</button>
@@ -12061,7 +12080,46 @@ async function agentsApi(payload) {
   return postJSON(`${API_BASE}/data-quality/agents`, HEADERS, payload);
 }
 
+// Asked for on every open of the tab rather than once at boot. It is one call, and a version
+// published while somebody had the page open should show up when they next look at it rather than
+// when they next reload.
+// One line, named, because a test has to be able to watch it happen. Navigating inside a headless
+// browser ends the page and takes the harness with it, so the alternative to a seam here is not
+// testing the only thing the Download button actually does.
+function agtNavigate(url) { window.location.assign(url); }
+
+async function agtLoadDownload() {
+  const sub = $('#agtGetSub'), sha = $('#agtGetSha'), btn = $('#agtGetBtn');
+  if (!sub || !btn) return;
+  let r;
+  try { r = await agentsApi({ action: 'download' }); }
+  catch (e) { sub.textContent = 'Could not check for a build: ' + e.message; return; }
+  if (!r.available) {
+    // The reason comes from the API and is written to be read by whoever is looking at this tab:
+    // "no build published yet" and "the API cannot reach the bucket" need different people.
+    sub.textContent = r.reason || 'No build is available to download yet.';
+    btn.disabled = true;
+    if (sha) sha.style.display = 'none';
+    return;
+  }
+  const mb = Math.round((r.size || 0) / 1048576);
+  sub.textContent = 'Version ' + (r.version || '?') + ', ' + mb + ' MB, Windows 64-bit. '
+    + 'Extract it on that machine, put its agent.config beside dq-agent.exe, then run '
+    + 'dq-agent-service.cmd INSTALL from an administrator prompt.';
+  if (sha && r.sha256) {
+    // Shown, not tucked behind a link. These executables are not code-signed yet, so an
+    // administrator comparing this against Get-FileHash is the whole of the integrity check.
+    sha.style.display = 'block';
+    sha.textContent = 'SHA-256 ' + r.sha256;
+    sha.title = 'Check the file you received with: Get-FileHash <file> -Algorithm SHA256';
+  } else if (sha) {
+    sha.style.display = 'none';
+  }
+  btn.disabled = false;
+}
+
 async function renderAgentsTab() {
+  agtLoadDownload();
   const list = $('#agtList');
   if (!list) return;
   let reply;
@@ -12223,6 +12281,21 @@ async function agtRefresh() {
 }
 
 function wireAgentsTab() {
+  const get = $('#agtGetBtn');
+  if (get) get.addEventListener('click', async () => {
+    // A fresh link per click, not the one fetched when the tab was opened. That one is signed for
+    // an hour, and a tab left open over lunch would otherwise hand out a dead URL whose failure
+    // looks exactly like the download being broken.
+    get.disabled = true;
+    try {
+      const r = await agentsApi({ action: 'download' });
+      if (!r.available || !r.url) { agtMsg(r.reason || 'No build is available yet.', true); return; }
+      agtMsg('');
+      agtNavigate(r.url);
+    } catch (e) { agtMsg('Could not start the download: ' + e.message, true); }
+    finally { get.disabled = false; }
+  });
+
   const add = $('#agtAdd'), name = $('#agtName');
   if (!add || !name) return;
   add.addEventListener('click', async () => {
