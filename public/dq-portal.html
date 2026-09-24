@@ -1666,9 +1666,16 @@
   .agt-dot.offline, .agt-dot.revoked { background: var(--err); }
   .agt-token { margin-top: 14px; padding: 13px 15px; border-radius: 10px; font-size: 13px; line-height: 1.6;
     border: 1px solid var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--card)); }
-  .agt-token code { display: block; margin: 7px 0; padding: 9px 11px; border-radius: 7px;
+  .agt-token code { display: block; margin: 6px 0 6px 16px; padding: 9px 11px; border-radius: 7px;
     background: var(--idle-bg); font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
     font-size: 12.5px; overflow-wrap: anywhere; }
+  /* The card is now a procedure rather than a sentence, so it needs the shape of one: headings to
+     skim by, and a hanging indent so a wrapped step does not line up under its own number. */
+  .agt-token .agt-h { font-weight: 600; margin-top: 13px; }
+  .agt-token .agt-h:first-child { margin-top: 0; }
+  .agt-token .agt-li { margin-top: 5px; padding-left: 16px; text-indent: -16px; }
+  .agt-token .agt-fine { font-size: 12.5px; color: var(--muted); margin-top: 8px; }
+  .agt-token .agt-fine + code { margin-top: 5px; }
   .agt-empty { color: var(--muted); font-size: 13px; padding: 10px 2px; }
 
   /* Schedule form + list */
@@ -12227,21 +12234,53 @@ async function agtDownloadConfig(agent) {
 }
 
 function agtConfigNote(agent) {
+  // The whole procedure, not a reminder of it. Whoever presses this button is usually not the
+  // person who will run the commands, so this is the text they forward.
   const box = $('#agtToken');
   if (!box) return;
   box.textContent = '';
+  const label = agent.name || agent.id;
   const card = agtEl('div', 'agt-token');
-  card.appendChild(agtEl('div', null,
-    'agent.config downloaded for ' + (agent.name || agent.id) + '. Any config issued for this '
-    + 'agent before now has stopped working.'));
-  card.appendChild(agtEl('div', null, 'On that machine:'));
-  card.appendChild(agtEl('code', null,
-    '1. Put agent.config in the folder the agent is installed in'));
-  card.appendChild(agtEl('code', null,
-    '2. Start the "Viseon Data Assurance Agent" service'));
-  card.appendChild(agtEl('div', null,
-    'The file holds this agent\u2019s credential, so treat it like a password: send it the way '
-    + 'you would send one, and keep it readable only by an administrator.'));
+  const add = (cls, text) => card.appendChild(agtEl(cls === 'code' ? 'code' : 'div',
+                                                    cls === 'code' ? null : cls, text));
+
+  add('agt-h', 'agent.config downloaded for ' + label);
+  add(null, 'Any config issued for this agent before now has stopped working, so this file is the '
+          + 'one that has to reach the machine.');
+
+  add('agt-h', 'Getting it there');
+  add(null, 'Treat it like a password. Anyone holding this file can act as this agent until it is '
+          + 'revoked, so send it by encrypted mail, a password manager or a secure file drop '
+          + 'rather than in a ticket. On the machine, keep it readable only by administrators.');
+
+  add('agt-h', 'On a machine that does not have the agent yet');
+  add('agt-li', '1. Press Download at the top of this tab and copy the zip to that machine. '
+              + 'Check it against the SHA-256 shown there before extracting it.');
+  add('agt-li', '2. Extract it somewhere permanent, for example '
+              + 'C:\\Program Files\\Viseon\\DataAssurance. Not the Downloads folder: the '
+              + 'service runs from wherever you leave it, so moving it later means installing it '
+              + 'again.');
+  add('agt-li', '3. Put agent.config in that folder, beside dq-agent.exe. Do not rename it or '
+              + 'open and re-save it.');
+  add('agt-li', '4. Open Command Prompt as Administrator, change to that folder, and run:');
+  add('code', 'dq-agent-service.cmd INSTALL');
+  add('code', 'dq-agent-service.cmd START');
+  add('agt-fine', 'To assess files on that machine or a share, list the folders it may read on '
+                + 'the INSTALL line instead of the plain one above. Left out, the agent reads no '
+                + 'local file at all, and changing it afterwards means editing the service:');
+  add('code', 'dq-agent-service.cmd INSTALL "D:\\qvd;\\\\fs01\\finance"');
+  add('agt-li', '5. For a database source, put the password in secrets.json in the same folder, '
+              + 'then run dq-agent-service.cmd RESTART. It never leaves that machine.');
+  add('agt-li', '6. Within a minute ' + label + ' shows a green dot and "online" in the list '
+              + 'below. That is the whole installation.');
+
+  add('agt-h', 'On a machine that already has the agent');
+  add('agt-li', '1. Put agent.config in the install folder, replacing the one already there.');
+  add('agt-li', '2. Restart the service:');
+  add('code', 'dq-agent-service.cmd RESTART');
+
+  add('agt-fine', 'Network shares, proxies and what to do when something is wrong are in the '
+                + 'installation runbook.');
   box.appendChild(card);
 }
 
