@@ -1644,6 +1644,8 @@
   .agt-get-main { flex: 1; min-width: 240px; }
   .agt-get-h { font-weight: 600; font-size: 13.5px; }
   .agt-get-sub { font-size: 12.5px; color: var(--muted); margin-top: 3px; line-height: 1.55; }
+  .agt-get-actions { display: flex; gap: 8px; align-items: center; flex: none; }
+  .agt-get-copy { background: transparent; }
   .agt-get-sha { display: block; margin-top: 8px; padding: 6px 9px; border-radius: 7px;
     background: var(--idle-bg); font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
     font-size: 11.5px; color: var(--muted); overflow-wrap: anywhere; }
@@ -3218,7 +3220,10 @@
           <div class="agt-get-sub" id="agtGetSub">Looking for a build...</div>
           <code class="agt-get-sha" id="agtGetSha" style="display:none;"></code>
         </div>
-        <button type="button" class="btn-sm" id="agtGetBtn" disabled>Download</button>
+        <div class="agt-get-actions">
+          <button type="button" class="btn-sm" id="agtGetBtn" disabled>Download</button>
+          <button type="button" class="btn-sm agt-get-copy" id="agtGetCopy" disabled>Copy link</button>
+        </div>
       </div>
       <div class="agt-add">
         <input type="text" id="agtName" placeholder="Name the machine, e.g. Acme DC1" maxlength="120" autocomplete="off">
@@ -12117,14 +12122,44 @@ async function agentsApi(payload) {
   return postJSON(`${API_BASE}/data-quality/agents`, HEADERS, payload);
 }
 
-// Asked for on every open of the tab rather than once at boot. It is one call, and a version
-// published while somebody had the page open should show up when they next look at it rather than
-// when they next reload.
 // One line, named, because a test has to be able to watch it happen. Navigating inside a headless
 // browser ends the page and takes the harness with it, so the alternative to a seam here is not
 // testing the only thing the Download button actually does.
 function agtNavigate(url) { window.location.assign(url); }
 
+// Put a download link on the clipboard rather than following it.
+//
+// The bundle is 92 MB and belongs inside the customer's network, so it is usually fetched THERE and
+// not here. The link already supports that: it is signed, so it carries its own authorisation and
+// works from any machine with no sign-in. What it could not do was leave this page, because a
+// button that navigates is the one thing you cannot forward to somebody else.
+//
+// navigator.clipboard needs a secure context, which the real site is. The fallback is for a page
+// opened over plain http, where the modern API is simply absent rather than refused.
+async function agtCopyText(text) {
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch (e) { /* a refused permission is not a reason to give up; try the old way */ }
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    const ok = document.execCommand('copy');
+    ta.remove();
+    return ok;
+  } catch (e) { return false; }
+}
+
+// Asked for on every open of the tab rather than once at boot. It is one call, and a version
+// published while somebody had the page open should show up when they next look at it rather than
+// when they next reload.
 async function agtLoadDownload() {
   const sub = $('#agtGetSub'), sha = $('#agtGetSha'), btn = $('#agtGetBtn');
   if (!sub || !btn) return;
@@ -12136,6 +12171,8 @@ async function agtLoadDownload() {
     // "no build published yet" and "the API cannot reach the bucket" need different people.
     sub.textContent = r.reason || 'No build is available to download yet.';
     btn.disabled = true;
+    const copyOff = $('#agtGetCopy');
+    if (copyOff) copyOff.disabled = true;
     if (sha) sha.style.display = 'none';
     return;
   }
@@ -12153,6 +12190,8 @@ async function agtLoadDownload() {
     sha.style.display = 'none';
   }
   btn.disabled = false;
+  const copyOn = $('#agtGetCopy');
+  if (copyOn) copyOn.disabled = false;
 }
 
 async function renderAgentsTab() {
@@ -12266,6 +12305,23 @@ async function agtDownloadConfig(agent) {
     agtConfigNote(agent);
     await agtRefresh();
   } catch (e) { agtMsg('Could not create a config: ' + e.message, true); }
+}
+
+function agtShowLink(url, mins) {
+  const box = $('#agtToken');
+  if (!box) return;
+  box.textContent = '';
+  const card = agtEl('div', 'agt-token');
+  card.appendChild(agtEl('div', null,
+    'Download link, good for ' + mins + ' minutes. It needs no sign-in and works from any '
+    + 'machine, so it can be sent to whoever is installing the agent.'));
+  card.appendChild(agtEl('code', null, url));
+  const close = agtEl('button', 'agt-x', '\u00d7');
+  close.type = 'button';
+  close.title = 'Dismiss';
+  close.addEventListener('click', () => { box.textContent = ''; });
+  card.appendChild(close);
+  box.appendChild(card);
 }
 
 function agtConfigNote(agent) { agtInstructions(agent, true); }
@@ -12390,6 +12446,28 @@ function wireAgentsTab() {
       agtNavigate(r.url);
     } catch (e) { agtMsg('Could not start the download: ' + e.message, true); }
     finally { get.disabled = false; }
+  });
+
+  const copy = $('#agtGetCopy');
+  if (copy) copy.addEventListener('click', async () => {
+    copy.disabled = true;
+    try {
+      // A fresh link, like Download: the one fetched when the tab opened is signed for an hour, and
+      // a tab left open all afternoon would hand somebody a dead link to forward.
+      const r = await agentsApi({ action: 'download' });
+      if (!r.available || !r.url) { agtMsg(r.reason || 'No build is available yet.', true); return; }
+      const mins = Math.max(1, Math.round((r.expiresIn || 3600) / 60));
+      if (await agtCopyText(r.url)) {
+        agtMsg('Link copied. It needs no sign-in and works from any machine, so it can go to '
+             + 'whoever is installing. The download has to be STARTED within ' + mins
+             + ' minutes; once it has begun it finishes however long it takes.');
+      } else {
+        // Saying "copied" when it was not is worse than not offering it at all.
+        agtMsg('Could not reach the clipboard, so the link is shown below to copy by hand.', true);
+        agtShowLink(r.url, mins);
+      }
+    } catch (e) { agtMsg('Could not create a link: ' + e.message, true); }
+    finally { copy.disabled = false; }
   });
 
   const add = $('#agtAdd'), name = $('#agtName');
