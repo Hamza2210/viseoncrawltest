@@ -12150,7 +12150,7 @@ async function renderAgentsTab() {
     row.appendChild(agtEl('span', 'agt-name', a.name || a.id));
     row.appendChild(agtEl('span', 'agt-id', a.id));
     const state = a.revoked ? 'revoked'
-      : (a.health === 'never' ? 'awaiting enrolment' : a.health + ' \u00b7 ' + agtAgo(a.lastSeen));
+      : (a.health === 'never' ? 'awaiting its config' : a.health + ' \u00b7 ' + agtAgo(a.lastSeen));
     row.appendChild(agtEl('span', 'agt-tag', state));
     if (a.version) row.appendChild(agtEl('span', 'agt-tag', 'v' + a.version));
     // A queued count beside an offline agent is what says something is actually being held up,
@@ -12168,11 +12168,6 @@ async function renderAgentsTab() {
                 + 'there, so the previous file stops working.';
       cfg.addEventListener('click', () => agtDownloadConfig(a));
       actions.appendChild(cfg);
-      const tok = agtEl('button', 'btn-sm', 'New token');
-      tok.type = 'button';
-      tok.title = 'Issue a fresh enrolment token. This agent\u2019s current key stops working at once.';
-      tok.addEventListener('click', () => agtIssueToken(a));
-      actions.appendChild(tok);
       const rev = agtEl('button', 'btn-sm btn-danger', 'Revoke');
       rev.type = 'button';
       rev.title = 'Stop this machine claiming any more work, within seconds.';
@@ -12189,24 +12184,24 @@ async function renderAgentsTab() {
   });
 }
 
-function agtShowToken(agent, token) {
-  // Shown ONCE, because only a hash is stored. Saying so on the screen is the difference between
-  // an admin copying it now and an admin asking support for it tomorrow.
+function agtShowNext(agent) {
+  // Registering names a machine; it does not yet trust one. The config is a separate, deliberate
+  // click because it mints a credential - but it is the only remaining next step, so it is offered
+  // right here rather than left to be found on a row further down the page.
   const box = $('#agtToken');
   if (!box) return;
   box.textContent = '';
+  const label = agent.name || agent.id;
   const card = agtEl('div', 'agt-token');
   card.appendChild(agtEl('div', null,
-    'Enrolment token for ' + (agent.name || agent.id) + '. Valid for one hour, usable once, and '
-    + 'not shown again - only its hash is stored.'));
-  card.appendChild(agtEl('code', null, token));
-  card.appendChild(agtEl('div', null, 'Run this on the agent machine:'));
-  card.appendChild(agtEl('code', null,
-    'docker exec dq-agent python -m agent enrol --token ' + token
-    + ' --name "' + (agent.name || agent.id) + '"'));
+    'Registered ' + label + ' as ' + agent.id + '. It has no credential yet.'));
+  const btn = agtEl('button', 'btn-sm', 'Download config for ' + label);
+  btn.type = 'button';
+  btn.addEventListener('click', () => agtDownloadConfig(agent));
+  card.appendChild(btn);
   card.appendChild(agtEl('div', null,
-    'Then pick "' + (agent.name || agent.id) + '" in the Runs on field of a PostgreSQL or SQL '
-    + 'Server source.'));
+    'Put that file beside dq-agent.exe on the machine and start the service. Then pick "' + label
+    + '" in the Runs on field of a source.'));
   box.appendChild(card);
 }
 
@@ -12250,19 +12245,11 @@ function agtConfigNote(agent) {
   box.appendChild(card);
 }
 
-async function agtIssueToken(agent) {
-  try {
-    const r = await agentsApi({ action: 'token', agent_id: agent.id });
-    agtShowToken(agent, r.enrolmentToken);
-    agtMsg('');
-    await agtRefresh();
-  } catch (e) { agtMsg('Could not issue a token: ' + e.message, true); }
-}
-
 async function agtRevoke(agent) {
   const name = agent.name || agent.id;
-  if (!(await dqConfirm('Revoke ' + name + '? It stops claiming work within seconds and has to be '
-                        + 'enrolled again with a new token.', { title: 'Revoke agent', danger: true }))) return;
+  if (!(await dqConfirm('Revoke ' + name + '? It stops claiming work within seconds, and the '
+                        + 'config on that machine stops working for good.',
+                        { title: 'Revoke agent', danger: true }))) return;
   try { await agentsApi({ action: 'revoke', agent_id: agent.id }); agtMsg(''); await agtRefresh(); }
   catch (e) { agtMsg('Could not revoke: ' + e.message, true); }
 }
@@ -12306,8 +12293,8 @@ function wireAgentsTab() {
     try {
       const r = await agentsApi({ action: 'create', name: value });
       name.value = '';
-      agtShowToken({ id: r.id, name: r.name }, r.enrolmentToken);
-      agtMsg('Registered as ' + r.id + '.');
+      agtShowNext({ id: r.id, name: r.name });
+      agtMsg('');
       await agtRefresh();
     } catch (e) { agtMsg('Could not register: ' + e.message, true); }
     finally { add.disabled = false; }

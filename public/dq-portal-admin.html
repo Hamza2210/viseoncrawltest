@@ -674,18 +674,19 @@
       /* Health is the headline, but "queued 3" is what tells an operator the machine being down
          is actually holding something up rather than merely being idle. */
       const state = a.revoked ? 'revoked'
-        : (a.health === 'never' ? 'awaiting enrolment' : a.health + ' \u00b7 ' + agentAgo(a.lastSeen));
+        : (a.health === 'never' ? 'awaiting its config' : a.health + ' \u00b7 ' + agentAgo(a.lastSeen));
       row.appendChild(el('span', 'utag' + (a.health === 'online' ? ' admin' : ''), state));
       if (a.version) row.appendChild(el('span', 'utag', 'v' + a.version));
       if (a.queued) row.appendChild(el('span', 'utag pending', a.queued + ' queued'));
       if (a.running) row.appendChild(el('span', 'utag', 'running'));
 
       if (!a.revoked) {
-        const tok = el('button', 'udel', 'New token');
-        tok.style.borderColor = 'var(--line)'; tok.style.color = 'var(--muted)';
-        tok.title = 'Issue a fresh enrolment token. The agent\u2019s current key stops working at once.';
-        tok.addEventListener('click', () => issueToken(a));
-        row.appendChild(tok);
+        const cfg = el('button', 'udel', 'Download config');
+        cfg.style.borderColor = 'var(--line)'; cfg.style.color = 'var(--muted)';
+        cfg.title = 'agent.config for this machine. Issuing one REPLACES any config already out '
+                  + 'there, so the previous file stops working.';
+        cfg.addEventListener('click', () => downloadConfig(a));
+        row.appendChild(cfg);
         const rev = el('button', 'udel', 'Revoke');
         rev.title = 'Stop this machine claiming any more work, within seconds.';
         rev.addEventListener('click', () => revokeAgent(a, rev));
@@ -699,34 +700,51 @@
     });
   }
 
-  function showToken(agent, token) {
-    /* Shown ONCE, because only the hash is stored. Saying so on the screen is the difference
-       between an admin copying it now and an admin asking support for it tomorrow. */
+  function showNext(agent) {
+    /* Registering names a machine; it does not yet trust one. The config is the only remaining
+       step, so it is offered right here rather than left to be found on a row below. */
     const box = $('#agToken'); box.innerHTML = '';
+    const label = agent.name || agent.id;
     const card = el('div', 'atoken');
     card.appendChild(el('div', null,
-      'Enrolment token for ' + (agent.name || agent.id) + '. It is valid for one hour, can be '
-      + 'used once, and is not shown again \u2013 only its hash is stored.'));
-    card.appendChild(el('code', null, token));
-    card.appendChild(el('div', null, 'On the agent machine:'));
-    card.appendChild(el('code', null,
-      'docker exec dq-agent python -m agent enrol --token ' + token + ' --name "' + (agent.name || agent.id) + '"'));
+      'Registered ' + label + ' as ' + agent.id + '. It has no credential yet.'));
+    const btn = el('button', 'udel', 'Download config for ' + label);
+    btn.style.borderColor = 'var(--line)'; btn.style.color = 'var(--muted)';
+    btn.addEventListener('click', () => downloadConfig(agent));
+    card.appendChild(btn);
     card.appendChild(el('div', null,
-      'Then point a credential profile at agent id "' + agent.id + '".'));
+      'Put that file beside dq-agent.exe on the machine and start the service. Then point a '
+      + 'credential profile at agent id "' + agent.id + '".'));
     box.appendChild(card);
   }
 
-  async function issueToken(agent) {
+  async function downloadConfig(agent) {
     try {
-      const r = await agentsApi({ action: 'token', agent_id: agent.id });
-      showToken(agent, r.enrolmentToken);
+      const r = await agentsApi({ action: 'config', agent_id: agent.id });
+      /* A Blob and a synthetic click: the payload is minted by a POST, so there is no URL to link
+         to, and putting a credential in a query string to make one would be worse. */
+      const url = URL.createObjectURL(new Blob([r.config], { type: 'application/octet-stream' }));
+      const link = document.createElement('a');
+      link.href = url; link.download = r.filename || 'agent.config';
+      document.body.appendChild(link); link.click(); link.remove();
+      /* Revoked on a timer: Firefox cancels an in-flight download when the object URL goes away
+         in the same tick. */
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
+      const box = $('#agToken'); box.innerHTML = '';
+      const card = el('div', 'atoken');
+      card.appendChild(el('div', null,
+        'agent.config downloaded for ' + (agent.name || agent.id) + '. Any config issued for this '
+        + 'agent before now has stopped working.'));
+      card.appendChild(el('div', null,
+        'It holds this agent\u2019s credential, so send it the way you would send a password.'));
+      box.appendChild(card);
       loadAgents();
     } catch (e) { show($('#agMsg'), 'err', e.message); }
   }
 
   async function revokeAgent(agent, btn) {
     if (!confirm('Revoke ' + (agent.name || agent.id) + '? It stops claiming work within seconds, '
-                 + 'and has to be enrolled again with a new token.')) return;
+                 + 'and the config on that machine stops working for good.')) return;
     btn.disabled = true;
     try { await agentsApi({ action: 'revoke', agent_id: agent.id }); await loadAgents(); }
     catch (e) { btn.disabled = false; show($('#agMsg'), 'err', e.message); }
@@ -757,7 +775,7 @@
       try {
         const r = await agentsApi({ action: 'create', name: name });
         $('#agName').value = '';
-        showToken({ id: r.id, name: r.name }, r.enrolmentToken);
+        showNext({ id: r.id, name: r.name });
         show($('#agMsg'), 'ok', 'Registered as ' + r.id + '.');
         await loadAgents();
       } catch (e) { show($('#agMsg'), 'err', e.message); }
