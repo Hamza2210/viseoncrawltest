@@ -73,6 +73,13 @@
   .arow .aid{font-size:11.5px;color:var(--muted);font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
   .atoken{margin-top:10px;padding:11px 13px;border:1px solid rgba(55,224,200,.35);border-radius:9px;
     background:rgba(55,224,200,.07);font-size:12.5px;line-height:1.6}
+  .atoken{position:relative;padding-right:44px}
+  .ax{position:absolute;top:9px;right:10px;width:24px;height:24px;padding:0;line-height:1;
+    border-radius:6px;border:1px solid var(--line);background:transparent;color:var(--muted);
+    font-size:15px;cursor:pointer}
+  .ax:hover{color:var(--ink);border-color:var(--muted)}
+  .ai{width:26px;height:26px;padding:0;border-radius:50%;font-size:13px;font-weight:700;
+    font-family:Georgia,'Times New Roman',serif}
   .atoken .ah{font-weight:600;margin-top:13px}
   .atoken .ah:first-child{margin-top:0}
   .atoken .ali{margin-top:5px;padding-left:16px;text-indent:-16px}
@@ -685,6 +692,12 @@
       if (a.running) row.appendChild(el('span', 'utag', 'running'));
 
       if (!a.revoked) {
+        const info = el('button', 'udel ai', 'i');
+        info.style.borderColor = 'var(--line)'; info.style.color = 'var(--muted)';
+        info.title = 'How to install this agent. Shows the steps and issues nothing.';
+        info.setAttribute('aria-label', 'Installation instructions for ' + (a.name || a.id));
+        info.addEventListener('click', () => showInstructions(a, false));
+        row.appendChild(info);
         const cfg = el('button', 'udel', 'Download config');
         cfg.style.borderColor = 'var(--line)'; cfg.style.color = 'var(--muted)';
         cfg.title = 'agent.config for this machine. Issuing one REPLACES any config already out '
@@ -722,6 +735,78 @@
     box.appendChild(card);
   }
 
+  /* One builder, two ways in. Reading the steps used to require pressing Download config, which
+     RETIRES the file somebody may already be installing from - a destructive act for a reason as
+     ordinary as "what was step 3 again". The info button opens the same text and mints nothing,
+     and says so, because an identical-looking card would leave that in doubt. */
+  function showInstructions(agent, issued) {
+    const box = $('#agToken'); box.innerHTML = '';
+    const label = agent.name || agent.id;
+    const card = el('div', 'atoken');
+    const add = (cls, text) => card.appendChild(
+      el(cls === 'code' ? 'code' : 'div', cls === 'code' ? null : cls, text));
+
+    if (issued) {
+      add('ah', 'agent.config downloaded for ' + label);
+      add(null, 'Any config issued for this agent before now has stopped working, so this file is '
+              + 'the one that has to reach the machine.');
+    } else {
+      add('ah', 'Installing ' + label);
+      add(null, 'Nothing has been issued by opening this, and the config already out there still '
+              + 'works. To get a fresh one, press Download config on this row.');
+    }
+
+    add('ah', 'Getting it there');
+    add(null, 'Treat it like a password. Anyone holding this file can act as this agent until '
+            + 'it is revoked, so send it by encrypted mail, a password manager or a secure file '
+            + 'drop rather than in a ticket. On the machine, keep it readable only by '
+            + 'administrators.');
+
+    add('ah', 'On a machine that does not have the agent yet');
+    add('ali', '1. Download the agent zip from the Agents tab in the app, copy it to that '
+             + 'machine, and check it against the SHA-256 shown there before extracting it.');
+    add('ali', '2. Extract it somewhere permanent, for example '
+             + 'C:\\Program Files\\Viseon\\DataAssurance. Not the Downloads folder: the '
+             + 'service runs from wherever you leave it.');
+    add('ali', '3. Put agent.config in that folder, beside dq-agent.exe.');
+    add('ali', '4. Open Command Prompt as Administrator, change to that folder, and run:');
+    add('code', 'dq-agent-service.cmd INSTALL');
+    add('code', 'dq-agent-service.cmd START');
+    add('afine', 'To assess files on that machine or a share, list the folders it may read on '
+               + 'the INSTALL line instead. Left out, the agent reads no local file at all:');
+    add('code', 'dq-agent-service.cmd INSTALL "D:\\qvd;\\\\fs01\\finance"');
+    add('ali', '5. For a database source, put the password in secrets.json in the same folder, '
+             + 'then run dq-agent-service.cmd RESTART. It never leaves that machine.');
+    add('ali', '6. Within a minute ' + label + ' shows online in the list below.');
+
+    add('ah', 'On a machine that already has the agent');
+    add('ali', '1. Put agent.config in the install folder, replacing the one already there.');
+    add('ali', '2. Restart the service:');
+    add('code', 'dq-agent-service.cmd RESTART');
+
+    add('ah', 'Stopping and checking it');
+    add('ali', 'Is it running:');
+    add('code', 'dq-agent-service.cmd STATUS');
+    add('ali', 'Stop it. Anything queued for this agent waits until it is back rather than being '
+             + 'lost, so stopping it is safe at any time:');
+    add('code', 'dq-agent-service.cmd STOP');
+    add('ali', 'Stop it and unregister the service entirely:');
+    add('code', 'dq-agent-service.cmd REMOVE');
+
+    add('afine', 'Network shares, proxies and what to do when something is wrong are in the '
+               + 'installation runbook.');
+
+    const close = el('button', 'ax', '\u00d7');
+    close.type = 'button';
+    close.title = 'Dismiss';
+    close.setAttribute('aria-label', 'Dismiss these instructions');
+    close.addEventListener('click', () => { box.innerHTML = ''; });
+    card.appendChild(close);
+
+    box.appendChild(card);
+    if (box.scrollIntoView) box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
   async function downloadConfig(agent) {
     try {
       const r = await agentsApi({ action: 'config', agent_id: agent.id });
@@ -734,47 +819,7 @@
       /* Revoked on a timer: Firefox cancels an in-flight download when the object URL goes away
          in the same tick. */
       setTimeout(() => URL.revokeObjectURL(url), 10000);
-      const box = $('#agToken'); box.innerHTML = '';
-      const label = agent.name || agent.id;
-      const card = el('div', 'atoken');
-      const add = (cls, text) => card.appendChild(
-        el(cls === 'code' ? 'code' : 'div', cls === 'code' ? null : cls, text));
-
-      add('ah', 'agent.config downloaded for ' + label);
-      add(null, 'Any config issued for this agent before now has stopped working, so this file is '
-              + 'the one that has to reach the machine.');
-
-      add('ah', 'Getting it there');
-      add(null, 'Treat it like a password. Anyone holding this file can act as this agent until '
-              + 'it is revoked, so send it by encrypted mail, a password manager or a secure file '
-              + 'drop rather than in a ticket. On the machine, keep it readable only by '
-              + 'administrators.');
-
-      add('ah', 'On a machine that does not have the agent yet');
-      add('ali', '1. Download the agent zip from the Agents tab in the app, copy it to that '
-               + 'machine, and check it against the SHA-256 shown there before extracting it.');
-      add('ali', '2. Extract it somewhere permanent, for example '
-               + 'C:\\Program Files\\Viseon\\DataAssurance. Not the Downloads folder: the '
-               + 'service runs from wherever you leave it.');
-      add('ali', '3. Put agent.config in that folder, beside dq-agent.exe.');
-      add('ali', '4. Open Command Prompt as Administrator, change to that folder, and run:');
-      add('code', 'dq-agent-service.cmd INSTALL');
-      add('code', 'dq-agent-service.cmd START');
-      add('afine', 'To assess files on that machine or a share, list the folders it may read on '
-                 + 'the INSTALL line instead. Left out, the agent reads no local file at all:');
-      add('code', 'dq-agent-service.cmd INSTALL "D:\\qvd;\\\\fs01\\finance"');
-      add('ali', '5. For a database source, put the password in secrets.json in the same folder, '
-               + 'then run dq-agent-service.cmd RESTART. It never leaves that machine.');
-      add('ali', '6. Within a minute ' + label + ' shows online in the list below.');
-
-      add('ah', 'On a machine that already has the agent');
-      add('ali', '1. Put agent.config in the install folder, replacing the one already there.');
-      add('ali', '2. Restart the service:');
-      add('code', 'dq-agent-service.cmd RESTART');
-
-      add('afine', 'Network shares, proxies and what to do when something is wrong are in the '
-                 + 'installation runbook.');
-      box.appendChild(card);
+      showInstructions(agent, true);
       loadAgents();
     } catch (e) { show($('#agMsg'), 'err', e.message); }
   }

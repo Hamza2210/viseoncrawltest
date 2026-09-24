@@ -1663,8 +1663,19 @@
   .agt-dot.online { background: var(--ok); box-shadow: 0 0 7px color-mix(in srgb, var(--ok) 70%, transparent); }
   .agt-dot.stale { background: var(--run); }
   .agt-dot.offline, .agt-dot.revoked { background: var(--err); }
-  .agt-token { margin-top: 14px; padding: 13px 15px; border-radius: 10px; font-size: 13px; line-height: 1.6;
+  .agt-token { position: relative; margin-top: 14px; padding: 13px 44px 13px 15px; border-radius: 10px;
+    font-size: 13px; line-height: 1.6;
     border: 1px solid var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--card)); }
+  /* Dismiss. Appended LAST in the DOM and placed by CSS, so it does not become the card's
+     first child and steal the margin rule that keeps the opening heading flush. */
+  .agt-x { position: absolute; top: 9px; right: 10px; width: 24px; height: 24px; padding: 0;
+    line-height: 1; border-radius: 6px; border: 1px solid var(--border); background: transparent;
+    color: var(--muted); font-size: 15px; cursor: pointer; }
+  .agt-x:hover { color: var(--text); border-color: var(--muted); }
+  /* The way back in. Round and quiet: it sits beside two buttons that do something irreversible,
+     and it must not read as a third one of those. */
+  .agt-i { width: 26px; height: 26px; padding: 0; border-radius: 50%; font-size: 13px;
+    font-weight: 700; font-family: Georgia, 'Times New Roman', serif; }
   .agt-token code { display: block; margin: 6px 0 6px 16px; padding: 9px 11px; border-radius: 7px;
     background: var(--idle-bg); font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
     font-size: 12.5px; overflow-wrap: anywhere; }
@@ -12168,6 +12179,12 @@ async function renderAgentsTab() {
     if (!a.revoked) {
       // First, and the only one most people ever press: this is the whole configuration step for
       // a Windows service install.
+      const info = agtEl('button', 'btn-sm agt-i', 'i');
+      info.type = 'button';
+      info.title = 'How to install this agent. Shows the steps and issues nothing.';
+      info.setAttribute('aria-label', 'Installation instructions for ' + (a.name || a.id));
+      info.addEventListener('click', () => agtInstructions(a, false));
+      actions.appendChild(info);
       const cfg = agtEl('button', 'btn-sm', 'Download config');
       cfg.type = 'button';
       cfg.title = 'agent.config for this machine. Issuing one REPLACES any config already out '
@@ -12232,9 +12249,17 @@ async function agtDownloadConfig(agent) {
   } catch (e) { agtMsg('Could not create a config: ' + e.message, true); }
 }
 
-function agtConfigNote(agent) {
-  // The whole procedure, not a reminder of it. Whoever presses this button is usually not the
+function agtConfigNote(agent) { agtInstructions(agent, true); }
+
+function agtInstructions(agent, issued) {
+  // The whole procedure, not a reminder of it. Whoever presses these buttons is usually not the
   // person who will run the commands, so this is the text they forward.
+  //
+  // `issued` is the only difference between the two ways in. Reading the steps used to require
+  // pressing Download config, which RETIRES the file somebody may already be installing from - a
+  // destructive act for a reason as ordinary as "what was step 3 again". The info button opens
+  // the same text and mints nothing, and says so, because a card that looks identical to the one
+  // that follows a download would leave that in doubt.
   const box = $('#agtToken');
   if (!box) return;
   box.textContent = '';
@@ -12243,9 +12268,15 @@ function agtConfigNote(agent) {
   const add = (cls, text) => card.appendChild(agtEl(cls === 'code' ? 'code' : 'div',
                                                     cls === 'code' ? null : cls, text));
 
-  add('agt-h', 'agent.config downloaded for ' + label);
-  add(null, 'Any config issued for this agent before now has stopped working, so this file is the '
-          + 'one that has to reach the machine.');
+  if (issued) {
+    add('agt-h', 'agent.config downloaded for ' + label);
+    add(null, 'Any config issued for this agent before now has stopped working, so this file is '
+            + 'the one that has to reach the machine.');
+  } else {
+    add('agt-h', 'Installing ' + label);
+    add(null, 'Nothing has been issued by opening this, and the config already out there still '
+            + 'works. To get a fresh one, press Download config on this row.');
+  }
 
   add('agt-h', 'Getting it there');
   add(null, 'Treat it like a password. Anyone holding this file can act as this agent until it is '
@@ -12278,9 +12309,29 @@ function agtConfigNote(agent) {
   add('agt-li', '2. Restart the service:');
   add('code', 'dq-agent-service.cmd RESTART');
 
+  add('agt-h', 'Stopping and checking it');
+  add('agt-li', 'Is it running:');
+  add('code', 'dq-agent-service.cmd STATUS');
+  add('agt-li', 'Stop it. Anything queued for this agent waits until it is back rather than '
+              + 'being lost, so stopping it is safe at any time:');
+  add('code', 'dq-agent-service.cmd STOP');
+  add('agt-li', 'Stop it and unregister the service entirely:');
+  add('code', 'dq-agent-service.cmd REMOVE');
+
   add('agt-fine', 'Network shares, proxies and what to do when something is wrong are in the '
                 + 'installation runbook.');
+
+  const close = agtEl('button', 'agt-x', '\u00d7');
+  close.type = 'button';
+  close.title = 'Dismiss';
+  close.setAttribute('aria-label', 'Dismiss these instructions');
+  close.addEventListener('click', () => { box.textContent = ''; });
+  card.appendChild(close);
+
   box.appendChild(card);
+  // Opened from a row that may be well down the list, so bring it into view rather than leaving
+  // somebody wondering whether the button did anything.
+  if (box.scrollIntoView) box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
 async function agtRevoke(agent) {
