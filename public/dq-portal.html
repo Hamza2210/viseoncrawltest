@@ -12102,6 +12102,14 @@ async function renderAgentsTab() {
 
     const actions = agtEl('span', 'actions');
     if (!a.revoked) {
+      // First, and the only one most people ever press: this is the whole configuration step for
+      // a Windows service install.
+      const cfg = agtEl('button', 'btn-sm', 'Download config');
+      cfg.type = 'button';
+      cfg.title = 'agent.config for this machine. Issuing one REPLACES any config already out '
+                + 'there, so the previous file stops working.';
+      cfg.addEventListener('click', () => agtDownloadConfig(a));
+      actions.appendChild(cfg);
       const tok = agtEl('button', 'btn-sm', 'New token');
       tok.type = 'button';
       tok.title = 'Issue a fresh enrolment token. This agent\u2019s current key stops working at once.';
@@ -12141,6 +12149,46 @@ function agtShowToken(agent, token) {
   card.appendChild(agtEl('div', null,
     'Then pick "' + (agent.name || agent.id) + '" in the Runs on field of a PostgreSQL or SQL '
     + 'Server source.'));
+  box.appendChild(card);
+}
+
+async function agtDownloadConfig(agent) {
+  try {
+    const r = await agentsApi({ action: 'config', agent_id: agent.id });
+    // A Blob and a synthetic click, because the payload is minted by a POST - there is no URL to
+    // link to, and putting a credential in a query string to make one would be worse.
+    const blob = new Blob([r.config], { type: 'application/octet-stream' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = r.filename || 'agent.config';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    // Revoked on a timer rather than immediately: Firefox cancels an in-flight download when the
+    // object URL goes away in the same tick.
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+    agtConfigNote(agent);
+    await agtRefresh();
+  } catch (e) { agtMsg('Could not create a config: ' + e.message, true); }
+}
+
+function agtConfigNote(agent) {
+  const box = $('#agtToken');
+  if (!box) return;
+  box.textContent = '';
+  const card = agtEl('div', 'agt-token');
+  card.appendChild(agtEl('div', null,
+    'agent.config downloaded for ' + (agent.name || agent.id) + '. Any config issued for this '
+    + 'agent before now has stopped working.'));
+  card.appendChild(agtEl('div', null, 'On that machine:'));
+  card.appendChild(agtEl('code', null,
+    '1. Put agent.config in the folder the agent is installed in'));
+  card.appendChild(agtEl('code', null,
+    '2. Start the "Viseon Data Assurance Agent" service'));
+  card.appendChild(agtEl('div', null,
+    'The file holds this agent\u2019s credential, so treat it like a password: send it the way '
+    + 'you would send one, and keep it readable only by an administrator.'));
   box.appendChild(card);
 }
 
