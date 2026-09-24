@@ -1688,6 +1688,12 @@
   .agt-token .agt-fine { font-size: 12.5px; color: var(--muted); margin-top: 8px; }
   .agt-token .agt-fine + code { margin-top: 5px; }
   .agt-empty { color: var(--muted); font-size: 13px; padding: 10px 2px; }
+  /* A run that produced nothing. Deliberately not the same as a low score: one is the data being
+     bad, which is a result, and the other is the assessment never having happened. */
+  .agt-fail { padding: 13px 15px; border-radius: 10px; font-size: 13px; line-height: 1.6;
+    border: 1px solid var(--err); background: color-mix(in srgb, var(--err) 9%, var(--card)); }
+  .agt-fail-h { font-weight: 600; color: var(--err); margin-bottom: 4px; }
+  .agt-fail-hint { color: var(--muted); font-size: 12.5px; margin-top: 8px; }
   /* A command inside a form hint. Small, but set apart: these are strings somebody retypes on
      another machine, and a path that blends into the sentence around it gets retyped wrong. */
   .hint code { padding: 1px 5px; border-radius: 5px; background: var(--idle-bg);
@@ -13133,7 +13139,12 @@ async function runAgentFile(cfg, statusEl) {
   if (card) card.style.display = 'block';
   if (bodyEl) bodyEl.innerHTML = `<p><span class="spin"></span> Waiting for the agent to pick it up…</p>`;
   if (res.resultPrefix && bodyEl) {
-    pollInto(res.resultPrefix, bodyEl, {}).finally(() => { if (btn) btn.disabled = false; });
+    // The job id travels with the poll so a refusal can end it. Every other source runs on our own
+    // worker, where a failure writes a result; only an agent can decline to run at all.
+    pollInto(res.resultPrefix, bodyEl, {
+      agentJob: { agentId: cfg.agent, jobId: res.jobId },
+      statusEl: statusEl,
+    }).finally(() => { if (btn) btn.disabled = false; });
   } else if (btn) { btn.disabled = false; }
 }
 
@@ -15136,6 +15147,50 @@ function renderOverall(panelEl, results, total) {
 }
 
 // Generic poll → render into a specific element (used per-table for app data).
+// Exit codes that mean a RESULT exists: 0 passed, 2 assessed and failed the quality gate. Any
+// other completion means nothing was written and nothing ever will be.
+const AGENT_CODES_WITH_A_RESULT = [0, 2];
+
+// Did this agent job end without producing anything? Returns the reason, or null to keep waiting.
+// Never throws: a poll that cannot reach the API should go round again, not end the run.
+async function agentJobFailure(job) {
+  if (!job || !job.agentId || !job.jobId) return null;
+  let r;
+  try {
+    r = await agentsApi({ action: 'job-status', agent_id: job.agentId, job_id: job.jobId });
+  } catch (e) { return null; }
+  if (!r || !r.found) return null;
+  if (r.state === 'cancelled') return { reason: 'The run was cancelled.', code: null };
+  if (r.state !== 'done') return null;
+  if (AGENT_CODES_WITH_A_RESULT.indexOf(r.exitCode) >= 0) return null;
+  return {
+    reason: r.error || 'The agent reported a failure but gave no reason.',
+    code: r.exitCode,
+  };
+}
+
+function agentFailureNote(bad) {
+  // The agent's own words. It knows what it refused and why, and paraphrasing it here would mean
+  // maintaining a second description of every refusal the guard can produce.
+  const wrap = document.createElement('div');
+  wrap.className = 'agt-fail';
+  const head = document.createElement('div');
+  head.className = 'agt-fail-h';
+  head.textContent = bad.code === -1 ? 'The run timed out on the agent'
+                   : bad.code === -2 ? 'The run was cancelled'
+                   : 'The agent did not run this';
+  wrap.appendChild(head);
+  const why = document.createElement('div');
+  why.textContent = bad.reason;
+  wrap.appendChild(why);
+  const hint = document.createElement('div');
+  hint.className = 'agt-fail-hint';
+  hint.textContent = 'Nothing was assessed, so there is no result to show. Fix the cause and run '
+                   + 'it again. The agent also writes this to its own log on that machine.';
+  wrap.appendChild(hint);
+  return wrap;
+}
+
 async function pollInto(resultPrefix, bodyEl, opts) {
   const NUDGE_MS = 10 * 60 * 1000, start = Date.now();
   if (bodyEl) bodyEl.innerHTML = dqLoader('Assessing the dataset', 'Scoring against the 9 DAMA dimensions - this can take a moment for large tables.');
@@ -15148,6 +15203,18 @@ async function pollInto(resultPrefix, bodyEl, opts) {
       renderAssessment(r, bodyEl, opts);
       if (opts && opts.onResult) opts.onResult(r);
       if (!(opts && opts.noComplianceRefresh)) scheduleComplianceRefresh();   // keep the Compliance tab + badge current
+      return;
+    }
+    // Asked every round, because the answer is what says "stop waiting". A job that ended
+    // without writing a result is the one case where the prefix will never appear, and the run
+    // otherwise sits on a spinner for ever.
+    const bad = await agentJobFailure(opts && opts.agentJob);
+    if (bad) {
+      if (bodyEl) { bodyEl.textContent = ''; bodyEl.appendChild(agentFailureNote(bad)); }
+      if (opts && opts.statusEl) {
+        opts.statusEl.className = 'src-status err';
+        opts.statusEl.textContent = bad.reason;
+      }
       return;
     }
     if (!nudged && Date.now() - start > NUDGE_MS) {
