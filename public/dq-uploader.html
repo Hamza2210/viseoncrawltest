@@ -12641,7 +12641,12 @@ function selectSource(key) {
 // ---- Per-app credential PROFILES (named connections; secrets applied server-side) -------
 const SRC_SECRET_FIELDS = { redshift: [], s3: ['access_key', 'secret_key'], snowflake: ['password'], databricks: ['token'], oracle: ['password'], postgres: ['password'], mysql: ['password'], sqlserver: ['password'], synapse: ['password'], bigquery: ['credentials_json'], sharepoint: ['client_secret'], gcs: ['credentials_json'], azureblob: ['connection_string'],
   // Both, because either can be the secret in play depending on the chosen mode.
-  fabric: ['password', 'client_secret'] };
+  fabric: ['password', 'client_secret'],
+  // Nothing secret in either of these - Athena is reached with IAM, and the agent reads the file
+  // through its own filesystem - but both are listed, and being listed is the point: the schedule
+  // form offers a saved profile only for a source in this map, so leaving one out hid the picker for
+  // that source alone. An empty list is the existing shape for that (Redshift, above).
+  athena: [], agentfile: [] };
 const credProfiles = {};      // key -> [{id,name,config,hasSecrets,savedAt}] from the last list
 const activeProfile = {};     // key -> id of the profile currently applied (sent on the run)
 
@@ -15627,6 +15632,10 @@ function applySchedCreds(kind) {
   const secretF = new Set(SRC_SECRET_FIELDS[kind] || []);
   Object.entries(p.config || {}).forEach(([f, v]) => { const el = wrap.querySelector(`[data-f="${f}"]`); if (el && !secretF.has(f)) el.value = v; });
   (SRC_SECRET_FIELDS[kind] || []).forEach(f => { const el = wrap.querySelector(`[data-f="${f}"]`); if (el) { el.value = ''; el.placeholder = p.hasSecrets ? 'Using saved profile' : ''; } });
+  // Setting a select's value fires no change event, so the line under the agent would go on
+  // describing whatever was chosen before. Refresh it: an offline machine picked by a profile has to
+  // say it will queue, exactly as it does when it is picked by hand.
+  wrap.querySelectorAll('[data-agentsel]').forEach(sel => _agentHint(sel.dataset.agentsel));
   schedProfile = pid;
   if (msg) { msg.textContent = `Applied “${p.name}” - the secret is supplied securely when the schedule runs.`; msg.style.color = ''; }
 }
