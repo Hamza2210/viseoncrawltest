@@ -4439,7 +4439,11 @@ async function postJSON(url, headers, body) {
   // which is what an unexpected 5xx or a non-JSON body looks like.
   if (!res.ok) {
     const detail = (json && typeof json === 'object' && typeof json.detail === 'string') ? json.detail : '';
-    throw new Error(detail || `${url} → HTTP ${res.status}: ${text}`);
+    // The status travels with it, so a caller can tell "nothing here yet" (404) from a failure
+    // without matching on the wording of a sentence that was written for a person.
+    const err = new Error(detail || `${url} → HTTP ${res.status}: ${text}`);
+    err.status = res.status;
+    throw err;
   }
   return json;
 }
@@ -4995,7 +4999,11 @@ async function editActiveRules(prefix, outEl) {
   try {
     data = await postJSON(`${API_BASE}/data-quality/active-ruleset`, HEADERS, { result_prefix: prefix });
   } catch (e) {
-    outEl.innerHTML = `<p class="dash-muted" style="color:var(--err)">${esc(e.message)}</p>`;
+    // No pinned ruleset yet is a state of the dataset rather than a failure, so it is not painted
+    // as one: in red it read as something broken, on a dataset that had simply not pinned yet.
+    outEl.innerHTML = e.status === 404
+      ? `<p class="hint">${esc(e.message)}</p>`
+      : `<p class="dash-muted" style="color:var(--err)">${esc(e.message)}</p>`;
     return;
   }
   // Normalise: keep only the rules actually SET (drop null/empty/false), so the editor
