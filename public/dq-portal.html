@@ -2956,7 +2956,11 @@
               <code>dq-agent-service.cmd INSTALL "C:\qvd"</code> is run once on the machine, and
               then <code>C:\qvd\sales\sales.qvd</code> goes here. A folder covers everything
               beneath it. For a network share prefer <code>\\fs01\finance\sales.qvd</code> over a
-              mapped drive letter, which a service often cannot see.</p></div>
+              mapped drive letter, which a service often cannot see.
+              <br>Parquet and CSV are assessed <strong>in place</strong> on that machine, so their
+              size is not really a limit. A QVD has to be loaded into memory and needs roughly
+              <strong>eight times its size</strong> in free RAM there, so above a gigabyte or so,
+              export parquet from Qlik and point at that instead.</p></div>
           <div class="src-field"><label>Dataset name <span class="hint">(optional)</span></label>
             <input data-f="dataset" placeholder="Defaults to the file name"></div>
           <div class="src-field"><label>Sample rows <span class="hint">(optional)</span></label>
@@ -12133,7 +12137,7 @@ function agtNavigate(url) { window.location.assign(url); }
 
 // Put a download link on the clipboard rather than following it.
 //
-// The bundle is 92 MB and belongs inside the customer's network, so it is usually fetched THERE and
+// The bundle is about 100 MB and belongs inside the customer's network, so it is usually fetched THERE and
 // not here. The link already supports that: it is signed, so it carries its own authorisation and
 // works from any machine with no sign-in. What it could not do was leave this page, because a
 // button that navigates is the one thing you cannot forward to somebody else.
