@@ -855,7 +855,9 @@
   .bar-row { display: grid; grid-template-columns: 128px 1fr 44px; gap: 10px; align-items: center; margin: 5px 0; }
   .bar-lab { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .bar-track { height: 9px; border-radius: 999px; background: var(--idle-bg); overflow: hidden; }
-  .bar-fill { height: 100%; border-radius: 999px; min-width: 4px; }
+  /* A span, and a span is inline: without display:block its width and height are ignored and
+     every bar in the chart draws as nothing. */
+  .bar-fill { display: block; height: 100%; border-radius: 999px; min-width: 4px; }
   .bar-fill.green { background: var(--ok); } .bar-fill.amber { background: var(--run); }
   .bar-fill.red { background: var(--err); } .bar-fill.na { background: var(--idle); }
   .bar-fill.mag { background: var(--accent2); }
@@ -2753,6 +2755,55 @@
   .gd-step span { font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
   .gd-step.next { text-align: right; align-items: flex-end; margin-left: auto; }
   .gd-step:hover { border-color: var(--accent); }
+  /* Screenshots beside the steps. Taken from this page itself against sample data (see
+     scripts/guide_shots), numbered to match the steps, and enlarged on click. */
+  .gd-fig { margin: 6px 0 14px; max-width: 900px; }
+  .gd-fig.narrow { max-width: 520px; }
+  .gd-fig-btn { position: relative; display: block; width: 100%; padding: 0; overflow: hidden; cursor: zoom-in;
+    border: 1px solid var(--border); border-radius: 12px; background: var(--bg);
+    box-shadow: 0 14px 30px -22px rgba(0, 0, 0, .8); transition: border-color .15s, box-shadow .15s; }
+  .gd-fig-btn:hover, .gd-fig-btn:focus-visible { outline: none; border-color: color-mix(in srgb, var(--tint) 60%, var(--border));
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--tint) 22%, transparent), 0 14px 30px -22px rgba(0, 0, 0, .8); }
+  .gd-fig-btn img { display: block; width: 100%; height: auto; }
+  .gd-fig-zoom { position: absolute; top: 10px; right: 10px; display: flex; align-items: center; gap: 5px; padding: 4px 10px;
+    border-radius: 99px; font-size: 11.5px; font-weight: 600; color: #fff; background: rgba(8, 12, 24, .74);
+    border: 1px solid rgba(255, 255, 255, .16); opacity: 0; transition: opacity .15s; pointer-events: none; }
+  .gd-fig-zoom svg { width: 13px; height: 13px; }
+  .gd-fig-btn:hover .gd-fig-zoom, .gd-fig-btn:focus-visible .gd-fig-zoom { opacity: 1; }
+  .gd-fig figcaption { margin-top: 8px; max-width: 90ch; font-size: 13px; line-height: 1.65; color: var(--muted); }
+  /* The numbers in a caption, drawn like the numbered badges on the picture. */
+  .gd-n { display: inline-grid; place-items: center; width: 19px; height: 19px; margin: 0 1px; border-radius: 50%; vertical-align: 1px;
+    font-size: 11px; font-weight: 800; line-height: 1; color: #1d1400; background: #ffc53d; }
+  .gd-show { display: inline-flex; align-items: center; gap: 6px; margin-left: 4px; padding: 2px 10px 2px 8px; border-radius: 99px;
+    border: 1px solid color-mix(in srgb, #ffc53d 55%, transparent); background: color-mix(in srgb, #ffc53d 12%, transparent);
+    color: #ffd36b; font: inherit; font-size: 12px; font-weight: 700; line-height: 1.6; white-space: nowrap; vertical-align: 1px;
+    cursor: pointer; transition: background .15s, border-color .15s; }
+  .gd-show svg { width: 14px; height: 14px; }
+  .gd-show:hover, .gd-show:focus-visible { outline: none; border-color: #ffc53d; background: color-mix(in srgb, #ffc53d 22%, transparent); }
+  .gd-sm-line { margin: 0 0 10px; }
+  /* The enlarged picture. */
+  .gd-zoom { position: fixed; inset: 0; z-index: 9995; display: grid; place-items: center; padding: 56px 28px 28px;
+    background: rgba(3, 6, 16, .84); cursor: zoom-out; animation: gdFade .16s ease-out; }
+  .gd-zoom figure { margin: 0; max-width: min(1600px, 96vw); cursor: default; }
+  .gd-zoom img { display: block; max-width: 100%; max-height: calc(100vh - 150px); width: auto; height: auto; margin: 0 auto;
+    border-radius: 12px; border: 1px solid rgba(255, 255, 255, .14); box-shadow: 0 30px 80px -20px rgba(0, 0, 0, .9); }
+  .gd-zoom figcaption { max-width: 90ch; margin: 12px auto 0; text-align: center; color: #d6dcea; font-size: 13.5px; line-height: 1.6; }
+  .gd-zoom-x { position: absolute; top: 12px; right: 16px; width: 38px; height: 38px; border-radius: 50%; cursor: pointer;
+    border: 1px solid rgba(255, 255, 255, .2); background: rgba(255, 255, 255, .08); color: #fff; font-size: 21px; line-height: 1; }
+  .gd-zoom-x:hover { background: rgba(255, 255, 255, .16); }
+  /* Show me: the control, lit on the reader's own screen. The dimmed page still takes clicks, so
+     the lit control can simply be used; the first click anywhere puts the light out. */
+  .gd-spot { position: fixed; z-index: 9990; border-radius: 10px; pointer-events: none;
+    box-shadow: 0 0 0 9999px rgba(3, 6, 18, .55), 0 0 0 3px #ffc53d, 0 0 26px 6px rgba(255, 197, 61, .5); }
+  .gd-spot::after { content: ""; position: absolute; inset: -3px; border-radius: 12px; border: 3px solid #ffc53d;
+    animation: gdPulse 1.4s ease-out 3; }
+  .gd-spot-tip { position: fixed; z-index: 9991; width: min(360px, calc(100vw - 24px)); box-sizing: border-box; padding: 13px 15px 12px;
+    border-radius: 12px; border: 1px solid #ffc53d; background: var(--card); color: var(--text);
+    box-shadow: 0 18px 44px -14px rgba(0, 0, 0, .75); font-size: 13.5px; line-height: 1.55; animation: gdFade .18s ease-out; }
+  .gd-spot-tip p { margin: 0 0 10px; }
+  .gd-spot-acts { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+  @keyframes gdPulse { from { opacity: .9; transform: scale(1); } to { opacity: 0; transform: scale(1.12); } }
+  @keyframes gdFade { from { opacity: 0; } to { opacity: 1; } }
   @media (max-width: 860px) {
     .gd-ahead { grid-template-columns: auto minmax(0, 1fr); }
     .gd-ahead-acts { grid-column: 1 / -1; justify-content: flex-start; }
@@ -2767,6 +2818,8 @@
     .gd-track { scroll-behavior: auto; }
     .gd-card, .gd-dot { transition: none; }
     .gd-card:hover { transform: none; }
+    .gd-spot::after, .gd-zoom, .gd-spot-tip { animation: none; }
+    .gd-fig-btn, .gd-show { transition: none; }
   }
 </style>
 </head>
@@ -4489,7 +4542,15 @@ function fmtWhen(runId) {
   // run_id is a timestamp, optionally with a "-<token>" collision suffix; match the
   // timestamp prefix and ignore anything after the trailing Z.
   const m = /^(\d{4}-\d{2}-\d{2})T(\d{2})-(\d{2})-(\d{2})Z/.exec(String(runId));
-  if (!m) return runId;
+  if (!m) {
+    // Stored timestamps (when a note was added, when a dataset was last seen) are plain ISO 8601,
+    // and passed through untouched they read as "2026-09-27T14:02:05+00:00" on the page.
+    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(String(runId || ''))) {
+      const t = new Date(runId);
+      if (!isNaN(t.getTime())) return t.toLocaleString();
+    }
+    return runId;
+  }
   const d = new Date(`${m[1]}T${m[2]}:${m[3]}:${m[4]}Z`);
   return isNaN(d.getTime()) ? runId : d.toLocaleString();
 }
@@ -14893,10 +14954,275 @@ const GD_ICONS = {
   chat: '<path d="M20.6 15.2a2.4 2.4 0 0 1-2.4 2.4H7.8L3.4 21V5.8a2.4 2.4 0 0 1 2.4-2.4h12.4a2.4 2.4 0 0 1 2.4 2.4z"/><path d="m12 7.2.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z"/>',
   cog: '<circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M5.5 18.5l1.7-1.7M16.8 7.2l1.7-1.7"/><circle cx="12" cy="12" r="6.4"/>',
   search: '<circle cx="10.8" cy="10.8" r="6.6"/><path d="M15.6 15.6l4.8 4.8"/>',
+  zoom: '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>',
+  target: '<circle cx="12" cy="12" r="7.4"/><circle cx="12" cy="12" r="2.4"/><path d="M12 1.8v3M12 19.2v3M1.8 12h3M19.2 12h3"/>',
 };
 function gdSvg(name) {
   return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${GD_ICONS[name] || GD_ICONS.doc}</svg>`;
 }
+
+// ---- Guide screenshots --------------------------------------------------------------------------
+// Taken from this page itself, against fictional sample data, by scripts/guide_shots/capture.py,
+// which also writes the block below: each picture's size, so its space is held before it loads and
+// a jump to a section lands where it should, and a short hash of its bytes, added to its address so
+// a re-taken picture reaches readers at once instead of after a cache expires. The files sit in
+// guides/ beside this page, and none of them loads until a guide that uses it is opened.
+/* GD_SHOTS:BEGIN (written by scripts/guide_shots/capture.py; do not edit by hand) */
+const GD_SHOTS = {
+  "admin-create-user": [898, 660, "3b53492cd1"],
+  "admin-grants": [1600, 903, "8e59fef812"],
+  "admin-tags": [1600, 1086, "36d96cb12a"],
+  "admin-users": [1600, 807, "01b73f8c7a"],
+  "agents": [1600, 809, "68e531d6b9"],
+  "ai-review": [1600, 1123, "783bd2f3d7"],
+  "alert-channels": [1600, 707, "da6beb721b"],
+  "app-tables": [1600, 1377, "9eeda98170"],
+  "approvals": [1600, 691, "e9fc97c6b8"],
+  "assistant-p": [1600, 514, "e9b5c1827b"],
+  "assistant-q": [1600, 584, "2187b92515"],
+  "compliance-estate-p": [1600, 817, "744e52cd96"],
+  "compliance-estate-pa": [1600, 928, "60cce17f23"],
+  "compliance-estate-q": [1600, 930, "5cb76ffec4"],
+  "compliance-findings": [1600, 1442, "adb028979f"],
+  "compliance-policy": [1600, 1264, "024546dc0b"],
+  "data-model": [1600, 922, "3c87ef608c"],
+  "dataset-compliance": [1600, 374, "0f62185932"],
+  "dataset-header-p": [1600, 752, "a0d9832e45"],
+  "dataset-header-pa": [1600, 739, "4637fdc0dd"],
+  "dataset-header-q": [1600, 741, "8e38b65b1a"],
+  "dataset-list-p": [1600, 1025, "c097d44c9e"],
+  "dataset-list-pa": [1600, 979, "494e75200f"],
+  "dataset-list-q": [1600, 979, "b072872e90"],
+  "failed-records": [1600, 1026, "7d1aad0ee0"],
+  "heatmap": [1124, 1282, "eaa67f551b"],
+  "history-p": [1600, 1164, "cfca32980f"],
+  "history-q": [1600, 979, "539a02e628"],
+  "incidents-p": [1600, 1164, "6eec682b3f"],
+  "incidents-q": [1600, 1163, "af3ae60198"],
+  "lineage-app": [1600, 1161, "ccb02d035f"],
+  "lineage-source": [1600, 1146, "7d82aece98"],
+  "onprem-file": [1600, 1492, "eecde02fef"],
+  "overview-top-p": [1600, 609, "2906120567"],
+  "overview-top-q": [1600, 584, "5d61e45e4c"],
+  "profile": [1600, 526, "104f28f43a"],
+  "quality-space": [1600, 812, "7bfbdb7881"],
+  "records-policy": [1600, 433, "d86d016754"],
+  "rules-tab": [1600, 898, "e83acb7c54"],
+  "run-result": [1600, 1040, "602e98c0cb"],
+  "runs-on-agent": [1600, 1492, "f72c07e54b"],
+  "schedule-form-p": [1600, 1133, "b82b8c3aca"],
+  "schedule-form-q": [1600, 1181, "2240ecc99a"],
+  "schedule-list": [1600, 776, "8070908fef"],
+  "schedule-watch": [962, 676, "27b968803e"],
+  "source-form": [1600, 1535, "0e50365d53"],
+  "source-picker": [1600, 858, "8ce72fa234"],
+  "sourcewatch": [1600, 867, "878c848153"],
+  "stages": [1600, 1378, "4e0a4d163c"],
+  "tag-edit-pa": [976, 1608, "8e3addbf3c"],
+  "tag-edit-q": [976, 612, "9929794e2b"],
+  "tagrun": [1600, 1378, "2630e79d1f"],
+  "trends": [1600, 1026, "4f6e1d8283"],
+};
+/* GD_SHOTS:END */
+const GD_SHOT_DIR = 'guides/';
+// A picture can differ by reader. A guide asks for "dataset-list" and gets the Qlik, member or
+// admin version where there is one, the member's for an admin where the two look the same, and the
+// shared one otherwise. A picture nobody has taken yet is simply left out.
+function gdShotName(base) {
+  const r = PORTAL ? (IS_PORTAL_ADMIN ? 'pa' : 'p') : 'q';
+  const tries = [base + '-' + r].concat(r === 'pa' ? [base + '-p'] : [], [base]);
+  return tries.find(n => GD_SHOTS[n]) || '';
+}
+function gdShotHtml(base, cap, opts) {
+  const name = gdShotName(base);
+  if (!name) return '';
+  const [w, h, v] = GD_SHOTS[name];
+  const t = document.createElement('div');
+  t.innerHTML = cap || '';
+  const alt = t.textContent.replace(/\s+/g, ' ').trim();
+  return `<figure class="gd-fig${opts && opts.narrow ? ' narrow' : ''}">` +
+    `<button type="button" class="gd-fig-btn" data-gd-zoom="${esc(name)}" aria-label="Enlarge: ${esc(alt)}">` +
+    `<img src="${GD_SHOT_DIR}${esc(name)}.webp?v=${esc(v)}" width="${w}" height="${h}" alt="${esc(alt)}" loading="lazy" decoding="async">` +
+    `<span class="gd-fig-zoom">${gdSvg('zoom')}Enlarge</span></button>` +
+    (cap ? `<figcaption>${cap}</figcaption>` : '') + `</figure>`;
+}
+let _gdZoomFrom = null;
+function gdZoomOpen(name, cap, from) {
+  gdZoomClose();
+  const d = GD_SHOTS[name]; if (!d) return;
+  _gdZoomFrom = from || null;
+  const box = document.createElement('div');
+  box.className = 'gd-zoom'; box.id = 'gdZoom';
+  box.setAttribute('role', 'dialog'); box.setAttribute('aria-modal', 'true'); box.setAttribute('aria-label', 'Screenshot, enlarged');
+  box.innerHTML = `<button type="button" class="gd-zoom-x" aria-label="Close">×</button>` +
+    `<figure><img src="${GD_SHOT_DIR}${esc(name)}.webp?v=${esc(d[2])}" width="${d[0]}" height="${d[1]}" alt="">` +
+    (cap ? `<figcaption>${cap}</figcaption>` : '') + `</figure>`;
+  // The picture and its caption stay put; the backdrop and the close button dismiss.
+  box.addEventListener('click', e => { if (!e.target.closest('figure') || e.target.closest('.gd-zoom-x')) gdZoomClose(); });
+  document.body.appendChild(box);
+  box.querySelector('.gd-zoom-x').focus();
+}
+function gdZoomClose() {
+  const box = $('#gdZoom'); if (!box) return;
+  box.remove();
+  if (_gdZoomFrom && _gdZoomFrom.isConnected) _gdZoomFrom.focus({ preventScroll: true });
+  _gdZoomFrom = null;
+}
+
+// ---- Show me ------------------------------------------------------------------------------------
+// Takes the reader to the real tab and lights the control a guide is talking about, on their own
+// screen and with their own data. Each entry names the tab, the control and what to say beside it;
+// `prep` does whatever has to happen before the control exists, such as opening a dataset. Where
+// there is nothing to point at (nothing assessed yet, say), the reader is told so plainly rather
+// than shown a light on an empty patch of page. test_guide_shots.py opens every entry as every
+// reader, so a renamed control fails a test instead of a reader.
+function gdOpenFirstDataset(tab) {
+  return async () => {
+    try { await loadDashboard(); } catch (e) { return; }
+    const d = (dashDatasets || [])[0];
+    if (!d) return;
+    if (!dashSelected || dashSelected.key !== d.key || dsTab !== tab) await selectDataset(d.key, d.name, tab);
+  };
+}
+function gdPickSource(key) {
+  return () => {
+    const cur = document.querySelector('.source-card.active');
+    // Any connector will do for a connector's controls: keep the one the reader already chose.
+    if (key !== 'file' && cur && cur.dataset.source !== 'file' && cur.dataset.source !== 'excel') return;
+    const card = document.querySelector(`.source-card[data-source="${key}"]`);
+    if (card && card !== cur) card.click();
+  };
+}
+const GD_NO_DATASET = 'Nothing has been assessed yet, so there is no dataset to open. Assess one first, then try again.';
+const GD_SHOW = {
+  'src-picker': { tab: 'upload', sel: '#sourcePicker',
+    tip: 'Every source you can assess. Pick one, or search for it at the top.' },
+  'src-profile': { tab: 'upload', prep: gdPickSource('snowflake'), sel: '#srcCredsNote',
+    tip: 'Saved connections for this source. Choose one and press <b>Apply</b>, or fill in the form and press <b>Save current as…</b>.' },
+  'app-assess': { tab: 'appdata', sel: '#assessAllBtn',
+    tip: 'Assesses every table in this app in one go. <b>List tables</b> beside it lets you choose some instead.' },
+  'profile-reset': { tab: 'profile', sel: '#profResetBtn', tip: 'Emails you a link to set a new password.' },
+  'dash-tiles': { tab: 'dashboard', sel: '#dashTiles', tip: 'The headline figures for everything in view.' },
+  'quality-space': { tab: 'dashboard', sel: '.galaxy-card',
+    tip: 'One orb for every dataset. Drag to orbit, scroll to zoom, and click an orb to open it.' },
+  'dataset-list': { tab: 'dashboard', sel: '#dashTableWrap', tip: 'Every dataset, lowest score first. Click one to open it.' },
+  'heatmap': { tab: 'dashboard', sel: '#dashHeat', tip: 'Every dataset against the nine dimensions. A dash means not assessed.' },
+  'ds-header': { tab: 'dashboard', prep: gdOpenFirstDataset('scores'), sel: '#dashDetailHint', miss: GD_NO_DATASET,
+    tip: 'The open dataset\'s trust, owner, stage, description and notes.' },
+  'ds-rules': { tab: 'dashboard', prep: gdOpenFirstDataset('rules'), sel: '#dsSubtabs [data-dstab="rules"]', miss: GD_NO_DATASET,
+    tip: 'The Rules tab of the open dataset: every rule in effect, and <b>✨ Review rules with AI</b>.' },
+  'ds-failed': { tab: 'dashboard', prep: gdOpenFirstDataset('failed'), sel: '#dsSubtabs [data-dstab="failed"]', miss: GD_NO_DATASET,
+    tip: 'The failing records of the open dataset, blockers first.' },
+  'tag-edit': { tab: 'dashboard', sel: '#dashTableWrap .ds-tag-add', miss: 'There is no dataset in view to tag yet.',
+    tip: 'Add or change this dataset\'s tags here.' },
+  'tagrun': { tab: 'tagrun', sel: '#tagrunSearch', tip: 'Search for a tag, or pick one of the popular ones below.' },
+  'stages': { tab: 'medallion', sel: '#medallionPanel .medal-combo-btn',
+    tip: 'Pick a bronze, a silver and a gold dataset to compare them.' },
+  'inc-menu': { tab: 'incidents', sel: '#incList .inc-kebab', miss: 'No incident is open right now, so there is nothing to act on.',
+    tip: 'Each incident\'s actions: explain it, acknowledge it, assign it, snooze it and more.' },
+  'alert-channels': { tab: 'incidents', sel: '#acToggle', tip: 'Opens the Slack and Teams settings.' },
+  'watch-table': { tab: 'sourcewatch', sel: '#watchList',
+    tip: 'Every source, whether it is monitored, and if not, why not.' },
+  'sch-form': { tab: 'schedules', sel: '#schLabel', tip: 'Start a new schedule here: name it, say when it runs and what it assesses.' },
+  'sch-kind': { tab: 'schedules', sel: '#schKindBtn',
+    tip: 'Choose what the schedule runs. <b>Source monitoring only</b> is in this list.' },
+  'sch-list': { tab: 'schedules', sel: '#schList', tip: 'Every schedule, with pause, edit and delete on each row.' },
+  'cmp-estate': { tab: 'compliance', sel: '#cmpEstate', tip: 'Every dataset ranked by exposure. Open one for its full controls.' },
+  'records-policy': { tab: 'compliance', sel: '#cmpOrgPolicy',
+    tip: 'How much of a failing row is kept, for every dataset in the organisation.' },
+  'agents': { tab: 'agents', sel: '#agtName', tip: 'Name the machine and press <b>Register</b>. The download is just above.' },
+  'lineage': { tab: 'lineage', sel: '#linScopeToggle, #srcLinWrap',
+    tip: 'Pick a dataset to see what it is built from and what is built on it.' },
+  'model-strip': { tab: 'model', sel: '#modelIntegrity',
+    tip: 'Whether each association actually holds. Click it for every link in full.' },
+  'history': { tab: 'history', sel: '#historySubtabs, #historyList', tip: 'Every run. Open one for its full report.' },
+  'approvals': { tab: 'approvals', sel: '#approvalsBody', tip: 'Runs and proposals waiting for a decision.' },
+  'mcp-url': { tab: 'assistant', sel: '#mcpUrl', tip: 'The address to add in your assistant as a custom connector.' },
+};
+function gdWaitFor(sel, ms) {
+  const shown = el => { const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0; };
+  return new Promise(done => {
+    const t0 = Date.now();
+    (function look() {
+      const el = [...document.querySelectorAll(sel)].find(shown);
+      if (el) return done(el);
+      if (Date.now() - t0 > ms) return done(null);
+      setTimeout(look, 120);
+    })();
+  });
+}
+let _gdSpot = null;
+async function gdShowMe(key, from) {
+  const s = GD_SHOW[key]; if (!s) return;
+  switchTab(s.tab);
+  window.scrollTo({ top: 0 });
+  try { if (s.prep) await s.prep(); } catch (e) { /* the wait below says what is missing */ }
+  const el = await gdWaitFor(s.sel, 3500);
+  gdSpotShow(el, el ? s.tip : (s.miss || 'That part of the page is not showing right now.'), from);
+}
+function gdSpotShow(el, tip, from) {
+  gdSpotClose();
+  const tipEl = document.createElement('div');
+  tipEl.className = 'gd-spot-tip'; tipEl.id = 'gdSpotTip'; tipEl.setAttribute('role', 'status');
+  tipEl.innerHTML = `<p>${tip}</p><div class="gd-spot-acts">` +
+    `<button type="button" class="btn-sm" data-spot-back="1">← Back to the guide</button>` +
+    `<button type="button" class="btn-sm" data-spot-ok="1">Got it</button></div>`;
+  let ring = null;
+  if (el) {
+    ring = document.createElement('div');
+    ring.className = 'gd-spot'; ring.id = 'gdSpot'; ring.setAttribute('aria-hidden', 'true');
+    document.body.appendChild(ring);
+  }
+  document.body.appendChild(tipEl);
+  const st = { el, ring, tipEl, from, raf: 0 };
+  _gdSpot = st;
+  // Re-measured every frame while it is up, so the light follows the control through a smooth
+  // scroll, a late reflow or a resize instead of being left behind where it started.
+  const place = () => {
+    if (_gdSpot !== st) return;
+    const G = 6, M = 12, vw = innerWidth, vh = innerHeight;
+    let r = null;
+    if (el) {
+      r = el.getBoundingClientRect();
+      if (!el.isConnected || (!r.width && !r.height)) { gdSpotClose(); return; }
+      Object.assign(ring.style, { left: (r.left - G) + 'px', top: (r.top - G) + 'px',
+                                  width: (r.width + 2 * G) + 'px', height: (r.height + 2 * G) + 'px' });
+    }
+    const tw = tipEl.offsetWidth, th = tipEl.offsetHeight;
+    const x = r ? Math.min(Math.max(M, r.left), vw - tw - M) : (vw - tw) / 2;
+    const y = !r ? 90 : (r.bottom + G + 10 + th < vh - M ? r.bottom + G + 10 : Math.max(M, r.top - G - 10 - th));
+    tipEl.style.left = x + 'px'; tipEl.style.top = y + 'px';
+    st.raf = requestAnimationFrame(place);
+  };
+  if (el) el.scrollIntoView({ block: 'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+  place();
+  tipEl.querySelector('[data-spot-ok]').addEventListener('click', () => gdSpotClose());
+  tipEl.querySelector('[data-spot-back]').addEventListener('click', () => gdBackToGuide(from));
+  tipEl.querySelector('[data-spot-ok]').focus({ preventScroll: true });
+}
+function gdSpotClose() {
+  const st = _gdSpot; if (!st) return;
+  _gdSpot = null;
+  cancelAnimationFrame(st.raf);
+  if (st.ring) st.ring.remove();
+  st.tipEl.remove();
+}
+function gdBackToGuide(from) {
+  gdSpotClose();
+  switchTab('guides');
+  if (from && from.isConnected) {
+    from.scrollIntoView({ block: 'center' });
+    from.focus({ preventScroll: true });
+  }
+}
+// The first click anywhere but the note puts the light out, and still does what it was for.
+document.addEventListener('pointerdown', e => {
+  if (_gdSpot && !(e.target.closest && e.target.closest('#gdSpotTip'))) gdSpotClose();
+}, true);
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  if ($('#gdZoom')) gdZoomClose(); else if (_gdSpot) gdSpotClose();
+});
 
 function buildGuides() {
   const P = PORTAL, Q = !PORTAL;
@@ -14915,6 +15241,12 @@ function buildGuides() {
   const tip = call('tip', 'Tip'), note = call('note', 'Good to know'), warn = call('warn', 'Watch out');
   const table = (head, rows) => `<div class="gd-tbl-wrap"><table class="gd-tbl"><thead><tr>${head.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.filter(Boolean).map(r => `<tr>${r.map(c => `<td>${c}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
   const code = x => `<pre class="gd-code"><code>${x}</code></pre>`;   // x is already HTML-safe
+  // A screenshot, its numbered badges explained by n() in the caption, and a Show me button.
+  const shot = (name, cap, opts) => gdShotHtml(name, cap, opts);
+  const n = k => `<span class="gd-n">${k}</span>`;
+  const showme = key => GD_SHOW[key]
+    ? `<button type="button" class="gd-show" data-gd-show="${key}">${gdSvg('target')}Show me</button>` : '';
+  const sm = key => `<p class="gd-sm-line">${showme(key)}</p>`;
   let apiHost = 'the Viseon API';
   try { apiHost = new URL(API_BASE).host; } catch (e) { /* keep the generic wording */ }
 
@@ -14937,15 +15269,17 @@ function buildGuides() {
       { h: 'Choose where the data lives', body:
           (Q ? tip(`The quickest first result in Qlik is the app's own data: open ${go('appdata', 'From this app')} and press ${ui('Assess all tables')}. See ${see('app-tables', 'Assess this app\'s tables')}.`) : '') +
           steps(
-            `Open ${go('upload', 'From a data source')} in the menu on the left.`,
+            `Open ${go('upload', 'From a data source')} in the menu on the left. ${showme('src-picker')}`,
             `Pick a card: a cloud warehouse, a database, cloud storage, or ${ui('Local File')} for something on your computer (CSV, TSV, Excel, parquet, JSON or QVD).`,
             `Fill in the connection. Each field has an ${ui('ⓘ')} explaining what it expects. If this connection has been saved before, choose it under ${ui('Credential profile')} and press ${ui('Apply')}.`,
-            `Leave ${ui('Sample rows')} empty to assess every row. That is the default, and it is the point: counts are exact rather than estimated.`) },
+            `Leave ${ui('Sample rows')} empty to assess every row. That is the default, and it is the point: counts are exact rather than estimated.`) +
+          shot('source-picker', `${n(1)} Pick where the data lives. For a file, ${n(2)} choose it, ${n(3)} leave the sample empty to assess every row, and ${n(4)} press ${ui('Upload & assess')}.`) },
       { h: 'Run it and read the result', body:
           steps(
             `Press ${ui('Run assessment')}, or ${ui('Upload & assess')} for a file. A progress panel shows each stage as it runs.`,
             `For a warehouse or database table the checks run as SQL inside your own engine, so even a large table costs you a query rather than a copy.`,
             `The result opens underneath: the overall score, the nine quality dimensions, whether the quality gate passed, and each failing check with the number of records behind it.`) +
+          shot('run-result', `${n(1)} The overall score, with its status, the gate and the source. ${n(2)} Why the gate failed. ${n(3)} Each dimension's score, and ${n(4)} the same scores as a chart.`) +
           note(`Scores are green from 95, amber from 85 and red below that. A dimension your data cannot evidence, such as Timeliness on a table with no date column, is marked <b>not assessed</b> and left out of the score rather than counted as a pass.`) },
       { h: 'Find it again', body:
           p(`Every run is saved. The dataset now appears on the ${go('dashboard', 'Overview')}, in the Quality Space and the dataset list, and each run is listed in ${go('history', 'Assessment history')}. Click the dataset anywhere to open its detail.`) +
@@ -14971,9 +15305,10 @@ function buildGuides() {
           p(`The tables loaded into this Qlik app, read through Qlik's own engine. What gets scored is what your charts use, after the load script has shaped it, so this is the check that answers "can I trust this dashboard?".`) +
           p(`To check the data before it reaches Qlik, assess the source itself from ${go('upload', 'From a data source')}.`) },
       { h: 'Assess the whole app', body:
-          steps(`Open ${go('appdata', 'From this app')}.`,
+          steps(`Open ${go('appdata', 'From this app')}. ${showme('app-assess')}`,
                 `Press ${ui('Assess all tables')}. Every table in the app's data model is assessed in one go.`,
                 `The run lands in ${go('history', 'Assessment history')} under ${ui('Full app assessments')}, with the average and the lowest table score.`) +
+          shot('app-tables', `${n(1)} ${ui('Assess all tables')} runs every table. ${n(2)} ${ui('List tables')} lists them, ${n(3)} to tick the ones you want. ${n(4)} The optional sample size applies to both.`) +
           note(`A full-app run also checks whether the model's associations hold, which feeds the integrity strip on the ${go('model', 'Data model')} tab. See ${see('data-model', 'Explore the data model')}.`) },
       { h: 'Assess only some tables', body:
           steps(`Press ${ui('List tables')}.`,
@@ -15006,7 +15341,8 @@ function buildGuides() {
           ['Approvals, agents, the failing-record policy and the admin portal', 'No', 'Yes'],
         ]) },
       { h: 'Your profile', body:
-          p(`${go('profile', 'Profile')} shows your username, organisation and role. ${ui('Reset password')} emails you a link to set a new one.`) },
+          p(`${go('profile', 'Profile')} shows your username, organisation and role. ${ui('Reset password')} emails you a link to set a new one. ${showme('profile-reset')}`) +
+          shot('profile', `Your profile, with ${n(1)} ${ui('Reset password')}.`) },
     ],
   });
 
@@ -15024,7 +15360,9 @@ function buildGuides() {
           ['Local File and Excel', 'You upload the file, it is assessed, then discarded.', 'Scores and a sample of failing rows'],
           [pk('On-premises, through an agent', 'On-premises, through an agent'), 'An agent inside your network reads the database or file where it sits.', 'Scores and counts. The data never leaves your network.'],
         ]) + note(`How much of a failing row is kept follows your organisation's failing-record policy. The default keeps only the columns a check flagged, plus the key that locates the row.`) },
-      { h: 'What each connector needs', body: table(['Source', 'What you provide'], [
+      { h: 'What each connector needs', body:
+          shot('source-form', `Each connector has its own form, here Snowflake: ${n(1)} a saved credential profile, applied, ${n(2)} a secret it supplies without showing it, ${n(3)} the optional sample, and ${n(4)} ${ui('Run assessment')}. Every field has an ${ui('ⓘ')} saying what it expects.`) +
+          table(['Source', 'What you provide'], [
           ['Qlik Open Lakehouse', 'The Glue database and table, and the region. Optionally a workgroup, catalog, results location, and a role ARN if the lakehouse is in another AWS account. No password: Athena uses IAM.'],
           ['Amazon Redshift', 'The Data API (recommended) or a direct connection, the region, the cluster ID or Serverless workgroup, database, schema and table, and a database user for temporary credentials or a Secrets Manager secret ARN. A role ARN for another account.'],
           ['Snowflake', 'Account, user, password, warehouse, optional role, database, schema and table.'],
@@ -15070,13 +15408,14 @@ function buildGuides() {
           p(pk(`Profiles belong to this Qlik app. Another app keeps its own.`,
                `Profiles belong to your workspace, so colleagues can use a connection without ever seeing its password.`)) },
       { h: 'Save one', body: steps(
-          `Open the source in ${go('upload', 'From a data source')} and fill in the connection.`,
+          `Open the source in ${go('upload', 'From a data source')} and fill in the connection. ${showme('src-profile')}`,
           `Press ${ui('Save current as…')} and give it a name people will recognise.`,
           `It now appears in the ${ui('Credential profile')} list for that source.`) },
       { h: 'Use one', body: steps(
           `Choose it from the ${ui('Credential profile')} list and press ${ui('Apply')}.`,
           `Every field except the secret is filled in. Change anything you like, such as the table.`,
-          `Press ${ui('Run assessment')}. The secret is supplied securely when the run starts.`) },
+          `Press ${ui('Run assessment')}. The secret is supplied securely when the run starts.`) +
+          shot('source-form', `${n(1)} The profile bar, with a profile applied. ${n(2)} Its secret reads ${ui('Using saved profile')} instead of showing the value.`) },
       { h: 'Rename or delete', body:
           p(`Choose the profile, then ${ui('Rename')} or ${ui('Delete')}. The ${ui('Default')} profile holds credentials saved before named profiles existed: it can be applied and saved over, but not renamed.`) },
       { h: 'Why it matters', body:
@@ -15087,7 +15426,8 @@ function buildGuides() {
                `Source monitoring, which only covers datasets whose last run used a saved profile`) +
           tip(`If a dataset is skipped with "no saved credentials" when you run it by tag or monitor it, run it once more with a saved profile applied.`) },
       (Q || ADMIN) ? { h: 'Databases behind an agent', body:
-          p(`For PostgreSQL or SQL Server reached through an on-premises agent, choose the machine under ${ui('Runs on')}. The password box greys out and reads ${ui('Held on the agent')}: the password lives in a file on that machine, and the profile only points at it. See ${see('agents', 'Set up an on-premises agent')}.`) } : null,
+          p(`For PostgreSQL or SQL Server reached through an on-premises agent, choose the machine under ${ui('Runs on')}. The password box greys out and reads ${ui('Held on the agent')}: the password lives in a file on that machine, and the profile only points at it. See ${see('agents', 'Set up an on-premises agent')}.`) +
+          shot('runs-on-agent', `PostgreSQL run on an agent: ${ui('Runs on')} names the machine, and the password box reads ${ui('Held on the agent')}.`) } : null,
     ],
   });
 
@@ -15106,20 +15446,30 @@ function buildGuides() {
             ['Stale (&gt;7d)', 'Datasets not assessed for more than seven days'],
             ['Runs (30d)', 'Assessments in the last 30 days'],
           ]) +
-          p(`The red bar across the top of every page lists open blockers, so nothing urgent hides on another tab. ${ui('View all')} opens them in ${go('incidents', 'Incidents')}.`) },
+          p(`The red bar across the top of every page lists open blockers, so nothing urgent hides on another tab. ${ui('View all')} opens them in ${go('incidents', 'Incidents')}. ${showme('dash-tiles')}`) +
+          shot('overview-top', pk(`${n(1)} The blocker bar, ${n(2)} the ${ui('App data')} and ${ui('Source data')} toggle, and ${n(3)} the headline figures.`,
+                                  `${n(1)} The blocker bar, and ${n(2)} the headline figures.`)) },
       { h: 'The Quality Space', body:
           p(`A 3D map with one orb for every dataset.`) +
           list(`<b>Where it sits:</b> score runs left to right, volume bottom to top, and stage front to back.`,
                `<b>How it looks:</b> the colour is its status (green, amber or red), the ring is its stage (bronze, silver or gold), and the size is its row count.`,
-               `Drag to orbit, scroll to zoom, and click an orb to open that dataset. ${ui('Group by')} source, stage, status or owner, or ${ui('Maximise')} for a closer look.`) },
+               `Drag to orbit, scroll to zoom, and click an orb to open that dataset. ${ui('Group by')} source, stage, status or owner, or ${ui('Maximise')} for a closer look.`) +
+          shot('quality-space', `${n(1)} Search, ${n(2)} show the stage walls and rings, ${n(3)} filter, and ${n(4)} the legend: fill is status, ring is stage, size is rows.`) +
+          sm('quality-space') },
       { h: 'The dataset list', body:
           p(`Sorted with the lowest score first, so the problems are at the top. Each row shows the score, the gate, the row count, when it last ran, a 30-day trend line and its trust flag.`) +
           list(`Filter by stage, trust or owner, or search by name or tag.`,
                `Click a tag or an owner to filter by it.`,
                `${ui('↻ Re-run')} assesses a dataset again from its saved connection.`,
-               `${ui('✕')} deletes a dataset and all of its history, including incidents and any schedule that covers only that dataset. It cannot be undone${P ? ', and in the portal only an admin can do it' : ''}.`) },
+               `${ui('✕')} deletes a dataset and all of its history, including incidents and any schedule that covers only that dataset. It cannot be undone${P ? ', and in the portal only an admin can do it' : ''}.`) +
+          shot('dataset-list', GOV
+            ? `${n(1)} Search by name or tag, ${n(2)} add or change tags, ${n(3)} the 30-day trend, ${n(4)} trust, and ${n(5)} ${ui('↻ Re-run')}.`
+            : `${n(1)} Search by name or tag, ${n(2)} the 30-day trend, and ${n(3)} ${ui('↻ Re-run')}.`) +
+          sm('dataset-list') },
       { h: 'Dimension scores by dataset', body:
-          p(`A grid of every dataset against the nine dimensions. A dash means not assessed. ${ui('What each dimension means')} explains them, and so does this table:`) +
+          p(`A grid of every dataset against the nine dimensions. A dash means not assessed. ${showme('heatmap')}`) +
+          shot('heatmap', `Every dataset against every dimension, worst first. ${n(1)} ${ui('What each dimension means')} opens the definitions.`, { narrow: true }) +
+          p(`${ui('What each dimension means')} explains them, and so does this table:`) +
           table(['Dimension', 'The question it answers'], [
             ['Completeness', 'Are the values that should be there actually there?'],
             ['Uniqueness', 'Is anything recorded more than once, by its business key?'],
@@ -15151,7 +15501,7 @@ function buildGuides() {
     open: { tab: 'dashboard', label: 'Open Overview' },
     sections: [
       { h: 'Opening a dataset', body:
-          p(`Click it in the dataset list, or its orb in the Quality Space. The link in a run-completion email opens it directly.`) },
+          p(`Click it in the dataset list, or its orb in the Quality Space. The link in a run-completion email opens it directly. ${showme('ds-header')}`) },
       { h: 'The header', body: list(
           GOV ? `<b>Trust</b>: endorse it, flag it for caution, or deprecate it, with a note shown on hover.`
               : `<b>Trust</b> shows an admin's verdict on the dataset. ${ui('Submit for approval')} puts your latest run forward.`,
@@ -15159,7 +15509,10 @@ function buildGuides() {
           `<b>Stage</b>: bronze, silver or gold.`,
           `<b>Description</b>: one line on what the dataset holds, shown wherever it is listed.`,
           `<b>Notes</b>: context for the team, such as why a red is acceptable, or a known issue.`,
-          `<b>${ui('Export (parquet)')}</b> downloads the dataset's scores run by run, ready to load into Qlik or any BI tool.`) },
+          `<b>${ui('Export (parquet)')}</b> downloads the dataset's scores run by run, ready to load into Qlik or any BI tool.`) +
+          shot('dataset-header', GOV
+            ? `${n(1)} Trust, ${n(2)} owner, ${n(3)} stage, ${n(4)} description, ${n(5)} notes, ${n(6)} ${ui('Export (parquet)')} and ${n(7)} the tabs.`
+            : `${n(1)} Trust, set by an admin, ${n(2)} owner, ${n(3)} description, ${n(4)} notes, ${n(5)} ${ui('Export (parquet)')} and ${n(6)} the tabs.`) },
       { h: 'The tabs', body: table(['Tab', 'What it shows'], [
           ['Scores', 'The overall score, each dimension, whether the gate passed and why it failed, and every failing check with its record count.'],
           ['Metadata', 'The quality of the structure rather than the values: naming, typing and personal-data labelling. Set a <b>metadata contract</b> (a description on every column, a primary key, personal data labelled, required columns) and the dataset is scored against it.'],
@@ -15168,9 +15521,11 @@ function buildGuides() {
           ['Rules', `The rules the dataset is scored against, and AI suggestions for more. ${see('rules', 'Rules guide')}`],
           ['Failed records', 'Blocker records to fix first, failing checks by severity, the most affected columns, and the offending records themselves.'],
           ['History', 'Every run of this dataset, each with its full report.'],
-        ]) },
+        ]) +
+          shot('trends', `The Trends tab: what changed since the previous run, the score against its expected range, and the gate on every run.`) },
       { h: 'Reading failed records', body:
-          p(`The top line says how many blocker records stand between the dataset and a passing gate. Each offending record shows its row or key, the dimension, the check that failed and its severity.`) +
+          p(`The top line says how many blocker records stand between the dataset and a passing gate. Each offending record shows its row or key, the dimension, the check that failed and its severity. ${showme('ds-failed')}`) +
+          shot('failed-records', `${n(1)} How many blocker records stand in the gate's way, ${n(2)} failing checks by severity, ${n(3)} the most affected columns, and ${n(4)} the records themselves.`) +
           note(`Only the columns a check flagged are kept, plus the key that locates the row. The rest of the row reads as withheld, for example ${ui('+12 withheld')}. Detected personal data is always redacted.`) },
       { h: 'Provisional rules', body:
           p(`${ui('⚠ Provisional - rules not yet reviewed')} means the rules were inferred automatically and nobody has reviewed them yet. The score is real, but look at the Rules tab before you rely on it. ${see('rules', 'Rules and AI review')}`) },
@@ -15187,13 +15542,15 @@ function buildGuides() {
           p(`On a dataset's first run, rules are inferred from the data itself: types, formats, which columns must be filled, ranges, allowed values and keys. Where possible they are enriched with AI, then <b>pinned</b>, so every later run is scored against the same rules. A drop in score then reflects the data, not moving goalposts.`) +
           (Q || ADMIN ? note(`Runs on an on-premises agent pin their inferred rules on the first run without an AI step, because the agent never calls out to an AI service. Add AI rules to those datasets from our side with Review rules with AI.`) : '') },
       { h: 'See the active rules', body:
-          p(`Open the dataset and choose the ${ui('Rules')} tab. It lists, column by column, every rule currently in effect.`) },
+          p(`Open the dataset and choose the ${ui('Rules')} tab. It lists, column by column, every rule currently in effect. ${showme('ds-rules')}`) +
+          shot('rules-tab', `The Rules tab: ${ui('✨ Review rules with AI')} at the top, then every rule in effect, column by column.`) },
       { h: 'Review rules with AI', body:
           steps(
             `Press ${ui('✨ Review rules with AI')}. Suggestions come from Claude Haiku 4.5 on Amazon Bedrock.`,
             `Tick the suggestions you want. Each one says which columns it covers and why, and most can be edited before you accept them. An <b>advisory</b> one can be turned into an editable rule with ${ui('Make editable')}.`,
             `Press ${ui('Pin selected to ruleset')}. The rules apply automatically on the dataset's next assessment, with no further AI call.`,
             `Or press ${ui('Apply & re-run now')}, which appears when the run can be launched again from here, such as ${Q ? 'an app table or ' : ''}an uploaded file that is still stored.`) +
+          shot('ai-review', `${n(1)} Tick the suggestions you want, editing their values first if you like. ${n(2)} An advisory suggestion is guidance to apply yourself. ${n(3)} ${ui('Pin selected to ruleset')}. ${n(4)} ${ui('➕ Add a rule')} writes one of your own.`) +
           note(`The AI only ever sees column names, aggregate statistics and masked value shapes (an email reads like <code>aaaa@aaa.aaa</code>). It never sees your values.`) +
           tip(`${ui('➕ Add a rule')} lets you write one yourself, and ${ui('Regenerate')} asks for a fresh set of suggestions.`) },
       { h: 'Edit or remove rules', body:
@@ -15219,22 +15576,27 @@ function buildGuides() {
       pk({ h: 'Add and remove tags', body:
             steps(`On the ${go('dashboard', 'Overview')}, find the dataset in the list.`,
                   `Press ${ui('＋ tag')} and type the tag. Once a dataset has tags the button reads ${ui('✎ tags')}.`,
-                  `Click a tag chip to filter by it, or its ${ui('✕')} to remove it.`) },
+                  `Click a tag chip to filter by it, or its ${ui('✕')} to remove it.`) +
+            // pk() evaluates both branches, so this is guarded: a portal member cannot tag at all.
+            (GOV ? shot('tag-edit', `Type the tag and press ${ui('Save')}.`, { narrow: true }) + sm('tag-edit') : '') },
          { h: 'Add and remove tags', body: ADMIN
-            ? steps(`On the ${go('dashboard', 'Overview')}, press ${ui('＋ tag')} (or ${ui('✎ tags')}) on a dataset.`,
+            ? steps(`On the ${go('dashboard', 'Overview')}, press ${ui('＋ tag')} (or ${ui('✎ tags')}) on a dataset. ${showme('tag-edit')}`,
                     `Tick tags from your organisation's list. A tag marked ${ui('restricts access')} limits the dataset to members granted it.`,
                     `Press ${ui('Save')}. The confirmation says who can now see it.`) +
-              warn(`A dataset can carry only <b>one</b> restricting tag. Two would be an OR, not an AND: tagged <code>finance</code> and <code>hr</code>, it would be visible to anyone holding either, so the second tag would widen access while reading like a further restriction. The picker locks the others once one is on.`)
+              warn(`A dataset can carry only <b>one</b> restricting tag. Two would be an OR, not an AND: tagged <code>finance</code> and <code>hr</code>, it would be visible to anyone holding either, so the second tag would widen access while reading like a further restriction. The picker locks the others once one is on.`) +
+              shot('tag-edit', `The picker lists your organisation's tags. Those marked ${ui('restricts access')} limit who can see the dataset.`, { narrow: true })
             : p(`Only admins add and remove tags, because a restricting tag decides who can see a dataset. You still see every tag on the datasets you can see, and you can click one to filter by it.`) }),
       { h: 'Run everything with a tag', body:
-          steps(`Open ${go('tagrun', 'By tag')} and select a tag. Every dataset carrying it is listed.`,
+          steps(`Open ${go('tagrun', 'By tag')} and select a tag. Every dataset carrying it is listed. ${showme('tagrun')}`,
                 `Run them all together in one task, or any one on its own.`,
                 `Results appear underneath, one tab per dataset, and earlier tag runs are listed below.`) +
+          shot('tagrun', `A tag selected: every dataset carrying it, each with its own ${ui('▶ Run assessment')}, and one button at the top that runs them all together.`) +
           note(`A tag run reconnects to each dataset's source, so it covers source datasets whose last run used a saved credential profile. Anything it cannot run is listed with the reason: never assessed on its own yet, ${Q ? 'a Qlik app table, ' : ''}an uploaded file, or no saved credentials.`) },
       { h: 'Schedule a tag', body:
           p(`In ${go('schedules', 'Schedules')}, choose ${ui('Datasets with a tag (one task)')} and pick the tag. The datasets it covers are captured when you save, so re-save the schedule after tagging more datasets.`) },
       P ? { h: 'Setting up tag access', body:
-          p(`Admins define the tag list, the colours, which tags restrict, what happens to datasets with no restricting tag, and which members hold which tags, all in the admin portal. ${ADMIN ? see('admin-portal', 'Admin portal guide') : 'Ask an admin if you cannot see a dataset you need.'}`) } : null,
+          p(`Admins define the tag list, the colours, which tags restrict, what happens to datasets with no restricting tag, and which members hold which tags, all in the admin portal. ${ADMIN ? see('admin-portal', 'Admin portal guide') : 'Ask an admin if you cannot see a dataset you need.'}`) +
+          (ADMIN ? shot('admin-tags', `The tag list in the admin portal. The tags ticked ${ui('restricts')} are the ones that control access.`) : '') } : null,
     ],
   });
 
@@ -15258,9 +15620,10 @@ function buildGuides() {
                      : `In the portal, trust is set by admins. You put a run forward with ${ui('Submit for approval')} and see the verdict here once they decide.`)) },
       { h: 'Stages', body:
           p(`Mark each dataset as bronze, silver or gold in its header, following the medallion pattern: raw, cleaned, then business-ready.`) +
-          steps(`Open ${go('medallion', 'Stages')}.`,
+          steps(`Open ${go('medallion', 'Stages')}. ${showme('stages')}`,
                 `Pick a bronze, a silver and a gold dataset.`,
-                `Compare their scores side by side, and read the stage-to-stage progression to see where quality is gained or lost.`) },
+                `Compare their scores side by side, and read the stage-to-stage progression to see where quality is gained or lost.`) +
+          shot('stages', `A bronze, a silver and a gold dataset side by side, each with its score, its gate and its dimensions.`) },
       { h: 'Where they show up', body:
           p(`The Quality Space rings each orb with its stage, the dataset list filters by stage, trust and owner, and the AI assistant reads trust before it relies on a dataset.`) },
     ],
@@ -15287,7 +15650,8 @@ function buildGuides() {
           ['Source signals', 'Warning or Major', `Found by source monitoring between runs. ${see('source-monitoring', 'Source monitoring')}`],
         ]) },
       { h: 'Working an incident', body:
-          p(`Open the ${ui('⋯')} menu on an incident:`) +
+          p(`Open the ${ui('⋯')} menu on an incident: ${showme('inc-menu')}`) +
+          shot('incidents', `Open incidents, worst first, grouped by dataset on the left, with one incident's ${ui('⋯')} menu open.`) +
           table(['Action', 'What it does'], [
             ['View run', 'Opens the run that raised it'],
             ['Explain ✨', 'An AI explanation of the cause and the fix, grounded in the run\'s own evidence'],
@@ -15300,11 +15664,12 @@ function buildGuides() {
             ['Reopen, Remove from list', 'For closed incidents'],
           ]) },
       { h: 'Alerts in Slack or Teams', body:
-          steps(`Open ${go('incidents', 'Incidents')} and expand ${ui('Alert channels')}.`,
+          steps(`Open ${go('incidents', 'Incidents')} and expand ${ui('Alert channels')}. ${showme('alert-channels')}`,
                 `Paste an incoming-webhook URL for a Slack workspace, a Microsoft Teams channel, or both.`,
                 `Choose what to send: ${ui('Incident opened')}, ${ui('Recovered')} and ${ui('Staleness')}.`,
                 `Press ${ui('Save')}, then ${ui('Send test')} to check it arrives.`) +
-          p(`Each message shows the ${SC}, dataset, score, reasons, owner and a link. Point several ${SC}s at the same webhook to share one channel.`) },
+          p(`Each message shows the ${SC}, dataset, score, reasons, owner and a link. Point several ${SC}s at the same webhook to share one channel.`) +
+          shot('alert-channels', `Slack is connected here and Teams is not yet. Choose what to send, then ${ui('Save')} and ${ui('Send test')}.`) },
       { h: 'Email', body:
           p(`Incident emails go to the dataset's owner, or to whoever submitted the dataset when it has no owner. A dataset with neither raises no email.`) },
       Q ? { h: 'App data and source data', body:
@@ -15338,12 +15703,14 @@ function buildGuides() {
           tip(`A dataset that cannot be monitored is listed with the reason in plain words, such as "no saved credential profile resolves". Most are fixed by running the dataset once more with a saved profile applied. ${see('credential-profiles', 'Credential profiles')}`) },
       { h: 'Set it up', body:
           steps(`Open ${go('schedules', 'Schedules')} and start a new schedule.`,
-                `Under ${ui('Assess')}, choose ${ui('Source monitoring only (no assessment)')}.`,
+                `Under ${ui('Assess')}, choose ${ui('Source monitoring only (no assessment)')}. ${showme('sch-kind')}`,
                 `Pick how often it runs. For hourly, choose ${ui('Custom (cron / rate)')} and enter <code>0 * * * ? *</code>.`,
                 `Press ${ui('Save schedule')}.`) +
+          shot('schedule-watch', `The ${ui('Assess')} list, with ${ui('Source monitoring only (no assessment)')} near the top.`, { narrow: true }) +
           p(`Each time it fires, the list of monitored datasets is rebuilt, so a dataset that becomes eligible later is picked up without editing the schedule. ${ui('📡 Check now')} on the Source monitoring tab runs a check straight away.`) },
       { h: 'Reading the table', body:
-          p(`Each source shows its state (Monitored, Never checked or Excluded), its approximate row count, how old its newest record is and which column that came from, and when it was last checked. ${ui('Exclude')} and ${ui('Include')} opt a dataset out or back in.`) +
+          p(`Each source shows its state (Monitored, Never checked or Excluded), its approximate row count, how old its newest record is and which column that came from, and when it was last checked. ${ui('Exclude')} and ${ui('Include')} opt a dataset out or back in. ${showme('watch-table')}`) +
+          shot('sourcewatch', `${n(1)} ${ui('📡 Check now')}, ${n(2)} a dataset that cannot be monitored, with the reason, ${n(3)} ${ui('Exclude')}, and ${n(4)} a business date, labelled as one.`) +
           note(`A business date, such as an order date, says nothing about whether the source is still loading, so it is labelled as one and never used to decide that a source has stopped.`) +
           warn(`On Snowflake and Databricks, reading the newest timestamp can wake a suspended warehouse. Exclude datasets you do not want polled.`) },
     ],
@@ -15361,13 +15728,14 @@ function buildGuides() {
           `<b>Every dataset with a tag</b>, in one task`,
           `<b>Source monitoring only</b>, which checks sources are still loading without assessing them`) },
       { h: 'Create a schedule', body:
-          steps(`Open ${go('schedules', 'Schedules')} and give the schedule a name.`,
+          steps(`Open ${go('schedules', 'Schedules')} and give the schedule a name. ${showme('sch-form')}`,
                 `Choose a frequency: ${ui('Daily')} at a time, ${ui('Weekly')} on a day, ${ui('Monthly')} on a date, or ${ui('Custom (cron / rate)')} with a 6-field EventBridge cron expression.`,
                 `Choose the timezone. It fires at the chosen time in that zone, and the next run is shown in your own time too.`,
                 `Under ${ui('Assess')}, pick what to run.${Q ? ` For app tables, ${ui('Choose tables…')} or leave it on all tables.` : ''}`,
                 `For a source, choose a saved ${ui('Credential profile')} and press ${ui('Apply')}, or fill in the connection by hand. Prefer a role or a Secrets Manager ARN to a raw password where the source allows it.`,
                 `Optionally set a sample size. Empty assesses whole tables.`,
-                `Check the next five runs in ${ui('This schedule')}, then press ${ui('Save schedule')}.`) },
+                `Check the next five runs in ${ui('This schedule')}, then press ${ui('Save schedule')}.`) +
+          shot('schedule-form', `${n(1)} Name, ${n(2)} frequency, ${n(3)} timezone, ${n(4)} what to assess, and ${n(5)} ${ui('Save schedule')}. The next five runs are listed beside the form.`) },
       { h: 'Who gets the alerts', body:
           p(`Each dataset's owner, or whoever submitted it when it has no owner. A dataset with neither raises no email.`) },
       { h: 'Manage your schedules', body: table(['Action', 'What it does'], [
@@ -15376,7 +15744,9 @@ function buildGuides() {
           [ui('✎ Edit'), `Loads it into the form above. Save to update it, or ${ui('Cancel edit')}.`],
           [ui('🗑 Delete'), 'Removes it. Runs it already made keep their history.'],
           [ui('▸'), 'Expands a row to show its expression, timezone, tables, alert routing and sample size'],
-        ]) },
+        ]) +
+          shot('schedule-list', `${n(1)} ${ui('▸')} expands a row to show ${n(5)} its detail. ${n(2)} Pause, ${n(3)} edit and ${n(4)} delete.`) +
+          sm('sch-list') },
       { h: 'Good to know', body: list(
           `A <b>tag schedule</b> captures its datasets when you save it. Re-save it after tagging more.`,
           `A <b>source-monitoring schedule</b> rebuilds its list every time it fires, so new datasets are picked up automatically.`,
@@ -15395,7 +15765,8 @@ function buildGuides() {
           p(`The privacy and regulatory-risk posture of each dataset, anchored on the ISO/IEC 29100 privacy principles with GDPR and PCI DSS citations. Personal data is detected and reported as present, but its values are never stored.`) +
           note(`This is evidence toward compliance, not a certification. Where something cannot be assessed from the data, it says so rather than guessing.`) },
       { h: 'The estate view', body:
-          p(`${go('compliance', 'Compliance')} ranks every dataset in the ${SC} by exposure, worst first. Open one for its full controls. The count on the tab shows how many need attention.`) },
+          p(`${go('compliance', 'Compliance')} ranks every dataset in the ${SC} by exposure, worst first. Open one for its full controls. The count on the tab shows how many need attention. ${showme('cmp-estate')}`) +
+          shot('compliance-estate', `The estate: how much of it is clean, and the datasets that need attention, worst first.`) },
       { h: 'Inside a dataset', body:
           p(`The dataset's ${ui('Compliance')} tab opens on four cards:`) +
           table(['Card', 'What it covers'], [
@@ -15403,18 +15774,21 @@ function buildGuides() {
             ['Compliance policy', 'The rules you declare for this dataset (below). Controls run only for the fields you set.'],
             ['PIMS readiness', 'Everything already assessed, projected onto the ISO/IEC 27701 Annex A controls, marked as machine-evidenced or self-attested, with gaps listed.'],
             ['Governance attestations', 'Controls only people can confirm, such as a DPIA, a record of processing or a privacy notice, answered with notes and evidence links.'],
-          ]) },
+          ]) +
+          shot('compliance-findings', `Exposure &amp; findings for a payments table: card numbers stored in clear text, and card security codes that should never be stored at all, each with its clause, its evidence and the fix.`) },
       { h: 'Set the compliance policy', body:
           steps(`Pick the framework: ${ui('General - ISO/IEC 29100 · GDPR')}, ${ui('HIPAA')}, ${ui('CCPA / CPRA')}, ${ui('BCBS 239')}, or one of your own custom standards.`,
                 `Set the fields that apply: a retention limit in days and the date column to age, a consent or lawful-basis flag column, an erasure or opt-out flag column, the data-subject ID column, and audit-trail columns.`,
                 `Optionally make failing-record detail stricter for this dataset.`,
                 `Press ${ui('Save policy')}, or ${ui('✨ Suggest with AI')} to have the fields proposed from the columns. It applies on the next assessment.`) +
+          shot('compliance-policy', `The Compliance policy card: the framework, the fields that apply, then ${ui('✨ Suggest with AI')} or ${ui('Save policy')}.`) +
           tip(`A dataset that holds no personal data can be ticked as exempt. No controls run and it gets no grade.`) +
           (P && !ADMIN ? note(`In the portal, your changes to a policy or to attestations are sent to an admin as a proposal, and apply once they accept it.`) : '') },
       { h: 'Custom standards', body:
           p(`Declare your own internal standard with its own attestations and data rules. Unlike the built-in packs, its data rules are scored: each one becomes a control in Exposure & findings.`) },
       { h: 'How much of a failing row is kept', body:
-          (ADMIN ? p(`An organisation-wide setting at the top of the Compliance tab, for admins only: ${ui('Flagged columns only (default)')}, ${ui('Whole row')} (detected personal data is still redacted), or ${ui('No record detail')} (failing checks and their counts are still reported).`)
+          (ADMIN ? p(`An organisation-wide setting at the top of the Compliance tab, for admins only: ${ui('Flagged columns only (default)')}, ${ui('Whole row')} (detected personal data is still redacted), or ${ui('No record detail')} (failing checks and their counts are still reported). ${showme('records-policy')}`) +
+                   shot('records-policy', `${n(1)} How much of a failing row is kept for every dataset in the organisation, and ${n(2)} ${ui('Save policy')}.`)
                  : p(`Your organisation's policy decides this, and the safe default keeps only the columns each check flagged, plus the key that locates the row.`)) +
           p(`A single dataset can be made stricter than the organisation's policy in its compliance policy, but never looser.`) },
       { h: 'Compliance incidents', body:
@@ -15443,10 +15817,11 @@ function buildGuides() {
           `<b>Read access to the file share</b>, if you assess files. The service runs as LocalSystem, which reaches the network as the <i>computer</i> account, so either grant that account read on the share or run the service as a domain user.`,
           `<b>Memory for QVDs:</b> a QVD is loaded whole and needs roughly eight times its size free. For large ones, export parquet from Qlik and point the agent at that instead.`) },
       { h: 'Register it and download', body: steps(
-          `In ${go('agents', 'Agents')}, type a name for the machine, such as "Acme DC1", and press ${ui('Register')}.`,
+          `In ${go('agents', 'Agents')}, type a name for the machine, such as "Acme DC1", and press ${ui('Register')}. ${showme('agents')}`,
           `Press ${ui('Download')} for the agent itself, one zip of about 100 MB. Check it against the SHA-256 shown beside the button with <code>Get-FileHash .&#92;ViseonDQAgent-1.0.0-windows-x64.zip -Algorithm SHA256</code>.`,
           `Or press ${ui('Copy link')} to send the download to whoever installs it. The link needs no sign-in and must be started within 60 minutes.`,
-          `Press ${ui('Download config')} on the machine's row for its <code>agent.config</code>. It holds a credential, so send it the way you would send a password. Issuing a new one stops the old one working.`) },
+          `Press ${ui('Download config')} on the machine's row for its <code>agent.config</code>. It holds a credential, so send it the way you would send a password. Issuing a new one stops the old one working.`) +
+          shot('agents', `${n(1)} Name the machine and ${n(2)} register it. ${n(3)} ${ui('Download')} the agent, or ${n(4)} copy a link to it. ${n(5)} ${ui('Download config')} on its row. The dot beside each machine is its health.`) },
       { h: 'Install the service', body:
           steps(`Extract the zip somewhere permanent, such as <code>C:&#92;Program Files&#92;Viseon&#92;DataAssurance</code>, and put <code>agent.config</code> beside <code>dq-agent.exe</code>.`,
                 `Open <b>Command Prompt as Administrator</b> in that folder.`,
@@ -15471,7 +15846,8 @@ dq-agent-service.cmd RESTART`) +
           `<b>A database:</b> open PostgreSQL or SQL Server and choose the machine under ${ui('Runs on')}. The password box reads ${ui('Held on the agent')}. The host is resolved from the agent's machine, so a private name such as <code>db.internal</code> is correct.`,
           `<b>A file:</b> choose ${ui('Qlik On Premise Files')}, pick the agent, and give the path as that machine sees it, such as <code>D:&#92;qvd&#92;sales.qvd</code> or <code>&#92;&#92;fs01&#92;finance&#92;sales.qvd</code>.`,
           `Press Run. The status reads <i>queued for the agent</i>, and the job starts on its next poll, usually within 15 seconds. Results appear with every other source, marked On Premise.`,
-          `Schedules work the same way. If the agent is offline when one fires, the job waits for it.`) },
+          `Schedules work the same way. If the agent is offline when one fires, the job waits for it.`) +
+          shot('onprem-file', `${ui('Qlik On Premise Files')}: the machine under ${ui('Runs on')}, and the file's path as that machine sees it.`) },
       { h: 'Day to day', body:
           table(['Dot', 'Means'], [
             ['Green, online', 'Polled within the last 90 seconds'],
@@ -15504,12 +15880,14 @@ dq-agent-service.cmd RESTART`) +
           table(['View', 'Shows'], [
             [ui('App data'), 'Traced from Qlik: the sources that load into this app (QVDs, files and connections) and anything downstream that consumes it. Cached for 24 hours; press Refresh to pull it again.'],
             [ui('Source data'), 'Read from your warehouse\'s own catalog: what each assessed table or view is built from, and what is built on it.'],
-          ]) } : { h: 'What you are looking at', body:
+          ]) +
+          shot('lineage-app', `The ${ui('App data')} view: the sources that load this app on the left and what consumes it on the right, each with its quality score where one exists.`) } : { h: 'What you are looking at', body:
           p(`Object dependencies read from your warehouse's own catalog during each assessment: what each assessed table or view is built from, and what is built on it.`) },
       { h: 'Reading the source lineage', body: steps(
-          `Pick a dataset from the cards at the top. Each shows its source and its score, and you can search by name, schema or tag.`,
+          `Pick a dataset from the cards at the top. Each shows its source and its score, and you can search by name, schema or tag. ${showme('lineage')}`,
           `The panel says how many objects it is built from and how many are built on it.`,
           `${ui('Built from')} lists its inputs on the left and ${ui('Built on it')} its dependants on the right. Every object carries its own quality score and status.`) +
+          shot('lineage-source', `${n(1)} The dataset picked, ${n(2)} what it is built from, ${n(3)} what is built on it, and ${n(4)} a warning that this catalog does not record everything.`) +
           tip(`A red view built from one red table and one green table tells you where to look: follow the red input.`) },
       { h: 'Honest about the gaps', body: list(
           `${ui('known to be incomplete')} appears where a catalog does not record everything. Redshift, for example, does not record dependencies for late-binding views, so those are missing from the graph.`,
@@ -15536,7 +15914,8 @@ dq-agent-service.cmd RESTART`) +
           p(`The integrity strip above the diagram answers that, link by link:`) +
           list(`<b>Which associations resolve</b>, and how many rows fall through the ones that do not, and so drop out of your charts.`,
                `<b>Name collisions:</b> Qlik associates on field name, so two unrelated fields that happen to share a name are joined whether anyone meant it or not. That shows up as a near-total mismatch in both directions, and is reported as a different, sharper finding.`) +
-          p(`Click the strip for the full detail of every link.`) },
+          p(`Click the strip for the full detail of every link. ${showme('model-strip')}`) +
+          shot('data-model', `${n(1)} The integrity strip: the model's score, how many associations have findings, and how many rows drop out of your charts. ${n(2)} The key behind a finding, and ${n(3)} each table's own score.`) },
       { h: 'How to get it', body:
           p(`Run ${ui('Assess all tables')} from ${go('appdata', 'From this app')}. The check uses values already gathered while each table was assessed, so it costs nothing extra. Until the first full-app assessment, the strip reads as not checked yet.`) },
     ],
@@ -15552,7 +15931,9 @@ dq-agent-service.cmd RESTART`) +
       { h: 'Every run, kept', body: pk(
           p(`${go('history', 'Assessment history')} has two views. ${ui('Full app assessments')} lists every run of Assess all tables, with how many tables it covered and the average and lowest score. ${ui('By dataset')} lists every individual run.`),
           p(`${go('history', 'Assessment history')} lists every run you can see, newest first.`)) +
-          p(`Open any run for its full report: scores, checks, failed records and the rules it was scored against.`) },
+          p(`Open any run for its full report: scores, checks, failed records and the rules it was scored against. ${showme('history')}`) +
+          shot('history', pk(`${n(1)} ${ui('Full app assessments')} and ${ui('By dataset')}, and ${n(2)} a full-app run: open it for each table's result.`,
+                             `${n(1)} Each run, newest first, with ${n(2)} ${ui('↻')} to run it again.`)) },
       { h: 'Run it again', body:
           p(`${ui('↻')} on a row assesses the dataset again:`) +
           list(Q ? `An app table is re-assessed from inside the app.` : null,
@@ -15580,7 +15961,8 @@ dq-agent-service.cmd RESTART`) +
           steps(`Open ${go('approvals', 'Approvals')}. The count on the tab shows how many are waiting.`,
                 `Under ${ui('Assessment runs')}, press ${ui('View report')} to read the run.`,
                 `Press ${ui('✓ Approve')} to endorse the dataset, or ${ui('⚠ Caution')} or ${ui('⛔ Deprecate')} to reject it, with an optional note on why.`) +
-          p(`The decision sets the dataset's trust flag, and an approved run becomes the one the Overview shows.`) },
+          p(`The decision sets the dataset's trust flag, and an approved run becomes the one the Overview shows. ${showme('approvals')}`) +
+          shot('approvals', `${n(1)} ${ui('View report')}, then ${n(2)} ${ui('✓ Approve')} or reject. Below it, a policy proposal: ${n(3)} ${ui('✓ Accept & apply')}, after ${n(4)} reviewing what was proposed.`) },
       { h: 'Decide a proposal', body:
           steps(`Under ${ui('Compliance & attestation proposals')}, open ${ui('Review submitted policy')} (or attestations) to see exactly what was proposed.`,
                 `Press ${ui('✓ Accept & apply')} to apply it to the dataset, or ${ui('✕ Reject')} with an optional note. The member who proposed it is emailed.`) },
@@ -15600,15 +15982,17 @@ dq-agent-service.cmd RESTART`) +
           p(`Connect an AI assistant to Data Assurance through the Model Context Protocol (MCP) and ask what you actually want to know: "what's failing right now?", "has orders got worse this month?", "any open incidents, and how do I fix them?".`) +
           p(`Answers come from the platform's own figures rather than being worked out again, and they are tested to match what the screen shows.`) },
       { h: 'Connect it', body: pk(
-          steps(`Open ${go('assistant', 'AI Assistant')} and copy the ${ui('Connection address')}.`,
+          steps(`Open ${go('assistant', 'AI Assistant')} and copy the ${ui('Connection address')}. ${showme('mcp-url')}`,
                 `In your assistant, add it as a custom connector or MCP server. In Claude that is Settings, Connectors, Add custom connector.`,
                 `Back here, press ${ui('Generate connection code')}.`,
                 `When the assistant opens its sign-in page, paste the code. It works once and expires after 10 minutes.`) +
-          note(`The connection is limited to this app. It can never see another app or another Qlik tenant.`),
-          steps(`Open ${go('assistant', 'AI Assistant')} and copy the ${ui('Connection address')}.`,
+          note(`The connection is limited to this app. It can never see another app or another Qlik tenant.`) +
+          shot('assistant', `${n(1)} The connection address, ${n(2)} ${ui('Copy')}, and ${n(3)} ${ui('Generate connection code')} for when the assistant asks for it.`),
+          steps(`Open ${go('assistant', 'AI Assistant')} and copy the ${ui('Connection address')}. ${showme('mcp-url')}`,
                 `In your assistant, add it as a custom connector or MCP server. In Claude that is Settings, Connectors, Add custom connector.`,
                 `The assistant opens a sign-in page. Log in with the same portal account you use here.`) +
-          note(`The connection is limited to your organisation and inherits your role, so it can only do what you can do here.`)) },
+          note(`The connection is limited to your organisation and inherits your role, so it can only do what you can do here.`) +
+          shot('assistant', `${n(1)} The connection address and ${n(2)} ${ui('Copy')}. The assistant then signs you in with your portal account.`)) },
       { h: 'What you can ask about', body: list(
           `Scores, statuses and gates, and which dimensions and checks failed`,
           `Trends and history, against each dataset's learned baseline`,
@@ -15647,6 +16031,8 @@ dq-agent-service.cmd RESTART`) +
                 `They are emailed a secure link to set their own password, and show as ${ui('pending invite')} until they sign in.`,
                 `Change anyone's role from the users list. You cannot change your own.`,
                 `${ui('Delete')} removes a user's login and portal access, and cannot be undone. For someone who has not signed in yet the button reads ${ui('Revoke invite')}.`) +
+          shot('admin-create-user', `${n(1)} Their email, ${n(2)} their role, and ${n(3)} ${ui('Create user')}.`, { narrow: true }) +
+          shot('admin-users', `The users list: ${n(1)} change a role, ${n(2)} an invitation not yet accepted, and ${n(3)} ${ui('Delete')}, which reads ${ui('Revoke invite')} for someone who has not signed in.`) +
           note(`Admins can set trust, owners and tags, decide approvals, manage agents and the failing-record policy, and are never restricted by tags. Members run assessments and read results, and put runs and compliance changes forward for approval.`) },
       { h: 'Tag access', body:
           steps(`Under ${ui('Your organisation\'s tags')}, add each tag your datasets use. This is the list people choose from when tagging, so a tag can never be declared under a spelling the data does not use.`,
@@ -15654,6 +16040,8 @@ dq-agent-service.cmd RESTART`) +
                 `Tick ${ui('restricts')} to turn a tag into an access control: a dataset carrying it becomes visible only to members granted it.`,
                 `Choose what happens to datasets with none of the restricting tags: visible to everyone (recommended) or to nobody (deny by default). Press ${ui('Save')}.`,
                 `Under ${ui('Who holds what')}, grant each member the tags they may see. Leave a member empty to show them only unrestricted datasets.`) +
+          shot('admin-tags', `${n(1)} Add a tag, ${n(2)} pick its colour, and ${n(3)} tick ${ui('restricts')} to make it an access control.`) +
+          shot('admin-grants', `${n(1)} What happens to datasets with no restricting tag, ${n(2)} the tags a member holds, and ${n(3)} an admin, who always sees everything.`) +
           warn(`Admins always see everything, so test a restriction with a member account, not your own.`) },
       { h: 'On-premises agents', body:
           p(`Register and manage your organisation's agents here as well as in the Agents tab. ${see('agents', 'Set up an on-premises agent')}`) },
@@ -15671,7 +16059,10 @@ function gdGuides() {
     _gdList = buildGuides();
     // The search matches everything a guide SAYS, not just its title, so "icacls" finds the agent
     // guide. Built once from the same HTML the reader will see, with tags stripped.
-    const strip = h => String(h || '').replace(/<[^>]+>/g, ' ').replace(/&[a-z#0-9]+;/gi, ' ');
+    const strip = h => String(h || '')
+      .replace(/<button type="button" class="gd-show"[^>]*>.*?<\/button>/g, ' ')
+      .replace(/<span class="gd-fig-zoom">.*?<\/span>/g, ' ')
+      .replace(/<[^>]+>/g, ' ').replace(/&[a-z#0-9]+;/gi, ' ');
     _gdBlob = {};
     _gdList.forEach(g => {
       _gdBlob[g.id] = [g.title, g.sub, g.cat, g.keywords]
@@ -15846,6 +16237,14 @@ function initGuidesTab() {
     });
     // One listener for everything a guide can link to, because guides are rebuilt on every open.
     $('#gdGuide').addEventListener('click', e => {
+      const zoom = e.target.closest('[data-gd-zoom]');
+      if (zoom) {
+        const cap = zoom.closest('figure').querySelector('figcaption');
+        gdZoomOpen(zoom.dataset.gdZoom, cap ? cap.innerHTML : '', zoom);
+        return;
+      }
+      const show = e.target.closest('[data-gd-show]');
+      if (show) { gdShowMe(show.dataset.gdShow, show); return; }
       const goEl = e.target.closest('[data-gd-go]');
       if (goEl) { switchTab(goEl.dataset.gdGo); window.scrollTo({ top: 0 }); return; }
       const openEl = e.target.closest('[data-gd-open]');
@@ -15861,6 +16260,7 @@ function initGuidesTab() {
 }
 
 function switchTab(name) {
+  gdSpotClose();
   // Portal mode: the Qlik-only tabs don't exist here - redirect any programmatic
   // navigation to them (e.g. "Assess this app's data" CTAs) to the source flow.
   if (PORTAL && (name === 'appdata' || name === 'model')) name = 'upload';
@@ -17699,6 +18099,9 @@ function renderSchedules(list) {
     const detail = t => t ? `<span class="sched-det">${esc(t)}</span>` : '';
     const tables = s.sourceKind === 'tag'
       ? `<span class="ds-tag" style="cursor:default">🏷️ ${esc(s.tag || s.sourceSummary || '-')}</span>`
+      // Not a data source, so no source chip: that fell through to the kind in capitals.
+      : s.sourceKind === 'source-watch'
+      ? `<span class="ds-tag" style="cursor:default">${SCHED_KIND_ICON['source-watch']} Source monitoring</span>`
       : isSrc
         ? sourceChip(s.sourceKind) + detail(s.sourceSummary || '')
         : sourceChip('qlik') + detail((s.tables && s.tables.length)
