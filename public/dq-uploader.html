@@ -14900,7 +14900,6 @@ function gdSvg(name) {
 function buildGuides() {
   const P = PORTAL, Q = !PORTAL;
   const ADMIN = PORTAL && IS_PORTAL_ADMIN;
-  const SUPER = PORTAL && document.body.classList.contains('portal-super');
   // Who may set trust, owners and tags: everyone on Qlik, admins in the portal.
   const GOV = Q || ADMIN;
   const pk = (q, p) => (P ? p : q);
@@ -15006,8 +15005,7 @@ function buildGuides() {
           ['Approvals, agents, the failing-record policy and the admin portal', 'No', 'Yes'],
         ]) },
       { h: 'Your profile', body:
-          p(`${go('profile', 'Profile')} shows your username, organisation and role. ${ui('Reset password')} emails you a link to set a new one.`) +
-          (SUPER ? note(`As a platform super-admin you also have a ${ui('Viewing org')} selector at the top, which switches every tab to another organisation's data.`) : '') },
+          p(`${go('profile', 'Profile')} shows your username, organisation and role. ${ui('Reset password')} emails you a link to set a new one.`) },
     ],
   });
 
@@ -15636,20 +15634,15 @@ dq-agent-service.cmd RESTART`) +
   // ================================================================ Administration
   if (ADMIN) G.push({
     id: 'admin-portal', cat: 'Administration', icon: 'cog', tint: '#f59e0b', only: 'admin',
-    title: 'Run your organisation in the admin portal', sub: 'Users and roles, tag access, agents, and setting up a new organisation',
-    keywords: 'admin portal users invite role member admin delete revoke tag access restrict grant organisation org create tenant super admin agents setup implement onboarding',
+    title: 'Run your organisation in the admin portal', sub: 'Users and roles, tag access and on-premises agents',
+    keywords: 'admin portal users invite role member admin delete revoke pending tag access restrict grant colour organisation agents',
     open: { href: location.origin + '/dq-portal-admin', label: 'Open the admin portal' },
     sections: [
       { h: 'Getting there', body:
-          p(`Press ${ui('Admin portal')} at the top right of the portal. It is for organisation admins and platform super-admins; anyone else who opens it is told admin access is required.`) +
-          table(['', 'Organisation admin', 'Super-admin'], [
-            ['Users, roles and invitations', 'Your organisation', 'Any organisation'],
-            ['Tag access', 'Your organisation', 'Your organisation'],
-            ['On-premises agents', 'Your organisation', 'Your organisation'],
-            ['Create organisations', 'No', 'Yes'],
-          ]) },
+          p(`Press ${ui('Admin portal')} at the top right of the portal. Only admins can open it; anyone else is told admin access is required.`) +
+          p(`From there you manage your organisation's users and roles, its tag access, and its on-premises agents.`) },
       { h: 'Users and roles', body:
-          steps(`Under ${ui('Create user')}, enter their email, choose the organisation and a role (${ui('member')} or ${ui('admin')}), and press ${ui('Create user')}.`,
+          steps(`Under ${ui('Create user')}, enter their email, choose a role (${ui('member')} or ${ui('admin')}), and press ${ui('Create user')}.`,
                 `They are emailed a secure link to set their own password, and show as ${ui('pending invite')} until they sign in.`,
                 `Change anyone's role from the users list. You cannot change your own.`,
                 `${ui('Delete')} removes a user's login and portal access, and cannot be undone. For someone who has not signed in yet the button reads ${ui('Revoke invite')}.`) +
