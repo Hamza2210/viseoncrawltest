@@ -12810,9 +12810,13 @@ function _agentHint(key) {
   // previous field and wonders why nothing works; disabled with this sentence, they read why.
   if (pw) { pw.disabled = true; pw.value = ''; pw.placeholder = 'Held on the agent'; }
   hint.style.display = '';
+  // The same line sits under a database form and a file form. Only a database has a password to
+  // reassure anyone about; what matters for a file is that it stays where it is.
+  const where = pw
+    ? `The password lives in that machine's own credential file and is never sent to us.`
+    : `The agent opens the file where it sits, and the file itself never leaves that machine.`;
   hint.textContent = agent.health === 'online'
-    ? `This runs on ${agent.name}, inside your network. The password lives in that machine's `
-      + `own credential file and is never sent to us.`
+    ? `This runs on ${agent.name}, inside your network. ${where}`
     : `This runs on ${agent.name}, which is ${agent.health}. Runs will queue until it polls again.`;
 }
 
@@ -15027,7 +15031,7 @@ const GD_SHOTS = {
   "incidents-q": [1600, 1163, "af3ae60198"],
   "lineage-app": [1600, 1161, "ccb02d035f"],
   "lineage-source": [1600, 1146, "7d82aece98"],
-  "onprem-file": [1600, 1461, "d6dbad2d63"],
+  "onprem-file": [1600, 1461, "fbd79aaab9"],
   "overview-top-p": [1600, 609, "2906120567"],
   "overview-top-q": [1600, 584, "5d61e45e4c"],
   "profile": [1600, 526, "104f28f43a"],
