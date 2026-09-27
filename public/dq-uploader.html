@@ -3160,7 +3160,7 @@
     <div id="src-agentfile" class="source-body" style="display:none;">
       <div class="card">
         <h2>Qlik On Premise Files <span class="src-tag betatag">Beta</span></h2>
-        <p class="src-note">A QVD, parquet or CSV on a share only your own network can see. The
+        <p class="src-note">A parquet or CSV file on a share only your own network can see. The
           agent opens it where it sits and sends back the scores - the file itself never leaves.
           It must be inside a folder that machine was told to allow when its service was installed,
           or the agent refuses the run and says which folders it may read.</p>
@@ -3170,18 +3170,16 @@
             <p class="hint" data-agenthint="agentfile" style="display:none;margin:6px 0 0"></p>
           </div>
           <div class="src-field full"><label>Path on that machine</label>
-            <input data-f="path" placeholder="C:\qvd\sales\sales.qvd   or   \\fs01\finance\sales.qvd">
+            <input data-f="path" placeholder="C:\data\sales\sales.parquet   or   \\fs01\finance\sales.parquet">
             <p class="hint" style="margin:6px 0 0">The full path <strong>as that machine sees
               it</strong>, drive and all. Forward or back slashes both work, and case does not
               matter.<br>It has to sit inside a folder that machine allows. The two go together:
-              <code>dq-agent-service.cmd INSTALL "C:\qvd"</code> is run once on the machine, and
-              then <code>C:\qvd\sales\sales.qvd</code> goes here. A folder covers everything
-              beneath it. For a network share prefer <code>\\fs01\finance\sales.qvd</code> over a
+              <code>dq-agent-service.cmd INSTALL "C:\data"</code> is run once on the machine, and
+              then <code>C:\data\sales\sales.parquet</code> goes here. A folder covers everything
+              beneath it. For a network share prefer <code>\\fs01\finance\sales.parquet</code> over a
               mapped drive letter, which a service often cannot see.
               <br>Parquet and CSV are assessed <strong>in place</strong> on that machine, so their
-              size is not really a limit. A QVD has to be loaded into memory and needs roughly
-              <strong>eight times its size</strong> in free RAM there, so above a gigabyte or so,
-              export parquet from Qlik and point at that instead.</p></div>
+              size is not really a limit.</p></div>
           <div class="src-field"><label>Dataset name <span class="hint">(optional)</span></label>
             <input data-f="dataset" placeholder="Defaults to the file name"></div>
           <div class="src-field"><label>Sample rows <span class="hint">(optional)</span></label>
@@ -4522,7 +4520,7 @@ const SOURCE_FMT_SVG = {
     '<text x="6.9" y="14.7" font-size="9.2" font-weight="800" fill="#fff" text-anchor="middle" ' +
     'font-family="Segoe UI,Arial,sans-serif">S</text>'),
 };
-// `agentfile` is Qlik's own file format read off a customer's share, so it wears the Qlik mark.
+// `agentfile` is the Qlik On Premise Files source, so it wears the Qlik mark.
 // An ALIAS rather than a second copy of the artwork: two drawings of one logo drift apart.
 SOURCE_FMT_SVG.agentfile = SOURCE_FMT_SVG.qlik;
 // The CHIP, the source filter and the dataset list - not the source picker card, which is its
@@ -12642,7 +12640,7 @@ function agtInstructions(agent, issued) {
   add('agt-fine', 'To assess files on that machine or a share, list the folders it may read on '
                 + 'the INSTALL line instead of the plain one above. Left out, the agent reads no '
                 + 'local file at all, and changing it afterwards means editing the service:');
-  add('code', 'dq-agent-service.cmd INSTALL "D:\\qvd;\\\\fs01\\finance"');
+  add('code', 'dq-agent-service.cmd INSTALL "D:\\data;\\\\fs01\\finance"');
   add('agt-li', '5. For a database source, put the password in secrets.json in the same folder, '
               + 'then run dq-agent-service.cmd RESTART. It never leaves that machine.');
   add('agt-li', '6. Within a minute ' + label + ' shows a green dot and "online" in the list '
@@ -13457,9 +13455,38 @@ async function runOracle(cfg, statusEl) {
   } else if (btn) { btn.disabled = false; }
 }
 
+// A QVD is not read in place the way parquet and CSV are: the agent has to load the whole file into
+// memory on its machine first, at roughly eight times the file's size, and a machine that runs out is
+// killed by the operating system part way through. The run is still the operator's call, so this
+// warns and asks rather than refusing, with a worked example, at the moment it can still be changed.
+const QVD_MEMORY_FACTOR = 8;
+function isQvdPath(path) { return /\.qvd$/i.test(String(path || '').trim()); }
+function confirmQvdOnAgent(path, forSchedule) {
+  if (!isQvdPath(path)) return Promise.resolve(true);
+  return dqConfirm(forSchedule ? 'Save this schedule anyway?' : 'Are you sure you want to run it?', {
+    title: 'This file is a QVD', danger: true,
+    okLabel: forSchedule ? 'Yes, save it' : 'Yes, run it', cancelLabel: 'No, cancel',
+    html: `<p class="dq-modal-msg">Parquet and CSV are read in place, a little at a time. A QVD cannot be: ` +
+      `the agent has to load the whole file into memory on the machine it runs on, and that needs ` +
+      `roughly <strong>${QVD_MEMORY_FACTOR} times the file's size</strong> in free memory` +
+      `${forSchedule ? ', every time the schedule runs' : ''}.</p>` +
+      `<p class="dq-modal-msg">For example, a <strong>2 GB</strong> QVD needs about ` +
+      `<strong>${2 * QVD_MEMORY_FACTOR} GB</strong> free. If the machine does not have it, the run stops ` +
+      `part way through, and everything else on that machine slows down while it lasts.</p>` +
+      `<p class="dq-modal-msg">We recommend converting it to parquet, which Qlik can write directly from ` +
+      `the load script with <code>STORE MyTable INTO [lib://Extracts/sales.parquet] (parquet);</code>, ` +
+      `and pointing the agent at that instead.</p>`,
+  });
+}
+
 // Assess a file only the agent can see. No credential travels because there is none: the agent
 // reaches the file through its own filesystem, bounded by its own allow-list.
 async function runAgentFile(cfg, statusEl) {
+  if (!(await confirmQvdOnAgent(cfg.path))) {
+    statusEl.className = 'src-status';
+    statusEl.textContent = 'Cancelled. Nothing was sent to the agent.';
+    return;
+  }
   const btn = document.querySelector('[data-runsource="agentfile"]');
   const body = {
     app_id: APP_ID || undefined,
@@ -15000,7 +15027,7 @@ const GD_SHOTS = {
   "incidents-q": [1600, 1163, "af3ae60198"],
   "lineage-app": [1600, 1161, "ccb02d035f"],
   "lineage-source": [1600, 1146, "7d82aece98"],
-  "onprem-file": [1600, 1492, "eecde02fef"],
+  "onprem-file": [1600, 1461, "d6dbad2d63"],
   "overview-top-p": [1600, 609, "2906120567"],
   "overview-top-q": [1600, 584, "5d61e45e4c"],
   "profile": [1600, 526, "104f28f43a"],
@@ -15377,7 +15404,7 @@ function buildGuides() {
           ['Google Cloud Storage', 'Bucket, object path and a service-account key JSON with Storage Object Viewer. A worksheet for Excel.'],
           ['Azure Blob and ADLS', 'Container, blob path and a storage connection string. A worksheet for Excel.'],
           ['SharePoint and OneDrive', 'The file URL, and an Entra app registration (tenant ID, client ID and secret) with Sites.Read.All and Files.Read.All, admin-consented.'],
-          (Q || ADMIN) ? ['Qlik On Premise Files', `An agent, and the file's path as that machine sees it. QVD, parquet or CSV. ${see('agents', 'Agents guide')}`] : null,
+          (Q || ADMIN) ? ['Qlik On Premise Files', `An agent, and the file's path as that machine sees it. Parquet or CSV. ${see('agents', 'Agents guide')}`] : null,
           ['Local File and Excel', 'The file itself: CSV, TSV, Excel, parquet, JSON or NDJSON, or QVD. For Excel, optionally the worksheet.'],
         ]) },
       { h: 'Before you press Run', body: list(
@@ -15799,7 +15826,7 @@ function buildGuides() {
   if (Q || ADMIN) G.push({
     id: 'agents', cat: 'On-premises', icon: 'server', tint: '#34d399',
     title: 'Set up an on-premises agent', sub: 'Assess databases and files your network keeps to itself',
-    keywords: 'agent on premises on-prem windows service install firewall outbound https proxy secrets.json icacls read paths allow list unc share qvd register download config revoke upgrade',
+    keywords: 'agent on premises on-prem windows service install firewall outbound https proxy secrets.json icacls read paths allow list unc share parquet csv register download config revoke upgrade',
     open: { tab: 'agents', label: 'Open Agents' },
     sections: [
       { h: 'What it is', body:
@@ -15813,8 +15840,7 @@ function buildGuides() {
           `<b>A proxy</b>, if outbound traffic needs one: set <code>HTTPS_PROXY</code>, and <code>AWS_CA_BUNDLE</code> for a private certificate authority, in the service definition.`,
           `<b>An administrator account</b> on the machine, to install the service.`,
           `<b>A read-only database login</b> for each database, with access to exactly the tables to assess.`,
-          `<b>Read access to the file share</b>, if you assess files. The service runs as LocalSystem, which reaches the network as the <i>computer</i> account, so either grant that account read on the share or run the service as a domain user.`,
-          `<b>Memory for QVDs:</b> a QVD is loaded whole and needs roughly eight times its size free. For large ones, export parquet from Qlik and point the agent at that instead.`) },
+          `<b>Read access to the file share</b>, if you assess files. The service runs as LocalSystem, which reaches the network as the <i>computer</i> account, so either grant that account read on the share or run the service as a domain user.`) },
       { h: 'Register it and download', body: steps(
           `In ${go('agents', 'Agents')}, type a name for the machine, such as "Acme DC1", and press ${ui('Register')}. ${showme('agents')}`,
           `Press ${ui('Download')} for the agent itself, one zip of about 100 MB. Check it against the SHA-256 shown beside the button with <code>Get-FileHash .&#92;ViseonDQAgent-1.0.0-windows-x64.zip -Algorithm SHA256</code>.`,
@@ -15826,7 +15852,7 @@ function buildGuides() {
                 `Open <b>Command Prompt as Administrator</b> in that folder.`,
                 `Install it. To assess files, name the folders it may read, separated by semicolons. For databases only, leave the folders off.`,
                 `Start it. The agent shows as online in the Agents tab within a minute.`) +
-          code(`dq-agent-service.cmd INSTALL "D:&#92;qvd;&#92;&#92;fs01&#92;finance"
+          code(`dq-agent-service.cmd INSTALL "D:&#92;data;&#92;&#92;fs01&#92;finance"
 dq-agent-service.cmd START`) +
           note(`A folder covers everything beneath it. For a network share, use the UNC path (<code>&#92;&#92;fs01&#92;finance</code>) rather than a mapped drive letter, which a service often cannot see.`) },
       { h: 'Database passwords', body:
@@ -15843,7 +15869,7 @@ dq-agent-service.cmd RESTART`) +
           p(`Changing a password later means editing this file and restarting. It never involves us.`) },
       { h: 'Point a source at it', body: list(
           `<b>A database:</b> open PostgreSQL or SQL Server and choose the machine under ${ui('Runs on')}. The password box reads ${ui('Held on the agent')}. The host is resolved from the agent's machine, so a private name such as <code>db.internal</code> is correct.`,
-          `<b>A file:</b> choose ${ui('Qlik On Premise Files')}, pick the agent, and give the path as that machine sees it, such as <code>D:&#92;qvd&#92;sales.qvd</code> or <code>&#92;&#92;fs01&#92;finance&#92;sales.qvd</code>.`,
+          `<b>A file:</b> choose ${ui('Qlik On Premise Files')}, pick the agent, and give the path as that machine sees it, such as <code>D:&#92;data&#92;sales.parquet</code> or <code>&#92;&#92;fs01&#92;finance&#92;sales.parquet</code>.`,
           `Press Run. The status reads <i>queued for the agent</i>, and the job starts on its next poll, usually within 15 seconds. Results appear with every other source, marked On Premise.`,
           `Schedules work the same way. If the agent is offline when one fires, the job waits for it.`) +
           shot('onprem-file', `${ui('Qlik On Premise Files')}: the machine under ${ui('Runs on')}, and the file's path as that machine sees it.`) },
@@ -17574,6 +17600,10 @@ async function saveSchedule() {
     const required = (SOURCE_REQUIRED[kind] || []).filter(f => !(schedProfile && secretF.includes(f)));
     const missing = required.filter(f => !cfg[f]);
     if (missing.length) { schBanner('err', 'Fill in the source field(s): ' + missing.join(', ') + '.'); return; }
+    if (kind === 'agentfile' && !(await confirmQvdOnAgent(cfg.path, true))) {
+      schBanner('info', 'Not saved. Point the schedule at a parquet or CSV copy of the file instead.');
+      return;
+    }
     if (kind === 'redshift') {
       if (cfg.cluster_type === 'workgroup') { cfg.workgroup = cfg.cluster; delete cfg.cluster; }
       delete cfg.cluster_type;
