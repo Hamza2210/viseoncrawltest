@@ -747,6 +747,97 @@
   .fr-filter-note.fr-note-check { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; margin: 4px 0 10px !important;
     padding: 8px 12px; border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--border)); border-radius: 9px;
     background: color-mix(in srgb, var(--accent) 10%, var(--card)); color: var(--text); }
+  /* ---- AI actions: one look, and one way of answering, for everything that asks the model ---- //
+     A gradient edge and a sparkle mark a button that calls Claude on Bedrock. Pressed, a ripple
+     runs out from the press and the edge turns while the model works; the answer opens beneath on
+     a shimmering draft, then rises in a section at a time. */
+  @property --ai-a { syntax: '<angle>'; initial-value: 0deg; inherits: false; }
+  button.ai-btn { --ai-fill: color-mix(in srgb, var(--accent2) 10%, var(--card-2));
+    position: relative; isolation: isolate; overflow: hidden; display: inline-flex; align-items: center; gap: 8px;
+    padding: 8px 16px 8px 12px; border: 1px solid transparent; border-radius: 999px; color: var(--text);
+    font-size: 13px; font-weight: 650; line-height: 1.2; white-space: nowrap; cursor: pointer;
+    background: linear-gradient(var(--ai-fill), var(--ai-fill)) padding-box,
+                conic-gradient(from var(--ai-a), #5b8cff, #a78bfa, #22d3ee, #5b8cff) border-box;
+    box-shadow: 0 1px 2px rgba(0,0,0,.3); transition: box-shadow .2s var(--dq-ease), transform .12s var(--dq-ease); }
+  button.ai-btn:hover { box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent2) 28%, transparent),
+    0 6px 22px -6px color-mix(in srgb, var(--accent2) 75%, transparent); }
+  button.ai-btn:active:not(:disabled) { transform: scale(.97); }
+  button.ai-btn:focus-visible { outline: 2px solid var(--accent2); outline-offset: 2px; }
+  button.ai-btn::before { content: ''; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none;
+    background: linear-gradient(105deg, transparent 35%, rgba(255,255,255,.16) 50%, transparent 65%); transform: translateX(-110%); }
+  button.ai-btn:hover::before { animation: aiSheen .85s var(--dq-ease); }
+  button.ai-btn[aria-expanded="true"] { --ai-fill: color-mix(in srgb, var(--accent2) 22%, var(--card-2)); }
+  button.ai-btn:disabled { opacity: 1; cursor: progress; }
+  button.ai-btn[aria-busy="true"] { animation: aiTurn 1.8s linear infinite; }
+  button.ai-btn[aria-busy="true"]::before { animation: aiSheen 1.3s var(--dq-move) infinite; }
+  button.ai-btn[aria-busy="true"] .ai-ico { animation: aiTwinkle 1.1s ease-in-out infinite; }
+  .ai-ico { flex: none; width: 16px; height: 16px; overflow: visible; }
+  button.ai-btn.ai-sm { gap: 6px; padding: 5px 12px 5px 9px; font-size: 12px; }
+  button.ai-btn.ai-sm .ai-ico { width: 14px; height: 14px; }
+  .inc-menu-item.ai-mi { display: flex; align-items: center; gap: 8px; }
+  .inc-menu-item.ai-mi .ai-ico { width: 14px; height: 14px; }
+  .ai-ripple { position: absolute; z-index: -1; border-radius: 50%; pointer-events: none; transform: scale(0); opacity: .6;
+    background: radial-gradient(circle, rgba(196,181,253,.75), rgba(103,232,249,.25) 45%, transparent 70%);
+    animation: aiRipple .65s var(--dq-ease) forwards; }
+  @keyframes aiTurn { to { --ai-a: 360deg; } }
+  @keyframes aiSheen { to { transform: translateX(110%); } }
+  @keyframes aiTwinkle { 50% { transform: rotate(20deg) scale(.8); opacity: .7; } }
+  @keyframes aiRipple { to { transform: scale(1); opacity: 0; } }
+  /* The panel an answer opens in. A formatting root, so its height is its own while it eases. */
+  .ai-out { display: flow-root; }
+  .ai-out[hidden] { display: none !important; }
+  .ai-panel { position: relative; margin-top: 12px; padding: 14px 18px 12px; border: 1px solid transparent; border-radius: 14px;
+    background: linear-gradient(var(--card), var(--card)) padding-box,
+      linear-gradient(135deg, color-mix(in srgb, #5b8cff 65%, transparent), color-mix(in srgb, #a78bfa 55%, transparent) 50%,
+                      color-mix(in srgb, #22d3ee 45%, transparent)) border-box; }
+  .ai-panel::before { content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+    background: radial-gradient(120% 70% at 0% 0%, color-mix(in srgb, var(--accent2) 11%, transparent), transparent 62%); }
+  .ai-hd { position: relative; display: flex; align-items: center; gap: 8px; font-size: 11.5px; font-weight: 700;
+    letter-spacing: .05em; text-transform: uppercase; color: color-mix(in srgb, var(--accent2) 72%, var(--text)); }
+  .ai-hd .ai-ico { width: 15px; height: 15px; }
+  .ai-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ai-model { flex: none; margin-left: auto; padding: 2px 9px; border: 1px solid var(--border); border-radius: 999px;
+    background: var(--card-2); color: var(--muted); font-size: 10.5px; font-weight: 600; letter-spacing: .02em; text-transform: none; }
+  button.ai-x { flex: none; display: grid; place-items: center; width: 26px; height: 26px; margin-left: 2px; padding: 0;
+    border: 1px solid var(--border); border-radius: 8px; background: var(--card-2); color: var(--muted); font-size: 15px; line-height: 1; box-shadow: none; }
+  button.ai-x:hover { color: var(--text); border-color: color-mix(in srgb, var(--accent2) 50%, var(--border)); }
+  .ai-body { position: relative; margin-top: 10px; font-size: 13.5px; line-height: 1.6; color: var(--text); }
+  .ai-sec + .ai-sec { margin-top: 12px; }
+  .ai-sec h4 { margin: 0 0 3px; font-size: 12.5px; font-weight: 700; color: color-mix(in srgb, var(--accent) 55%, var(--text)); }
+  .ai-sec p { margin: 0 0 6px; }
+  .ai-sec p:last-child { margin-bottom: 0; }
+  .ai-sec ul { margin: 2px 0 0; padding-left: 20px; }
+  .ai-sec li { margin: 3px 0; }
+  .ai-sec li::marker { color: var(--accent2); }
+  .ai-foot { position: relative; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border); font-size: 12px; color: var(--muted); }
+  .ai-foot a { color: var(--accent); }
+  .ai-err .ai-body { color: var(--err); }
+  /* The draft while the model works: what it is reading, and lines that shimmer like text arriving. */
+  .ai-think { position: relative; margin-top: 10px; font-size: 13px; font-weight: 650;
+    background: linear-gradient(90deg, #7aa2ff, #c4b5fd, #67e8f9, #7aa2ff); background-size: 200% 100%;
+    -webkit-background-clip: text; background-clip: text; color: transparent; animation: aiText 2.2s linear infinite; }
+  .ai-lines { position: relative; display: grid; gap: 10px; margin: 14px 0 6px; }
+  .ai-lines i { display: block; height: 10px; border-radius: 6px; background-size: 220% 100%; animation: aiShimmer 1.5s ease-in-out infinite;
+    background-image: linear-gradient(90deg, rgba(122,162,255,.08) 0%, rgba(196,181,253,.30) 40%, rgba(103,232,249,.10) 80%); }
+  .ai-lines i:nth-child(2) { animation-delay: .12s; }
+  .ai-lines i:nth-child(3) { animation-delay: .24s; }
+  .ai-lines i:nth-child(4) { animation-delay: .36s; }
+  @keyframes aiText { to { background-position: -200% 0; } }
+  @keyframes aiShimmer { from { background-position: 120% 0; } to { background-position: -120% 0; } }
+  /* The answer lands with one glow round its edge, and rises in a section at a time. */
+  .ai-done { animation: aiLand 1.2s var(--dq-ease); }
+  @keyframes aiLand { from { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent2) 45%, transparent); } to { box-shadow: 0 0 0 12px transparent; } }
+  .ai-rise { animation: aiRise .5s var(--dq-ease) both; animation-delay: calc(var(--i, 0) * 90ms + 60ms); }
+  @keyframes aiRise { from { opacity: 0; transform: translateY(8px); filter: blur(2px); } }
+  .ai-still, .ai-still .ai-rise { animation: none !important; }
+  /* Fields an AI suggestion filled in light up one after another, so it is plain what changed. */
+  .ai-filled { animation: aiFill 1.8s var(--dq-ease) both; animation-delay: calc(var(--i, 0) * 140ms); }
+  @keyframes aiFill { 20% { box-shadow: 0 0 0 3px rgba(167,139,250,.6); border-color: #a78bfa; } }
+  @media (prefers-reduced-motion: reduce) {
+    button.ai-btn, button.ai-btn::before, .ai-ico, .ai-think, .ai-lines i, .ai-done, .ai-rise, .ai-filled { animation: none !important; }
+    .ai-ripple { display: none; }
+    .ai-filled { box-shadow: 0 0 0 2px rgba(167,139,250,.55); }   /* held still rather than flashed */
+  }
   /* A tabbed result: the headline on top, then its parts in tabs. */
   .ra-head .ds-name { font-size: 20px; margin-bottom: 6px; }
   .ra-head .headline { margin-bottom: 6px; }
@@ -3679,6 +3770,9 @@
 </style>
 </head>
 <body>
+  <!-- The AI sparkle's gradient, defined once where every icon can reach it (an icon inside a hidden
+       panel cannot lend its own gradient to the others). -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><defs><linearGradient id="dqAiGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7aa2ff"/><stop offset=".55" stop-color="#c4b5fd"/><stop offset="1" stop-color="#67e8f9"/></linearGradient></defs></svg>
   <!-- First paint. Removed once the dashboard's first load settles (see hideBootSplash). -->
   <div id="bootSplash" role="status" aria-live="polite" aria-label="Loading">
     <div class="bs-inner">
@@ -5837,7 +5931,7 @@ function cmpCtrlHtml(ct, opts) {
   if (ct.status === 'FAIL' && !opts.dismissedView) {
     const btns = [];
     if (recs.length) btns.push(`<button type="button" class="cmp-btn cmp-records-btn" data-cid="${esc(ct.id)}">View ${recs.length} record${recs.length === 1 ? '' : 's'}</button>`);
-    btns.push(`<button type="button" class="cmp-btn cmp-explain-btn" data-cid="${esc(ct.id)}">✨ Explain (AI)</button>`);
+    btns.push(aiBtn('Explain', `data-cid="${esc(ct.id)}"`, 'cmp-explain-btn ai-sm'));
     if (opts.key) btns.push(`<button type="button" class="cmp-btn cmp-dismiss-btn" data-cid="${esc(ct.id)}" data-sev="${esc(ct.severity || 'medium')}">Not a compliance issue</button>`);
     actions = `<div class="cmp-btns">${btns.join('')}</div>`;
   }
@@ -5863,10 +5957,10 @@ function cmpCtrlHtml(ct, opts) {
         ${opts.dismissMeta ? `<div class="cmp-ev">Dismissed${opts.dismissMeta.by ? ' by ' + esc(opts.dismissMeta.by) : ''}${opts.dismissMeta.reason ? ` - “${esc(opts.dismissMeta.reason)}”` : ''}</div>` : ''}
         ${exposure}${fullTable}${declared}${samples}${recsBlock}
         ${ct.remediation ? `<div class="cmp-fix">↪ ${esc(ct.remediation)}</div>` : ''}
-        <div class="cmp-explain-out" style="display:none;"></div>
         ${refs.length ? `<div class="cmp-meta">${refs.map(x => `<span class="cmp-cite">${esc(x)}</span>`).join('')}</div>` : ''}
         ${ct.control ? `<div class="cmp-assesses"><span>Assesses:</span> ${esc(ct.control)}</div>` : ''}
         ${actions}
+        <div class="cmp-explain-out ai-out" hidden></div>
       </div>
     </div>`;
 }
@@ -5932,18 +6026,16 @@ document.addEventListener('click', async (e) => {
   }
   if (btn.classList.contains('cmp-explain-btn')) {
     const out = ctrl.querySelector('.cmp-explain-out');
-    if (out.style.display !== 'none' && out.innerHTML.trim()) { out.style.display = 'none'; btn.classList.remove('active'); return; }
-    out.style.display = ''; btn.classList.add('active');
-    if (!out.innerHTML.trim()) {
-      out.innerHTML = dqLoader('Explaining the compliance finding', null, true);
+    aiToggle(btn, out, async () => {
+      const title = 'What this finding means';
+      aiBusy(btn, true, 'Explaining…');
+      aiThinking(out, 'Reading the finding against the clauses it falls under…', { title, anchor: btn });
       try {
         const r = await postJSON(`${API_BASE}/data-quality/compliance/explain`, HEADERS, { result_prefix: prefix, control_id: cid, actor: EMAIL || undefined });
-        const who = (r.generatedBy && r.generatedBy !== 'unknown') ? ` by ${esc(r.generatedBy)}` : '';
-        const tag = r.cached ? ' · saved earlier' : '';
-        out.innerHTML = `<div class="cmp-ai">${cmpMd(r.explanation)}</div>` +
-          `<p class="hint" style="margin-top:8px;">Generated${who} · Claude Haiku 4.5 (Bedrock)${tag}</p>`;
-      } catch (err) { out.innerHTML = `<p class="hint" style="color:var(--err)">${esc(err.message)}</p>`; }
-    }
+        aiAnswer(out, aiMd(r.explanation), aiFoot(r), { title, anchor: btn });
+      } catch (err) { aiFail(out, err.message); }
+      aiBusy(btn, false);
+    });
     return;
   }
   if (btn.classList.contains('cmp-dismiss-btn')) {
@@ -6191,7 +6283,7 @@ function renderAssessment(r, bodyEl, opts) {
   const gatePass = st.gate ? st.gate.passed : (r.state === 'SUCCEEDED');
   const dsName = sum.dataset || st.dataset_name || '';
   const provTip = 'These rules were auto-inferred and have not been reviewed by a person yet. ' +
-    'Open “Review rules (AI)” below to check, edit and pin them - this clears once you do.';
+    'Use “Review rules with AI” on the dataset\'s Rules tab to check, edit and pin them - this clears once you do.';
   // Three exclusive states, most-actioned first:
   //  1) rules pinned but not yet applied -> "queued" note (replaces Provisional)
   //  2) auto-inferred, unreviewed        -> Provisional
@@ -6344,10 +6436,10 @@ function renderAssessment(r, bodyEl, opts) {
   // Edit rules are dataset-level and live on the dataset trends view.)
   const canAI = crit.length && score != null && r.resultPrefix;
   const explainBtn = canAI
-    ? `<div class="actions" style="margin-top:14px;"><button class="btn-sm" data-explainscore="1">✨ Explain score &amp; how to improve (AI)</button></div>`
+    ? `<div class="actions" style="margin-top:14px;">${aiBtn('Explain score & how to improve', 'data-explainscore="1"')}</div>`
     : '';
   html += `<div class="dim-split"><div class="dim-split-table">${tableHtml}${explainBtn}</div><div class="dim-split-chart">${radarHtml}</div></div>`;
-  if (canAI) html += `<div class="score-ai-out" style="margin-top:12px;"></div>`;
+  if (canAI) html += `<div class="score-ai-out ai-out" hidden></div>`;
   // Metadata scores inline on run-result screens. Skipped only where the caller renders its own
   // metadata (opts.noMetadata - the dashboard views). Lazy-loaded when the placeholder becomes
   // VISIBLE, so the multi-table app view fetches a table's profile only when its tab is opened
@@ -6393,16 +6485,12 @@ function renderAssessment(r, bodyEl, opts) {
   const vpb = body.querySelector('[data-viewpins]');
   if (vpb) vpb.addEventListener('click', () =>
     openPinRulesModal(r.pendingPinRules, { by: r.pendingPinBy, at: r.pendingPinAt }));
-  // Each AI button TOGGLES its panel: first click loads + shows it, clicking again hides
-  // it (content is kept, so re-showing is instant). The button highlights while open.
+  // The AI button toggles its panel: the first press asks, pressing again folds it away, and
+  // opening it again shows the same answer without a new call (aiToggle).
   const esb = body.querySelector('[data-explainscore]');
   if (esb) {
     const out = body.querySelector('.score-ai-out');
-    esb.addEventListener('click', () => {
-      if (out.style.display !== 'none' && out.innerHTML.trim()) { out.style.display = 'none'; esb.classList.remove('active'); return; }
-      esb.classList.add('active'); out.style.display = '';
-      if (!out.innerHTML.trim()) explainScore(r.resultPrefix, (sum.dataset || 'this dataset'), out, false);
-    });
+    esb.addEventListener('click', () => aiToggle(esb, out, () => explainScore(r.resultPrefix, (sum.dataset || 'this dataset'), out, false, esb)));
   }
   const frEl = body.querySelector('.assess-failed');
   if (frEl) {
@@ -6843,6 +6931,7 @@ function dqEaseHeight(el, change, ms) {
   if (!el || dqReduced() || !el.offsetParent) { change(); return; }
   const from = el.getBoundingClientRect().height;
   clearTimeout(el._dqEaseT);
+  if (el._revT) { clearTimeout(el._revT); el._revT = 0; el.style.opacity = ''; }   // a reveal under way hands over
   el.style.transition = 'none';
   el.style.height = '';
   change();
@@ -9975,12 +10064,14 @@ async function loadDsScores(panel, prefix) {
 
 async function loadDsRules(panel, prefix) {
   panel.innerHTML =
-    `<div class="actions" style="margin-bottom:12px;"><button class="btn-sm" id="dsReviewRules">✨ Review rules with AI</button>` +
+    `<div class="actions" style="margin-bottom:12px;">${aiBtn('Review rules with AI', 'id="dsReviewRules"')}` +
     `<span id="dashQueued" style="display:none;align-items:center;gap:8px;"></span></div>` +
+    // The review opens in its own panel above the rules in effect, so both can be read together.
+    `<div id="dsReviewOut" class="ai-out" hidden></div>` +
     `<div id="dsRulesBody">${dqSkeleton('Loading the active ruleset', 5)}</div>`;
   editActiveRules(prefix, $('#dsRulesBody'));
   const rev = $('#dsReviewRules');
-  if (rev) rev.addEventListener('click', () => reviewRuleset(prefix, $('#dsRulesBody'), false));
+  if (rev) rev.addEventListener('click', () => aiToggle(rev, $('#dsReviewOut'), () => reviewRuleset(prefix, $('#dsReviewOut'), false, rev)));
   refreshDatasetQueued(prefix);
 }
 
@@ -11612,7 +11703,7 @@ function complianceSettingsHtml(key) {
           <option value="none"${cc.failedRecords === 'none' ? ' selected' : ''}>No record detail</option>
         </select></label>
     </div>
-    <div class="cmp-set-actions"><button type="button" class="btn-sm" id="cmpSuggest">✨ Suggest with AI</button>
+    <div class="cmp-set-actions">${aiBtn('Suggest with AI', 'id="cmpSuggest"', '', false)}
       <button type="button" class="btn-sm" id="cmpSaveSettings">Save policy</button>
       <span class="hint" id="cmpSetMsg"></span></div>
   </div>`;
@@ -11755,19 +11846,29 @@ function wireComplianceSettings(panel, key, prefix) {
   // AI-assist: review the schema and fill in the fields it can (user reviews + Saves - nothing auto-applies).
   const sbtn = panel.querySelector('#cmpSuggest');
   if (sbtn && prefix) sbtn.addEventListener('click', async () => {
-    const orig = sbtn.textContent; sbtn.disabled = true; sbtn.textContent = '✨ Reviewing…'; setMsg('');
+    aiBusy(sbtn, true, 'Reading the columns…'); setMsg('');
     try {
       const r = await postJSON(`${API_BASE}/data-quality/compliance/suggest-policy`, HEADERS, { result_prefix: prefix, actor: EMAIL || undefined });
       const s = (r && r.suggestion) || {};
-      const put = (id, v) => { const el = panel.querySelector(id); if (el && v != null && v !== '') el.value = v; };
+      const filled = [];
+      const put = (id, v) => { const el = panel.querySelector(id); if (el && v != null && v !== '') { el.value = v; filled.push(el); } };
       put('#cmpDateCol', s.date_column); put('#cmpConsentCol', s.consent_column);
       put('#cmpErasureCol', s.erasure_column); put('#cmpSubjectCol', s.subject_id_column);
       if (s.audit_columns && s.audit_columns.length) put('#cmpAuditCols', s.audit_columns.join(', '));
       if (s.retention_days) put('#cmpRetDays', s.retention_days);
       const any = s.date_column || s.consent_column || s.erasure_column || s.subject_id_column || (s.audit_columns || []).length || s.retention_days;
       setMsg(any ? `Suggestions filled in - review, edit, then Save. ${s.reasoning || ''}` : 'The AI found no confident policy-field matches in this dataset’s columns.');
+      // What the model filled in lights up, one field after another, so it is plain what changed.
+      filled.forEach((el, i) => {
+        el.classList.remove('ai-filled');
+        el.style.setProperty('--i', i);
+        void el.offsetWidth;
+        el.classList.add('ai-filled');
+        el.addEventListener('input', () => el.classList.remove('ai-filled'), { once: true });
+      });
+      dqIn(panel.querySelector('#cmpSetMsg'));
     } catch (e) { setMsg(e.message, true); }
-    sbtn.textContent = orig; sbtn.disabled = false;
+    aiBusy(sbtn, false);
   });
   const btn = panel.querySelector('#cmpSaveSettings'); if (!btn) return;
   btn.addEventListener('click', async () => {
@@ -12287,7 +12388,7 @@ function renderTrends(d) {
     `<div class="actions" style="margin-bottom:14px;">` +
       `<button class="btn-sm" id="dashBack">← All tables</button>` +
       `<button class="btn-sm" id="dashViewRun">View latest run details</button>` +
-      `<button class="btn-sm" id="dashReviewRules">🔧 Review rules (AI)</button>` +
+      aiBtn('Review rules', 'id="dashReviewRules"') +
       `<button class="btn-sm" id="dashEditRules">📋 Edit active rules</button>` +
       `<span id="dashQueued" style="display:none;align-items:center;gap:8px;"></span>` +
     `</div>` +
@@ -12776,7 +12877,7 @@ function incMenu(it, dka, ka) {
   const open = it.status === 'OPEN';
   const items = [
     `<button class="inc-menu-item" data-prefix="${esc(it.resultPrefix)}" data-name="${esc(it.dataset)}">View run</button>`,
-    `<button class="inc-menu-item" data-explain="1" data-dk="${dka}" data-key="${ka}" data-name="${esc(it.dataset)}">${it.explainedAt ? 'Explanation ✨ ✓' : 'Explain ✨'}</button>`,
+    `<button class="inc-menu-item ai-mi" data-explain="1" data-dk="${dka}" data-key="${ka}" data-name="${esc(it.dataset)}">${aiIcon()}<span>${it.explainedAt ? 'See the AI explanation' : 'Explain with AI'}</span></button>`,
   ];
   if (open) {
     items.push('<div class="inc-menu-sep"></div>');
@@ -13026,56 +13127,241 @@ async function incidentAction(datasetKey, key, action, extra) {
     dqAlert('Action failed: ' + e.message);
   }
 }
+// ---- AI actions ------------------------------------------------------------------------------ //
+// Everything that asks the model (Claude Haiku 4.5 on Amazon Bedrock) looks and moves the same way.
+// The button carries a sparkle and a gradient edge; pressed, a ripple runs out from the press and
+// the edge turns while the model works; the panel under it eases open on a shimmering draft; the
+// answer takes the draft's place and rises in a section at a time. Pressed again, the panel folds
+// away; pressed once more, it comes back without asking again.
+function aiIcon() {
+  return '<svg class="ai-ico" viewBox="0 0 24 24" aria-hidden="true">' +
+    '<path fill="url(#dqAiGrad)" d="M10 2.6c.55 4.9 2.95 7.3 7.85 7.85-4.9.55-7.3 2.95-7.85 7.85C9.45 13.4 7.05 11 2.15 10.45 7.05 9.9 9.45 7.5 10 2.6z"/>' +
+    '<path fill="url(#dqAiGrad)" d="M18.3 13.6c.27 2.35 1.4 3.48 3.75 3.75-2.35.27-3.48 1.4-3.75 3.75-.27-2.35-1.4-3.48-3.75-3.75 2.35-.27 3.48-1.4 3.75-3.75z"/></svg>';
+}
+/** An AI button. `toggle === false` for one that does not open a panel (it fills a form instead). */
+function aiBtn(label, attrs, cls, toggle) {
+  return `<button type="button" class="ai-btn lngb${cls ? ' ' + cls : ''}" ${attrs || ''}` +
+    `${toggle === false ? '' : ' aria-expanded="false"'}>${aiIcon()}<span class="ai-lbl">${esc(label)}</span></button>`;
+}
+/** While the model works the button says what it is doing, and cannot be pressed again. */
+function aiBusy(btn, busy, text) {
+  if (!btn) return;
+  const lbl = btn.querySelector('.ai-lbl');
+  if (busy) {
+    if (lbl && btn.dataset.aiIdle == null) btn.dataset.aiIdle = lbl.textContent;
+    if (lbl && text) lbl.textContent = text;
+    btn.setAttribute('aria-busy', 'true');
+    btn.disabled = true;
+    return;
+  }
+  if (lbl && btn.dataset.aiIdle != null) { lbl.textContent = btn.dataset.aiIdle; delete btn.dataset.aiIdle; }
+  btn.removeAttribute('aria-busy');
+  btn.disabled = false;
+}
+/**
+ * Ease a panel open from nothing, or shut to nothing, then run `then`. Clipped at its growing edge
+ * only, so an answer's glow is not cut off at the sides. Off screen or under reduced motion, it
+ * simply opens or shuts.
+ */
+function dqReveal(el, show, ms, then) {
+  if (!el) return;
+  const dur = ms == null ? 440 : ms;
+  clearTimeout(el._revT);
+  el._revT = 0;
+  el.style.display = '';                                 // an older caller may have hidden it inline
+  el.style.transition = 'none';
+  el.style.height = '';
+  const done = () => {
+    el._revT = 0;
+    el.style.height = el.style.opacity = el.style.transition = el.style.clipPath = '';
+    if (!show) el.hidden = true;
+    if (then) then();
+  };
+  if (!dur || dqReduced()) { el.hidden = !show; done(); return; }
+  if (show) {
+    el.hidden = false;
+    if (!el.offsetParent) { done(); return; }
+    const to = el.getBoundingClientRect().height;
+    el.style.clipPath = 'inset(-24px -40px 0 -40px)';
+    el.style.height = '0px';
+    el.style.opacity = '0';
+    void el.offsetHeight;
+    el.style.transition = `height ${dur}ms var(--dq-ease), opacity ${Math.round(dur * .8)}ms var(--dq-ease)`;
+    el.style.height = to + 'px';
+    el.style.opacity = '1';
+  } else {
+    if (el.hidden || !el.offsetParent) { done(); return; }
+    el.style.height = el.getBoundingClientRect().height + 'px';
+    el.style.clipPath = 'inset(-24px -40px 0 -40px)';
+    void el.offsetHeight;
+    el.style.transition = `height ${dur}ms var(--dq-ease), opacity ${Math.round(dur * .6)}ms var(--dq-ease)`;
+    el.style.height = '0px';
+    el.style.opacity = '0';
+  }
+  el._revT = setTimeout(done, dur + 40);
+}
+function aiCollapse(out, then) { dqReveal(out, false, null, then); }
+/**
+ * Bring an opened panel into view in whatever scrolls it: far enough to show its foot, never so
+ * far that `anchor` (the button pressed, else the panel's own top) leaves the view, and not at all
+ * if the reader has moved away from the button meanwhile.
+ */
+function aiInView(el, anchor) {
+  if (!el || !el.isConnected || el.hidden) return;
+  let sc = null;
+  for (let p = el.parentElement; p && p !== document.body && p !== document.documentElement; p = p.parentElement) {
+    const oy = getComputedStyle(p).overflowY;
+    if ((oy === 'auto' || oy === 'scroll') && p.scrollHeight > p.clientHeight + 1) { sc = p; break; }
+  }
+  const box = sc ? sc.getBoundingClientRect() : { top: 0, bottom: window.innerHeight };
+  const r = el.getBoundingClientRect();
+  const a = anchor && anchor.isConnected ? anchor.getBoundingClientRect() : r;
+  if (anchor && (a.bottom < box.top || a.top > box.bottom)) return;
+  const dy = Math.min(r.bottom - (box.bottom - 16), a.top - (box.top + 16));
+  if (dy > 1) (sc || window).scrollBy({ top: dy, behavior: dqReduced() ? 'auto' : 'smooth' });
+}
+/** A press: open the panel (asking only the first time), or fold it away if it is open. */
+function aiToggle(btn, out, ask) {
+  if (!btn || !out || btn.getAttribute('aria-busy') === 'true') return;
+  const shown = !out.hidden && out.style.display !== 'none' && !!out.innerHTML.trim();
+  if (shown) { aiCollapse(out); btn.setAttribute('aria-expanded', 'false'); btn.classList.remove('active'); return; }
+  btn.setAttribute('aria-expanded', 'true');
+  btn.classList.add('active');
+  if (out.querySelector('.ai-done:not(.ai-err)')) { dqReveal(out, true); return; }   // asked before: no new call
+  ask();
+}
+function _aiHead(o) {
+  return `<div class="ai-hd">${aiIcon()}<span class="ai-title">${esc(o.title || 'AI')}</span>` +
+    `<span class="ai-model">Claude Haiku 4.5 · Bedrock</span>` +
+    (o.close ? `<button type="button" class="ai-x lngb" data-aiclose aria-label="Close">&times;</button>` : '') + `</div>`;
+}
+/** Open `out` on the model's working draft: what it is reading, over lines that shimmer. */
+function aiThinking(out, text, o) {
+  if (!out) return;
+  o = o || {};
+  out.classList.add('ai-out');
+  const html = `<div class="ai-panel ai-wait">${_aiHead(o)}<div class="ai-think" role="status">${esc(text)}</div>` +
+    `<div class="ai-lines" aria-hidden="true"><i style="width:94%"></i><i style="width:81%"></i><i style="width:88%"></i>` +
+    `<i style="width:58%"></i></div></div>`;
+  const closed = out.hidden || out.style.display === 'none' || !out.innerHTML.trim();
+  if (closed) { out.innerHTML = html; dqReveal(out, true); }
+  else dqEaseHeight(out, () => { out.innerHTML = html; });
+  setTimeout(() => aiInView(out, o.anchor), 460);
+}
+/**
+ * The answer takes the draft's place: the panel eases to its height and the sections rise in.
+ * `o.fill(body)` builds a body that is more than markup (the rules review) before it is measured;
+ * `o.instant` shows a saved answer again with no motion at all.
+ */
+function aiAnswer(out, bodyHtml, footHtml, o) {
+  if (!out) return;
+  o = o || {};
+  out.classList.add('ai-out');
+  const html = `<div class="ai-panel ai-done${o.err ? ' ai-err' : ''}${o.instant ? ' ai-still' : ''}">${_aiHead(o)}` +
+    `<div class="ai-body">${bodyHtml}</div>${footHtml ? `<div class="ai-foot">${footHtml}</div>` : ''}</div>`;
+  const put = () => { out.innerHTML = html; if (o.fill) o.fill(out.querySelector('.ai-body')); };
+  if (o.instant) { put(); out.hidden = false; out.style.display = ''; return; }
+  if (out.hidden || out.style.display === 'none') { put(); dqReveal(out, true); }
+  else dqEaseHeight(out, put, 520);
+  setTimeout(() => aiInView(out, o.anchor), 540);
+}
+function aiFail(out, msg, o) {
+  aiAnswer(out, `<p>${esc(msg || 'The AI could not answer just now. Try again in a moment.')}</p>`, '',
+    Object.assign({ title: 'The AI could not answer' }, o || {}, { err: true }));
+}
+/** Who asked, when, whether it was saved from before, and Regenerate. */
+function aiFoot(r, regenCls) {
+  const who = (r && r.generatedBy && r.generatedBy !== 'unknown') ? ` by ${esc(r.generatedBy)}` : '';
+  const when = r && r.generatedAt ? ` on ${esc(fmtWhen(r.generatedAt))}` : '';
+  const saved = r && r.cached ? ' · saved earlier, no new call' : '';
+  return `Generated${who}${when}${saved}` + (regenCls ? ` · <a href="#" class="${regenCls}">Regenerate</a>` : '');
+}
+// The headings the prompts ask for, so a sentence that merely has a colon is not mistaken for one.
+const AI_HEADINGS = /^(summary|likely causes|suggested next steps?|main score drivers|how to improve|what improved|remaining gaps|risk if unaddressed|how to fix it|which rule this fails and why)$/i;
+/**
+ * The models answer in plain sections: a heading on its own line ("Summary:", or "1. **How to fix
+ * it**"), then sentences or "- " bullets. Each section becomes a block with its own heading and
+ * list, so an answer can rise in a section at a time and reads as a note rather than line breaks.
+ * Everything is escaped first; only **bold** and `code` come back as markup.
+ */
+function aiMd(text) {
+  const inline = t => esc(t).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/`([^`]+)`/g, '<code>$1</code>');
+  const secs = [];
+  let cur = null;
+  const open = h => { cur = { h, parts: [] }; secs.push(cur); };
+  String(text || '').replace(/\r/g, '').split('\n').forEach(raw => {
+    const line = raw.trim();
+    if (!line) return;
+    let m = /^(?:#{1,4}\s*)?(?:\d+[.)]\s*)?\*\*(.+?)\*\*\s*(?:[\u2014\u2013:-]\s*)?(.*)$/.exec(line);
+    if (m && (/^\d+[.)]/.test(line) || /^#/.test(line) || !m[2])) { open(m[1].replace(/:$/, '')); if (m[2]) cur.parts.push({ p: m[2] }); return; }
+    m = /^(?:#{1,4}\s*)?([A-Za-z][A-Za-z ]{1,40}):\s*(.*)$/.exec(line);
+    if (m && (AI_HEADINGS.test(m[1].trim()) || (!m[2] && m[1].trim().split(/\s+/).length <= 5))) {
+      open(m[1].trim());
+      if (m[2]) cur.parts.push({ p: m[2] });
+      return;
+    }
+    if ((m = /^#{1,4}\s+(.+)$/.exec(line))) { open(m[1]); return; }
+    if (!cur) open('');
+    if ((m = /^(?:[-\u2022*]|\d+[.)])\s+(.+)$/.exec(line))) cur.parts.push({ li: m[1] });
+    else cur.parts.push({ p: line });
+  });
+  return secs.map((sec, i) => {
+    let html = '', list = [];
+    const flush = () => { if (list.length) { html += `<ul>${list.map(t => `<li>${inline(t)}</li>`).join('')}</ul>`; list = []; } };
+    sec.parts.forEach(pt => { if (pt.li != null) list.push(pt.li); else { flush(); html += `<p>${inline(pt.p)}</p>`; } });
+    flush();
+    return `<section class="ai-sec ai-rise" style="--i:${Math.min(i, 8)}">${sec.h ? `<h4>${inline(sec.h)}</h4>` : ''}${html}</section>`;
+  }).join('');
+}
+// A ripple from wherever the button was pressed (its middle, from the keyboard), and the close
+// button on a panel that has one. In the capture phase, so it runs before the press is handled.
+document.addEventListener('click', e => {
+  const b = e.target && e.target.closest ? e.target.closest('button.ai-btn') : null;
+  if (b && !b.disabled && !dqReduced()) {
+    const r = b.getBoundingClientRect(), d = Math.max(r.width, r.height) * 2.4;
+    const x = e.detail ? e.clientX - r.left : r.width / 2, y = e.detail ? e.clientY - r.top : r.height / 2;
+    const rip = document.createElement('span');
+    rip.className = 'ai-ripple';
+    rip.style.cssText = `left:${x - d / 2}px;top:${y - d / 2}px;width:${d}px;height:${d}px`;
+    b.appendChild(rip);
+    setTimeout(() => rip.remove(), 700);
+  }
+  const x = e.target && e.target.closest ? e.target.closest('[data-aiclose]') : null;
+  if (x) { const out = x.closest('.ai-out'); if (out) aiCollapse(out, out._aiOnClose); }
+}, true);
+
 async function explainIncident(dk, key, name, regenerate) {
   const box = $('#incDetail');
+  if (!box) return;
+  // The explanation opens in a panel of its own inside the incident detail, which the run view
+  // also uses; closing it folds the panel away, then puts the detail away too.
+  let out = box.querySelector(':scope > .ai-out');
+  if (!out) { box.innerHTML = '<div class="ai-out" hidden></div>'; out = box.firstElementChild; }
   box.style.display = 'block';
-  box.innerHTML = `<div class="card" style="margin-top:14px;">` +
-    `<h3 style="margin:0 0 10px;">AI explanation - ${esc(name)} ` +
-    `<button class="linkbtn" id="incDetailClose">Close</button></h3>` +
-    `<div id="incExplainBody"><p><span class="spin"></span> Analysing the incident…</p></div></div>`;
-  box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  $('#incDetailClose').addEventListener('click', () => { box.style.display = 'none'; box.innerHTML = ''; });
+  out._aiOnClose = () => { box.style.display = 'none'; box.innerHTML = ''; };
+  const title = `Why ${name} raised this incident`;
+  aiThinking(out, 'Reading the incident and the run behind it…', { title, close: true });
   try {
     const r = await postJSON(`${API_BASE}/data-quality/incidents/explain`, HEADERS,
       { dataset_key: dk, incident_key: key, regenerate: !!regenerate, actor: EMAIL || undefined });
-    // model returns 'Summary:' / 'Likely causes:' / 'Suggested next step:' headings - bold them
-    const body = esc(r.explanation)
-      .replace(/^(Summary:|Likely causes:|Suggested next step:)/gm, '<strong>$1</strong>')
-      .replace(/\n/g, '<br>');
-    const who = (r.generatedBy && r.generatedBy !== 'unknown') ? ` by ${esc(r.generatedBy)}` : '';
-    const whenTxt = r.generatedAt ? ` on ${esc(fmtWhen(r.generatedAt))}` : '';
-    const tag = r.cached ? ' · <span class="hint">saved earlier - no new call</span>' : '';
-    $('#incExplainBody').innerHTML =
-      `<div style="line-height:1.55;">${body}</div>` +
-      `<p class="hint" style="margin-top:12px;">Generated${who}${whenTxt} · Claude Haiku 4.5 (Bedrock)${tag} · ` +
-      `<a href="#" id="incRegen">Regenerate</a></p>`;
-    $('#incRegen').addEventListener('click', e => { e.preventDefault(); explainIncident(dk, key, name, true); });
-  } catch (e) {
-    $('#incExplainBody').innerHTML = `<p class="dash-muted" style="color:var(--err)">${esc(e.message)}</p>`;
-  }
+    aiAnswer(out, aiMd(r.explanation), aiFoot(r, 'inc-regen'), { title, close: true });
+    const rg = out.querySelector('.inc-regen');
+    if (rg) rg.addEventListener('click', e => { e.preventDefault(); explainIncident(dk, key, name, true); });
+  } catch (e) { aiFail(out, e.message, { close: true }); }
 }
-async function explainScore(prefix, name, outEl, regenerate) {
+async function explainScore(prefix, name, outEl, regenerate, btn) {
   if (!outEl) return;
-  outEl.innerHTML = `<p><span class="spin"></span> Analysing the score…</p>`;
+  const title = 'Why it scored this, and how to improve';
+  aiBusy(btn, true, 'Explaining…');
+  aiThinking(outEl, `Reading the results for ${name} and weighing what moves the score…`, { title, anchor: btn });
   try {
     const r = await postJSON(`${API_BASE}/data-quality/explain-assessment`, HEADERS,
       { result_prefix: prefix, regenerate: !!regenerate, actor: EMAIL || undefined });
-    // model returns 'Summary:' / 'Main score drivers:' / 'How to improve:' headings - bold them
-    const body = esc(r.explanation)
-      .replace(/^(Summary:|Main score drivers:|How to improve:)/gm, '<strong>$1</strong>')
-      .replace(/\n/g, '<br>');
-    const who = (r.generatedBy && r.generatedBy !== 'unknown') ? ` by ${esc(r.generatedBy)}` : '';
-    const whenTxt = r.generatedAt ? ` on ${esc(fmtWhen(r.generatedAt))}` : '';
-    const tag = r.cached ? ' · <span class="hint">saved earlier - no new call</span>' : '';
-    outEl.innerHTML =
-      `<div style="line-height:1.55;padding:12px 14px;border-left:4px solid var(--accent);border-radius:4px;">${body}</div>` +
-      `<p class="hint" style="margin-top:10px;">Generated${who}${whenTxt} · Claude Haiku 4.5 (Bedrock)${tag} · ` +
-      `<a href="#" class="score-regen">Regenerate</a></p>`;
+    aiAnswer(outEl, aiMd(r.explanation), aiFoot(r, 'score-regen'), { title, anchor: btn });
     const rg = outEl.querySelector('.score-regen');
-    if (rg) rg.addEventListener('click', e => { e.preventDefault(); explainScore(prefix, name, outEl, true); });
-  } catch (e) {
-    outEl.innerHTML = `<p class="dash-muted" style="color:var(--err)">${esc(e.message)}</p>`;
-  }
+    if (rg) rg.addEventListener('click', e => { e.preventDefault(); explainScore(prefix, name, outEl, true, btn); });
+  } catch (e) { aiFail(outEl, e.message); }
+  aiBusy(btn, false);
 }
 
 // ---- AI ruleset reviewer -------------------------------------------------
@@ -13214,18 +13500,25 @@ function mergeAugments(frags) {
   }
   return out;
 }
-async function reviewRuleset(prefix, outEl, regenerate) {
+async function reviewRuleset(prefix, outEl, regenerate, btn) {
   if (!outEl) return;
-  outEl.innerHTML = `<p><span class="spin"></span> Reviewing the inferred ruleset…</p>`;
+  const title = 'Suggested rule changes';
+  aiBusy(btn, true, 'Reviewing…');
+  aiThinking(outEl, 'Reading the inferred rules against the data they came from…', { title, anchor: btn });
   try {
     const r = await postJSON(`${API_BASE}/data-quality/review-ruleset`, HEADERS,
       { result_prefix: prefix, regenerate: !!regenerate, actor: EMAIL || undefined });
-    renderRuleReview(r, outEl, prefix);
-  } catch (e) {
-    outEl.innerHTML = `<p class="dash-muted" style="color:var(--err)">${esc(e.message)}</p>`;
-  }
+    const regen = () => reviewRuleset(prefix, outEl, true, btn);
+    aiAnswer(outEl, '<div class="ai-slot"></div>', '', { title, anchor: btn, fill: b => {
+      const slot = b.querySelector('.ai-slot');
+      renderRuleReview(r, slot, prefix, regen);
+      // Suggestion by suggestion, as the sections of any other answer rise in.
+      slot.querySelectorAll('.rule-sug').forEach((el, i) => { el.classList.add('ai-rise'); el.style.setProperty('--i', Math.min(i, 10)); });
+    } });
+  } catch (e) { aiFail(outEl, e.message); }
+  aiBusy(btn, false);
 }
-function renderRuleReview(r, outEl, prefix) {
+function renderRuleReview(r, outEl, prefix, regen) {
   const sug = r.suggestions || [];
   r.suggestions = sug;                                   // keep the ref so add/promote persist
   const rerun0 = r.rerun || {};
@@ -13234,10 +13527,10 @@ function renderRuleReview(r, outEl, prefix) {
   const whenTxt = r.generatedAt ? ` on ${esc(fmtWhen(r.generatedAt))}` : '';
   const tag = r.cached ? ' · <span class="hint">saved earlier - no new call</span>' : '';
   const reReview = canRerun ? ` · <a href="#" class="rules-rereview">Re-run AI ruleset (data changed)</a>` : '';
-  const foot = `<p class="hint" style="margin-top:10px;">Generated${who}${whenTxt} · Claude Haiku 4.5 (Bedrock)${tag} · ` +
+  const foot = `<p class="hint" style="margin-top:10px;">Generated${who}${whenTxt}${tag} · ` +
     `<a href="#" class="rules-regen">Regenerate</a>${reReview}</p>`;
   const wireFoot = () => {
-    outEl.querySelector('.rules-regen').addEventListener('click', e => { e.preventDefault(); reviewRuleset(prefix, outEl, true); });
+    outEl.querySelector('.rules-regen').addEventListener('click', e => { e.preventDefault(); if (regen) regen(); else reviewRuleset(prefix, outEl, true); });
     const rr = outEl.querySelector('.rules-rereview');
     if (rr) rr.addEventListener('click', e => { e.preventDefault(); rerunWithReview(rerun0); });
   };
@@ -13312,7 +13605,7 @@ function renderRuleReview(r, outEl, prefix) {
   // Re-render the whole panel, preserving which rows are ticked (edit/add/promote rebuild it).
   const rerender = () => {
     outEl.querySelectorAll('.rule-acc').forEach(cb => { const s = sug[+cb.dataset.i]; if (s) s._checked = cb.checked; });
-    renderRuleReview(r, outEl, prefix);
+    renderRuleReview(r, outEl, prefix, regen);
   };
   // Live-edit: a field change mutates that suggestion's augment, auto-ticks it (the user
   // clearly wants an edited rule), flags it "edited", and refreshes the buttons.
@@ -16695,22 +16988,22 @@ let medalAi = { sig: '', text: '', at: '' };   // cached AI narrative for the cu
 function medalPrefix(stage) { const ds = dashDatasetsAll.find(d => d.key === medalSel[stage]); return ds && ds.resultPrefix; }
 function medalSig() { return MEDALLIONS.filter(s => medalRuns[s] && !medalRuns[s]._error).map(s => medalPrefix(s) || '').join('|'); }
 
-function renderMedalAi(text, at) {
+const MEDAL_AI_TITLE = 'How quality changes from stage to stage';
+function renderMedalAi(text, at, instant) {
   const out = $('#medalAiOut'); if (!out) return;
-  const body = esc(text)
-    .replace(/^(Summary:|What improved:|Remaining gaps:)/gm, '<strong>$1</strong>')
-    .replace(/\n/g, '<br>');
   const whenTxt = at ? ` on ${esc(fmtWhen(at))}` : '';
-  out.innerHTML = `<div style="line-height:1.55;padding:12px 14px;border-left:4px solid var(--accent);border-radius:4px;">${body}</div>` +
-    `<p class="hint" style="margin-top:10px;">Generated by AI${whenTxt} · Claude Haiku 4.5 (Bedrock) · <a href="#" class="medal-regen">Regenerate</a></p>`;
+  aiAnswer(out, aiMd(text), `Generated by AI${whenTxt} · <a href="#" class="medal-regen">Regenerate</a>`,
+    { title: MEDAL_AI_TITLE, instant, anchor: $('#medalExplainBtn') });
   const rg = out.querySelector('.medal-regen');
-  if (rg) rg.addEventListener('click', e => { e.preventDefault(); medalAi = { sig: '', text: '', at: '' }; explainProgression(); });
+  if (rg) rg.addEventListener('click', e => { e.preventDefault(); medalAi = { sig: '', text: '', at: '' }; explainProgression($('#medalExplainBtn')); });
 }
 
-async function explainProgression() {
+async function explainProgression(btn) {
   const order = MEDALLIONS.filter(s => medalRuns[s] && !medalRuns[s]._error && medalPrefix(s));
   if (order.length < 2) return;
-  const out = $('#medalAiOut'); if (out) out.innerHTML = `<p><span class="spin"></span> Analysing the progression across stages…</p>`;
+  const out = $('#medalAiOut');
+  aiBusy(btn, true, 'Explaining…');
+  if (out) aiThinking(out, 'Comparing the stages, dimension by dimension…', { title: MEDAL_AI_TITLE, anchor: btn });
   try {
     const r = await postJSON(`${API_BASE}/data-quality/explain-progression`, HEADERS, {
       prefixes: order.map(medalPrefix),
@@ -16718,7 +17011,8 @@ async function explainProgression() {
       actor: EMAIL || undefined });
     medalAi = { sig: medalSig(), text: r.explanation, at: r.generatedAt };
     renderMedalAi(r.explanation, r.generatedAt);
-  } catch (e) { if (out) out.innerHTML = `<p class="dash-muted" style="color:var(--err)">${esc(e.message)}</p>`; }
+  } catch (e) { if (out) aiFail(out, e.message); }
+  aiBusy(btn, false);
 }
 
 function renderMedalScorecard(r) {
@@ -16776,12 +17070,16 @@ function renderMedalCompare() {
   out.innerHTML = narrative +
     `<table class="medal-cmp-table"><tr><th>Metric</th>${order.map(s => `<th>${MEDAL_LABEL[s]}</th>`).join('')}<th>Δ ${MEDAL_LABEL[first].split(' ')[1]}→${MEDAL_LABEL[last].split(' ')[1]}</th></tr>${overallRow}${dimRows}</table>` +
     `<p class="hint" style="margin-top:8px;">Δ compares the first and last selected stages. Dimensions not assessed in a run show “-”.</p>` +
-    `<div class="actions" style="margin-top:16px;"><button class="btn-sm" id="medalExplainBtn">✨ Explain the progression (AI)</button></div>` +
-    `<div id="medalAiOut" style="margin-top:12px;"></div>`;
+    `<div class="actions" style="margin-top:16px;">${aiBtn('Explain the progression', 'id="medalExplainBtn"')}</div>` +
+    `<div id="medalAiOut" class="ai-out" hidden></div>`;
   const btn = document.getElementById('medalExplainBtn');
-  if (btn) btn.addEventListener('click', explainProgression);
-  // Keep the AI narrative visible if the selection hasn't changed since it was generated.
-  if (medalAi.text && medalAi.sig === medalSig()) renderMedalAi(medalAi.text, medalAi.at);
+  if (btn) btn.addEventListener('click', () => aiToggle(btn, $('#medalAiOut'), () => explainProgression(btn)));
+  // Keep the AI narrative visible if the selection hasn't changed since it was generated: shown
+  // as it was, with no motion, since nothing new arrived.
+  if (medalAi.text && medalAi.sig === medalSig()) {
+    renderMedalAi(medalAi.text, medalAi.at, true);
+    if (btn) { btn.setAttribute('aria-expanded', 'true'); btn.classList.add('active'); }
+  }
 }
 
 // ===================== Quality Space: interactive 3D galaxy of datasets =====================
@@ -17582,7 +17880,7 @@ const GD_SHOTS = {
   "admin-tags": [1600, 1095, "db660355f0"],
   "admin-users": [1600, 792, "5fe189e3d0"],
   "agents": [1600, 809, "68e531d6b9"],
-  "ai-review": [1600, 1123, "783bd2f3d7"],
+  "ai-review": [1600, 1194, "d832672e7a"],
   "alert-channels": [1600, 707, "da6beb721b"],
   "app-tables": [1600, 1377, "9eeda98170"],
   "approvals": [1600, 691, "e9fc97c6b8"],
@@ -17592,9 +17890,9 @@ const GD_SHOTS = {
   "compliance-estate-pa": [1600, 1164, "0af27e24ec"],
   "compliance-estate-q": [1600, 1163, "1e44798857"],
   "compliance-findings": [1600, 1014, "d70a50b804"],
-  "compliance-policy": [1600, 1328, "76cbc17896"],
+  "compliance-policy": [1600, 1328, "31cbb29604"],
   "data-model": [1600, 922, "3c87ef608c"],
-  "dataset-compliance": [1600, 374, "0f62185932"],
+  "dataset-compliance": [1600, 437, "87cf47eebe"],
   "dataset-header-p": [1600, 752, "a0d9832e45"],
   "dataset-header-pa": [1600, 739, "4637fdc0dd"],
   "dataset-header-q": [1600, 741, "8e38b65b1a"],
@@ -17605,8 +17903,8 @@ const GD_SHOTS = {
   "heatmap": [1124, 1282, "eaa67f551b"],
   "history-p": [1600, 1164, "cfca32980f"],
   "history-q": [1600, 979, "539a02e628"],
-  "incidents-p": [1600, 1164, "6eec682b3f"],
-  "incidents-q": [1600, 1163, "af3ae60198"],
+  "incidents-p": [1600, 1164, "aefea8e270"],
+  "incidents-q": [1600, 1163, "397056fef6"],
   "lineage-app": [1600, 1141, "8605e85254"],
   "lineage-source": [1600, 1129, "cc5e81a146"],
   "onprem-file": [1600, 1156, "244201089c"],
@@ -17615,7 +17913,7 @@ const GD_SHOTS = {
   "profile": [1600, 526, "104f28f43a"],
   "quality-space": [1600, 812, "7bfbdb7881"],
   "records-policy": [1600, 433, "0850fe5c47"],
-  "rules-tab": [1600, 898, "e83acb7c54"],
+  "rules-tab": [1600, 898, "ceaeb3a64d"],
   "run-result": [1600, 1381, "27d7222b2c"],
   "runs-on-agent": [1600, 1090, "167a7715e0"],
   "schedule-form-p": [1600, 1133, "b82b8c3aca"],
@@ -17724,7 +18022,7 @@ const GD_SHOW = {
   'ds-header': { tab: 'dashboard', prep: gdOpenFirstDataset('scores'), sel: '#dashDetailHint', miss: GD_NO_DATASET,
     tip: 'The open dataset\'s trust, owner, stage, description and notes.' },
   'ds-rules': { tab: 'dashboard', prep: gdOpenFirstDataset('rules'), sel: '#dsSubtabs [data-dstab="rules"]', miss: GD_NO_DATASET,
-    tip: 'The Rules tab of the open dataset: every rule in effect, and <b>✨ Review rules with AI</b>.' },
+    tip: 'The Rules tab of the open dataset: every rule in effect, and <b>Review rules with AI</b>.' },
   'ds-failed': { tab: 'dashboard', prep: gdOpenFirstDataset('failed'), sel: '#dsSubtabs [data-dstab="failed"]', miss: GD_NO_DATASET,
     tip: 'The failing records of the open dataset, blockers first.' },
   'tag-edit': { tab: 'dashboard', sel: '#dashTableWrap .ds-tag-add', miss: 'There is no dataset in view to tag yet.',
@@ -18545,10 +18843,10 @@ function buildGuides() {
           (Q || ADMIN ? note(`Runs on an on-premises agent pin their inferred rules on the first run without an AI step, because the agent never calls out to an AI service. Add AI rules to those datasets from our side with Review rules with AI.`) : '') },
       { h: 'See the active rules', body:
           p(`Open the dataset and choose the ${ui('Rules')} tab. It lists, column by column, every rule currently in effect. ${showme('ds-rules')}`) +
-          shot('rules-tab', `The Rules tab: ${ui('✨ Review rules with AI')} at the top, then every rule in effect, column by column.`) },
+          shot('rules-tab', `The Rules tab: ${ui('Review rules with AI')} at the top, then every rule in effect, column by column.`) },
       { h: 'Review rules with AI', body:
           steps(
-            `Press ${ui('✨ Review rules with AI')}. Suggestions come from Claude Haiku 4.5 on Amazon Bedrock.`,
+            `Press ${ui('Review rules with AI')}. Suggestions come from Claude Haiku 4.5 on Amazon Bedrock, and open in a panel above the rules in effect, so you can compare the two. Press the button again to fold the panel away.`,
             `Tick the suggestions you want. Each one says which columns it covers and why, and most can be edited before you accept them. An <b>advisory</b> one can be turned into an editable rule with ${ui('Make editable')}.`,
             `Press ${ui('Pin selected to ruleset')}. The rules apply automatically on the dataset's next assessment, with no further AI call.`,
             `Or press ${ui('Apply & re-run now')}, which appears when the run can be launched again from here, such as ${Q ? 'an app table or ' : ''}an uploaded file that is still stored.`) +
@@ -18656,7 +18954,7 @@ function buildGuides() {
           shot('incidents', `Open incidents, worst first, grouped by dataset on the left, with one incident's ${ui('⋯')} menu open.`) +
           table(['Action', 'What it does'], [
             ['View run', 'Opens the run that raised it'],
-            ['Explain ✨', 'An AI explanation of the cause and the fix, grounded in the run\'s own evidence'],
+            ['Explain with AI', 'An AI explanation of the cause and the fix, grounded in the run\'s own evidence'],
             ['Acknowledge', 'Tells everyone someone is on it'],
             ['Assign…', 'Hands it to an owner'],
             ['Snooze', 'Quietens it for 1 hour, 4 hours or a day. Wake now ends a snooze early.'],
@@ -18992,8 +19290,8 @@ ${HDRS}
           steps(`Pick the framework: ${ui('General - ISO/IEC 29100 · GDPR')}, ${ui('HIPAA')}, ${ui('CCPA / CPRA')}, ${ui('BCBS 239')}, or one of your own custom standards.`,
                 `Set the fields that apply: a retention limit in days and the date column to age, a consent or lawful-basis flag column, an erasure or opt-out flag column, the data-subject ID column, and audit-trail columns.`,
                 `Optionally make failing-record detail stricter for this dataset.`,
-                `Press ${ui('Save policy')}, or ${ui('✨ Suggest with AI')} to have the fields proposed from the columns. It applies on the next assessment.`) +
-          shot('compliance-policy', `The Compliance policy card: the framework, the fields that apply, then ${ui('✨ Suggest with AI')} or ${ui('Save policy')}.`) +
+                `Press ${ui('Save policy')}, or ${ui('Suggest with AI')} to have the fields proposed from the columns. It applies on the next assessment.`) +
+          shot('compliance-policy', `The Compliance policy card: the framework, the fields that apply, then ${ui('Suggest with AI')} or ${ui('Save policy')}.`) +
           tip(`A dataset that holds no personal data can be ticked as exempt. No controls run and it gets no grade.`) +
           (P && !ADMIN ? note(`In the portal, your changes to a policy or to attestations are sent to an admin as a proposal, and apply once they accept it.`) : '') },
       { h: 'Custom standards', body:
