@@ -833,11 +833,14 @@
   .cmpx-status-txt { display: flex; flex-direction: column; gap: 3px; min-width: 0; font-size: 12px; color: var(--muted); line-height: 1.4; }
   .cmpx-status-txt strong { font-size: 13.5px; color: var(--text); }
 
-  .cmpx-split { display: grid; grid-template-columns: minmax(280px, 340px) minmax(0, 1fr); gap: 16px; align-items: start; }
+  /* The row is as tall as the detail, and the list fills it: the rows sit in a box of their own and
+     scroll there, so a long list never makes the panel taller than the dataset beside it. */
+  .cmpx-split { display: grid; grid-template-columns: minmax(280px, 340px) minmax(0, 1fr); gap: 16px; align-items: stretch; }
   /* The list stays beside the detail as a long one is read: it is sticky, and scrolls itself. */
   .cmpx-list { position: sticky; top: 12px; display: flex; flex-direction: column; max-height: calc(100vh - 24px); min-height: 0;
     border: 1px solid var(--border); border-radius: 16px; background: var(--card); padding: 16px 0 6px; }
-  .cmpx-list > :not(.cmpx-rows) { flex: none; }   /* only the rows give way to the height cap */
+  .cmpx-list > :not(.cmpx-rows-box) { flex: none; }   /* only the rows give way to the height */
+  .cmpx-rows-box { position: relative; flex: 1 1 auto; min-height: 220px; }
   .cmpx-list-hd { padding: 0 16px; }
   .cmpx-list-hd p { margin: 3px 0 0; font-size: 12px; color: var(--muted); }
   .cmpx-search { display: flex; align-items: center; gap: 8px; height: 36px; margin: 12px 16px 10px; padding: 0 10px; cursor: text;
@@ -851,7 +854,7 @@
   .cmpx-chip-n { min-width: 19px; padding: 1px 6px; border-radius: 999px; font-size: 11px; text-align: center;
     color: var(--muted); background: color-mix(in srgb, var(--muted) 16%, transparent); }
   .cmpx-chip.active .cmpx-chip-n { background: var(--accent); color: var(--accent-fg); }
-  .cmpx-rows { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 8px; }
+  .cmpx-rows { position: absolute; inset: 0; overflow: auto; padding: 8px; }
   .cmpx-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: 11px;
     padding: 10px; border-radius: 11px; border: 1px solid transparent; cursor: pointer; transition: background-color .12s var(--dq-ease), border-color .12s var(--dq-ease); }
   .cmpx-row + .cmpx-row { margin-top: 2px; }
@@ -917,7 +920,7 @@
   @container cmpest (max-width: 1080px) { .cmpx-sum-body { grid-template-columns: auto minmax(0, 1fr); }
     .cmpx-status { grid-column: 1 / -1; } }
   @container cmpest (max-width: 900px) { .cmpx-split { grid-template-columns: minmax(0, 1fr); }
-    .cmpx-list { position: static; max-height: 440px; } }
+    .cmpx-list { position: static; height: 460px; max-height: none; } }
   @container cmpest (max-width: 760px) { .cmpx-sum-body { grid-template-columns: minmax(0, 1fr); } }
   @container cmpest (max-width: 520px) { .cmpx-counts { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     .cmpx-count::before { display: none; } }
@@ -2370,6 +2373,167 @@
   @container lngmain (max-width: 900px) { .lng-bar { grid-template-columns: minmax(0, 1fr) auto; } .lng-legend { grid-column: 1 / -1; } }
   @container lngmain (max-width: 540px) { .lng-bar { grid-template-columns: minmax(0, 1fr); } }
   @container lngwrap (max-width: 540px) { .lng-stats { grid-template-columns: 1fr 1fr; } }
+
+  /* ---- Source monitoring: tiles, a radar of every source, the table beside it ---------------- */
+  #sourceWatchPanel { container: swx / inline-size; --swx-ok: var(--ok); --swx-warn: var(--run); --swx-crit: var(--err); --swx-off: #7c9cff; }
+  .swx-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 14px; margin-bottom: 14px; }
+  .swx-intro { display: flex; align-items: center; gap: 24px; min-width: 0; padding: 18px 22px; border: 1px solid var(--border);
+    border-radius: 16px; background: var(--card); }
+  .swx-intro .tab-intro { flex: 1 1 auto; min-width: 0; margin: 0; }
+  .swx-run { flex: none; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .swx-check { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-width: 196px; height: 46px; padding: 0 24px;
+    border: 0; border-radius: 11px; cursor: pointer; font: inherit; font-size: 14px; font-weight: 700; color: #fff;
+    background: linear-gradient(90deg, #3b82f6, #22d3ee); box-shadow: 0 12px 28px -14px rgba(34, 211, 238, .8); }
+  .swx-check:hover { filter: brightness(1.08); }
+  .swx-check:disabled { opacity: .75; cursor: progress; }
+  .swx-check svg { width: 14px; height: 14px; }
+  .swx-run-sub { max-width: 240px; font-size: 12px; text-align: center; color: var(--muted); }
+  .swx-last { display: flex; align-items: center; gap: 14px; min-width: 214px; padding: 16px 20px; border: 1px solid var(--border);
+    border-radius: 16px; background: var(--card); }
+  .swx-last-ico { flex: none; display: inline-flex; color: var(--accent); }
+  .swx-last-ico svg { width: 26px; height: 26px; }
+  .swx-last-b { display: flex; flex-direction: column; gap: 3px; }
+  .swx-last-l, .swx-last-abs { font-size: 12px; color: var(--muted); }
+  .swx-last-b strong { font-size: 16px; }
+  .swx-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-bottom: 14px; }
+  .swx-kpi { display: flex; align-items: center; gap: 16px; min-width: 0; padding: 16px 18px; border: 1px solid var(--border);
+    border-radius: 16px; background: var(--card); }
+  .swx-gauge { position: relative; flex: none; width: 66px; height: 66px; }
+  .swx-gauge > svg { display: block; width: 100%; height: 100%; transform: rotate(-90deg); }   /* the ring, not the icon in it */
+  .swx-gauge circle { fill: none; stroke-width: 6; }
+  .swx-gauge .trk { stroke: color-mix(in srgb, var(--k) 16%, transparent); }
+  .swx-gauge .val { stroke: var(--k); stroke-linecap: round; }
+  .swx-gauge-ico { position: absolute; inset: 14px; display: flex; align-items: center; justify-content: center; border-radius: 50%;
+    color: #0a0e1a; background: var(--k); box-shadow: 0 0 18px -3px color-mix(in srgb, var(--k) 75%, transparent); }
+  .swx-gauge-ico svg { width: 20px; height: 20px; }
+  .swx-kpi-b { display: flex; flex-direction: column; min-width: 0; }
+  .swx-kpi-n { font-size: 28px; font-weight: 800; line-height: 1; letter-spacing: -.02em; }
+  .swx-kpi-l { margin-top: 5px; font-size: 14px; font-weight: 700; color: var(--kt, var(--text)); }
+  .swx-kpi-s { margin-top: 3px; font-size: 12px; color: var(--muted); }
+  .k-mon { --k: var(--accent); }
+  .k-healthy { --k: var(--swx-ok); --kt: var(--swx-ok); }
+  .k-warning { --k: var(--swx-warn); --kt: var(--swx-warn); }
+  .k-critical { --k: var(--swx-crit); --kt: var(--swx-crit); }
+  .k-off { --k: var(--swx-off); }
+  .k-purple { --k: #a78bfa; }
+  .k-blue { --k: #60a5fa; }
+  .swx-grid { display: grid; grid-template-columns: minmax(340px, 1fr) minmax(0, 1.3fr); gap: 14px; align-items: stretch; margin-bottom: 14px; }
+  .swx-card { min-width: 0; display: flex; flex-direction: column; padding: 16px 18px; border: 1px solid var(--border);
+    border-radius: 16px; background: var(--card); }
+  .swx-card-hd { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+  .swx-card-hd h3 { margin: 0; font-size: 16px; font-weight: 700; }
+  .swx-card-hd p { margin: 4px 0 0; font-size: 12.5px; color: var(--muted); }
+  select.swx-sel { width: auto; min-width: 160px; height: 38px; padding: 0 12px; font-size: 13px; border-radius: 10px; }
+  .swx-radar { position: relative; width: 100%; max-width: 560px; aspect-ratio: 1 / 1; margin: 2px auto 14px; }
+  .swx-radar canvas { position: absolute; inset: 0; display: block; width: 100%; height: 100%; cursor: crosshair; }
+  .swx-labels { position: absolute; inset: 0; pointer-events: none; }
+  .swx-lbl { position: absolute; box-sizing: border-box; height: 26px; padding: 0 10px; line-height: 24px; overflow: hidden; white-space: nowrap;
+    text-overflow: ellipsis; font-size: 12px; font-weight: 600; color: var(--text); border-radius: 7px;
+    border: 1px solid color-mix(in srgb, var(--accent) 38%, var(--border)); background: color-mix(in srgb, var(--card) 90%, transparent); }
+  .swx-lbl.warning { border-color: color-mix(in srgb, var(--swx-warn) 60%, transparent); }
+  .swx-lbl.critical { border-color: color-mix(in srgb, var(--swx-crit) 65%, transparent); }
+  .swx-lbl.sel { border-color: #fff; }
+  .swx-empty { position: absolute; left: 50%; top: 58%; transform: translateX(-50%); max-width: 70%; text-align: center; font-size: 12.5px; color: var(--muted); }
+  .swx-tip { position: absolute; z-index: 3; width: 250px; padding: 10px 12px; font-size: 12px; pointer-events: none;
+    border: 1px solid var(--border); border-radius: 10px; background: var(--card); box-shadow: var(--shadow-md); }
+  .swx-tip strong { display: block; margin-bottom: 6px; font-size: 13px; overflow-wrap: anywhere; }
+  .swx-tip dl { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 3px 12px; margin: 8px 0 0; }
+  .swx-tip dt { color: var(--muted); }
+  .swx-tip dd { margin: 0; overflow-wrap: anywhere; }
+  .swx-tip p { margin: 8px 0 0; color: var(--muted); line-height: 1.45; }
+  .swx-legend { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin-top: auto; overflow: hidden;
+    border: 1px solid var(--border); border-radius: 12px; background: var(--card-2); }
+  .swx-leg { display: flex; align-items: center; gap: 10px; min-width: 0; padding: 10px 14px; border: 0; border-left: 1px solid var(--border);
+    background: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+  .swx-leg:first-child { border-left: 0; }
+  .swx-leg:hover { background: var(--idle-bg); }
+  .swx-leg.on { background: color-mix(in srgb, var(--k) 14%, transparent); box-shadow: inset 0 0 0 1px var(--k); }
+  .swx-leg-dot { flex: none; width: 14px; height: 14px; border-radius: 50%; background: var(--k); box-shadow: 0 0 10px color-mix(in srgb, var(--k) 70%, transparent); }
+  .swx-leg-n { display: block; font-size: 15px; font-weight: 800; line-height: 1.1; }
+  .swx-leg-l { font-size: 12px; color: var(--muted); }
+  .swx-tools { display: flex; align-items: center; gap: 8px; }
+  .swx-search { display: flex; align-items: center; gap: 8px; width: 230px; height: 38px; padding: 0 10px; cursor: text;
+    border: 1px solid var(--border); border-radius: 10px; background: var(--card-2); color: var(--muted); }
+  .swx-search:focus-within { border-color: var(--accent); }
+  .swx-search svg { flex: none; width: 15px; height: 15px; }
+  .swx-search input { flex: 1 1 auto; min-width: 0; height: 100%; padding: 0; margin: 0; border: 0; outline: 0; box-shadow: none;
+    background: transparent; color: var(--text); font: inherit; font-size: 13px; }
+  .swx-search input:focus { box-shadow: none; }
+  .swx-refresh { width: 38px; height: 38px; padding: 0; display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
+    border: 1px solid var(--border); border-radius: 10px; background: var(--card-2); color: var(--accent); }
+  .swx-refresh:hover { border-color: var(--accent); }
+  .swx-refresh svg { width: 16px; height: 16px; }
+  .swx-tbl-wrap { max-height: 560px; overflow: auto; border: 1px solid var(--border); border-radius: 12px; }
+  .swx-tbl { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  .swx-tbl th { position: sticky; top: 0; z-index: 1; padding: 0; text-align: left; white-space: nowrap; background: var(--card-2);
+    border-bottom: 1px solid var(--border); }
+  .swx-tbl th button, .swx-th { display: flex; align-items: center; gap: 5px; width: 100%; padding: 11px 10px; border: 0; background: none;
+    color: var(--muted); font: inherit; font-weight: 600; text-align: left; cursor: pointer; }
+  .swx-th { cursor: default; }
+  .swx-tbl th button:hover, .swx-tbl th[aria-sort] button { color: var(--text); }
+  .swx-arrow { color: var(--accent); }
+  .swx-tbl td { padding: 10px 10px; vertical-align: middle; border-bottom: 1px solid var(--border); }
+  .swx-tbl tbody tr:last-child td { border-bottom: 0; }
+  .swx-row { cursor: pointer; }
+  .swx-row:hover td, .swx-row.hl td { background: var(--idle-bg); }
+  .swx-row.sel td { background: color-mix(in srgb, var(--accent) 13%, transparent); }
+  .swx-ds { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .swx-dsico { flex: none; display: inline-flex; color: var(--accent); }
+  .swx-dsico svg { width: 18px; height: 18px; }
+  .swx-dsname { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+  .swx-state { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px; border-radius: 999px; white-space: nowrap;
+    font-size: 10.5px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--k);
+    background: color-mix(in srgb, var(--k) 15%, transparent); }
+  .swx-state::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .swx-state.healthy { --k: var(--swx-ok); } .swx-state.warning { --k: var(--swx-warn); }
+  .swx-state.critical { --k: var(--swx-crit); } .swx-state.off { --k: var(--muted); }
+  .swx-src { display: flex; align-items: center; gap: 8px; }
+  .swx-src-ico { flex: none; font-size: 15px; line-height: 1; }
+  .swx-src-ico svg { width: 18px; height: 18px; }
+  .swx-src-l { max-width: 84px; line-height: 1.3; }
+  .swx-num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .swx-sub { display: block; margin-top: 2px; font-size: 11px; }
+  .swx-exc { width: 30px; height: 30px; padding: 0; display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
+    border: 1px solid transparent; border-radius: 8px; background: none; color: var(--muted); }
+  .swx-exc:hover, .swx-exc:focus-visible { color: var(--text); border-color: var(--border); background: var(--card-2); }
+  .swx-exc svg { width: 16px; height: 16px; }
+  .swx-foot { display: flex; align-items: center; justify-content: flex-end; gap: 12px; min-height: 24px; padding-top: 10px; font-size: 12px; color: var(--muted); }
+  .swx-about { padding: 18px 20px; border: 1px solid var(--border); border-radius: 16px; background: var(--card); }
+  .swx-about-hd { display: flex; align-items: flex-start; gap: 14px; }
+  .swx-about-ico { flex: none; width: 42px; height: 42px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;
+    color: var(--accent); background: color-mix(in srgb, var(--accent) 18%, var(--card)); }
+  .swx-about-ico svg { width: 20px; height: 20px; }
+  .swx-about-hd h3 { margin: 0 0 4px; font-size: 16px; }
+  .swx-about-hd p { margin: 0; font-size: 13px; line-height: 1.55; color: var(--muted); }
+  .swx-alerts { margin-top: 16px; padding: 14px 16px; border: 1px solid var(--border); border-radius: 14px; background: var(--card-2); }
+  .swx-alerts h4 { margin: 0 0 4px; font-size: 14px; }
+  .swx-alerts > p { margin: 0 0 12px; font-size: 12.5px; color: var(--muted); }
+  .swx-alert-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
+  .swx-alert { display: flex; align-items: flex-start; gap: 12px; min-width: 0; padding: 12px; border: 1px solid var(--border);
+    border-radius: 12px; background: var(--card); }
+  .swx-alert-ico { flex: none; width: 38px; height: 38px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;
+    color: var(--k); background: color-mix(in srgb, var(--k) 18%, transparent); }
+  .swx-alert-ico svg { width: 18px; height: 18px; }
+  .swx-alert strong { display: block; margin-bottom: 4px; font-size: 13px; }
+  .swx-alert span span { font-size: 12px; line-height: 1.5; color: var(--muted); }
+  .swx-sched { margin: 12px 0 0; font-size: 12.5px; color: var(--muted); }
+  @container swx (max-width: 1100px) {
+    .swx-grid { grid-template-columns: minmax(0, 1fr); }
+    .swx-alert-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  }
+  @container swx (max-width: 860px) {
+    .swx-head { grid-template-columns: minmax(0, 1fr); }
+    .swx-intro { flex-direction: column; align-items: stretch; }
+    .swx-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .swx-alert-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .swx-legend { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .swx-leg:nth-child(3) { border-left: 0; }
+    .swx-leg:nth-child(n+3) { border-top: 1px solid var(--border); }
+    .swx-search { width: 180px; }
+  }
+  @container swx (max-width: 520px) {
+    .swx-kpis, .swx-alert-grid { grid-template-columns: minmax(0, 1fr); }
+  }
 
   /* Micro-interactions: a gentle grow/lift on hover for clickable things */
   .tab, button, .btn-sm, .linkbtn, .apptab, .sched-caret, .x-close {
@@ -4329,33 +4493,71 @@
 
   <!-- ============ SOURCE MONITORING ============ -->
   <div id="sourceWatchPanel" style="display:none;">
-    <div class="tab-intro" style="position:relative;">
-      <span class="tab-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.6 12h3.9l2.4-6.9 4.4 13.8 2.4-6.9h5.7"/></svg></span>
-      <h2>Source monitoring</h2>
-      <p>Whether each source is still <strong>loading</strong>, checked in between assessments. Metadata only: the row count, the column list and the newest record's timestamp. No rows are read and no score is produced, so this is cheap enough to run hourly against a table you assess weekly.</p>
-      <button type="button" class="btn-sm" id="watchRun" style="position:absolute;top:2px;right:0;">📡 Check now</button>
+    <div class="swx-head">
+      <div class="swx-intro">
+        <div class="tab-intro">
+          <span class="tab-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.6 12h3.9l2.4-6.9 4.4 13.8 2.4-6.9h5.7"/></svg></span>
+          <h2>Source monitoring</h2>
+          <p>Monitor the freshness and availability of your data sources. Each source is checked between assessments to make sure its data is still loading and can be reached, without reading the data itself.</p>
+        </div>
+        <div class="swx-run">
+          <button type="button" class="swx-check lngb" id="watchRun"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.8v14.4a.8.8 0 0 0 1.2.7l11.4-7.2a.8.8 0 0 0 0-1.4L8.2 4.1A.8.8 0 0 0 7 4.8z" fill="currentColor"/></svg><span>Check now</span></button>
+          <span class="swx-run-sub" id="watchMsg" role="status">Run a manual check across all sources</span>
+        </div>
+      </div>
+      <div class="swx-last">
+        <span class="swx-last-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg></span>
+        <span class="swx-last-b"><span class="swx-last-l">Last full check</span><strong id="swxLastRel">-</strong><span class="swx-last-abs" id="swxLastAbs"></span></span>
+      </div>
     </div>
 
-    <div class="card">
-      <h2>Sources <button class="linkbtn" id="watchRefresh">Refresh</button>
-        <span class="hint" id="watchMsg" style="text-transform:none;letter-spacing:0;font-weight:400;margin-left:12px;"></span></h2>
-      <p class="dash-muted" id="watchCtx" style="margin:4px 0 14px;">Loading…</p>
-      <div id="watchList"><p class="dash-muted">Not checked yet.</p></div>
+    <div class="swx-kpis" id="swxKpis"></div>
+
+    <div class="swx-grid">
+      <section class="swx-card swx-radar-card" aria-labelledby="swxRadarH">
+        <div class="swx-card-hd">
+          <div><h3 id="swxRadarH">Source health radar</h3><p>A live view of every source and its state. Hover over a blip for its details.</p></div>
+          <select id="swxSrcSel" class="swx-sel" aria-label="Which sources to show"><option value="">All sources</option></select>
+        </div>
+        <div class="swx-radar" id="swxRadar">
+          <canvas id="swxCanvas" role="img" aria-label="Source health radar"></canvas>
+          <div class="swx-labels" id="swxLabels" aria-hidden="true"></div>
+          <div class="swx-tip" id="swxTip" hidden></div>
+        </div>
+        <div class="swx-legend" id="swxLegend" role="group" aria-label="Show only one state"></div>
+      </section>
+      <section class="swx-card swx-table-card" aria-labelledby="swxTableH">
+        <div class="swx-card-hd">
+          <div><h3 id="swxTableH">Monitored sources</h3><p id="watchCtx">Loading…</p></div>
+          <div class="swx-tools">
+            <label class="swx-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6"/></svg><input type="search" id="swxQ" placeholder="Search datasets..." autocomplete="off" spellcheck="false" aria-label="Search the sources"></label>
+            <button type="button" class="swx-refresh lngb" id="watchRefresh" aria-label="Refresh" data-tip="Refresh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11.5a8 8 0 1 1-2.4-5.7L20 8"/><path d="M20 3.5V8h-4.5"/></svg></button>
+          </div>
+        </div>
+        <div id="watchList"><p class="dash-muted">Not checked yet.</p></div>
+        <div class="swx-foot" id="swxFoot"></div>
+      </section>
     </div>
 
-    <div class="card">
-      <h2>What raises an alert</h2>
-      <p class="dash-muted" style="margin:4px 0 14px;line-height:1.6;">A finding here becomes a tracked incident, with the same email, Slack/Teams and acknowledge/snooze behaviour as a quality alert. Source findings and quality findings are kept separate: neither resolves the other.</p>
-      <div class="fr-scroll"><table class="dash-table">
-        <tr><th>Signal</th><th>Raised when</th></tr>
-        <tr><td><strong>Stopped loading</strong></td><td>The newest record is older than the dataset's declared freshness limit (or 48h if it declares none).</td></tr>
-        <tr><td><strong>Lost rows</strong></td><td>The row count fell more than 20% since the previous check. A truncate-and-reload that failed part way looks like this.</td></tr>
-        <tr><td><strong>Stalled</strong></td><td>The row count has not moved for 72h in a table that normally grows. A static reference table never triggers this.</td></tr>
-        <tr><td><strong>Changed shape</strong></td><td>A column was added or removed at source, so a rule pinned to it can no longer be assessed.</td></tr>
-        <tr><td><strong>Unreachable</strong></td><td>The source could not be read at all: a rotated password or a revoked grant, which is otherwise invisible until an assessment fails.</td></tr>
-      </table></div>
-      <p class="dash-muted" style="margin:14px 0 0;">Checks run on a cadence you set with a <strong>Source monitoring only</strong> schedule. <button type="button" class="linkbtn" id="watchToSched">Set up a schedule →</button></p>
-    </div>
+    <section class="swx-about">
+      <div class="swx-about-hd">
+        <span class="swx-about-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.5"/><path d="M12 7.8h.01"/></svg></span>
+        <div><h3>About source monitoring</h3>
+          <p>Each source is checked to see that it is still loading, in between assessments. Metadata only: the row count, the column list and the newest record's timestamp. No rows are read and no score is produced, so this is a light check you can run often, every hour for example.</p></div>
+      </div>
+      <div class="swx-alerts">
+        <h4>What raises an alert?</h4>
+        <p>A finding here becomes a tracked incident, with the same email, Slack/Teams and acknowledge/snooze behaviour as a quality alert. Source findings and quality findings are kept separate: neither resolves the other.</p>
+        <div class="swx-alert-grid">
+          <div class="swx-alert k-healthy"><span class="swx-alert-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.6v12.8a.8.8 0 0 0 1.2.7l10-6.4a.8.8 0 0 0 0-1.4l-10-6.4A.8.8 0 0 0 8 5.6z" fill="currentColor"/></svg></span><span><strong>Stopped loading</strong><span>The newest record is older than the dataset's declared freshness limit, or 48h if it declares none.</span></span></div>
+          <div class="swx-alert k-warning"><span class="swx-alert-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="6" rx="7" ry="2.6"/><path d="M5 6v6c0 1.4 3.1 2.6 7 2.6s7-1.2 7-2.6V6"/><path d="M5 12v6c0 1.4 3.1 2.6 7 2.6s7-1.2 7-2.6v-6"/></svg></span><span><strong>Lost rows</strong><span>The row count fell more than 20% since the previous check. A truncate-and-reload that failed part way looks like this.</span></span></div>
+          <div class="swx-alert k-purple"><span class="swx-alert-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg></span><span><strong>Stalled</strong><span>The row count has not moved for 72h in a table that normally grows. A static reference table never triggers this.</span></span></div>
+          <div class="swx-alert k-blue"><span class="swx-alert-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8.5 15.5l1-3.5 6-6 2.5 2.5-6 6z"/></svg></span><span><strong>Changed shape</strong><span>A column was added or removed at source, so a rule pinned to it can no longer be assessed.</span></span></div>
+          <div class="swx-alert k-critical"><span class="swx-alert-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 9.5a11 11 0 0 1 15 0"/><path d="M7.5 12.6a6.5 6.5 0 0 1 9 0"/><path d="M10.6 15.6a2 2 0 0 1 2.8 0"/><path d="M4 4l16 16"/></svg></span><span><strong>Unreachable</strong><span>The source could not be read at all: a rotated password or a revoked grant, which is otherwise invisible until an assessment fails.</span></span></div>
+        </div>
+        <p class="swx-sched">Checks run on a cadence you set with a <strong>Source monitoring only</strong> schedule. <button type="button" class="linkbtn" id="watchToSched">Set up a schedule →</button></p>
+      </div>
+    </section>
   </div>
 
   <!-- ============ COMPLIANCE (estate-wide) ============ -->
@@ -10163,7 +10365,7 @@ function renderComplianceEstate() {
           <div class="cmpx-list-hd"><h3>Datasets</h3><p>Click a dataset to view its compliance details</p></div>
           <label class="cmpx-search">${CMP_ICO.search}<input type="search" id="cmpListQ" placeholder="Filter by name, tag or source" value="${esc(cmpListQ)}" autocomplete="off" spellcheck="false" aria-label="Filter the datasets"></label>
           <div class="cmpx-chips" id="cmpChips" role="group" aria-label="Filter by status"></div>
-          <div class="cmpx-rows" id="cmpRows" role="listbox" aria-label="Datasets"></div>
+          <div class="cmpx-rows-box"><div class="cmpx-rows" id="cmpRows" role="listbox" aria-label="Datasets"></div></div>
         </aside>
         <section class="cmpx-detail" id="cmpDetailPane" aria-label="Compliance detail"></section>
       </div>`;
@@ -16798,7 +17000,7 @@ const GD_SHOTS = {
   "schedule-watch": [962, 676, "27b968803e"],
   "source-form": [1600, 1535, "0e50365d53"],
   "source-picker": [1600, 858, "8ce72fa234"],
-  "sourcewatch": [1600, 867, "878c848153"],
+  "sourcewatch": [1600, 1112, "bcdfc62955"],
   "stages": [1600, 1378, "4e0a4d163c"],
   "tag-edit-pa": [976, 1608, "8e3addbf3c"],
   "tag-edit-q": [976, 612, "9929794e2b"],
@@ -17874,10 +18076,12 @@ function buildGuides() {
                 `Pick how often it runs. For hourly, choose ${ui('Custom (cron / rate)')} and enter <code>0 * * * ? *</code>.`,
                 `Press ${ui('Save schedule')}.`) +
           shot('schedule-watch', `The ${ui('Assess')} list, with ${ui('Source monitoring only (no assessment)')} near the top.`, { narrow: true }) +
-          p(`Each time it fires, the list of monitored datasets is rebuilt, so a dataset that becomes eligible later is picked up without editing the schedule. ${ui('📡 Check now')} on the Source monitoring tab runs a check straight away.`) },
-      { h: 'Reading the table', body:
-          p(`Each source shows its state (Monitored, Never checked or Excluded), its approximate row count, how old its newest record is and which column that came from, and when it was last checked. ${ui('Exclude')} and ${ui('Include')} opt a dataset out or back in. ${showme('watch-table')}`) +
-          shot('sourcewatch', `${n(1)} ${ui('📡 Check now')}, ${n(2)} a dataset that cannot be monitored, with the reason, ${n(3)} ${ui('Exclude')}, and ${n(4)} a business date, labelled as one.`) +
+          p(`Each time it fires, the list of monitored datasets is rebuilt, so a dataset that becomes eligible later is picked up without editing the schedule. ${ui('Check now')} on the Source monitoring tab runs a check straight away.`) },
+      { h: 'Reading the page', body:
+          p(`The tiles count the sources being monitored and how many are healthy, have a warning or are critical. A source's state is the verdict of its own open findings: a major one such as ${ui('Stopped loading')} makes it critical, and a warning such as ${ui('Stalled')} or ${ui('Unreachable')} a warning.`) +
+          p(`The radar shows every source as a blip, lit each time the sweep passes it: critical nearest the centre, then warnings, then healthy, with the sources that are not monitored out on the rim. Hover over a blip for its details, and click one to find it in the table. The source list above it and the counts under it narrow the radar and the table together.`) +
+          p(`The table gives each source's state, its approximate row count, how old its newest record is and which column that came from, and when it was last checked. The eye button opts a dataset out of monitoring or back in. ${showme('watch-table')}`) +
+          shot('sourcewatch', `${n(1)} ${ui('Check now')}, ${n(2)} the radar, ${n(3)} a dataset that cannot be monitored, with the reason, ${n(4)} the button that excludes a dataset, and ${n(5)} a business date, labelled as one.`) +
           note(`A business date, such as an order date, says nothing about whether the source is still loading, so it is labelled as one and never used to decide that a source has stopped.`) +
           warn(`On Snowflake and Databricks, reading the newest timestamp can wake a suspended warehouse. Exclude datasets you do not want polled.`) },
     ],
@@ -19928,43 +20132,92 @@ function _watchBasisTip(o) {
     + 'loaded_at) in the Rules tab, or rely on the row count moving.')}"`;
 }
 
-function _watchRow(key, info) {
-  const o = info.observation || {};
-  const name = esc(o.dataset_name || key.split('/').pop());
-  const why = info.not_monitorable;
-  let state;
-  if (info.excluded) state = '<span class="tag muted">Excluded</span>';
-  else if (why) state = `<span class="tag amber" title="${esc(WATCH_REASON[why] || why)}">Not monitored</span>`;
-  else if (o.unsupported) state = `<span class="tag muted" title="${esc(o.unsupported)}">Not monitored</span>`;
-  else if (o.error) state = `<span class="tag red" title="${esc(o.error)}">Unreachable</span>`;
-  else if (!o.observed_at) state = '<span class="tag muted">Never checked</span>';
-  else state = '<span class="tag green">Monitored</span>';
-  const rows = (typeof o.rows === 'number')
-    ? '~' + o.rows.toLocaleString()
-    : '<span class="dash-muted">-</span>';
-  const newest = o.max_event_time
-    ? `${_watchAgeText(o.max_event_time)} <span class="dash-muted" ${_watchBasisTip(o)}>(${esc(o.event_time_column || 'event time')}${o.event_time_basis === 'business_date' ? ', business date' : ''})</span>`
-    : '<span class="dash-muted">no event-time column</span>';
-  const checked = o.observed_at ? _watchAgeText(o.observed_at) : '<span class="dash-muted">never</span>';
-  const btn = info.excluded
-    ? `<button class="linkbtn" data-watchinc="${esc(key)}">Include</button>`
-    : `<button class="linkbtn" data-watchexc="${esc(key)}">Exclude</button>`;
+function _watchRow(it) {
+  const o = it.o, key = it.key;
+  const state = `<span class="swx-state ${it.health}"${it.tip ? ` data-tip="${esc(it.tip)}"` : ''}>${esc(it.state)}</span>`;
+  const src = `<span class="swx-src"><span class="swx-src-ico">${it.fmt ? srcIcon(it.fmt) : ''}</span><span class="swx-src-l">${esc(it.src)}</span></span>`;
+  const name = `<span class="swx-ds"><span class="swx-dsico">${SW_ICO.db}</span><span class="swx-dsname" title="${esc(it.name)}">${esc(it.name)}</span></span>`;
+  const btn = it.info.excluded
+    ? `<button type="button" class="swx-exc lngb" data-watchinc="${esc(key)}" aria-label="Include ${esc(it.name)} in monitoring" data-tip="Include in monitoring">${SW_ICO.eye}</button>`
+    : `<button type="button" class="swx-exc lngb" data-watchexc="${esc(key)}" aria-label="Exclude ${esc(it.name)} from monitoring" data-tip="Exclude from monitoring">${SW_ICO.eyeOff}</button>`;
+  const cls = `swx-row${swView.sel === key ? ' sel' : ''}`;
   // A dataset that cannot be polled has no metrics to show, so the reason takes their place
   // rather than sitting in a tooltip - this is the exact question the table has to answer.
-  if (why) {
-    return `<tr><td>${name}</td><td>${state}</td>` +
-           `<td colspan="3" class="dash-muted">${esc(WATCH_REASON[why] || why)}</td>` +
-           `<td>${btn}</td></tr>`;
+  if (it.why) {
+    return `<tr class="${cls}" data-key="${esc(key)}"><td>${name}</td><td>${state}</td><td>${src}</td>` +
+           `<td colspan="3" class="dash-muted">${esc(WATCH_REASON[it.why] || it.why)}</td><td>${btn}</td></tr>`;
   }
-  return `<tr><td>${name}</td><td>${state}</td><td style="font-variant-numeric:tabular-nums;">${rows}</td>` +
-         `<td>${newest}</td><td>${checked}</td><td>${btn}</td></tr>`;
+  const rows = (typeof o.rows === 'number') ? '~' + o.rows.toLocaleString() : '<span class="dash-muted">-</span>';
+  const newest = o.max_event_time
+    ? `${_watchAgeText(o.max_event_time)} <span class="dash-muted swx-sub" ${_watchBasisTip(o)}>(${esc(o.event_time_column || 'event time')}${o.event_time_basis === 'business_date' ? ', business date' : ''})</span>`
+    : '<span class="dash-muted">no event-time column</span>';
+  const checked = o.observed_at ? _watchAgeText(o.observed_at) : '<span class="dash-muted">never</span>';
+  return `<tr class="${cls}" data-key="${esc(key)}"><td>${name}</td><td>${state}</td><td>${src}</td>` +
+         `<td class="swx-num">${rows}</td><td>${newest}</td><td>${checked}</td><td>${btn}</td></tr>`;
 }
+
+// What each finding is called, in the words of the alert list at the foot of the page.
+const SW_RULE = { SOURCE_STALE: 'Stopped loading', SOURCE_VOLUME: 'Lost rows', SOURCE_GROWTH: 'Grew sharply',
+  SOURCE_STALLED: 'Stalled', SOURCE_SCHEMA: 'Changed shape', SOURCE_UNREACHABLE: 'Unreachable' };
+const SW_RANK = { critical: 3, warning: 2, healthy: 1, off: 0 };
+const SW_LEG = { healthy: 'Healthy', warning: 'Warnings', critical: 'Critical', off: 'Not monitored' };
+const SW_ICO = {
+  db: _cmpIco('<ellipse cx="12" cy="6" rx="7.5" ry="2.8"/><path d="M4.5 6v12c0 1.5 3.4 2.8 7.5 2.8s7.5-1.3 7.5-2.8V6"/><path d="M4.5 12c0 1.5 3.4 2.8 7.5 2.8s7.5-1.3 7.5-2.8"/>', 1.8),
+  check: _cmpIco('<path d="M5 12.5l4.5 4.5L19 7.5"/>', 2.8),
+  alert: _cmpIco('<path d="M12 6.5v7"/><path d="M12 17.5h.01"/>', 3),
+  eye: _cmpIco('<path d="M2.5 12s3.4-6.3 9.5-6.3 9.5 6.3 9.5 6.3-3.4 6.3-9.5 6.3S2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.6"/>', 1.8),
+  eyeOff: _cmpIco('<path d="M3.5 3.5l17 17"/><path d="M10.6 6A9.6 9.6 0 0 1 12 5.7c6.1 0 9.5 6.3 9.5 6.3a16 16 0 0 1-2.6 3.4M6.4 6.9C3.9 8.6 2.5 12 2.5 12s3.4 6.3 9.5 6.3a9 9 0 0 0 4.2-1"/><path d="M9.9 10a2.6 2.6 0 0 0 3.7 3.7"/>', 1.8),
+};
+let swData = null;                      // the last status answer, as one item per dataset
+let swIncOk = true;                     // whether the open findings could be read
+const swView = { src: '', q: '', health: '', sort: 'health', dir: -1, sel: '', all: false };
+const SW_ROW_MAX = 200;                 // rows drawn before "Show all"
+
+// A dataset's health is the verdict its OWN findings give: an open source incident, major or
+// worse, is critical; a warning one is a warning; a source that could not be read is a warning
+// too, which is how the evaluator grades it. Nothing open and a recent reading: healthy.
+function _swItems(r, incs) {
+  const ds = r.datasets || {}, byKey = new Map((dashDatasetsAll || []).map(d => [d.key, d]));
+  return Object.keys(ds).map(key => {
+    const info = ds[key] || {}, o = info.observation || {}, dd = byKey.get(key);
+    const fmt = String(o.kind || (dd && dd.sourceFormat) || '').toLowerCase();
+    const mine = incs.filter(i => i.datasetKey === key);
+    const crit = mine.filter(i => /^(blocker|major|critical)$/i.test(String(i.severity || '')));
+    const warn = mine.filter(i => !crit.includes(i));
+    const why = info.not_monitorable;
+    let health, state, tip = '';
+    if (info.excluded) { health = 'off'; state = 'Excluded'; tip = 'Excluded from monitoring. Include it again from this row.'; }
+    else if (why) { health = 'off'; state = 'Not monitored'; tip = WATCH_REASON[why] || why; }
+    else if (o.unsupported) { health = 'off'; state = 'Not monitored'; tip = o.unsupported; }
+    else if (!o.observed_at) { health = 'off'; state = 'Never checked'; tip = 'Not checked yet. Press Check now.'; }
+    else if (crit.length) { health = 'critical'; state = SW_RULE[crit[0].rule] || 'Critical'; tip = crit.map(i => i.message).filter(Boolean).join(' '); }
+    else if (warn.length || o.error) {
+      health = 'warning';
+      state = warn.length ? (SW_RULE[warn[0].rule] || 'Warning') : 'Unreachable';
+      tip = warn.length ? warn.map(i => i.message).filter(Boolean).join(' ') : String(o.error);
+    } else { health = 'healthy'; state = 'Monitored'; }
+    return { key, info, o, fmt, src: sourceLabel(fmt) || '-', why: why || '', health, state, tip, findings: crit.concat(warn),
+             name: String(o.dataset_name || (dd && dd.name) || key.split('/').pop()) };
+  });
+}
+const _swTime = iso => { const t = Date.parse(String(iso || '').replace(' ', 'T')); return isFinite(t) ? t : -Infinity; };
+function _swSorted(list) {
+  const k = swView.sort, dir = swView.dir;
+  const val = it => k === 'name' ? it.name.toLowerCase() : k === 'health' ? SW_RANK[it.health]
+    : k === 'rows' ? (typeof it.o.rows === 'number' ? it.o.rows : -1)
+      : k === 'newest' ? _swTime(it.o.max_event_time) : k === 'checked' ? _swTime(it.o.observed_at) : 0;
+  return list.slice().sort((a, b) => { const x = val(a), y = val(b); return ((x < y ? -1 : x > y ? 1 : 0) * dir) || a.name.localeCompare(b.name); });
+}
+// The radar and the table show the same sources: the source filter and a legend pick narrow both.
+// The search box narrows the table and dims the blips that do not match.
+const _swInView = it => (!swView.src || it.fmt === swView.src) && (!swView.health || it.health === swView.health);
+const _swHitQ = (it, q) => !q || (it.name + ' ' + it.src).toLowerCase().includes(q);
 
 function watchMsg(text, kind) {
   const el = $('#watchMsg'); if (!el) return;
-  el.textContent = text || '';
-  el.style.color = kind === 'err' ? 'var(--err)' : kind === 'ok' ? 'var(--ok)'
-    : kind === 'warn' ? '#b45309' : 'var(--muted)';
+  el.textContent = text || 'Run a manual check across all sources';
+  el.style.color = !text ? 'var(--muted)' : kind === 'err' ? 'var(--err)' : kind === 'ok' ? 'var(--ok)'
+    : kind === 'warn' ? 'var(--run)' : 'var(--muted)';
 }
 
 async function loadSourceWatch() {
@@ -19975,47 +20228,407 @@ async function loadSourceWatch() {
     el.innerHTML = '';
     return;
   }
+  if (!swData) el.innerHTML = dqSkeleton('Loading your sources', 4);
   try {
-    const r = await postJSON(`${API_BASE}/data-quality/source-watch`, HEADERS,
-      { app_id: APP_ID, action: 'status' });
-    const ds = r.datasets || {};
-    const keys = Object.keys(ds).sort();
-    const bad = keys.filter(k => ((ds[k].observation || {}).error)).length;
-    const off = keys.filter(k => ds[k].excluded).length;
+    // The findings come from the incident store, which is where the checks put their verdicts.
+    // If it cannot be read, the page says so rather than calling every source healthy.
+    const [r, inc] = await Promise.all([
+      postJSON(`${API_BASE}/data-quality/source-watch`, HEADERS, { app_id: APP_ID, action: 'status' }),
+      postJSON(`${API_BASE}/data-quality/incidents/list`, HEADERS, { app_id: APP_ID, status: 'open' }).catch(() => null),
+    ]);
+    if (!(dashDatasetsAll || []).length) { try { await loadDashboard(); } catch (_) { /* names come from the observations */ } }
+    swIncOk = !!inc;
+    const incs = ((inc && inc.incidents) || []).filter(i => String(i.rule || '').startsWith('SOURCE_')
+      && String(i.status || '').toUpperCase() === 'OPEN');
+    const items = _swItems(r, incs);
+    const lastObs = items.map(i => i.o.observed_at).filter(Boolean).sort().pop() || null;
+    swData = { items, built: r.built_at || null, lastObs, quiet: r.not_pollable || {} };
+    const bad = items.filter(i => i.health === 'critical' || i.health === 'warning').length;
     const badge = $('#watchBadge');
     if (badge) { badge.textContent = bad; badge.style.display = bad ? '' : 'none'; }
-    if (ctx) {
-      const last = keys.map(k => (ds[k].observation || {}).observed_at).filter(Boolean).sort().pop();
-      const mon = keys.filter(k => !ds[k].excluded && !ds[k].not_monitorable).length;
-      // Datasets that can never be polled (a file upload, a Qlik table) are counted, not listed.
-      const quiet = Object.values(r.not_pollable || {}).reduce((a, b) => a + b, 0);
-      ctx.textContent = scopeCtxLabel() + ' · ' +
-        (mon ? `${mon} monitored` : 'nothing monitored yet') +
-        (off ? `, ${off} excluded` : '') +
-        (quiet ? `, ${quiet} with no live source to poll` : '') +
-        (last ? ` · last checked ${_watchAgeText(last)}` : '');
-    }
-    if (!keys.length) {
-      el.innerHTML = `<p class="dash-muted">No source has been checked yet. A dataset becomes monitorable once it has been assessed at least once from a source with a saved credential profile - use <strong>Check now</strong> to try it.</p>`;
-      return;
-    }
-    el.innerHTML = `<div class="fr-scroll"><table class="dash-table">` +
-      `<tr><th>Dataset</th><th>State</th><th title="From the engine's own catalog statistics, so it is approximate">Rows at source</th><th>Newest record</th><th>Last checked</th><th></th></tr>` +
-      keys.map(k => _watchRow(k, ds[k])).join('') + `</table></div>`;
-    el.querySelectorAll('[data-watchexc],[data-watchinc]').forEach(b =>
-      b.addEventListener('click', async () => {
-        const key = b.dataset.watchexc || b.dataset.watchinc;
-        b.disabled = true;
-        try {
-          await postJSON(`${API_BASE}/data-quality/source-watch`, HEADERS,
-            { app_id: APP_ID, action: b.dataset.watchexc ? 'exclude' : 'include', key });
-          loadSourceWatch();
-        } catch (e) { b.disabled = false; watchMsg(e.message, 'err'); }
-      }));
+    renderSourceWatch();
   } catch (e) {
     el.innerHTML = `<p class="dash-muted">${esc(e.message)}</p>`;
   }
 }
+
+function renderSourceWatch() {
+  if (!swData) return;
+  const items = swData.items;
+  if (swView.src && !items.some(i => i.fmt === swView.src)) swView.src = '';
+  if (swView.sel && !items.some(i => i.key === swView.sel)) swView.sel = '';
+  // Last full check: when the last sweep built its target list, else the newest single reading.
+  const last = swData.built || swData.lastObs;
+  $('#swxLastRel').innerHTML = last ? _watchAgeText(last) : 'Never';
+  $('#swxLastAbs').textContent = last ? _cmpDay(last, true) : 'Press Check now for the first reading';
+  _swPaintKpis(items);
+  _swPaintFilters(items);
+  _swPaintTable();
+  _swRadarData();
+}
+
+function _swPaintKpis(items) {
+  const n = h => items.filter(i => i.health === h).length;
+  const off = n('off'), mon = items.length - off;
+  const C = 2 * Math.PI * 26;
+  const gauge = (frac, ico) => `<span class="swx-gauge"><svg viewBox="0 0 66 66" aria-hidden="true"><circle class="trk" cx="33" cy="33" r="26"/>` +
+    `<circle class="val" cx="33" cy="33" r="26" stroke-dasharray="${(C * Math.max(0, Math.min(1, frac))).toFixed(1)} ${C.toFixed(1)}"/></svg>` +
+    `<span class="swx-gauge-ico">${ico}</span></span>`;
+  const pct = k => mon ? `${Math.round((k / mon) * 100)}% of sources` : 'Nothing monitored yet';
+  const tiles = [
+    ['k-mon', mon, 'Monitored sources', off ? `${off} not monitored` : (items.length ? 'Every source that can be polled' : 'Nothing checked yet'),
+     items.length ? mon / items.length : 0, SW_ICO.db],
+    ['k-healthy', n('healthy'), 'Healthy', pct(n('healthy')), mon ? n('healthy') / mon : 0, SW_ICO.check],
+    ['k-warning', n('warning'), 'Warnings', pct(n('warning')), mon ? n('warning') / mon : 0, SW_ICO.alert],
+    ['k-critical', n('critical'), 'Critical', pct(n('critical')), mon ? n('critical') / mon : 0, SW_ICO.alert],
+  ];
+  $('#swxKpis').innerHTML = tiles.map(([cls, k, label, sub, frac, ico]) =>
+    `<div class="swx-kpi ${cls}">${gauge(frac, ico)}<span class="swx-kpi-b"><span class="swx-kpi-n">${k}</span>` +
+    `<span class="swx-kpi-l">${label}</span><span class="swx-kpi-s">${esc(sub)}</span></span></div>`).join('');
+}
+
+function _swPaintFilters(items) {
+  const fmts = [...new Set(items.map(i => i.fmt).filter(Boolean))].sort((a, b) => sourceLabel(a).localeCompare(sourceLabel(b)));
+  $('#swxSrcSel').innerHTML = `<option value="">All sources (${items.length})</option>` + fmts.map(f =>
+    `<option value="${esc(f)}"${f === swView.src ? ' selected' : ''}>${esc(sourceLabel(f))} (${items.filter(i => i.fmt === f).length})</option>`).join('');
+  const base = items.filter(i => !swView.src || i.fmt === swView.src);
+  $('#swxLegend').innerHTML = ['healthy', 'warning', 'critical', 'off'].map(h =>
+    `<button type="button" class="swx-leg lngb k-${h}${swView.health === h ? ' on' : ''}" data-swh="${h}" aria-pressed="${swView.health === h}">` +
+    `<span class="swx-leg-dot"></span><span><span class="swx-leg-n">${base.filter(i => i.health === h).length}</span>` +
+    `<span class="swx-leg-l">${SW_LEG[h]}</span></span></button>`).join('');
+}
+
+function _swPaintTable() {
+  const el = $('#watchList'), foot = $('#swxFoot'), ctx = $('#watchCtx'), items = swData.items;
+  const quiet = Object.values(swData.quiet || {}).reduce((a, b) => a + b, 0);
+  const mon = items.filter(i => i.health !== 'off').length;
+  if (ctx) {
+    ctx.textContent = scopeCtxLabel() + ' · ' +
+      (items.length ? `${items.length} source${items.length === 1 ? '' : 's'}, ${mon} monitored` : 'nothing monitored yet') +
+      // Datasets that can never be polled (a file upload, a Qlik table) are counted, not listed.
+      (quiet ? ` · ${quiet} with no live source to poll` : '') +
+      (swData.lastObs ? ` · last checked ${_watchAgeText(swData.lastObs).replace(/&amp;/g, '&')}` : '') +
+      (swIncOk ? '' : ' · open findings could not be loaded, so states show the last reading only');
+  }
+  if (!items.length) {
+    el.innerHTML = `<p class="dash-muted">No source has been checked yet. A dataset becomes monitorable once it has been assessed at least once from a source with a saved credential profile - use <strong>Check now</strong> to try it.</p>`;
+    foot.textContent = '';
+    return;
+  }
+  const q = swView.q.trim().toLowerCase();
+  const vis = _swSorted(items.filter(i => _swInView(i) && _swHitQ(i, q)));
+  const shown = swView.all ? vis : vis.slice(0, SW_ROW_MAX);
+  const th = (k, label, tip) => {
+    const on = swView.sort === k;
+    return `<th${on ? ` aria-sort="${swView.dir > 0 ? 'ascending' : 'descending'}"` : ''}><button type="button" class="lngb" data-swsort="${k}"` +
+      `${tip ? ` data-tip="${esc(tip)}"` : ''}>${label}${on ? `<span class="swx-arrow" aria-hidden="true">${swView.dir > 0 ? '↑' : '↓'}</span>` : ''}</button></th>`;
+  };
+  el.innerHTML = `<div class="swx-tbl-wrap"><table class="swx-tbl"><thead><tr>${th('name', 'Dataset')}${th('health', 'State')}` +
+    `<th><span class="swx-th">Source</span></th>${th('rows', 'Rows at source', "From the engine's own catalog statistics, so it is approximate")}` +
+    `${th('newest', 'Newest record')}${th('checked', 'Last checked')}<th><span class="swx-th"><span class="sr-only">Monitoring</span></span></th></tr></thead>` +
+    `<tbody>${shown.length ? shown.map(_watchRow).join('') : '<tr><td colspan="7" class="dash-muted">No source matches this search or filter.</td></tr>'}</tbody></table></div>`;
+  foot.innerHTML = `Showing ${shown.length} of ${vis.length}${vis.length !== items.length ? ` matching (${items.length} in all)` : ''} source${vis.length === 1 ? '' : 's'}` +
+    (vis.length > shown.length ? ` <button type="button" class="linkbtn" data-swall="1">Show all ${vis.length}</button>` : '');
+}
+
+function swSelect(key, from) {
+  swView.sel = key || '';
+  document.querySelectorAll('#watchList .swx-row').forEach(r => r.classList.toggle('sel', r.dataset.key === swView.sel));
+  if (from === 'radar' && swView.sel) {
+    const row = [...document.querySelectorAll('#watchList .swx-row')].find(r => r.dataset.key === swView.sel);
+    if (row) row.scrollIntoView({ block: 'nearest' });
+  }
+  _swLabels();
+  _swKick();
+}
+
+// ---- The radar --------------------------------------------------------------------------------
+// One canvas, redrawn each frame while the tab is open: a sweep that turns, and every source as a
+// blip that lights as the sweep passes over it. Placed by health: critical nearest the centre,
+// then warnings, then healthy, with the sources that are not monitored out on the rim. Inside a
+// band the blips sit on a sunflower spiral, which spreads any number of them evenly across it
+// with none on top of another; the busier a band, the smaller its blips.
+const SW_BANDS = { critical: [0.12, 0.34], warning: [0.38, 0.58], healthy: [0.62, 0.86], off: [0.895, 0.965] };
+const SW_PERIOD = 6000, SW_FAST = 1800;      // ms a turn takes; faster while a check is running
+const swRadar = { blips: [], phase: 0, last: 0, raf: 0, hover: '', rowHover: '', fast: false, size: 0, dpr: 1, stat: null, colors: null };
+
+function _swColors() {
+  const cs = getComputedStyle(document.documentElement), v = n => cs.getPropertyValue(n).trim();
+  return { healthy: v('--ok') || '#34d399', warning: v('--run') || '#fbbf24', critical: v('--err') || '#fb7185',
+           off: '#7c9cff', accent: v('--accent') || '#5b8cff' };
+}
+function _swRadarData() {
+  const GOLD = Math.PI * (3 - Math.sqrt(5));
+  const vis = swData.items.filter(_swInView), blips = [];
+  Object.entries(SW_BANDS).forEach(([h, [r0, r1]], bi) => {
+    const list = vis.filter(i => i.health === h).sort((a, b) => (a.key < b.key ? -1 : a.key > b.key ? 1 : 0));
+    list.forEach((it, i) => blips.push({ it, h, r0, r1, n: list.length,
+      rr: Math.sqrt(r0 * r0 + (r1 * r1 - r0 * r0) * ((i + 0.5) / list.length)),
+      ang: (i * GOLD + bi * 1.3 + 0.6) % (2 * Math.PI) }));                      // clockwise from 12 o'clock
+  });
+  swRadar.blips = blips;
+  const cv = $('#swxCanvas');
+  if (cv) {
+    const c = h => vis.filter(i => i.health === h).length;
+    cv.setAttribute('aria-label', `Source health radar: ${c('healthy')} healthy, ${c('warning')} with warnings, ` +
+      `${c('critical')} critical and ${c('off')} not monitored. The table beside it lists every source.`);
+  }
+  _swRadarResize();
+  _swLabels();
+  _swRadarStart();
+}
+function _swRadarResize() {
+  const box = $('#swxRadar'), cv = $('#swxCanvas'); if (!box || !cv) return;
+  const size = Math.floor(box.clientWidth), dpr = Math.min(2, window.devicePixelRatio || 1);
+  if (!size) return;
+  if (size !== swRadar.size || dpr !== swRadar.dpr) {
+    cv.width = Math.round(size * dpr); cv.height = Math.round(size * dpr);
+    swRadar.size = size; swRadar.dpr = dpr; swRadar.stat = null;
+  }
+  const c = size / 2, R = c - 8;
+  swRadar.blips.forEach(b => {
+    b.x = c + Math.sin(b.ang) * b.rr * R;
+    b.y = c - Math.cos(b.ang) * b.rr * R;
+    const area = Math.PI * R * R * (b.r1 * b.r1 - b.r0 * b.r0);
+    b.s = Math.max(2.5, Math.min(7, Math.sqrt(area / b.n) * 0.3));                  // crowded bands, smaller blips
+  });
+}
+function _swStatic() {
+  const { size, dpr } = swRadar, off = document.createElement('canvas');
+  off.width = Math.round(size * dpr); off.height = Math.round(size * dpr);
+  const g = off.getContext('2d'), c = size / 2, R = c - 8;
+  g.scale(dpr, dpr);
+  const bg = g.createRadialGradient(c, c, 0, c, c, R);
+  bg.addColorStop(0, 'rgba(59,130,246,0.18)'); bg.addColorStop(0.65, 'rgba(37,99,235,0.07)'); bg.addColorStop(1, 'rgba(14,21,38,0.55)');
+  g.fillStyle = bg; g.beginPath(); g.arc(c, c, R, 0, 2 * Math.PI); g.fill();
+  g.strokeStyle = 'rgba(91,140,255,0.17)'; g.lineWidth = 1;
+  [0.12, 0.36, 0.6, 0.875].forEach(f => { g.beginPath(); g.arc(c, c, R * f, 0, 2 * Math.PI); g.stroke(); });
+  g.strokeStyle = 'rgba(91,140,255,0.13)';
+  g.beginPath(); g.moveTo(c - R, c); g.lineTo(c + R, c); g.moveTo(c, c - R); g.lineTo(c, c + R); g.stroke();
+  g.strokeStyle = 'rgba(91,140,255,0.06)';
+  const k = R * Math.SQRT1_2;
+  g.beginPath(); g.moveTo(c - k, c - k); g.lineTo(c + k, c + k); g.moveTo(c + k, c - k); g.lineTo(c - k, c + k); g.stroke();
+  g.strokeStyle = 'rgba(96,165,250,0.35)';
+  for (let d = 0; d < 360; d += 5) {
+    const a = d * Math.PI / 180, len = d % 30 === 0 ? 8 : 4;
+    g.beginPath(); g.moveTo(c + Math.sin(a) * R, c - Math.cos(a) * R); g.lineTo(c + Math.sin(a) * (R - len), c - Math.cos(a) * (R - len)); g.stroke();
+  }
+  g.save(); g.shadowColor = 'rgba(56,189,248,0.65)'; g.shadowBlur = 14; g.strokeStyle = 'rgba(96,165,250,0.6)'; g.lineWidth = 1.6;
+  g.beginPath(); g.arc(c, c, R, 0, 2 * Math.PI); g.stroke(); g.restore();
+  // The bands named once, up the 12 o'clock line, so a blip's distance from the centre reads.
+  g.font = `600 9px ${getComputedStyle(document.body).fontFamily}`; g.fillStyle = 'rgba(148,162,190,0.6)';
+  [['CRITICAL', 0.23], ['WARNING', 0.48], ['HEALTHY', 0.74]].forEach(([t, f]) => g.fillText(t, c + 5, c - R * f + 3));
+  swRadar.stat = off;
+}
+function _swDraw(still) {
+  const cv = $('#swxCanvas'); if (!cv || !swRadar.size) return;
+  const ctx = cv.getContext('2d'), { size, dpr } = swRadar, c = size / 2, R = c - 8;
+  const col = swRadar.colors || (swRadar.colors = _swColors());
+  if (!swRadar.stat) _swStatic();
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, cv.width, cv.height); ctx.drawImage(swRadar.stat, 0, 0);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const a = swRadar.phase, base = a - Math.PI / 2, wedge = 1.15;
+  // the fading wedge behind the sweep, then the sweep itself
+  if (ctx.createConicGradient) {
+    const gr = ctx.createConicGradient(base - wedge, c, c), f = wedge / (2 * Math.PI);
+    gr.addColorStop(0, 'rgba(56,189,248,0)'); gr.addColorStop(f * 0.985, 'rgba(56,189,248,0.32)');
+    gr.addColorStop(f, 'rgba(56,189,248,0)'); gr.addColorStop(1, 'rgba(56,189,248,0)');
+    ctx.fillStyle = gr; ctx.beginPath(); ctx.moveTo(c, c); ctx.arc(c, c, R, base - wedge, base); ctx.closePath(); ctx.fill();
+  } else {
+    for (let i = 0; i < 24; i++) {
+      ctx.fillStyle = `rgba(56,189,248,${(0.3 * (i + 1) / 24).toFixed(3)})`;
+      ctx.beginPath(); ctx.moveTo(c, c); ctx.arc(c, c, R, base - wedge + (wedge * i) / 24, base - wedge + (wedge * (i + 1)) / 24); ctx.closePath(); ctx.fill();
+    }
+  }
+  ctx.save(); ctx.strokeStyle = 'rgba(125,211,252,0.95)'; ctx.lineWidth = 2; ctx.shadowColor = 'rgba(56,189,248,0.9)'; ctx.shadowBlur = 10;
+  ctx.beginPath(); ctx.moveTo(c, c); ctx.lineTo(c + Math.cos(base) * R, c + Math.sin(base) * R); ctx.stroke(); ctx.restore();
+  // leader lines from a labelled blip to its label
+  ctx.strokeStyle = 'rgba(148,162,190,0.45)'; ctx.lineWidth = 1;
+  swRadar.blips.forEach(b => {
+    if (!b.lbl) return;
+    const L = b.lbl, lx = Math.max(L.x, Math.min(L.x + L.w, b.x)), ly = Math.max(L.y, Math.min(L.y + L.h, b.y));
+    const d = Math.hypot(lx - b.x, ly - b.y);
+    if (d <= b.s + 2) return;                     // the label already touches its blip
+    ctx.beginPath(); ctx.moveTo(b.x + (lx - b.x) * (b.s + 1) / d, b.y + (ly - b.y) * (b.s + 1) / d); ctx.lineTo(lx, ly); ctx.stroke();
+  });
+  const q = swView.q.trim().toLowerCase(), TAU = 2 * Math.PI;
+  for (const b of swRadar.blips) {
+    const d = (((a - b.ang) % TAU) + TAU) % TAU;          // how far the sweep has gone past it
+    const I = still ? 0.55 : Math.exp(-d / 1.6);
+    const dim = q && !_swHitQ(b.it, q) ? 0.2 : 1;
+    ctx.fillStyle = col[b.h];
+    ctx.globalAlpha = dim * (0.12 + 0.28 * I);
+    ctx.beginPath(); ctx.arc(b.x, b.y, b.s * (1.5 + 1.1 * I), 0, TAU); ctx.fill();
+    ctx.globalAlpha = dim * (0.72 + 0.28 * I);
+    ctx.beginPath(); ctx.arc(b.x, b.y, b.s, 0, TAU); ctx.fill();
+    if (!still && d < 0.55) {                             // the ring that ripples out as it is found
+      ctx.globalAlpha = dim * (1 - d / 0.55) * 0.6; ctx.strokeStyle = col[b.h]; ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.arc(b.x, b.y, b.s + 2 + 10 * (d / 0.55), 0, TAU); ctx.stroke();
+    }
+  }
+  ctx.globalAlpha = 1;
+  [swRadar.hover || swRadar.rowHover, swView.sel].forEach((k, i) => {
+    const b = k && swRadar.blips.find(x => x.it.key === k); if (!b) return;
+    ctx.strokeStyle = i ? '#ffffff' : 'rgba(255,255,255,0.75)'; ctx.lineWidth = i ? 2 : 1.4;
+    ctx.beginPath(); ctx.arc(b.x, b.y, b.s + 5, 0, TAU); ctx.stroke();
+  });
+  ctx.save(); ctx.fillStyle = col.accent; ctx.shadowColor = col.accent; ctx.shadowBlur = 12;
+  ctx.beginPath(); ctx.arc(c, c, 4.5, 0, TAU); ctx.fill(); ctx.restore();
+}
+function _swFrame(now) {
+  const panel = $('#sourceWatchPanel'), cv = $('#swxCanvas');
+  // Stops by itself once the tab is left; opening it again starts it.
+  if (!cv || !panel || panel.style.display === 'none') { swRadar.raf = 0; swRadar.last = 0; return; }
+  const dt = swRadar.last ? Math.min(100, now - swRadar.last) : 0;
+  swRadar.last = now;
+  swRadar.phase = (swRadar.phase + (dt / (swRadar.fast ? SW_FAST : SW_PERIOD)) * 2 * Math.PI) % (2 * Math.PI);
+  _swDraw(false);
+  swRadar.raf = requestAnimationFrame(_swFrame);
+}
+function _swRadarStart() {
+  if (dqReduced()) { swRadar.phase = Math.PI * 0.35; _swDraw(true); return; }   // a still radar, the sweep at rest
+  if (!swRadar.raf) { swRadar.last = 0; swRadar.raf = requestAnimationFrame(_swFrame); }
+}
+function _swKick() { if (!swRadar.raf) _swDraw(dqReduced()); }
+
+// Labels: every blip when there are few; when there are many, the ones that need looking at
+// (critical first, then warnings) and the one you picked, so the radar never turns into a
+// wall of names. Each sits beside its blip, on the side away from the centre, nudged up or down
+// until none overlaps another, and joined to its blip by a line.
+function _swLabels() {
+  const box = $('#swxLabels'); if (!box) return;
+  const size = swRadar.size, c = size / 2, H = 26, GAP = 4;
+  if (!size) { box.innerHTML = ''; return; }
+  const bl = swRadar.blips;
+  bl.forEach(b => { b.lbl = null; });
+  if (!bl.length) {
+    box.innerHTML = `<span class="swx-empty">${swData && swData.items.length ? 'No source matches this filter.' : 'Nothing to show yet. Press Check now for a first reading.'}</span>`;
+    return;
+  }
+  const want = new Set();
+  if (bl.length <= 12) bl.forEach(b => want.add(b.it.key));
+  else bl.filter(b => b.h === 'critical').concat(bl.filter(b => b.h === 'warning')).slice(0, 6).forEach(b => want.add(b.it.key));
+  if (swView.sel) want.add(swView.sel);
+  const cv = $('#swxCanvas'), m = cv.getContext('2d');
+  m.font = `600 12px ${getComputedStyle(document.body).fontFamily}`;
+  const maxW = Math.round(size * 0.44);
+  // Greedy, most important first: the picked one, then critical, then warnings. Each tries the
+  // side away from the centre, then the other side, each level with its blip and then a step up
+  // or down, and takes the first spot that is on the radar and clear of every label already
+  // placed and of the blips. A label with no clear spot is left off; hovering still names it.
+  const prio = b => (b.it.key === swView.sel ? 0 : b.h === 'critical' ? 1 : b.h === 'warning' ? 2 : 3);
+  const cands = bl.filter(b => want.has(b.it.key)).sort((p, q) => (prio(p) - prio(q)) || (p.y - q.y));
+  // On a busy radar every critical and warning blip is kept clear, so a name never hides the
+  // sources that need looking at; a healthy blip may sit under one.
+  const obst = (bl.length <= 60 ? bl : bl.filter(b => b.h === 'critical' || b.h === 'warning' || want.has(b.it.key)))
+    .map(b => ({ b, x: b.x - b.s - 2, y: b.y - b.s - 2, w: 2 * b.s + 4, h: 2 * b.s + 4 }));
+  const clash = (r, list) => list.some(o => r.x < o.x + o.w + 3 && r.x + r.w + 3 > o.x && r.y < o.y + o.h + 3 && r.y + r.h + 3 > o.y);
+  const onRadar = r => r.x >= 4 && r.x + r.w <= size - 4 && r.y >= 4 && r.y + r.h <= size - 4;
+  const rects = [], placed = [];
+  cands.forEach(b => {
+    const w = Math.min(maxW, Math.ceil(m.measureText(b.it.name).width) + 22), out = b.x >= c ? 1 : -1;
+    const tries = [];
+    [out, -out].forEach(side => [0, -(H + 6), H + 6, -2 * (H + 6), 2 * (H + 6)].forEach(dy =>
+      tries.push({ x: side > 0 ? b.x + 14 : b.x - 14 - w, y: b.y - H / 2 + dy, w, h: H })));
+    // Then further out along the line from the centre, a callout with a leader line: on a busy
+    // radar that is where there is room, out past the critical and warning rings.
+    const dl = Math.hypot(b.x - c, b.y - c) || 1, ux = (b.x - c) / dl, uy = (b.y - c) / dl;
+    for (let k = 1; k <= 8; k++) {
+      const px = b.x + ux * 30 * k, py = b.y + uy * 30 * k;
+      tries.push({ x: ux >= 0 ? px : px - w, y: py - H / 2, w, h: H });
+    }
+    let pos = tries.find(r => onRadar(r) && !clash(r, rects) && !clash(r, obst.filter(o => o.b !== b)));
+    if (!pos && b.it.key === swView.sel) pos = tries.find(onRadar) || tries[0];
+    if (!pos) return;
+    rects.push(pos);
+    b.lbl = pos;
+    placed.push({ b, x: pos.x, y: pos.y, w });
+  });
+  box.innerHTML = placed.map(p => `<span class="swx-lbl ${p.b.h}${p.b.it.key === swView.sel ? ' sel' : ''}" ` +
+    `style="left:${p.x.toFixed(1)}px;top:${p.y.toFixed(1)}px;width:${p.w}px">${esc(p.b.it.name)}</span>`).join('');
+}
+function _swHit(x, y) {
+  let best = null, bd = Infinity;
+  for (const b of swRadar.blips) {
+    const d = Math.hypot(b.x - x, b.y - y);
+    if (d < Math.max(9, b.s + 6) && d < bd) { bd = d; best = b; }
+  }
+  return best;
+}
+function _swTip(b) {
+  const tip = $('#swxTip'); if (!tip) return;
+  if (!b) { tip.hidden = true; return; }
+  const it = b.it, o = it.o;
+  tip.innerHTML = `<strong>${esc(it.name)}</strong><span class="swx-state ${it.health}">${esc(it.state)}</span>` +
+    `<dl><dt>Source</dt><dd>${esc(it.src)}</dd>` +
+    `<dt>Rows</dt><dd>${typeof o.rows === 'number' ? '~' + o.rows.toLocaleString() : '-'}</dd>` +
+    `<dt>Newest</dt><dd>${o.max_event_time ? _watchAgeText(o.max_event_time) : 'no event-time column'}</dd>` +
+    `<dt>Checked</dt><dd>${o.observed_at ? _watchAgeText(o.observed_at) : 'never'}</dd></dl>` +
+    (it.tip && it.health !== 'healthy' ? `<p>${esc(it.tip)}</p>` : '');
+  tip.hidden = false;
+  const size = swRadar.size, w = tip.offsetWidth, h = tip.offsetHeight;
+  let x = b.x + 16, y = b.y + 16;
+  if (x + w > size) x = b.x - 16 - w;
+  if (y + h > size) y = b.y - 16 - h;
+  tip.style.left = Math.max(0, x) + 'px'; tip.style.top = Math.max(0, y) + 'px';
+}
+
+// Wired once: everything above is redrawn as the data, the filters and the window change.
+(function wireSourceWatch() {
+  const panel = $('#sourceWatchPanel'), cv = $('#swxCanvas'); if (!panel || !cv) return;
+  panel.addEventListener('click', async e => {
+    const t = e.target; if (!t || !t.closest) return;
+    const b = t.closest('[data-watchexc],[data-watchinc]');
+    if (b) {
+      const key = b.dataset.watchexc || b.dataset.watchinc;
+      b.disabled = true;
+      try {
+        await postJSON(`${API_BASE}/data-quality/source-watch`, HEADERS,
+          { app_id: APP_ID, action: b.dataset.watchexc ? 'exclude' : 'include', key });
+        loadSourceWatch();
+      } catch (err) { b.disabled = false; watchMsg(err.message, 'err'); }
+      return;
+    }
+    const srt = t.closest('[data-swsort]');
+    if (srt) {
+      const k = srt.dataset.swsort;
+      if (swView.sort === k) swView.dir = -swView.dir; else { swView.sort = k; swView.dir = k === 'name' ? 1 : -1; }
+      _swPaintTable();
+      return;
+    }
+    const h = t.closest('[data-swh]');
+    if (h) { swView.health = swView.health === h.dataset.swh ? '' : h.dataset.swh; renderSourceWatch(); return; }
+    if (t.closest('[data-swall]')) { swView.all = true; _swPaintTable(); return; }
+    const row = t.closest('#watchList .swx-row');
+    if (row && !t.closest('button, a')) swSelect(row.dataset.key === swView.sel ? '' : row.dataset.key, 'table');
+  });
+  $('#swxSrcSel').addEventListener('change', e => { swView.src = e.target.value; renderSourceWatch(); });
+  $('#swxQ').addEventListener('input', e => { swView.q = e.target.value; if (swData) _swPaintTable(); _swKick(); });
+  const list = $('#watchList');
+  list.addEventListener('mouseover', e => {
+    const r = e.target.closest && e.target.closest('.swx-row');
+    const k = r ? r.dataset.key : '';
+    if (k !== swRadar.rowHover) { swRadar.rowHover = k; _swKick(); }
+  });
+  list.addEventListener('mouseleave', () => { swRadar.rowHover = ''; _swKick(); });
+  const at = e => { const r = cv.getBoundingClientRect(); return _swHit(e.clientX - r.left, e.clientY - r.top); };
+  cv.addEventListener('mousemove', e => {
+    const b = at(e), k = b ? b.it.key : '';
+    if (k === swRadar.hover) return;
+    swRadar.hover = k; _swTip(b); cv.style.cursor = b ? 'pointer' : 'crosshair';
+    document.querySelectorAll('#watchList .swx-row').forEach(r => r.classList.toggle('hl', r.dataset.key === k));
+    _swKick();
+  });
+  cv.addEventListener('mouseleave', () => {
+    swRadar.hover = ''; _swTip(null);
+    document.querySelectorAll('#watchList .swx-row.hl').forEach(r => r.classList.remove('hl'));
+    _swKick();
+  });
+  cv.addEventListener('click', e => { const b = at(e); swSelect(b ? (b.it.key === swView.sel ? '' : b.it.key) : '', 'radar'); });
+  if (window.ResizeObserver) {
+    new ResizeObserver(() => { if (!swData) return; _swRadarResize(); _swLabels(); _swKick(); }).observe($('#swxRadar'));
+  }
+})();
 
 // Poll ONE sweep to completion, so the button behaves like launching an assessment does.
 // Every observation carries the watch_run_id that wrote it, so "done" means THIS sweep rewrote
@@ -20023,7 +20636,7 @@ async function loadSourceWatch() {
 // in a driver call when the sweep's budget runs out never writes an observation, so waiting
 // indefinitely would be waiting for something that is not coming.
 async function watchPollSweep(runId, keys) {
-  const el = $('#watchList'), CAP_MS = 3 * 60 * 1000, start = Date.now();
+  const CAP_MS = 3 * 60 * 1000, start = Date.now();
   let last = null;
   while (Date.now() - start < CAP_MS) {
     await new Promise(r => setTimeout(r, 2500));
@@ -20031,8 +20644,7 @@ async function watchPollSweep(runId, keys) {
       last = await postJSON(`${API_BASE}/data-quality/source-watch`, HEADERS,
         { app_id: APP_ID, action: 'progress', watch_run_id: runId, keys });
     } catch (e) { continue; }          // a transient read failure must not abort the wait
-    el.innerHTML = dqLoader('Checking your sources',
-      `${last.done} of ${last.total} checked${last.failed ? ` · ${last.failed} could not be read` : ''}`);
+    watchMsg(`Checking your sources: ${last.done} of ${last.total} checked${last.failed ? `, ${last.failed} could not be read` : ''}`);
     if (last.done >= last.total) return last;
   }
   return null;                          // gave up waiting; observations still land as they finish
@@ -20043,18 +20655,19 @@ if ($('#watchRefresh')) $('#watchRefresh').addEventListener('click', () => {
 });
 if ($('#watchToSched')) $('#watchToSched').addEventListener('click', () => switchTab('schedules'));
 if ($('#watchRun')) $('#watchRun').addEventListener('click', async () => {
-  const btn = $('#watchRun'), el = $('#watchList');
+  const btn = $('#watchRun'), lbl = btn.querySelector('span');
   if (!APP_ID) { watchMsg('Open a workspace first.', 'err'); return; }
   btn.disabled = true;
-  const orig = btn.textContent;
-  btn.textContent = 'Checking…';
-  watchMsg('');
-  el.innerHTML = dqLoader('Starting the check', 'Finding every monitorable source in this workspace.');
+  const orig = lbl.textContent;
+  lbl.textContent = 'Checking…';
+  // The radar sweeps faster while a check is out, and the table keeps showing the last reading.
+  swRadar.fast = true;
+  watchMsg('Starting the check: finding every monitorable source.');
   try {
     const r = await postJSON(`${API_BASE}/data-quality/source-watch`, HEADERS,
       { app_id: APP_ID, action: 'run' });
     const keys = r.watched || [];
-    el.innerHTML = dqLoader('Checking your sources', `0 of ${keys.length} checked`);
+    watchMsg(`Checking your sources: 0 of ${keys.length} checked`);
     const p = await watchPollSweep(r.watchRunId, keys);
     await loadSourceWatch();
     const nSkip = (r.skipped || []).length;
@@ -20070,8 +20683,9 @@ if ($('#watchRun')) $('#watchRun').addEventListener('click', async () => {
     await loadSourceWatch();
     watchMsg(e.message, 'err');
   } finally {
+    swRadar.fast = false;
     btn.disabled = false;
-    btn.textContent = orig;
+    lbl.textContent = orig;
   }
 });
 
