@@ -2759,10 +2759,123 @@
   .gd-tbl td { padding: 9px 12px; vertical-align: top; line-height: 1.55; border-bottom: 1px solid var(--border); }
   .gd-tbl tr:last-child td { border-bottom: 0; }
   .gd-tbl td:first-child { font-weight: 600; }
-  .gd-code { margin: 4px 0 12px; padding: 12px 14px; max-width: 100%; overflow-x: auto; white-space: pre; border-radius: 10px;
+  .gd-code, .gd-shape { margin: 4px 0 12px; padding: 12px 14px; max-width: 100%; overflow-x: auto; white-space: pre; border-radius: 10px;
     border: 1px solid var(--border); background: var(--code-bg); color: var(--code-fg); font-size: 12.5px; line-height: 1.55; }
-  .gd-code code { padding: 0; background: none; }
+  .gd-code code, .gd-shape code { padding: 0; background: none; }
   .gd-ph { color: #fbbf24; }
+  /* ---- A guide in views: one part at a time instead of one long page (gdViewsHtml). Parts are
+     tabs; inside a part, sections are stacked, stepped through, or picked between. */
+  .gd-views { display: flex; gap: 4px; margin: 14px 24px 0; padding: 4px; border-radius: 12px;
+    border: 1px solid var(--border); background: var(--idle-bg); overflow-x: auto; }
+  .gd-vtab { flex: 1 0 auto; display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 8px 14px;
+    border: 1px solid transparent; border-radius: 9px; background: none; color: var(--muted); cursor: pointer;
+    font: inherit; font-size: 13px; font-weight: 600; white-space: nowrap; }
+  .gd-vtab svg { width: 16px; height: 16px; flex: none; }
+  .gd-vtab:hover { color: var(--text); }
+  .gd-vtab[aria-selected="true"] { background: var(--card); color: var(--text); box-shadow: 0 1px 6px rgba(0,0,0,.18);
+    border-color: color-mix(in srgb, var(--tint) 45%, var(--border)); }
+  .gd-vtab[aria-selected="true"] svg { color: var(--tint); }
+  .gd-vbody { padding-top: 2px; }
+  .gd-view > .gd-vsec { border-bottom: 0; padding: 16px 0 6px; }
+  .gd-view[data-mode="stack"] > .gd-vsec + .gd-vsec { border-top: 1px dashed var(--border); }
+  .gd-vsec > h4 { font-size: 15px; }
+  .gd-stepbar, .gd-pick { display: flex; gap: 8px; flex-wrap: wrap; margin: 16px 0 0; }
+  .gd-stepbar button, .gd-pick button { flex: 1 1 0; display: inline-flex; align-items: center; gap: 9px; min-width: 150px;
+    padding: 9px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--card); color: var(--muted);
+    cursor: pointer; font: inherit; font-size: 13px; font-weight: 600; text-align: left; }
+  .gd-pick button { flex: 0 1 auto; min-width: 0; padding: 7px 14px; }
+  .gd-stepbar button:hover, .gd-pick button:hover { color: var(--text); }
+  .gd-stepbar button[aria-selected="true"], .gd-pick button[aria-selected="true"] { color: var(--text); border-color: var(--tint);
+    background: color-mix(in srgb, var(--tint) 11%, var(--card)); }
+  .gd-stepn { flex: none; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center;
+    font-size: 12px; font-weight: 800; background: var(--idle-bg); color: var(--muted); }
+  .gd-stepbar button[aria-selected="true"] .gd-stepn { background: var(--tint); color: #0b1220; }
+  .gd-pickl { margin: 14px 0 0; font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  .gd-stepnav { display: flex; justify-content: space-between; gap: 10px; margin: 14px 0 4px; }
+  .gd-next { border-color: var(--tint); }
+  .gd-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; margin: 6px 0 12px; }
+  .gd-tile { display: grid; align-content: start; gap: 4px; padding: 13px 14px; border: 1px solid var(--border); border-radius: 12px;
+    background: var(--card-2); font-size: 13px; line-height: 1.5; color: var(--muted); }
+  .gd-tile b { color: var(--text); font-size: 13.5px; }
+  .gd-tile-i { width: 30px; height: 30px; margin-bottom: 4px; border-radius: 9px; display: grid; place-items: center;
+    color: var(--tint); background: color-mix(in srgb, var(--tint) 14%, transparent); }
+  .gd-tile-i svg { width: 17px; height: 17px; }
+  .gd-flow { display: flex; align-items: stretch; gap: 6px; margin: 6px 0 12px; flex-wrap: wrap; }
+  .gd-flow-n { flex: 1 1 110px; display: grid; gap: 2px; align-content: center; padding: 10px 12px; border-radius: 10px;
+    border: 1px solid var(--border); background: var(--card-2); color: var(--text); font: inherit; font-size: 13px; font-weight: 600; text-align: left; }
+  .gd-flow-n small { font-size: 11px; font-weight: 600; color: var(--muted); }
+  button.gd-flow-n { cursor: pointer; border-color: color-mix(in srgb, var(--tint) 50%, var(--border));
+    background: color-mix(in srgb, var(--tint) 10%, var(--card)); }
+  button.gd-flow-n:hover { border-color: var(--tint); }
+  .gd-flow-a { display: grid; place-items: center; color: var(--muted); }
+  .gd-flow-a svg { width: 16px; height: 16px; }
+  .gd-flow-out { flex: 1.2 1 150px; display: grid; gap: 6px; }
+  .gd-flow-out span { display: flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 9px; font-size: 12.5px; font-weight: 600; }
+  .gd-flow-out svg, .gd-out svg { width: 14px; height: 14px; flex: none; }
+  .gd-flow-out .ok, .gd-out.ok { color: var(--ok); background: var(--ok-bg); }
+  .gd-flow-out .bad, .gd-out.bad { color: var(--err); background: var(--err-bg); }
+  .gd-checks, .gd-irows { margin: 6px 0 14px; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+  .gd-check { display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; gap: 12px; align-items: start;
+    padding: 12px 14px; font-size: 13.5px; line-height: 1.55; }
+  .gd-check + .gd-check, .gd-irow + .gd-irow { border-top: 1px solid var(--border); }
+  .gd-check-n { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 800;
+    color: var(--tint); border: 1px solid color-mix(in srgb, var(--tint) 50%, transparent); }
+  .gd-check b { display: block; color: var(--text); }
+  .gd-check .d { color: var(--muted); }
+  .gd-check-act { align-self: center; white-space: nowrap; }
+  .gd-shape-h { margin: 4px 0 6px; font-size: 13.5px; font-weight: 700; }
+  .gd-dim { color: var(--muted); }
+  .gd-shape-f { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+    margin: -4px 0 10px; font-size: 12.5px; line-height: 1.55; color: var(--muted); }
+  .gd-shape-f > span { flex: 1 1 380px; }
+  .gd-copy { display: inline-flex; align-items: center; gap: 6px; }
+  .gd-copy svg { width: 14px; height: 14px; }
+  .gd-sw { margin: 6px 0 12px; }
+  .gd-sw-bar { display: inline-flex; gap: 2px; margin-bottom: 6px; padding: 3px; border-radius: 9px;
+    border: 1px solid var(--border); background: var(--idle-bg); }
+  .gd-sw-bar button { padding: 5px 14px; border: 0; border-radius: 7px; background: none; color: var(--muted);
+    cursor: pointer; font: inherit; font-size: 12.5px; font-weight: 600; }
+  .gd-sw-bar button:hover { color: var(--text); }
+  .gd-sw-bar button[aria-selected="true"] { background: var(--card); color: var(--text); box-shadow: 0 1px 4px rgba(0,0,0,.22); }
+  .gd-sw-p > .gd-code { margin-top: 0; }
+  .gd-more { margin: 4px 0 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--card-2); }
+  .gd-more > summary { display: flex; align-items: center; gap: 8px; padding: 10px 14px; cursor: pointer; list-style: none;
+    font-size: 13.5px; font-weight: 600; }
+  .gd-more > summary::-webkit-details-marker { display: none; }
+  .gd-more > summary::before { content: "\25B8"; color: var(--tint); transition: transform .15s; }
+  .gd-more[open] > summary::before { transform: rotate(90deg); }
+  .gd-more-b { padding: 0 14px 4px; }
+  .gd-pill { display: inline-block; padding: 2px 8px; border-radius: 6px; white-space: nowrap; background: var(--idle-bg); color: var(--muted);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; font-weight: 700; }
+  .gd-pill.ok { background: var(--ok-bg); color: var(--ok); }
+  .gd-pill.bad { background: var(--err-bg); color: var(--err); }
+  .gd-pill.warn { background: var(--run-bg); color: var(--run); }
+  .gd-outs, .gd-ecards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; margin: 6px 0 12px; }
+  .gd-out { padding: 12px 14px; border-radius: 10px; font-size: 13.5px; line-height: 1.5; }
+  .gd-out b { display: flex; align-items: center; gap: 6px; margin-bottom: 2px; }
+  .gd-ecard { padding: 13px 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--card-2);
+    font-size: 13px; line-height: 1.5; color: var(--muted); }
+  .gd-ecard b { display: block; margin: 4px 0 2px; color: var(--text); font-size: 13.5px; }
+  .gd-ecard-c { display: flex; align-items: center; min-height: 26px; color: var(--err); font-size: 20px; font-weight: 800;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .gd-ecard-c.warn { color: var(--run); }
+  .gd-ecard-c svg { width: 22px; height: 22px; }
+  .gd-irow { display: grid; grid-template-columns: 20px minmax(0, 1fr); gap: 12px; padding: 11px 14px; font-size: 13.5px; line-height: 1.55; }
+  .gd-irow svg { width: 18px; height: 18px; margin-top: 1px; color: var(--muted); }
+  .apx-dtabs { margin-bottom: 8px; }
+  .gd-calls { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; margin: 6px 0 12px; }
+  .gd-callc { display: grid; align-content: start; gap: 6px; padding: 12px 13px; border: 1px solid var(--border); border-radius: 12px;
+    background: var(--card-2); color: var(--text); cursor: pointer; font: inherit; font-size: 13px; line-height: 1.5; text-align: left; }
+  .gd-callc:hover { border-color: var(--tint); }
+  .gd-callc small { color: var(--muted); font-size: 12px; line-height: 1.5; }
+  .gd-sec .gd-callc code { justify-self: start; font-size: 12px; }
+  .gd-hsteps { list-style: none; counter-reset: gdh; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 10px; margin: 4px 0 12px; padding: 0; }
+  .gd-hsteps > li { counter-increment: gdh; position: relative; padding: 40px 13px 12px; border: 1px solid var(--border);
+    border-radius: 12px; background: var(--card-2); font-size: 13px; line-height: 1.55; }
+  .gd-hsteps > li::before { content: counter(gdh); position: absolute; left: 13px; top: 11px; width: 22px; height: 22px;
+    border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 800; color: #fff;
+    background: var(--accent-soft); border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent); }
   /* ---- The API guide's reference and practice console (apx). The docs are tables in the guide's
      own style; the console beside them sends a real request and shows the real answer. */
   .apx { margin-top: 6px; }
@@ -15284,6 +15397,18 @@ const GD_ICONS = {
   search: '<circle cx="10.8" cy="10.8" r="6.6"/><path d="M15.6 15.6l4.8 4.8"/>',
   zoom: '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>',
   code: '<path d="m8.5 8-4.6 4 4.6 4M15.5 8l4.6 4-4.6 4M13.6 5.2l-3.2 13.6"/>',
+  map: '<path d="M9 4.5 3.5 6.6v13l5.5-2.1 6 2.1 5.5-2.1v-13L15 6.6z"/><path d="M9 4.5v13M15 6.6v13"/>',
+  route: '<circle cx="6" cy="18" r="2.2"/><circle cx="18" cy="6" r="2.2"/><path d="M8.2 18H15a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h6.8"/>',
+  blocks: '<rect x="3.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.6"/><path d="M17 13.5v7M13.5 17h7"/>',
+  book: '<path d="M4.5 5.5a2 2 0 0 1 2-2H19v15H6.5a2 2 0 0 0-2 2z"/><path d="M4.5 20.5a2 2 0 0 1 2-2H19v2H6.5"/><path d="M8.5 7.5h6"/>',
+  lifebuoy: '<circle cx="12" cy="12" r="8.4"/><circle cx="12" cy="12" r="3.6"/><path d="m6.1 6.1 3.4 3.4M14.5 14.5l3.4 3.4M17.9 6.1l-3.4 3.4M9.5 14.5l-3.4 3.4"/>',
+  bolt: '<path d="M13 3 5 13.5h6l-1 7.5 8-10.5h-6z"/>',
+  lock: '<rect x="5" y="10.5" width="14" height="10" rx="2"/><path d="M8 10.5V7.8a4 4 0 0 1 8 0v2.7"/>',
+  clock: '<circle cx="12" cy="12" r="8.4"/><path d="M12 7.5V12l3 2"/>',
+  fork: '<circle cx="7" cy="5.5" r="2"/><circle cx="17" cy="5.5" r="2"/><circle cx="12" cy="18.5" r="2"/><path d="M7 7.5v1.8a3 3 0 0 0 3 3h4a3 3 0 0 0 3-3V7.5M12 12.3v4.2"/>',
+  copy: '<rect x="8.5" y="8.5" width="11" height="11" rx="2"/><path d="M15.5 8.5V6A1.5 1.5 0 0 0 14 4.5H6A1.5 1.5 0 0 0 4.5 6v8A1.5 1.5 0 0 0 6 15.5h2.5"/>',
+  arrow: '<path d="M5 12h14M13 6l6 6-6 6"/>',
+  cross: '<path d="m7 7 10 10M17 7 7 17"/>',
   target: '<circle cx="12" cy="12" r="7.4"/><circle cx="12" cy="12" r="2.4"/><path d="M12 1.8v3M12 19.2v3M1.8 12h3M19.2 12h3"/>',
 };
 function gdSvg(name) {
@@ -15567,7 +15692,7 @@ document.addEventListener('keydown', e => {
 // the copied curl carry it masked or as a placeholder, and nothing stores it.
 // The two calls that start assessments go as a dry run (dry_run) unless that is unticked, and
 // then only after a confirmation.
-const _apx = { ep: 'history', vals: {}, last: [] };
+const _apx = { ep: 'history', vals: {}, last: [], doc: 0 };
 
 function apxCalls() {
   const SC = SCOPE_NOUN;
@@ -15774,10 +15899,15 @@ function apxShow(id) {
       (c.launches ? `<span class="apx-kind live">Starts assessments</span>` : `<span class="apx-kind read">Reads only</span>`) + `</div>` +
     `<p class="apx-what">${c.what}</p>` +
     `<div class="apx-cols"><div class="apx-doc">` +
-      `<h5>Body</h5>` + tbl(['Field', 'Type', 'Meaning'], c.fields.map(f =>
-        [`<code>${f.name}</code>${f.req ? '<span class="apx-req-tag">required</span>' : ''}`, type(f), f.desc])) +
-      `<h5>Answer</h5>` + tbl(['Field', 'Meaning'], c.answer.map(([k, d]) => [`<code>${k}</code>`, d])) +
-      `<h5>When it goes wrong</h5>` + tbl(['Status', 'Means'], errs.map(([k, d]) => [`<code>${k}</code>`, d])) +
+      // One table at a time, beside the form, so the reader is not scrolling past the answer and
+      // the errors to reach the box they are filling in.
+      `<div class="gd-sw-bar apx-dtabs" role="tablist">` + ['Body', 'Answer', 'When it goes wrong'].map((l, k) =>
+        `<button type="button" role="tab" data-apx="doc" data-doc="${k}" aria-selected="${k === _apx.doc}">${l}</button>`).join('') + `</div>` +
+      [tbl(['Field', 'Type', 'Meaning'], c.fields.map(f =>
+         [`<code>${f.name}</code>${f.req ? '<span class="apx-req-tag">required</span>' : ''}`, type(f), f.desc])),
+       tbl(['Field', 'Meaning'], c.answer.map(([k, d]) => [`<code>${k}</code>`, d])),
+       tbl(['Status', 'Means'], errs.map(([k, d]) => [`<code>${k}</code>`, d]))]
+        .map((t, k) => `<div class="apx-dp" data-dp="${k}"${k === _apx.doc ? '' : ' hidden'}>${t}</div>`).join('') +
     `</div><div class="apx-try"><h5>Try it</h5><div class="apx-form">` +
       c.fields.map(f => apxFieldHtml(f, v[f.name])).join('') +
     `</div><h5>Request</h5><pre class="apx-req" id="apxReq"></pre><p class="apx-hint" id="apxReqNote" hidden></p>` +
@@ -15923,7 +16053,12 @@ function apxClick(el) {
   else if (a === 'send') apxSend(el);
   else if (a === 'curl') apxCopy();
   else if (a === 'use') apxUse(el.dataset.to);
-  else if (a === 'jump') { const r = $('#apx'); if (r) r.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+  else if (a === 'doc') apxDoc(+el.dataset.doc);
+}
+function apxDoc(k) {
+  _apx.doc = k;
+  document.querySelectorAll('#apxPane .apx-dtabs [data-doc]').forEach(b => b.setAttribute('aria-selected', String(+b.dataset.doc === k)));
+  document.querySelectorAll('#apxPane .apx-dp').forEach(d => { d.hidden = +d.dataset.dp !== k; });
 }
 
 function buildGuides() {
@@ -16460,51 +16595,93 @@ function buildGuides() {
   // Every request is shown whole, with the real address and the reader's own word for the scope;
   // what they fill in is an amber <placeholder>. Every reader gets it: on Qlik the key is the
   // organisation's, in the portal each person makes their own on the API keys tab.
+  //
+  // Shown in VIEWS (see gdViewsHtml) rather than as one page: it is the longest guide by far, and
+  // read top to bottom it was a wall. Overview / Build the gate (one step at a time) / Recipes (one
+  // tool at a time) / Reference (the console) / Troubleshoot. Nothing was cut to get there; the
+  // detail a first read does not need sits in a Request/Response switch or behind a "more" line.
   const API = esc(API_BASE);
   const ph = t => `<span class="gd-ph">&lt;${t}&gt;</span>`;
   const APPPH = pk('app-id', 'workspace-id');
   const HDRS = `x-api-key: ${ph('your-api-key')}\nContent-Type: application/json`;
+  const ico = gdSvg;
+  const tiles = (...xs) => `<div class="gd-tiles">${xs.map(([i, t, d]) =>
+    `<div class="gd-tile"><span class="gd-tile-i">${ico(i)}</span><b>${t}</b><span>${d}</span></div>`).join('')}</div>`;
+  const more = (summary, body) => `<details class="gd-more"><summary>${summary}</summary><div class="gd-more-b">${body}</div></details>`;
+  const sw = (...panes) => `<div class="gd-sw"><div class="gd-sw-bar" role="tablist">${panes.map(([l], k) =>
+    `<button type="button" role="tab" data-gd-sw="${k}" aria-selected="${k === 0}">${l}</button>`).join('')}</div>` +
+    panes.map(([, b], k) => `<div class="gd-sw-p" data-swp="${k}"${k ? ' hidden' : ''}>${b}</div>`).join('') + `</div>`;
+  const to = (sid, t, extra) => `<button type="button" class="gd-xref" data-gd-to="${sid}"${extra || ''}>${t}</button>`;
+  const pill = (t, k) => `<span class="gd-pill${k ? ' ' + k : ''}">${t}</span>`;
+  const copyBtn = (text, label) => `<button type="button" class="btn-sm gd-copy" data-gd-copy="${esc(text)}">${ico('copy')}<span>${label}</span></button>`;
+  const checks = (...rows) => `<div class="gd-checks">${rows.filter(Boolean).map(([t, d, act], k) =>
+    `<div class="gd-check"><span class="gd-check-n">${k + 1}</span><div><b>${t}</b><span class="d">${d}</span></div><span class="gd-check-act">${act || ''}</span></div>`).join('')}</div>`;
+  const ecards = (...cs) => `<div class="gd-ecards">${cs.filter(Boolean).map(([c, t, d, warnish]) =>
+    `<div class="gd-ecard"><div class="gd-ecard-c${warnish ? ' warn' : ''}">${c}</div><b>${t}</b>${d}</div>`).join('')}</div>`;
+  const irows = (...rs) => `<div class="gd-irows">${rs.filter(Boolean).map(([i, t]) =>
+    `<div class="gd-irow">${ico(i)}<span>${t}</span></div>`).join('')}</div>`;
+  const arrow = `<span class="gd-flow-a">${ico('arrow')}</span>`;
+  // Each call as a card that opens it in Reference: the same three facts as a table row, in a fifth of the height.
+  const callCards = (...cs) => `<div class="gd-calls">${cs.map(([c, what, back]) =>
+    `<button type="button" class="gd-callc" data-gd-to="ref" data-apx-ep="${c}"><code>/data-quality/${c}</code>` +
+    `<span>${what}</span><small>Gives back: ${back}</small></button>`).join('')}</div>`;
+  const hsteps = (...xs) => `<ol class="gd-hsteps">${xs.map(x => `<li>${x}</li>`).join('')}</ol>`;
   G.push({
     id: 'api', cat: 'Automate', icon: 'code', tint: '#f472b6',
     title: 'Use the API in a pipeline', sub: 'Start checks, read the verdict, and gate a Qlik Talend Cloud pipeline on it',
-    keywords: 'api rest http endpoint request integration pipeline quality gate qlik talend cloud automate automation call url loop sleep condition do reload talend studio job trestclient textractjsonfields tloop tsleep tdie management console plan curl postman key x-api-key dqt app id workspace id run by tag rerun result poll history failed records orchestrate personal key dqu expire expiry revoke reference documentation fields try practice console sandbox playground dry run',
+    keywords: 'api rest http endpoint request integration pipeline quality gate qlik talend cloud automate automation call url loop sleep condition do reload talend studio job trestclient textractjsonfields tloop tsleep tdie management console plan curl postman key x-api-key dqt app id workspace id run by tag rerun result poll history failed records orchestrate personal key dqu expire expiry revoke reference documentation fields try practice console sandbox playground dry run troubleshoot',
     open: pk({ tab: 'tagrun', label: 'Open By tag' }, { tab: 'apikeys', label: 'Open API keys' }),
     mount: apxMount,     // the reference's console, drawn once the article is in the page
+    views: [
+      { id: 'ov', label: 'Overview', icon: 'map' },
+      { id: 'gate', label: 'Build the gate', icon: 'route', mode: 'steps' },
+      { id: 'rec', label: 'Recipes', icon: 'blocks', mode: 'tabs', pick: 'Pick your tool' },
+      { id: 'ref', label: 'Reference', icon: 'book' },
+      { id: 'help', label: 'Troubleshoot', icon: 'lifebuoy' },
+    ],
     sections: [
-      { h: 'What it is for', body:
+      // ---------------------------------------------------------------- Overview
+      { view: 'ov', sid: 'what', h: 'What it is for', body:
           p(`Everything this page does goes through a REST API, so your own tools can run checks too. The commonest use is a <b>quality gate</b>: after a pipeline loads data, assess it, and only carry on, by reloading the dashboard or publishing the table, when it passes.`) +
-          list(`<b>Stop a bad load reaching a dashboard.</b> The pipeline waits for the verdict and goes no further on a failure.`,
-               `<b>Check when the data changes, not on a timer.</b> A schedule fires at fixed times; a pipeline step runs the moment new data lands.`,
-               `<b>Take the results elsewhere.</b> Read scores and failing rows into a ticketing tool, a data catalogue or a report.`) },
-      { h: 'Before you start', body:
-          list(pk(`<b>Your organisation's API key.</b> It starts with <code>dqt_</code> and belongs to your organisation alone: the API takes your organisation from the key, so a request can never reach anyone else's data. It is the key in this extension's ${ui('API key')} setting. If that one does not start with <code>dqt_</code>, ask your VISEON contact for your organisation's own. Keep it like a password.`,
-                  `<b>An API key of your own.</b> Create one in ${go('apikeys', 'API keys')}: name it after the pipeline that will use it, and choose when it expires. It starts with <code>dqu_</code> and acts as you, so it reaches your organisation's data and nobody else's, and can do exactly what you can. It is shown once, so copy it then, and keep it like a password. ${showme('apikeys')}`),
-               `<b>The ${SC} id</b>, which the API calls <code>app_id</code>. ${APP_ID ? `This ${SC}'s is <code>${esc(APP_ID)}</code>.` : pk(`It is the id in the app's address, after <code>/app/</code>.`, `Ask your VISEON contact for it.`)}`,
-               `<b>A saved credential profile</b> on each dataset the pipeline will check. Runs started over the API reconnect with it, so no password ever travels in a request. ${see('credential-profiles', 'Credential profiles')}`,
-               `<b>A tag</b> on the datasets a pipeline should check together, such as <code>nightly-sales</code>. ${see('tags', 'Tags')}`) +
-          note(`Every call is a <code>POST</code> to an address under <code>${API}</code>, with two headers: <code>x-api-key</code> carrying the key, and <code>Content-Type: application/json</code>. In the examples, anything shown as ${ph('like-this')} is yours to fill in.`) },
-      { h: 'The main calls', body:
-          table(['Call', 'What it does', 'Gives back'], [
-            ['<code>/data-quality/run-by-tag</code>', 'Assesses every dataset with a tag, in one go. The best fit for a pipeline.', 'A run folder (<code>resultPrefix</code>) for each dataset'],
-            ['<code>/data-quality/rerun-source</code>', 'Assesses one dataset again', 'Its new run folder'],
-            ['<code>/data-quality/result</code>', 'Where a run has got to, and its verdict', 'The state and, once it has finished, the scores'],
-            ['<code>/data-quality/history</code>', `Recent runs in the ${SC}, newest first`, 'Each run with its folder, state and score'],
-            ['<code>/data-quality/failed-records</code>', 'The rows that failed in a run', 'The failing rows, as your failing-record policy allows'],
-          ]) +
-          p(`A pipeline needs three steps: start the checks, wait for the verdict, then carry on or stop.`) +
-          p(`Each call is set out field by field, with a form to try it, in <button type="button" class="gd-xref" data-apx="jump">Reference: try each call</button> at the end of this guide.`) },
-      { h: 'Step 1: start the checks', body:
-          p(`Assess every dataset carrying a tag:`) +
-          code(`POST ${API}/data-quality/run-by-tag
+          tiles(['shield', 'Stop a bad load reaching a dashboard', 'The pipeline waits for the verdict and goes no further on a failure.'],
+                ['bolt', 'Check when the data changes, not on a timer', 'A schedule fires at fixed times; a pipeline step runs the moment new data lands.'],
+                ['share', 'Take the results elsewhere', 'Read scores and failing rows into a ticketing tool, a data catalogue or a report.']) },
+      { view: 'ov', sid: 'flow', h: 'How the gate works', body:
+          `<div class="gd-flow"><div class="gd-flow-n"><small>Your pipeline</small>Loads data</div>${arrow}` +
+          `<button type="button" class="gd-flow-n" data-gd-to="step1"><small>Step 1</small>Start the checks</button>${arrow}` +
+          `<button type="button" class="gd-flow-n" data-gd-to="step2"><small>Step 2</small>Wait for the verdict</button>${arrow}` +
+          `<button type="button" class="gd-flow-n" data-gd-to="step3"><small>Step 3</small>Carry on or stop</button>${arrow}` +
+          `<div class="gd-flow-out"><span class="ok">${ico('check')}Pass: carry on</span><span class="bad">${ico('cross')}Fail: stop and alert</span></div></div>` +
+          p(`A pipeline needs three steps: start the checks, wait for the verdict, then carry on or stop. Pick a step to open it.`) },
+      { view: 'ov', sid: 'before', h: 'Before you start', body:
+          checks(pk([`Your organisation's API key`, `It starts with <code>dqt_</code> and belongs to your organisation alone: the API takes your organisation from the key, so a request can never reach anyone else's data. It is the key in this extension's ${ui('API key')} setting. If that one does not start with <code>dqt_</code>, ask your VISEON contact for your organisation's own. Keep it like a password.`],
+                    [`An API key of your own`, `Create one in ${go('apikeys', 'API keys')}: name it after the pipeline that will use it, and choose when it expires. It starts with <code>dqu_</code> and acts as you, so it reaches your organisation's data and nobody else's, and can do exactly what you can. It is shown once, so copy it then, and keep it like a password.`, showme('apikeys')]),
+                 [`The ${SC} id`, `The API calls it <code>app_id</code>. ${APP_ID ? `This ${SC}'s is <code>${esc(APP_ID)}</code>.` : pk(`It is the id in the app's address, after <code>/app/</code>.`, `Ask your VISEON contact for it.`)}`,
+                  APP_ID ? copyBtn(APP_ID, 'Copy') : ''],
+                 [`A saved credential profile`, `On each dataset the pipeline will check. Runs started over the API reconnect with it, so no password ever travels in a request.`, see('credential-profiles', 'Credential profiles')],
+                 [`A tag`, `On the datasets a pipeline should check together, such as <code>nightly-sales</code>.`, see('tags', 'Tags')]) +
+          `<div class="gd-shape-h">Every call looks like this</div>` +
+          `<pre class="gd-shape"><code>POST ${API}<span class="gd-dim">/data-quality/&lt;call&gt;</span>\n${HDRS}</code></pre>` +
+          `<div class="gd-shape-f"><span>Every call is a <code>POST</code> to an address under <code>${API}</code>, with two headers: <code>x-api-key</code> carrying the key, and <code>Content-Type: application/json</code>. In the examples, anything shown as ${ph('like-this')} is yours to fill in.</span>${copyBtn(API_BASE, 'Copy base URL')}</div>` },
+      { view: 'ov', sid: 'calls', h: 'The main calls', body:
+          callCards(['run-by-tag', 'Assesses every dataset with a tag, in one go. The best fit for a pipeline.', 'a run folder (<code>resultPrefix</code>) for each dataset'],
+                    ['rerun-source', 'Assesses one dataset again.', 'its new run folder'],
+                    ['result', 'Where a run has got to, and its verdict.', 'the state and, once it has finished, the scores'],
+                    ['history', `Recent runs in the ${SC}, newest first.`, 'each run with its folder, state and score'],
+                    ['failed-records', 'The rows that failed in a run.', 'the failing rows, as your failing-record policy allows']) +
+          p(`Pick a call to see it field by field, with a form to try it, in ${to('ref', 'Reference')}.`) },
+
+      // ---------------------------------------------------------------- Build the gate
+      { view: 'gate', sid: 'step1', tab: 'Start the checks', h: 'Step 1: start the checks', body:
+          p(`Assess every dataset carrying a tag. It answers at once, while the checks run, with one entry per dataset.`) +
+          sw(['Request', code(`POST ${API}/data-quality/run-by-tag
 ${HDRS}
 
 {
   "app_id": "${ph(APPPH)}",
   "tag": "${ph('tag')}",
   "notify_email": "${ph('who-to-alert, optional')}"
-}`) +
-          p(`It answers at once, while the checks run, with one entry per dataset:`) +
-          code(`{
+}`)], ['Response', code(`{
   "ok": true,
   "runId": "2026-10-01T06-00-12Z-3f9a1c",
   "launchedCount": 2,
@@ -16516,30 +16693,33 @@ ${HDRS}
     ...
   ],
   "skipped": []
-}`) +
-          p(`Keep each <code>resultPrefix</code>: it is how you ask after that run. <code>skipped</code> lists any tagged dataset that could not run, usually because it has no saved credential profile.`) +
-          p(`To check a request without starting anything, add <code>"dry_run": true</code>. The answer then lists what would run (<code>wouldLaunch</code>) and what would be skipped, and nothing starts. <code>rerun-source</code> takes it too.`) +
-          p(`To assess a single dataset again instead, send the folder of any earlier run of it (see ${ui('Find a run')} below):`) +
-          code(`POST ${API}/data-quality/rerun-source
+}`)]) +
+          note(`Keep each <code>resultPrefix</code>: it is how you ask after that run in step 2. <code>skipped</code> lists any tagged dataset that could not run, usually because it has no saved credential profile.`) +
+          more('Test first, or re-run one dataset',
+               p(`To check a request without starting anything, add <code>"dry_run": true</code>. The answer then lists what would run (<code>wouldLaunch</code>) and what would be skipped, and nothing starts. <code>rerun-source</code> takes it too.`) +
+               p(`To assess a single dataset again instead, send the folder of any earlier run of it (step 3 shows how to find one):`) +
+               code(`POST ${API}/data-quality/rerun-source
 ${HDRS}
 
 { "result_prefix": "${ph('resultPrefix-of-an-earlier-run')}" }`) +
-          p(`It answers <code>{"rerun": true, "runId": ..., "resultPrefix": ...}</code>, or <code>{"rerun": false, "reason": "no_saved_credentials"}</code> when the dataset has no saved connection.`) },
-      { h: 'Step 2: wait for the verdict', body:
-          p(`Ask after each run every 15 to 30 seconds:`) +
+               p(`It answers <code>{"rerun": true, "runId": ..., "resultPrefix": ...}</code>, or <code>{"rerun": false, "reason": "no_saved_credentials"}</code> when the dataset has no saved connection.`)) },
+      { view: 'gate', sid: 'step2', tab: 'Wait for the verdict', h: 'Step 2: wait for the verdict', body:
+          p(`Ask after each run every 15 to 30 seconds until it has finished. Give up on one that has not finished within an hour, and report it.`) +
           code(`POST ${API}/data-quality/result
 ${HDRS}
 
 { "result_prefix": "${ph('resultPrefix')}" }`) +
           table(['state', 'Means', 'So'], [
-            ['<code>PENDING</code>, <code>RUNNING</code>', 'Still working', 'Ask again shortly'],
-            ['<code>SUCCEEDED</code>', 'Assessed, and the data passed the quality gate', 'Carry on'],
-            ['<code>GATE_FAILED</code>', 'Assessed, and the data failed the gate', 'Stop, or take the failure path'],
-            ['<code>FAILED</code>', 'The run itself broke', 'Stop, and look at the run'],
-            ['<code>ERROR</code>', 'The source could not be reached: credentials, host or permissions', 'Stop, and check the connection'],
+            [`${pill('PENDING')} ${pill('RUNNING')}`, 'Still working', 'Ask again shortly'],
+            [pill('SUCCEEDED', 'ok'), 'Assessed, and the data passed the quality gate', 'Carry on'],
+            [pill('GATE_FAILED', 'bad'), 'Assessed, and the data failed the gate', 'Stop, or take the failure path'],
+            [pill('FAILED', 'warn'), 'The run itself broke', 'Stop, and look at the run'],
+            [pill('ERROR', 'warn'), 'The source could not be reached: credentials, host or permissions', 'Stop, and check the connection'],
           ]) +
-          p(`Once it has finished, the answer also carries the scores, for a step that wants more than pass or fail:`) +
-          code(`{
+          warn(`A high score can still fail the gate: a blocker such as a broken key fails it whatever the average. Branch on <code>state</code>, not on the score.`) +
+          more('What a finished answer looks like',
+               p(`Once it has finished, the answer also carries the scores, for a step that wants more than pass or fail:`) +
+               code(`{
   "state": "GATE_FAILED",
   "summary": {
     "dataset": "orders",
@@ -16548,59 +16728,74 @@ ${HDRS}
     "compliance": { "grade": ..., "fail_controls": [ ... ] }
   },
   "files": [ ...links to the full report... ]
-}`) +
-          note(`A high score can still fail the gate: a blocker such as a broken key fails it whatever the average. Branch on <code>state</code>, not on the score.`) },
-      { h: 'Step 3: carry on, or stop', body:
-          p(`On <code>SUCCEEDED</code>, let the pipeline continue. On anything else, stop it and tell someone. To see what failed, ask for the run's failing rows:`) +
+}`)) },
+      { view: 'gate', sid: 'step3', tab: 'Carry on or stop', h: 'Step 3: carry on, or stop', body:
+          `<div class="gd-outs"><div class="gd-out ok"><b>${ico('check')}SUCCEEDED</b>Let the pipeline continue: reload the dashboard, or publish the table.</div>` +
+          `<div class="gd-out bad"><b>${ico('cross')}Anything else</b>Stop it, and tell someone what failed.</div></div>` +
+          p(`To see what failed, ask for the run's failing rows:`) +
           code(`POST ${API}/data-quality/failed-records
 ${HDRS}
 
-{ "result_prefix": "${ph('resultPrefix')}", "limit": 300 }`) },
-      { h: 'Find a run', body:
-          p(`To find a dataset's latest run folder, for example for <code>rerun-source</code>, list the ${SC}'s recent runs:`) +
-          code(`POST ${API}/data-quality/history
+{ "result_prefix": "${ph('resultPrefix')}", "limit": 300 }`) +
+          more(`Lost a run folder? Find a dataset's latest run`,
+               p(`To find a dataset's latest run folder, for example for <code>rerun-source</code>, list the ${SC}'s recent runs:`) +
+               code(`POST ${API}/data-quality/history
 ${HDRS}
 
 { "app_id": "${ph(APPPH)}", "limit": 20 }`) +
-          p(`Each entry in <code>runs</code> has its <code>dataset</code>, <code>resultPrefix</code>, <code>state</code> and <code>overallScore</code>.`) },
-      { h: 'Good to know', body: list(
-          `<b>401</b> means the key is mistyped${pk(' or has been revoked', ', has expired or has been revoked')}.${pk('', ` <b>403</b> means its owner no longer has access: they have left the organisation or been deactivated.`)} <b>429</b> means too many runs are in progress already: wait 30 to 60 seconds and try again.`,
-          `Give up on a run that has not finished within an hour, and report it, rather than waiting for ever.`,
-          P ? `Runs started with your key count as started by you. ${ADMIN ? `As an admin, yours are approved on arrival, as when you start one here; a member's arrive as drafts for approval.` : `They arrive as drafts for approval, as when you start one here, which changes nothing about the verdict.`}` : null,
-          pk(`The key reaches every ${SC} in your organisation, so give it only to pipelines you would trust with all of them, and store it where your tool keeps its secrets.`,
-             `The key can do anything you can, in every ${SC} of your organisation, so give it only to pipelines you would trust with your own access, and store it where your tool keeps its secrets. Give each pipeline its own key, so revoking one stops only that pipeline, and create a replacement before a key expires.`)) },
-      { h: 'Example: stop a bad load reaching a dashboard', body:
+               p(`Each entry in <code>runs</code> has its <code>dataset</code>, <code>resultPrefix</code>, <code>state</code> and <code>overallScore</code>.`)) },
+
+      // ---------------------------------------------------------------- Recipes
+      { view: 'rec', lead: true, sid: 'example', h: 'Example: stop a bad load reaching a dashboard', body:
           p(`Every night a pipeline loads the day's orders into Snowflake, and the Sales dashboard reloads in the morning. When a load brings in orders with no customer, nobody notices until a manager asks why revenue dropped.`) +
-          steps(`Tag the orders datasets <code>nightly-sales</code>, and save their connection as a credential profile.`,
-                `After the load, call <code>run-by-tag</code> with that tag.`,
-                `Ask after each run until every one has finished.`,
-                `If every one <code>SUCCEEDED</code>, reload the dashboard. If any did not, skip the reload and alert the dataset's owner. The dashboard keeps yesterday's good data, and the owner gets the failing rows.`) },
-      { h: 'In Qlik Talend Cloud, with Qlik Automate', body:
+          hsteps(`Tag the orders datasets <code>nightly-sales</code>, and save their connection as a credential profile.`,
+                 `After the load, call <code>run-by-tag</code> with that tag.`,
+                 `Ask after each run until every one has finished.`,
+                 `If every one <code>SUCCEEDED</code>, reload the dashboard. If any did not, skip the reload and alert the dataset's owner. The dashboard keeps yesterday's good data, and the owner gets the failing rows.`) },
+      { view: 'rec', sid: 'automate', tab: 'Qlik Automate', h: 'In Qlik Talend Cloud, with Qlik Automate', body:
           p(`An automation that runs the load, checks it, and reloads the app only when it passes:`) +
           steps(`<b>Start</b> the automation on a schedule, or at the end of your pipeline.`,
                 `<b>Start Tasks and wait for completion</b>, from the Qlik Talend Data Integration connector, runs the data task that loads the orders.`,
-                `<b>Call URL</b>: <code>POST</code> to <code>${API}/data-quality/run-by-tag</code>, with the two headers and the body from Step 1.`,
+                `<b>Call URL</b>: <code>POST</code> to <code>${API}/data-quality/run-by-tag</code>, with the two headers and the body from step 1.`,
                 `<b>Loop</b> over <code>launched</code> in its answer. Inside it, a <b>Call URL</b> to <code>/data-quality/result</code> with that item's <code>resultPrefix</code>, a <b>Condition</b> on <code>state</code>, and a <b>Sleep</b> of 30 seconds while it is still <code>PENDING</code> or <code>RUNNING</code>. Allow up to an hour.`,
                 `<b>Condition</b>: if every state is <code>SUCCEEDED</code>, <b>Do Reload</b>, from the Qlik Cloud Services connector, reloads the Sales app.`,
                 `Otherwise, send an email, or a Teams or Slack message, naming the datasets that failed, and do not reload.`) +
           warn(`The key sits in the Call URL block's headers, so anyone who can edit the automation can see it. Keep its editors to the people who should hold the key.`) },
-      { h: 'In Qlik Talend Cloud, with a Talend job', body:
+      { view: 'rec', sid: 'talend', tab: 'Talend job', h: 'In Qlik Talend Cloud, with a Talend job', body:
           p(`The same gate as a Talend Studio job, run as a step in a Talend Management Console plan:`) +
           steps(`Hold the key in a <b>password</b> context variable, such as <code>context.dq_api_key</code>, so it is stored encrypted rather than in the job.`,
-                `<b>tRESTClient</b>: <code>POST</code> to <code>${API}/data-quality/run-by-tag</code>, with an <code>x-api-key</code> header from the context variable and the JSON body from Step 1.`,
+                `<b>tRESTClient</b>: <code>POST</code> to <code>${API}/data-quality/run-by-tag</code>, with an <code>x-api-key</code> header from the context variable and the JSON body from step 1.`,
                 `<b>tExtractJSONFields</b> reads <code>launched[*].resultPrefix</code> from the answer, and <b>tFlowToIterate</b> takes the runs one at a time.`,
                 `For each, a <b>tLoop</b> around a <b>tRESTClient</b> to <code>/data-quality/result</code> and a <b>tSleep</b> of 30 seconds, until <code>state</code> is no longer <code>PENDING</code> or <code>RUNNING</code>.`,
-                `If any state is not <code>SUCCEEDED</code>, <b>tDie</b> fails the job, naming the dataset.`,
-                `In the plan, put the job after the load and before the step that publishes or reloads. A failed job stops the plan there.`) +
-          tip(`Try a call from a terminal first, then copy it into the tool. With curl:`) +
+                `If any state is not <code>SUCCEEDED</code>, <b>tDie</b> fails the job, naming the dataset.`) +
+          tip(`In the plan, put the job after the load and before the step that publishes or reloads. A failed job stops the plan there.`) },
+      { view: 'rec', sid: 'curl', tab: 'Any tool (curl)', h: 'From any tool, with curl', body:
+          p(`Try a call from a terminal first, then copy it into the tool:`) +
           code(`curl -X POST "${API}/data-quality/run-by-tag" &#92;
   -H "x-api-key: ${ph('your-api-key')}" &#92;
   -H "Content-Type: application/json" &#92;
-  -d '{"app_id": "${ph(APPPH)}", "tag": "${ph('tag')}"}'`) },
-      { h: 'Reference: try each call', body:
-          p(`Each call in full: what it takes, what it gives back and what can go wrong, beside a form that sends a real request and shows you the real answer. Start with ${ui('history')}: it only reads. Then pick one of its runs to try ${ui('result')} and ${ui('failed-records')} on.`) +
+  -d '{"app_id": "${ph(APPPH)}", "tag": "${ph('tag')}"}'`) +
+          p(`Then ask after each run with <code>/data-quality/result</code> and branch on its <code>state</code>, as in ${to('step2', 'Build the gate')}.`) },
+
+      // ---------------------------------------------------------------- Reference
+      { view: 'ref', sid: 'ref', h: 'Reference: try each call', body:
+          p(`Each call in full, beside a form that sends a real request and shows you the real answer. Start with ${ui('history')}: it only reads. Then pick one of its runs to try ${ui('result')} and ${ui('failed-records')} on.`) +
           note(`${ui('run-by-tag')} and ${ui('rerun-source')} start assessments, so here they go as a <b>dry run</b> unless you untick it: the API checks everything a real call would, says what would run, and starts nothing.`) +
           `<div class="apx" id="apx"></div>` },
+
+      // ---------------------------------------------------------------- Troubleshoot
+      { view: 'help', sid: 'fails', h: 'If a call fails', body:
+          ecards(['401', 'The key was refused', pk(`The key is mistyped, or has been revoked.`, `The key is mistyped, has expired or has been revoked. Check it, or make a new one in ${go('apikeys', 'API keys')}.`)],
+                 P ? ['403', 'Its owner no longer has access', `The key acts as the person who made it, and they have left the organisation or been deactivated. Use a key of someone who still has access.`] : null,
+                 ['429', 'Too many runs at once', `Too many runs are in progress already: wait 30 to 60 seconds and try again.`, true],
+                 [ico('clock'), 'Still running after an hour', `Give up on a run that has not finished within an hour, and report it, rather than waiting for ever.`, true]) },
+      { view: 'help', sid: 'care', h: pk('Looking after the key', 'Looking after your key'), body:
+          irows(['key', pk(`The key reaches every ${SC} in your organisation, so give it only to pipelines you would trust with all of them.`,
+                           `The key can do anything you can, in every ${SC} of your organisation, so give it only to pipelines you would trust with your own access.`)],
+                ['lock', `Store it where your tool keeps its secrets.`],
+                P ? ['fork', `Give each pipeline its own key, so revoking one stops only that pipeline.`] : null,
+                P ? ['calendar', `Create a replacement before a key expires.`] : null,
+                P ? ['user', `Runs started with your key count as started by you. ${ADMIN ? `As an admin, yours are approved on arrival, as when you start one here; a member's arrive as drafts for approval.` : `They arrive as drafts for approval, as when you start one here, which changes nothing about the verdict.`}`] : null) },
     ],
   });
 
@@ -17019,10 +17214,11 @@ function openGuide(id, opts) {
         `<div class="gd-ahead-main"><p class="gd-kick">${esc(g.cat)}<span class="gd-for">${forWho}</span></p>` +
           `<h3 id="gdTitle" tabindex="-1">${esc(g.title)}</h3><p class="gd-lede">${esc(g.sub)}</p></div>` +
         `<div class="gd-ahead-acts">${act}<button type="button" class="btn-sm" data-gd-close="1">Close</button></div></header>` +
-      `<nav class="gd-toc" aria-label="In this guide"><span class="gd-toc-l">In this guide</span>` +
-        g.sections.map((s, n) => `<button type="button" data-gd-jump="${n}">${s.h}</button>`).join('') + `</nav>` +
-      `<div class="gd-body">${g.sections.map((s, n) =>
-        `<section class="gd-sec" id="gd-sec-${n}"><h4><span class="gd-num">${n + 1}</span>${s.h}</h4>${s.body}</section>`).join('')}</div>` +
+      (g.views ? gdViewsHtml(g) :
+        `<nav class="gd-toc" aria-label="In this guide"><span class="gd-toc-l">In this guide</span>` +
+          g.sections.map((s, n) => `<button type="button" data-gd-jump="${n}">${s.h}</button>`).join('') + `</nav>` +
+        `<div class="gd-body">${g.sections.map((s, n) =>
+          `<section class="gd-sec" id="gd-sec-${n}"><h4><span class="gd-num">${n + 1}</span>${s.h}</h4>${s.body}</section>`).join('')}</div>`) +
       `<footer class="gd-foot">` +
         (prev ? `<button type="button" class="gd-step" data-gd-open="${esc(prev.id)}"><span>Previous</span>← ${esc(prev.title)}</button>` : '<span></span>') +
         (next ? `<button type="button" class="gd-step next" data-gd-open="${esc(next.id)}"><span>Next</span>${esc(next.title)} →</button>` : '<span></span>') +
@@ -17032,6 +17228,80 @@ function openGuide(id, opts) {
     box.scrollIntoView({ behavior: 'smooth', block: 'start' });
     const h = $('#gdTitle'); if (h) h.focus({ preventScroll: true });
   }
+}
+// A guide with `views` is shown one part at a time rather than as one long page: a tab per part,
+// and inside a part its sections either all at once ('stack'), one step at a time with Back and
+// Next ('steps'), or one choice at a time from a picker ('tabs', with any `lead` section above
+// the picker). Every section stays in the page, hidden or not, so the search, Show me, the tests
+// and a cross-link (data-gd-to, by section id) all reach the whole guide; only the screen changes.
+function gdViewsHtml(g) {
+  const all = g.sections.map((s, n) => ({ s, n }));
+  const nav = `<nav class="gd-views" role="tablist" aria-label="In this guide">` +
+    g.views.map((v, k) => `<button type="button" role="tab" class="gd-vtab" data-gd-view="${v.id}" aria-selected="${k === 0}">` +
+                          `${gdSvg(v.icon)}<span>${v.label}</span></button>`).join('') + `</nav>`;
+  const views = g.views.map((v, k) => {
+    const mode = v.mode || 'stack';
+    const mine = all.filter(x => x.s.view === v.id);
+    const lead = mode === 'tabs' ? mine.filter(x => x.s.lead) : [];
+    const panes = mode === 'stack' ? [] : mine.filter(x => !x.s.lead);
+    const nextView = g.views[k + 1];
+    const sec = (x, j, paned) => {
+      const last = j === panes.length - 1;
+      const nav2 = mode !== 'steps' ? '' : `<div class="gd-stepnav">` +
+        (j > 0 ? `<button type="button" class="btn-sm" data-gd-pane="${j - 1}">← Back</button>` : '<span></span>') +
+        (!last ? `<button type="button" class="btn-sm gd-next" data-gd-pane="${j + 1}">Next: ${panes[j + 1].s.tab || panes[j + 1].s.h} →</button>`
+               : nextView ? `<button type="button" class="btn-sm gd-next" data-gd-view="${nextView.id}">Next: ${nextView.label} →</button>` : '<span></span>') +
+        `</div>`;
+      return `<section class="gd-sec gd-vsec" id="gd-sec-${x.n}"${x.s.sid ? ` data-sid="${x.s.sid}"` : ''}` +
+             (paned ? ` data-pane="${j}"${j ? ' hidden' : ''}` : '') + `><h4>${x.s.h}</h4>${x.s.body}${nav2}</section>`;
+    };
+    const bar = cls => `<div class="${cls}" role="tablist">${panes.map((x, j) =>
+      `<button type="button" role="tab" data-gd-pane="${j}" aria-selected="${j === 0}">` +
+      (cls === 'gd-stepbar' ? `<span class="gd-stepn">${j + 1}</span>` : '') + `${x.s.tab || x.s.h}</button>`).join('')}</div>`;
+    const inner = mode === 'steps' ? bar('gd-stepbar') + panes.map((x, j) => sec(x, j, true)).join('')
+      : mode === 'tabs' ? lead.map(x => sec(x, 0, false)).join('') + `<div class="gd-pickl">${v.pick || 'Pick one'}</div>` +
+                          bar('gd-pick') + panes.map((x, j) => sec(x, j, true)).join('')
+      : mine.map(x => sec(x, 0, false)).join('');
+    return `<div class="gd-view" data-view="${v.id}" data-mode="${mode}" role="tabpanel"${k ? ' hidden' : ''}>${inner}</div>`;
+  }).join('');
+  return nav + `<div class="gd-body gd-vbody">${views}</div>`;
+}
+function gdView(id, scroll) {
+  const art = document.querySelector('#gdGuide .gd-article'); if (!art) return;
+  art.querySelectorAll('.gd-vtab').forEach(t => t.setAttribute('aria-selected', String(t.dataset.gdView === id)));
+  art.querySelectorAll('.gd-view').forEach(v => { v.hidden = v.dataset.view !== id; });
+  const nav = art.querySelector('.gd-views');
+  if (scroll && nav) nav.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+function gdPane(view, j, scroll) {
+  if (!view) return;
+  view.querySelectorAll(':scope > [data-pane]').forEach(p => { p.hidden = +p.dataset.pane !== j; });
+  view.querySelectorAll(':scope > .gd-stepbar [data-gd-pane], :scope > .gd-pick [data-gd-pane]')
+    .forEach(b => b.setAttribute('aria-selected', String(+b.dataset.gdPane === j)));
+  // From the Back / Next under a long step: bring its top back into view, not leave the reader
+  // at the bottom of the next one.
+  const bar = view.querySelector(':scope > .gd-stepbar, :scope > .gd-pick');
+  if (scroll && bar) bar.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+// Opens whichever view, step or tab holds the section, and returns it.
+function gdGoTo(sid) {
+  const s = document.querySelector(`#gdGuide .gd-sec[data-sid="${CSS.escape(sid)}"]`); if (!s) return null;
+  const view = s.closest('.gd-view');
+  if (view) {
+    gdView(view.dataset.view);
+    if (s.dataset.pane != null) gdPane(view, +s.dataset.pane);
+  }
+  return s;
+}
+function gdSwitch(btn) {
+  const box = btn.closest('.gd-sw'), k = +btn.dataset.gdSw;
+  box.querySelectorAll(':scope > .gd-sw-bar [data-gd-sw]').forEach(b => b.setAttribute('aria-selected', String(+b.dataset.gdSw === k)));
+  box.querySelectorAll(':scope > .gd-sw-p').forEach(p => { p.hidden = +p.dataset.swp !== k; });
+}
+async function gdCopy(btn) {
+  const label = btn.querySelector('span'), was = label ? label.textContent : '';
+  const ok = await agtCopyText(btn.dataset.gdCopy || '');
+  if (label) { label.textContent = ok ? 'Copied' : 'Could not copy'; setTimeout(() => { label.textContent = was; }, 1400); }
 }
 function closeGuide() {
   _gdCurrent = '';
@@ -17089,6 +17359,22 @@ function initGuidesTab() {
     $('#gdGuide').addEventListener('click', e => {
       const ax = e.target.closest('[data-apx]');
       if (ax) { apxClick(ax); return; }
+      // A guide in views: its parts, steps, picks, cross-links, switches and copy buttons.
+      const vw = e.target.closest('[data-gd-view]');
+      if (vw) { gdView(vw.dataset.gdView, !!vw.closest('.gd-stepnav')); return; }
+      const pn = e.target.closest('[data-gd-pane]');
+      if (pn) { gdPane(pn.closest('.gd-view'), +pn.dataset.gdPane, !!pn.closest('.gd-stepnav')); return; }
+      const toEl = e.target.closest('[data-gd-to]');
+      if (toEl) {
+        const sec = gdGoTo(toEl.dataset.gdTo);
+        if (toEl.dataset.apxEp) apxShow(toEl.dataset.apxEp);
+        if (sec) sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return;
+      }
+      const swb = e.target.closest('[data-gd-sw]');
+      if (swb) { gdSwitch(swb); return; }
+      const cp = e.target.closest('[data-gd-copy]');
+      if (cp) { gdCopy(cp); return; }
       const zoom = e.target.closest('[data-gd-zoom]');
       if (zoom) {
         const cap = zoom.closest('figure').querySelector('figcaption');
