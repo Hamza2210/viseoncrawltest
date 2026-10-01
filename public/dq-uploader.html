@@ -2131,7 +2131,7 @@
     transition: transform .13s ease, box-shadow .16s ease,
       background-color .13s, border-color .13s, color .13s;
   }
-  button:not(.tab):not(.side-item):not(.subtab):not(.linkbtn):not(.dchip):not(.apptab):not(.x-close):not(.banner-x):not(.mzoom):not(.sched-caret):not(.inc-kebab):not(.inc-menu-item):not(.gd-clear):not(:disabled):hover,
+  button:not(.tab):not(.side-item):not(.subtab):not(.linkbtn):not(.dchip):not(.apptab):not(.x-close):not(.banner-x):not(.mzoom):not(.sched-caret):not(.inc-kebab):not(.inc-menu-item):not(.gd-clear):not(.gd-tocb):not(:disabled):hover,
   .btn-sm:not(:disabled):hover { transform: translateY(-1px) scale(1.03);
     box-shadow: 0 6px 18px color-mix(in srgb, var(--accent2) 26%, transparent); }
   button:not(:disabled):active, .btn-sm:not(:disabled):active { transform: translateY(0) scale(.98); box-shadow: none; }
@@ -2709,6 +2709,38 @@
 
   .gd-article { --tint: var(--accent); background: var(--card); border: 1px solid var(--border); border-radius: 16px; overflow: hidden;
     box-shadow: var(--shadow); }
+  /* ---- The guide's layout. It used to fill the panel's width with its text capped at 86
+     characters, so on a wide screen half of every guide was empty space on the right. Its content
+     now sits in one centred composition, --gd-w wide: a reading column, with the "In this guide"
+     list as a sticky rail beside it once the article is wide enough for both (narrower, it is the
+     bar along the top, as before), and the header and footer lined up to the same edges. A guide
+     in views has no rail, since its tabs are its navigation, and a wider composition for its grids.
+     overflow: clip rather than hidden: hidden makes the article a scroll container, and the rail
+     would then stick to the article, which never scrolls, instead of to the page. */
+  .gd-article { --gd-w: 1036px; container: gdart / inline-size; overflow: clip; }
+  .gd-article.gd-has-views { --gd-w: 1180px; }
+  .gd-article > .gd-ahead, .gd-article > .gd-foot { padding-inline: max(24px, calc((100% - var(--gd-w)) / 2)); }
+  .gd-tocn { display: none; }
+  .gd-has-views .gd-views, .gd-has-views .gd-vbody { box-sizing: border-box; width: min(100% - 48px, var(--gd-w)); margin-inline: auto; }
+  .gd-has-views .gd-vbody { padding-inline: 0; }
+  @container gdart (min-width: 1000px) {
+    .gd-main { display: grid; grid-template-columns: minmax(0, 1fr) 200px; gap: 36px; align-items: start;
+      width: min(100% - 48px, var(--gd-w)); margin: 0 auto; }
+    .gd-main > .gd-body { grid-column: 1; grid-row: 1; padding: 4px 0 12px; }
+    /* Below the sticky blocker bar and the portal's fixed Admin button, which both sit at the top. */
+    .gd-main > .gd-toc { grid-column: 2; grid-row: 1; position: sticky; top: 72px; display: grid; gap: 2px;
+      padding: 22px 0 16px; border: 0; background: none; }
+    .gd-main > .gd-toc .gd-toc-l { margin: 0 0 8px 12px; }
+    .gd-main > .gd-toc button { display: flex; align-items: baseline; gap: 9px; padding: 6px 10px 6px 12px; text-align: left;
+      border: 0; border-left: 2px solid var(--border); border-radius: 0; color: var(--muted); line-height: 1.35; }
+    .gd-main > .gd-toc button:hover { color: var(--text); border-left-color: color-mix(in srgb, var(--tint) 60%, var(--border)); }
+    .gd-main > .gd-toc button.on { color: var(--text); font-weight: 600; border-left-color: var(--tint);
+      background: color-mix(in srgb, var(--tint) 9%, transparent); }
+    .gd-main > .gd-toc .gd-tocn { display: inline; min-width: 12px; font-size: 11px; font-weight: 800; color: var(--tint); }
+    .gd-main .gd-sec { scroll-margin-top: 72px; }
+    /* The column is the measure now: prose, lists, callouts and captions run to its edge. */
+    .gd-main .gd-sec p, .gd-main .gd-list, .gd-main .gd-steps, .gd-main .gd-call, .gd-main .gd-fig figcaption { max-width: none; }
+  }
   .gd-ahead { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 18px; align-items: center; padding: 22px 24px;
     border-bottom: 1px solid var(--border);
     background: linear-gradient(135deg, color-mix(in srgb, var(--tint) 17%, transparent), transparent 62%); }
@@ -2738,14 +2770,14 @@
   .gd-sec h4 { display: flex; align-items: center; gap: 10px; margin: 0 0 11px; font-size: 16px; font-weight: 700; }
   .gd-num { flex: none; width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; font-size: 12.5px; font-weight: 800;
     color: var(--tint); background: color-mix(in srgb, var(--tint) 18%, var(--card)); border: 1px solid color-mix(in srgb, var(--tint) 35%, transparent); }
-  .gd-sec p { margin: 0 0 10px; max-width: 86ch; font-size: 14px; line-height: 1.65; }
+  .gd-sec p { margin: 0 0 10px; max-width: 100ch; font-size: 14px; line-height: 1.65; }
   .gd-sec code { padding: 1px 6px; border-radius: 5px; background: var(--code-bg); color: var(--code-fg); font-size: 12.5px; }
-  .gd-steps { list-style: none; counter-reset: gd; margin: 2px 0 12px; padding: 0; display: grid; gap: 10px; max-width: 90ch; }
+  .gd-steps { list-style: none; counter-reset: gd; margin: 2px 0 12px; padding: 0; display: grid; gap: 10px; max-width: 100ch; }
   .gd-steps > li { counter-increment: gd; position: relative; padding: 2px 0 0 38px; font-size: 14px; line-height: 1.6; }
   .gd-steps > li::before { content: counter(gd); position: absolute; left: 0; top: 0; width: 26px; height: 26px; border-radius: 50%;
     display: grid; place-items: center; font-size: 12.5px; font-weight: 700; color: #fff; background: var(--accent-soft);
     border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent); }
-  .gd-list { list-style: none; margin: 2px 0 12px; padding: 0; display: grid; gap: 8px; max-width: 90ch; }
+  .gd-list { list-style: none; margin: 2px 0 12px; padding: 0; display: grid; gap: 8px; max-width: 100ch; }
   .gd-list > li { position: relative; padding-left: 20px; font-size: 14px; line-height: 1.6; }
   .gd-list > li::before { content: ""; position: absolute; left: 4px; top: .62em; width: 7px; height: 7px; border-radius: 2px;
     background: var(--tint); transform: rotate(45deg); }
@@ -2755,7 +2787,7 @@
     text-decoration: underline; text-underline-offset: 3px; text-decoration-color: color-mix(in srgb, var(--accent) 45%, transparent); }
   .gd-go:hover, .gd-xref:hover { text-decoration-color: var(--accent); }
   .gd-xref::after { content: " ›"; text-decoration: none; }
-  .gd-call { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px; margin: 6px 0 12px; padding: 12px 14px; max-width: 90ch;
+  .gd-call { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px; margin: 6px 0 12px; padding: 12px 14px; max-width: 100ch;
     border-radius: 10px; border: 1px solid; font-size: 13.5px; line-height: 1.6; }
   .gd-call-h { padding-top: 2px; font-size: 10.5px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; white-space: nowrap; }
   .gd-call.tip { background: var(--ok-bg); border-color: color-mix(in srgb, var(--ok) 35%, transparent); }
@@ -2970,7 +3002,7 @@
     border: 1px solid rgba(255, 255, 255, .16); opacity: 0; transition: opacity .15s; pointer-events: none; }
   .gd-fig-zoom svg { width: 13px; height: 13px; }
   .gd-fig-btn:hover .gd-fig-zoom, .gd-fig-btn:focus-visible .gd-fig-zoom { opacity: 1; }
-  .gd-fig figcaption { margin-top: 8px; max-width: 90ch; font-size: 13px; line-height: 1.65; color: var(--muted); }
+  .gd-fig figcaption { margin-top: 8px; max-width: 100ch; font-size: 13px; line-height: 1.65; color: var(--muted); }
   /* The numbers in a caption, drawn like the numbered badges on the picture. */
   .gd-n { display: inline-grid; place-items: center; width: 19px; height: 19px; margin: 0 1px; border-radius: 50%; vertical-align: 1px;
     font-size: 11px; font-weight: 800; line-height: 1; color: #1d1400; background: #ffc53d; }
@@ -17221,21 +17253,22 @@ function openGuide(id, opts) {
         : `<button type="button" class="gd-open" data-gd-go="${esc(g.open.tab)}">${esc(g.open.label)} →</button>`)
     : '';
   box.innerHTML =
-    `<article class="gd-article dq-in" style="--tint:${g.tint}" aria-labelledby="gdTitle">` +
+    `<article class="gd-article dq-in${g.views ? ' gd-has-views' : ''}" style="--tint:${g.tint}" aria-labelledby="gdTitle">` +
       `<header class="gd-ahead"><span class="gd-aart">${gdSvg(g.icon)}</span>` +
         `<div class="gd-ahead-main"><p class="gd-kick">${esc(g.cat)}<span class="gd-for">${forWho}</span></p>` +
           `<h3 id="gdTitle" tabindex="-1">${esc(g.title)}</h3><p class="gd-lede">${esc(g.sub)}</p></div>` +
         `<div class="gd-ahead-acts">${act}<button type="button" class="btn-sm" data-gd-close="1">Close</button></div></header>` +
       (g.views ? gdViewsHtml(g) :
-        `<nav class="gd-toc" aria-label="In this guide"><span class="gd-toc-l">In this guide</span>` +
-          g.sections.map((s, n) => `<button type="button" data-gd-jump="${n}">${s.h}</button>`).join('') + `</nav>` +
+        `<div class="gd-main"><nav class="gd-toc" aria-label="In this guide"><span class="gd-toc-l">In this guide</span>` +
+          g.sections.map((s, n) => `<button type="button" class="gd-tocb" data-gd-jump="${n}"><span class="gd-tocn">${n + 1}</span>${s.h}</button>`).join('') + `</nav>` +
         `<div class="gd-body">${g.sections.map((s, n) =>
-          `<section class="gd-sec" id="gd-sec-${n}"><h4><span class="gd-num">${n + 1}</span>${s.h}</h4>${s.body}</section>`).join('')}</div>`) +
+          `<section class="gd-sec" id="gd-sec-${n}"><h4><span class="gd-num">${n + 1}</span>${s.h}</h4>${s.body}</section>`).join('')}</div></div>`) +
       `<footer class="gd-foot">` +
         (prev ? `<button type="button" class="gd-step" data-gd-open="${esc(prev.id)}"><span>Previous</span>← ${esc(prev.title)}</button>` : '<span></span>') +
         (next ? `<button type="button" class="gd-step next" data-gd-open="${esc(next.id)}"><span>Next</span>${esc(next.title)} →</button>` : '<span></span>') +
       `</footer></article>`;
   if (typeof g.mount === 'function') g.mount(box);
+  gdSpyStart(g.views ? null : box);
   if (!opts.noScroll) {
     box.scrollIntoView({ behavior: 'smooth', block: 'start' });
     const h = $('#gdTitle'); if (h) h.focus({ preventScroll: true });
@@ -17315,7 +17348,50 @@ async function gdCopy(btn) {
   const ok = await agtCopyText(btn.dataset.gdCopy || '');
   if (label) { label.textContent = ok ? 'Copied' : 'Could not copy'; setTimeout(() => { label.textContent = was; }, 1400); }
 }
+// The rail marks the section being read: the first one crossing a band from just below the
+// sticky bars to a little under half the screen. One observer, replaced on every open. Two
+// exceptions: at the very end of the page the last sections can never reach that band, so the
+// last one on screen is marked; and a section picked from the rail stays marked while the page
+// scrolls to it, rather than each section it passes taking the mark in turn.
+let _gdSpy = null, _gdSpyHold = 0, _gdSpyRaf = 0;
+const _gdSpyLive = new Map();
+function gdSpyPick() {
+  if (!_gdSpy || Date.now() < _gdSpyHold) return;
+  const secs = document.querySelectorAll('#gdGuide .gd-body > .gd-sec');
+  if (!secs.length) return;
+  if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4) {
+    for (let k = secs.length - 1; k >= 0; k--) {
+      if (secs[k].getBoundingClientRect().top < window.innerHeight) { gdSpyMark(k); return; }
+    }
+  }
+  const first = [..._gdSpyLive].filter(([, v]) => v).map(([k]) => k).sort((a, b) => a - b)[0];
+  if (first != null) gdSpyMark(first);
+}
+window.addEventListener('scroll', () => {
+  if (_gdSpy && !_gdSpyRaf) _gdSpyRaf = requestAnimationFrame(() => { _gdSpyRaf = 0; gdSpyPick(); });
+}, { passive: true });
+function gdSpyMark(n) {
+  document.querySelectorAll('#gdGuide .gd-toc [data-gd-jump]').forEach(b => {
+    const on = +b.dataset.gdJump === n;
+    b.classList.toggle('on', on);
+    if (on) b.setAttribute('aria-current', 'true'); else b.removeAttribute('aria-current');
+  });
+}
+function gdSpyStart(box) {
+  if (_gdSpy) { _gdSpy.disconnect(); _gdSpy = null; }
+  _gdSpyLive.clear();
+  _gdSpyHold = 0;
+  if (!box || !box.querySelector('.gd-toc')) return;
+  gdSpyMark(0);
+  if (!('IntersectionObserver' in window)) return;
+  _gdSpy = new IntersectionObserver(entries => {
+    entries.forEach(e => _gdSpyLive.set(+e.target.id.replace('gd-sec-', ''), e.isIntersecting));
+    gdSpyPick();
+  }, { rootMargin: '-80px 0px -55% 0px' });
+  box.querySelectorAll('.gd-body > .gd-sec').forEach(sec => _gdSpy.observe(sec));
+}
 function closeGuide() {
+  gdSpyStart(null);
   _gdCurrent = '';
   document.querySelectorAll('#gdTrack .gd-card').forEach(c => c.setAttribute('aria-selected', 'false'));
   const box = $('#gdGuide'); if (box) box.innerHTML = gdPlaceholder();
@@ -17400,7 +17476,15 @@ function initGuidesTab() {
       const openEl = e.target.closest('[data-gd-open]');
       if (openEl) { openGuide(openEl.dataset.gdOpen); return; }
       const jump = e.target.closest('[data-gd-jump]');
-      if (jump) { const s = $('#gd-sec-' + jump.dataset.gdJump); if (s) s.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
+      if (jump) {
+        const s = $('#gd-sec-' + jump.dataset.gdJump);
+        if (s) {
+          gdSpyMark(+jump.dataset.gdJump);
+          _gdSpyHold = Date.now() + 1000;           // the smooth scroll is still passing other sections
+          s.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+        return;
+      }
       if (e.target.closest('[data-gd-close]')) closeGuide();
     });
     // The API reference's form repaints the request it would send as it is filled in.
