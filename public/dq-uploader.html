@@ -2630,8 +2630,13 @@
     background: var(--bg); color: var(--text); font: inherit; font-size: 14px; outline: none; transition: border-color .15s, box-shadow .15s; }
   .gd-search input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
   .gd-search input::-webkit-search-cancel-button { display: none; }
+  /* padding: 0 matters: the app-wide button rule gives every button 11px 18px, which in a 26px circle
+     pushed the cross into its bottom-right corner. The cross is drawn, not typed, so it sits in the
+     exact centre whatever the font does with a multiplication sign. */
   .gd-clear { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); width: 26px; height: 26px; border-radius: 50%;
-    border: 0; background: var(--idle-bg); color: var(--muted); cursor: pointer; font-size: 15px; line-height: 1; visibility: hidden; }
+    display: grid; place-items: center; padding: 0; border: 0; box-shadow: none;
+    background: var(--idle-bg); color: var(--muted); cursor: pointer; line-height: 1; visibility: hidden; }
+  .gd-clear svg { width: 12px; height: 12px; }
   .gd-clear:hover { color: var(--text); }
   .gd-count { color: var(--muted); font-size: 12.5px; }
 
@@ -3768,7 +3773,7 @@
       <div class="gd-top">
         <label class="gd-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.6"/><path d="M15.6 15.6l4.8 4.8"/></svg>
           <input type="search" id="gdSearch" placeholder="Search guides, e.g. schedule, tags or agent" aria-label="Search guides" autocomplete="off">
-          <button type="button" class="gd-clear" id="gdSearchClear" aria-label="Clear search">&times;</button></label>
+          <button type="button" class="gd-clear" id="gdSearchClear" aria-label="Clear search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="m6.5 6.5 11 11M17.5 6.5l-11 11"/></svg></button></label>
         <span class="gd-count" id="gdCount" aria-live="polite"></span>
       </div>
       <div class="gd-carousel">
