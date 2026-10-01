@@ -2386,7 +2386,11 @@
     border: 0; border-radius: 11px; cursor: pointer; font: inherit; font-size: 14px; font-weight: 700; color: #fff;
     background: linear-gradient(90deg, #3b82f6, #22d3ee); box-shadow: 0 12px 28px -14px rgba(34, 211, 238, .8); }
   .swx-check:hover { filter: brightness(1.08); }
-  .swx-check:disabled { opacity: .75; cursor: progress; }
+  /* Greyed while a check runs, so it plainly cannot be pressed again until it is done. */
+  .swx-check:disabled { cursor: not-allowed; opacity: 1; filter: none; box-shadow: none; color: var(--muted);
+    background: var(--idle-bg); outline: 1px solid var(--border); outline-offset: -1px; }
+  .swx-check:disabled svg { opacity: .55; }
+  .swx-refresh:disabled, select.swx-sel:disabled { opacity: .45; cursor: not-allowed; }
   .swx-check svg { width: 14px; height: 14px; }
   .swx-run-sub { max-width: 240px; font-size: 12px; text-align: center; color: var(--muted); }
   .swx-last { display: flex; align-items: center; gap: 14px; min-width: 214px; padding: 16px 20px; border: 1px solid var(--border);
@@ -2425,6 +2429,34 @@
   .swx-card-hd h3 { margin: 0; font-size: 16px; font-weight: 700; }
   .swx-card-hd p { margin: 4px 0 0; font-size: 12.5px; color: var(--muted); }
   select.swx-sel { width: auto; min-width: 160px; height: 38px; padding: 0 12px; font-size: 13px; border-radius: 10px; }
+  /* While a check runs the radar steps aside for the assessing loader, and comes back when it is
+     done: the two share one place in the card, so nothing around them moves. */
+  .swx-stage { position: relative; flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; }
+  .swx-radar-body { flex: 1 1 auto; display: flex; flex-direction: column;
+    transition: opacity .45s var(--dq-ease), transform .55s var(--dq-ease), filter .45s var(--dq-ease); }
+  .swx-stage.scanning .swx-radar-body { opacity: 0; transform: scale(.94); filter: blur(4px); pointer-events: none; }
+  .swx-scan { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 6px; opacity: 0; visibility: hidden; transform: scale(1.04); pointer-events: none;
+    transition: opacity .35s var(--dq-ease), transform .45s var(--dq-ease), visibility 0s linear .45s; }
+  .swx-stage.scanning .swx-scan { opacity: 1; visibility: visible; transform: none; transition-delay: .12s, .12s, 0s; }
+  .swx-scan .dq-loader { padding: 0; gap: 30px; }
+  .swx-scan .dq-orbit { transform: scale(1.55); margin: 16px 0; }
+  .swx-scan-bar { width: min(300px, 72%); height: 6px; margin-top: 18px; overflow: hidden; border-radius: 999px;
+    background: color-mix(in srgb, var(--accent) 16%, transparent); }
+  .swx-scan-bar span { display: block; width: 0; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #3b82f6, #22d3ee);
+    transition: width .5s var(--dq-ease); }
+  .swx-scan-bar.indet span { width: 32%; animation: swxIndet 1.5s var(--dq-move) infinite; }
+  @keyframes swxIndet { from { transform: translateX(-110%); } to { transform: translateX(330%); } }
+  .swx-table-card .swx-tbl-wrap, .swx-kpis { transition: opacity .35s var(--dq-ease); }
+  .swx-table-card.stale .swx-tbl-wrap { opacity: .45; }
+  /* The labels of a radar coming back appear as the sweep first passes their sources. */
+  .swx-labels.rv .swx-lbl { opacity: 0; transition: opacity .3s var(--dq-ease); }
+  .swx-labels.rv .swx-lbl.in { opacity: 1; }
+  @media (prefers-reduced-motion: reduce) {
+    .swx-radar-body, .swx-scan, .swx-scan-bar span, .swx-labels.rv .swx-lbl { transition: none !important; }
+    .swx-stage.scanning .swx-radar-body { transform: none; filter: none; }
+    .swx-scan-bar.indet span { animation: none !important; width: 100%; opacity: .5; }
+  }
   .swx-radar { position: relative; width: 100%; max-width: 560px; aspect-ratio: 1 / 1; margin: 2px auto 14px; }
   .swx-radar canvas { position: absolute; inset: 0; display: block; width: 100%; height: 100%; cursor: crosshair; }
   .swx-labels { position: absolute; inset: 0; pointer-events: none; }
@@ -4520,12 +4552,17 @@
           <div><h3 id="swxRadarH">Source health radar</h3><p>A live view of every source and its state. Hover over a blip for its details.</p></div>
           <select id="swxSrcSel" class="swx-sel" aria-label="Which sources to show"><option value="">All sources</option></select>
         </div>
-        <div class="swx-radar" id="swxRadar">
-          <canvas id="swxCanvas" role="img" aria-label="Source health radar"></canvas>
-          <div class="swx-labels" id="swxLabels" aria-hidden="true"></div>
-          <div class="swx-tip" id="swxTip" hidden></div>
+        <div class="swx-stage" id="swxStage">
+          <div class="swx-radar-body" id="swxRadarBody">
+            <div class="swx-radar" id="swxRadar">
+              <canvas id="swxCanvas" role="img" aria-label="Source health radar"></canvas>
+              <div class="swx-labels" id="swxLabels" aria-hidden="true"></div>
+              <div class="swx-tip" id="swxTip" hidden></div>
+            </div>
+            <div class="swx-legend" id="swxLegend" role="group" aria-label="Show only one state"></div>
+          </div>
+          <div class="swx-scan" id="swxScan" aria-hidden="true"></div>
         </div>
-        <div class="swx-legend" id="swxLegend" role="group" aria-label="Show only one state"></div>
       </section>
       <section class="swx-card swx-table-card" aria-labelledby="swxTableH">
         <div class="swx-card-hd">
@@ -18077,7 +18114,7 @@ function buildGuides() {
                 `Pick how often it runs. For hourly, choose ${ui('Custom (cron / rate)')} and enter <code>0 * * * ? *</code>.`,
                 `Press ${ui('Save schedule')}.`) +
           shot('schedule-watch', `The ${ui('Assess')} list, with ${ui('Source monitoring only (no assessment)')} near the top.`, { narrow: true }) +
-          p(`Each time it fires, the list of monitored datasets is rebuilt, so a dataset that becomes eligible later is picked up without editing the schedule. ${ui('Check now')} on the Source monitoring tab runs a check straight away.`) },
+          p(`Each time it fires, the list of monitored datasets is rebuilt, so a dataset that becomes eligible later is picked up without editing the schedule. ${ui('Check now')} on the Source monitoring tab runs a check straight away. While it runs, the radar makes way for a count of the sources checked so far, then comes back with the new reading.`) },
       { h: 'Reading the page', body:
           p(`The tiles count the sources being monitored and how many are healthy, have a warning or are critical. A source's state is the verdict of its own open findings: a major one such as ${ui('Stopped loading')} makes it critical, and a warning such as ${ui('Stalled')} or ${ui('Unreachable')} a warning.`) +
           p(`The radar shows every source as a blip, lit each time the sweep passes it: critical nearest the centre, then warnings, then healthy, with the sources that are not monitored out on the rim. Hover over a blip for its details, and click one to find it in the table. The source list above it and the counts under it narrow the radar and the table together.`) +
@@ -20351,7 +20388,8 @@ function swSelect(key, from) {
 // with none on top of another; the busier a band, the smaller its blips.
 const SW_BANDS = { critical: [0.12, 0.34], warning: [0.38, 0.58], healthy: [0.62, 0.86], off: [0.895, 0.965] };
 const SW_PERIOD = 6000, SW_FAST = 1800;      // ms a turn takes; faster while a check is running
-const swRadar = { blips: [], phase: 0, last: 0, raf: 0, hover: '', rowHover: '', fast: false, size: 0, dpr: 1, stat: null, colors: null };
+const swRadar = { blips: [], phase: 0, last: 0, raf: 0, hover: '', rowHover: '', fast: false, size: 0, dpr: 1, stat: null, colors: null,
+                  per: SW_PERIOD, paused: false, reveal: null };
 
 function _swColors() {
   const cs = getComputedStyle(document.documentElement), v = n => cs.getPropertyValue(n).trim();
@@ -20443,17 +20481,21 @@ function _swDraw(still) {
   }
   ctx.save(); ctx.strokeStyle = 'rgba(125,211,252,0.95)'; ctx.lineWidth = 2; ctx.shadowColor = 'rgba(56,189,248,0.9)'; ctx.shadowBlur = 10;
   ctx.beginPath(); ctx.moveTo(c, c); ctx.lineTo(c + Math.cos(base) * R, c + Math.sin(base) * R); ctx.stroke(); ctx.restore();
+  // A radar coming back after a check shows a source only once the sweep has passed it.
+  const TAU = 2 * Math.PI, rv = swRadar.reveal;
+  const found = b => !rv || ((((b.ang - rv.from) % TAU) + TAU) % TAU) <= rv.swept;
   // leader lines from a labelled blip to its label
   ctx.strokeStyle = 'rgba(148,162,190,0.45)'; ctx.lineWidth = 1;
   swRadar.blips.forEach(b => {
-    if (!b.lbl) return;
+    if (!b.lbl || !found(b)) return;
     const L = b.lbl, lx = Math.max(L.x, Math.min(L.x + L.w, b.x)), ly = Math.max(L.y, Math.min(L.y + L.h, b.y));
     const d = Math.hypot(lx - b.x, ly - b.y);
     if (d <= b.s + 2) return;                     // the label already touches its blip
     ctx.beginPath(); ctx.moveTo(b.x + (lx - b.x) * (b.s + 1) / d, b.y + (ly - b.y) * (b.s + 1) / d); ctx.lineTo(lx, ly); ctx.stroke();
   });
-  const q = swView.q.trim().toLowerCase(), TAU = 2 * Math.PI;
+  const q = swView.q.trim().toLowerCase();
   for (const b of swRadar.blips) {
+    if (!found(b)) continue;
     const d = (((a - b.ang) % TAU) + TAU) % TAU;          // how far the sweep has gone past it
     const I = still ? 0.55 : Math.exp(-d / 1.6);
     const dim = q && !_swHitQ(b.it, q) ? 0.2 : 1;
@@ -20478,17 +20520,40 @@ function _swDraw(still) {
 }
 function _swFrame(now) {
   const panel = $('#sourceWatchPanel'), cv = $('#swxCanvas');
-  // Stops by itself once the tab is left; opening it again starts it.
-  if (!cv || !panel || panel.style.display === 'none') { swRadar.raf = 0; swRadar.last = 0; return; }
+  // Stops by itself once the tab is left, or while a check has the loader in its place; it
+  // starts again when either ends.
+  if (!cv || !panel || panel.style.display === 'none' || swRadar.paused) { swRadar.raf = 0; swRadar.last = 0; return; }
   const dt = swRadar.last ? Math.min(100, now - swRadar.last) : 0;
   swRadar.last = now;
-  swRadar.phase = (swRadar.phase + (dt / (swRadar.fast ? SW_FAST : SW_PERIOD)) * 2 * Math.PI) % (2 * Math.PI);
+  // The speed eases toward its target rather than jumping, so a fast sweep slows back down smoothly.
+  swRadar.per += ((swRadar.fast ? SW_FAST : SW_PERIOD) - swRadar.per) * Math.min(1, dt / 700);
+  const step = (dt / swRadar.per) * 2 * Math.PI;
+  swRadar.phase = (swRadar.phase + step) % (2 * Math.PI);
+  if (swRadar.reveal) _swRevealStep(step);
   _swDraw(false);
   swRadar.raf = requestAnimationFrame(_swFrame);
 }
 function _swRadarStart() {
-  if (dqReduced()) { swRadar.phase = Math.PI * 0.35; _swDraw(true); return; }   // a still radar, the sweep at rest
+  if (swRadar.paused) return;                       // behind the loader there is nothing to draw
+  if (dqReduced()) { swRadar.reveal = null; swRadar.phase = Math.PI * 0.35; _swDraw(true); return; }   // a still radar, the sweep at rest
   if (!swRadar.raf) { swRadar.last = 0; swRadar.raf = requestAnimationFrame(_swFrame); }
+}
+// One fast turn that finds the sources again: each blip, and its label, appears as the beam passes
+// it, and once the turn is complete the sweep eases back to its usual pace.
+function _swRevealStep(step) {
+  const rv = swRadar.reveal, TAU = 2 * Math.PI, box = $('#swxLabels');
+  rv.swept += step;
+  swRadar.blips.forEach(b => {
+    if (!b.lbl || rv.shown.has(b.it.key) || ((((b.ang - rv.from) % TAU) + TAU) % TAU) > rv.swept) return;
+    rv.shown.add(b.it.key);
+    const el = box && [...box.querySelectorAll('.swx-lbl')].find(x => x.dataset.k === b.it.key);
+    if (el) el.classList.add('in');
+  });
+  if (rv.swept >= TAU) {
+    swRadar.reveal = null;
+    swRadar.fast = false;
+    if (box) box.classList.remove('rv');
+  }
 }
 function _swKick() { if (!swRadar.raf) _swDraw(dqReduced()); }
 
@@ -20545,7 +20610,10 @@ function _swLabels() {
     b.lbl = pos;
     placed.push({ b, x: pos.x, y: pos.y, w });
   });
-  box.innerHTML = placed.map(p => `<span class="swx-lbl ${p.b.h}${p.b.it.key === swView.sel ? ' sel' : ''}" ` +
+  const rv = swRadar.reveal;
+  box.classList.toggle('rv', !!rv);
+  box.innerHTML = placed.map(p => `<span class="swx-lbl ${p.b.h}${p.b.it.key === swView.sel ? ' sel' : ''}` +
+    `${rv && rv.shown.has(p.b.it.key) ? ' in' : ''}" data-k="${esc(p.b.it.key)}" ` +
     `style="left:${p.x.toFixed(1)}px;top:${p.y.toFixed(1)}px;width:${p.w}px">${esc(p.b.it.name)}</span>`).join('');
 }
 function _swHit(x, y) {
@@ -20646,6 +20714,7 @@ async function watchPollSweep(runId, keys) {
         { app_id: APP_ID, action: 'progress', watch_run_id: runId, keys });
     } catch (e) { continue; }          // a transient read failure must not abort the wait
     watchMsg(`Checking your sources: ${last.done} of ${last.total} checked${last.failed ? `, ${last.failed} could not be read` : ''}`);
+    _swScanProgress(last.done, last.total, last.failed);
     if (last.done >= last.total) return last;
   }
   return null;                          // gave up waiting; observations still land as they finish
@@ -20655,20 +20724,62 @@ if ($('#watchRefresh')) $('#watchRefresh').addEventListener('click', () => {
   watchMsg(''); loadSourceWatch();
 });
 if ($('#watchToSched')) $('#watchToSched').addEventListener('click', () => switchTab('schedules'));
+// ---- A check in progress ----------------------------------------------------------------------
+// The radar steps aside for the assessing loader while a check runs, and the table dims: both are
+// about to change. When the check is done, the new reading is loaded behind the loader first, and
+// only then does the radar come back, finding its sources again in one fast turn, with the fresh
+// tiles and table fading in beside it.
+function _swScanStart() {
+  const stage = $('#swxStage'), scan = $('#swxScan'); if (!stage || !scan) return;
+  scan.innerHTML = dqLoader('Checking your sources', 'Finding every monitorable source in this workspace.') +
+    `<div class="swx-scan-bar indet" id="swxScanBar"><span></span></div>`;
+  stage.classList.add('scanning');
+  $('#swxRadarBody').setAttribute('aria-hidden', 'true');
+  const tc = document.querySelector('.swx-table-card'); if (tc) tc.classList.add('stale');
+  swRadar.paused = true;
+  swRadar.hover = ''; _swTip(null);
+  ['#watchRefresh', '#swxSrcSel'].forEach(sel => { const el = $(sel); if (el) el.disabled = true; });
+}
+function _swScanProgress(done, total, failed) {
+  const sub = $('#swxScan .sub'), bar = $('#swxScanBar');
+  if (sub) sub.textContent = `${done} of ${total} checked${failed ? `, ${failed} could not be read` : ''}`;
+  if (bar && total) {
+    bar.classList.remove('indet');
+    bar.firstElementChild.style.width = `${Math.round((done / total) * 100)}%`;
+  }
+}
+function _swScanEnd() {
+  const stage = $('#swxStage'); if (!stage) return;
+  ['#watchRefresh', '#swxSrcSel'].forEach(sel => { const el = $(sel); if (el) el.disabled = false; });
+  const tc = document.querySelector('.swx-table-card'); if (tc) tc.classList.remove('stale');
+  swRadar.paused = false;
+  if (!dqReduced()) {
+    swRadar.reveal = { from: swRadar.phase, swept: 0, shown: new Set() };
+    swRadar.fast = true; swRadar.per = SW_FAST;
+    _swLabels();                                   // drawn hidden, to appear as the sweep finds them
+  }
+  stage.classList.remove('scanning');
+  $('#swxRadarBody').removeAttribute('aria-hidden');
+  _swRadarStart();
+  dqIn($('#watchList'));
+  dqIn($('#swxKpis'));
+}
+
 if ($('#watchRun')) $('#watchRun').addEventListener('click', async () => {
   const btn = $('#watchRun'), lbl = btn.querySelector('span');
   if (!APP_ID) { watchMsg('Open a workspace first.', 'err'); return; }
+  if (btn.disabled) return;
   btn.disabled = true;
   const orig = lbl.textContent;
   lbl.textContent = 'Checking…';
-  // The radar sweeps faster while a check is out, and the table keeps showing the last reading.
-  swRadar.fast = true;
+  _swScanStart();
   watchMsg('Starting the check: finding every monitorable source.');
   try {
     const r = await postJSON(`${API_BASE}/data-quality/source-watch`, HEADERS,
       { app_id: APP_ID, action: 'run' });
     const keys = r.watched || [];
     watchMsg(`Checking your sources: 0 of ${keys.length} checked`);
+    _swScanProgress(0, keys.length, 0);
     const p = await watchPollSweep(r.watchRunId, keys);
     await loadSourceWatch();
     const nSkip = (r.skipped || []).length;
@@ -20684,7 +20795,7 @@ if ($('#watchRun')) $('#watchRun').addEventListener('click', async () => {
     await loadSourceWatch();
     watchMsg(e.message, 'err');
   } finally {
-    swRadar.fast = false;
+    _swScanEnd();
     btn.disabled = false;
     lbl.textContent = orig;
   }
