@@ -90,6 +90,10 @@
     border: 1px solid var(--line2); background: #0d1a37; box-shadow: 0 18px 40px -12px rgba(0,0,0,.6); }
   .search .pop { left: 0; right: 0; max-height: 60vh; overflow-y: auto; }
   .pop-h { padding: 8px 10px 6px; font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--dim); }
+  .pop-top { display: flex; align-items: center; gap: 10px; padding: 4px 4px 6px; border-bottom: 1px solid var(--line); margin-bottom: 4px; }
+  .pop-top .pop-h { margin-left: auto; padding: 0 6px; white-space: nowrap; }
+  .pop-i.read { opacity: .55; }
+  .pop-i .new { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); flex: none; margin-left: auto; }
   .pop-i { display: flex; align-items: center; gap: 10px; width: 100%; padding: 9px 10px; border: 0; border-radius: 9px; background: none;
     color: var(--ink); cursor: pointer; text-align: left; font-size: 13px; text-decoration: none; }
   .pop-i:hover, .pop-i.sel { background: rgba(79,140,255,.14); }
@@ -98,7 +102,8 @@
   .pop-e { padding: 12px 10px; color: var(--muted); font-size: 12.5px; }
   .rel { position: relative; }
 
-  .content { padding: 20px 24px 48px; max-width: 1560px; }
+  /* The whole width, at any zoom: a cap here left an empty strip on the right of a wide screen. */
+  .content { padding: 20px 24px 48px; }
   .view { animation: vin .18s ease-out; }
   @keyframes vin { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 
@@ -193,14 +198,16 @@
   .inbox input { padding-left: 38px; }
 
   /* ---------------------------------------------------------------- overview */
-  .ov { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 18px; align-items: start; }
+  .ov { display: grid; grid-template-columns: minmax(0, 1fr) clamp(300px, 19vw, 380px); gap: 18px; align-items: start; }
   .forms { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
   .forms > .card + .card { margin-top: 0; }
   .forms.solo { grid-template-columns: 1fr; }
   .stats { display: grid; gap: 10px; }
   .stat { display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px;
     background: rgba(9,17,36,.55); color: inherit; cursor: pointer; text-align: left; }
-  .stat:hover { border-color: var(--line2); background: rgba(79,140,255,.08); }
+  button.stat:hover { border-color: var(--line2); background: rgba(79,140,255,.08); }
+  /* A reading, not a link: no arrow, no pointer, no hover. */
+  .stat.static { cursor: default; }
   .stat .sico { width: 38px; height: 38px; border-radius: 10px; display: grid; place-items: center; flex: none;
     background: rgba(79,140,255,.14); color: #8db4ff; }
   .stat small { display: block; color: var(--muted); font-size: 12px; }
@@ -722,11 +729,13 @@
     if (!IS_SUPER) box.appendChild(statTile('tag', 'Tags', String(CAT.length), 'tags'));
     box.appendChild(statTile('cloud', 'On-premises Agents', FAILED.has('agents') ? '-' : String(AGENTS.filter(a => !a.revoked).length), 'agents'));
     box.appendChild(statTile('mail', 'Pending invites', FAILED.has('users') ? '-' : String(pending), 'users'));
+    // A reading, not a link: a plain tile, with no arrow and nothing to click.
     const ok = !FAILED.size;
-    const h = statTile(ok ? 'check' : 'alert', 'System status',
-                       ok ? 'All services reachable' : 'Some data could not load', null, 'health ' + (ok ? 'ok' : 'warn'));
+    const h = el('div', 'stat static health ' + (ok ? 'ok' : 'warn'));
+    const hs = el('span', 'sico'); hs.appendChild(ico(ok ? 'check' : 'alert')); h.appendChild(hs);
+    const hd = el('div'); hd.appendChild(el('small', null, 'System status'));
+    hd.appendChild(el('b', null, ok ? 'All services reachable' : 'Some data could not load')); h.appendChild(hd);
     h.title = ok ? 'Every part of this page loaded.' : [...FAILED].map(([k, v]) => k + ': ' + v).join('\n');
-    h.addEventListener('click', () => { if (!ok) openBell(); });
     box.appendChild(h);
   }
   function renderHealth() {
@@ -1421,39 +1430,77 @@
   // ------------------------------------------------------------------ needs attention (the bell)
   // Things an admin can act on, worked out from what this page has already loaded. Nothing is
   // invented: each item is a fact with a place to go and do something about it.
+  // Each item carries KEYS, one per thing in it: each pending invite, an agent in a given state,
+  // each key nearing expiry. An item is read when every one of its keys has been seen, so a new
+  // invite (or an agent going from stale to offline) makes it unread again, while an invite being
+  // ACCEPTED, which only shortens the list, leaves it read.
   function attention() {
     const out = [];
+    const toAgent = a => () => { go('agents'); flash($('#agList [data-agent="' + CSS.escape(a.id) + '"]')); };
     const pend = allUsers().filter(u => u.pending);
-    if (pend.length) out.push({ icon: 'mail', text: pend.length + ' invite' + (pend.length === 1 ? '' : 's') + ' not accepted yet',
+    if (pend.length) out.push({ keys: pend.map(u => 'invite:' + u.email), icon: 'mail',
+                                text: pend.length + ' invite' + (pend.length === 1 ? '' : 's') + ' not accepted yet',
                                 sub: pend.slice(0, 3).map(u => u.email).join(', ') + (pend.length > 3 ? '…' : ''), go: () => go('users') });
     AGENTS.filter(a => !a.revoked && (a.health === 'offline' || a.health === 'stale')).forEach(a =>
-      out.push({ icon: 'cloud', text: (a.name || a.id) + ' is ' + a.health, sub: 'Last heard from ' + ago(a.lastSeen),
-                 go: () => { go('agents'); flash($('#agList [data-agent="' + CSS.escape(a.id) + '"]')); } }));
+      out.push({ keys: ['agent:' + a.id + ':' + a.health], icon: 'cloud', text: (a.name || a.id) + ' is ' + a.health,
+                 sub: 'Last heard from ' + ago(a.lastSeen), go: toAgent(a) }));
     AGENTS.filter(a => !a.revoked && a.health === 'never').forEach(a =>
-      out.push({ icon: 'cloud', text: (a.name || a.id) + ' has no config yet', sub: 'Download its config to bring it online',
-                 go: () => { go('agents'); flash($('#agList [data-agent="' + CSS.escape(a.id) + '"]')); } }));
+      out.push({ keys: ['agent:' + a.id + ':never'], icon: 'cloud', text: (a.name || a.id) + ' has no config yet',
+                 sub: 'Download its config to bring it online', go: toAgent(a) }));
     if (KEYS) {
       const soon = KEYS.filter(k => k.status === 'active' && k.expiresAt && k.expiresAt - Date.now() / 1000 < 7 * 86400);
-      if (soon.length) out.push({ icon: 'key', text: soon.length + ' API key' + (soon.length === 1 ? '' : 's') + ' expire within a week',
+      if (soon.length) out.push({ keys: soon.map(k => 'apikey:' + k.id), icon: 'key',
+                                  text: soon.length + (soon.length === 1 ? ' API key expires' : ' API keys expire') + ' within a week',
                                   sub: soon.slice(0, 3).map(k => k.name + (k.owner ? ' (' + k.owner + ')' : '')).join(', '),
                                   href: '/dq-portal' });
     }
-    if (FAILED.size) out.push({ icon: 'alert', text: 'Some data could not load', sub: [...FAILED.keys()].join(', ') });
+    if (FAILED.size) out.push({ keys: [...FAILED.keys()].map(k => 'failed:' + k), icon: 'alert',
+                                text: 'Some data could not load', sub: [...FAILED.keys()].join(', ') });
     return out;
   }
+  // Read marks are kept in this browser, for this admin. A mark only quietens the count: the item
+  // itself stays in the list, dimmed, for as long as its situation lasts.
+  const readKey = () => 'dqAdminRead:' + String((ME && ME.email) || '').toLowerCase();
+  function readSet() { try { return new Set(JSON.parse(localStorage.getItem(readKey()) || '[]')); } catch (e) { return new Set(); } }
+  function saveRead(set) { try { localStorage.setItem(readKey(), JSON.stringify([...set].slice(-200))); } catch (e) { /* private mode */ } }
+  function markRead(keys) { const set = readSet(); keys.forEach(k => set.add(k)); saveRead(set); renderBell(); }
   function renderBell() {
     const items = attention();
-    const n = $('#bellN'); n.hidden = !items.length; n.textContent = items.length > 9 ? '9+' : String(items.length);
-    $('#bellBtn').setAttribute('aria-label', items.length ? items.length + ' things need attention' : 'Nothing needs attention');
+    let read = readSet();
+    // Marks for situations that have passed are forgotten, so one that recurs comes back unread.
+    // Only when everything loaded: a part that failed to load is not a situation that has passed.
+    if (!FAILED.size) {
+      const live = new Set(items.flatMap(i => i.keys));
+      const kept = new Set([...read].filter(k => live.has(k)));
+      if (kept.size !== read.size) { saveRead(kept); read = kept; }
+    }
+    const isRead = i => i.keys.every(k => read.has(k));
+    const unread = items.filter(i => !isRead(i));
+    const n = $('#bellN'); n.hidden = !unread.length; n.textContent = unread.length > 9 ? '9+' : String(unread.length);
+    $('#bellBtn').setAttribute('aria-label', unread.length ? unread.length + ' unread notifications' : 'No unread notifications');
     const pop = $('#bellPop'); pop.textContent = '';
-    pop.appendChild(el('div', 'pop-h', 'Needs attention'));
+    const top = el('div', 'pop-top');
+    const all = el('button', 'btn-ghost', 'Mark all as read'); all.type = 'button'; all.id = 'bellReadAll';
+    all.appendChild(ico('check')); all.insertBefore(all.lastChild, all.firstChild);
+    all.disabled = !unread.length;
+    // stopPropagation: the list is redrawn under the pointer, and the page's outside-click rule
+    // would otherwise read the now-detached button as a click outside and close the panel.
+    all.addEventListener('click', e => { e.stopPropagation(); markRead(items.flatMap(i => i.keys)); });
+    top.appendChild(all);
+    top.appendChild(el('span', 'pop-h', unread.length ? unread.length + ' unread' : 'Needs attention'));
+    pop.appendChild(top);
     if (!items.length) { pop.appendChild(el('div', 'pop-e', 'Nothing needs attention right now.')); return; }
     items.forEach(it => {
-      const b = it.href ? el('a', 'pop-i') : el('button', 'pop-i');
+      const seen = isRead(it);
+      const b = it.href ? el('a', 'pop-i' + (seen ? ' read' : '')) : el('button', 'pop-i' + (seen ? ' read' : ''));
       if (it.href) b.href = it.href; else b.type = 'button';
       b.appendChild(ico(it.icon));
       const d = el('div'); d.appendChild(document.createTextNode(it.text)); if (it.sub) d.appendChild(el('small', null, it.sub)); b.appendChild(d);
-      if (it.go) b.addEventListener('click', () => { closePops(); it.go(); });
+      if (!seen) { const dot = el('span', 'new'); dot.title = 'Unread'; b.appendChild(dot); }
+      b.addEventListener('click', e => {
+        markRead(it.keys);
+        if (it.go) { closePops(); it.go(); } else if (!it.href) e.stopPropagation();
+      });
       pop.appendChild(b);
     });
   }
