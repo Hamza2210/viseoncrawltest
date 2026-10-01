@@ -2747,6 +2747,7 @@
   .gd-code { margin: 4px 0 12px; padding: 12px 14px; max-width: 100%; overflow-x: auto; white-space: pre; border-radius: 10px;
     border: 1px solid var(--border); background: var(--code-bg); color: var(--code-fg); font-size: 12.5px; line-height: 1.55; }
   .gd-code code { padding: 0; background: none; }
+  .gd-ph { color: #fbbf24; }
   .gd-foot { display: flex; justify-content: space-between; gap: 12px; padding: 14px 24px; border-top: 1px solid var(--border);
     background: var(--card-2); }
   .gd-step { display: flex; flex-direction: column; gap: 2px; max-width: 48%; padding: 8px 12px; border-radius: 10px;
@@ -14986,6 +14987,7 @@ const GD_ICONS = {
   cog: '<circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M5.5 18.5l1.7-1.7M16.8 7.2l1.7-1.7"/><circle cx="12" cy="12" r="6.4"/>',
   search: '<circle cx="10.8" cy="10.8" r="6.6"/><path d="M15.6 15.6l4.8 4.8"/>',
   zoom: '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>',
+  code: '<path d="m8.5 8-4.6 4 4.6 4M15.5 8l4.6 4-4.6 4M13.6 5.2l-3.2 13.6"/>',
   target: '<circle cx="12" cy="12" r="7.4"/><circle cx="12" cy="12" r="2.4"/><path d="M12 1.8v3M12 19.2v3M1.8 12h3M19.2 12h3"/>',
 };
 function gdSvg(name) {
@@ -15782,6 +15784,145 @@ function buildGuides() {
           `A <b>tag schedule</b> captures its datasets when you save it. Re-save it after tagging more.`,
           `A <b>source-monitoring schedule</b> rebuilds its list every time it fires, so new datasets are picked up automatically.`,
           (Q || ADMIN) ? `An <b>on-premises</b> schedule fires into its agent's queue. If the agent is offline at the time, the job waits for it rather than failing.` : null) },
+    ],
+  });
+
+  // ================================================================ The API
+  // Every request is shown whole, with the real address and the reader's own word for the scope;
+  // what they fill in is an amber <placeholder>. Qlik users and portal admins, like the agents
+  // guide: a portal member has no key to use.
+  const API = esc(API_BASE);
+  const ph = t => `<span class="gd-ph">&lt;${t}&gt;</span>`;
+  const APPPH = pk('app-id', 'workspace-id');
+  const HDRS = `x-api-key: ${ph('your-api-key')}\nContent-Type: application/json`;
+  if (Q || ADMIN) G.push({
+    id: 'api', cat: 'Automate', icon: 'code', tint: '#f472b6',
+    title: 'Use the API in a pipeline', sub: 'Start checks, read the verdict, and gate a Qlik Talend Cloud pipeline on it',
+    keywords: 'api rest http endpoint request integration pipeline quality gate qlik talend cloud automate automation call url loop sleep condition do reload talend studio job trestclient textractjsonfields tloop tsleep tdie management console plan curl postman key x-api-key dqt app id workspace id run by tag rerun result poll history failed records orchestrate',
+    open: { tab: 'tagrun', label: 'Open By tag' },
+    sections: [
+      { h: 'What it is for', body:
+          p(`Everything this page does goes through a REST API, so your own tools can run checks too. The commonest use is a <b>quality gate</b>: after a pipeline loads data, assess it, and only carry on, by reloading the dashboard or publishing the table, when it passes.`) +
+          list(`<b>Stop a bad load reaching a dashboard.</b> The pipeline waits for the verdict and goes no further on a failure.`,
+               `<b>Check when the data changes, not on a timer.</b> A schedule fires at fixed times; a pipeline step runs the moment new data lands.`,
+               `<b>Take the results elsewhere.</b> Read scores and failing rows into a ticketing tool, a data catalogue or a report.`) },
+      { h: 'Before you start', body:
+          list(`<b>Your organisation's API key.</b> It starts with <code>dqt_</code> and belongs to your organisation alone: the API takes your organisation from the key, so a request can never reach anyone else's data. ${pk(`It is the key in this extension's ${ui('API key')} setting. If that one does not start with <code>dqt_</code>, ask your VISEON contact for your organisation's own.`, `Ask your VISEON contact for it.`)} Keep it like a password.`,
+               `<b>The ${SC} id</b>, which the API calls <code>app_id</code>. ${APP_ID ? `This ${SC}'s is <code>${esc(APP_ID)}</code>.` : pk(`It is the id in the app's address, after <code>/app/</code>.`, `Ask your VISEON contact for it.`)}`,
+               `<b>A saved credential profile</b> on each dataset the pipeline will check. Runs started over the API reconnect with it, so no password ever travels in a request. ${see('credential-profiles', 'Credential profiles')}`,
+               `<b>A tag</b> on the datasets a pipeline should check together, such as <code>nightly-sales</code>. ${see('tags', 'Tags')}`) +
+          note(`Every call is a <code>POST</code> to an address under <code>${API}</code>, with two headers: <code>x-api-key</code> carrying the key, and <code>Content-Type: application/json</code>. In the examples, anything shown as ${ph('like-this')} is yours to fill in.`) },
+      { h: 'The main calls', body:
+          table(['Call', 'What it does', 'Gives back'], [
+            ['<code>/data-quality/run-by-tag</code>', 'Assesses every dataset with a tag, in one go. The best fit for a pipeline.', 'A run folder (<code>resultPrefix</code>) for each dataset'],
+            ['<code>/data-quality/rerun-source</code>', 'Assesses one dataset again', 'Its new run folder'],
+            ['<code>/data-quality/result</code>', 'Where a run has got to, and its verdict', 'The state and, once it has finished, the scores'],
+            ['<code>/data-quality/history</code>', `Recent runs in the ${SC}, newest first`, 'Each run with its folder, state and score'],
+            ['<code>/data-quality/failed-records</code>', 'The rows that failed in a run', 'The failing rows, as your failing-record policy allows'],
+          ]) +
+          p(`A pipeline needs three steps: start the checks, wait for the verdict, then carry on or stop.`) },
+      { h: 'Step 1: start the checks', body:
+          p(`Assess every dataset carrying a tag:`) +
+          code(`POST ${API}/data-quality/run-by-tag
+${HDRS}
+
+{
+  "app_id": "${ph(APPPH)}",
+  "tag": "${ph('tag')}",
+  "notify_email": "${ph('who-to-alert, optional')}"
+}`) +
+          p(`It answers at once, while the checks run, with one entry per dataset:`) +
+          code(`{
+  "ok": true,
+  "runId": "2026-10-01T06-00-12Z-3f9a1c",
+  "launchedCount": 2,
+  "launched": [
+    {
+      "dataset_key": "${ph('tenant')}/${ph(APPPH)}/orders",
+      "resultPrefix": "s3://data-quality-assessments/${ph('tenant')}/${ph(APPPH)}/orders/2026-10-01T06-00-12Z-3f9a1c/"
+    },
+    ...
+  ],
+  "skipped": []
+}`) +
+          p(`Keep each <code>resultPrefix</code>: it is how you ask after that run. <code>skipped</code> lists any tagged dataset that could not run, usually because it has no saved credential profile.`) +
+          p(`To assess a single dataset again instead, send the folder of any earlier run of it (see ${ui('Find a run')} below):`) +
+          code(`POST ${API}/data-quality/rerun-source
+${HDRS}
+
+{ "result_prefix": "${ph('resultPrefix-of-an-earlier-run')}" }`) +
+          p(`It answers <code>{"rerun": true, "runId": ..., "resultPrefix": ...}</code>, or <code>{"rerun": false, "reason": "no_saved_credentials"}</code> when the dataset has no saved connection.`) },
+      { h: 'Step 2: wait for the verdict', body:
+          p(`Ask after each run every 15 to 30 seconds:`) +
+          code(`POST ${API}/data-quality/result
+${HDRS}
+
+{ "result_prefix": "${ph('resultPrefix')}" }`) +
+          table(['state', 'Means', 'So'], [
+            ['<code>PENDING</code>, <code>RUNNING</code>', 'Still working', 'Ask again shortly'],
+            ['<code>SUCCEEDED</code>', 'Assessed, and the data passed the quality gate', 'Carry on'],
+            ['<code>GATE_FAILED</code>', 'Assessed, and the data failed the gate', 'Stop, or take the failure path'],
+            ['<code>FAILED</code>', 'The run itself broke', 'Stop, and look at the run'],
+            ['<code>ERROR</code>', 'The source could not be reached: credentials, host or permissions', 'Stop, and check the connection'],
+          ]) +
+          p(`Once it has finished, the answer also carries the scores, for a step that wants more than pass or fail:`) +
+          code(`{
+  "state": "GATE_FAILED",
+  "summary": {
+    "dataset": "orders",
+    "overall": { "score": 97.16, "status": "green", ... },
+    "criteria": [ ...one entry per quality dimension... ],
+    "compliance": { "grade": ..., "fail_controls": [ ... ] }
+  },
+  "files": [ ...links to the full report... ]
+}`) +
+          note(`A high score can still fail the gate: a blocker such as a broken key fails it whatever the average. Branch on <code>state</code>, not on the score.`) },
+      { h: 'Step 3: carry on, or stop', body:
+          p(`On <code>SUCCEEDED</code>, let the pipeline continue. On anything else, stop it and tell someone. To see what failed, ask for the run's failing rows:`) +
+          code(`POST ${API}/data-quality/failed-records
+${HDRS}
+
+{ "result_prefix": "${ph('resultPrefix')}", "limit": 300 }`) },
+      { h: 'Find a run', body:
+          p(`To find a dataset's latest run folder, for example for <code>rerun-source</code>, list the ${SC}'s recent runs:`) +
+          code(`POST ${API}/data-quality/history
+${HDRS}
+
+{ "app_id": "${ph(APPPH)}", "limit": 20 }`) +
+          p(`Each entry in <code>runs</code> has its <code>dataset</code>, <code>resultPrefix</code>, <code>state</code> and <code>overallScore</code>.`) },
+      { h: 'Good to know', body: list(
+          `<b>401</b> means the key is mistyped or has been revoked. <b>429</b> means too many runs are in progress already: wait 30 to 60 seconds and try again.`,
+          `Give up on a run that has not finished within an hour, and report it, rather than waiting for ever.`,
+          P ? `Runs started over the API are not approved automatically, because no admin started them. They arrive as drafts for approval, which changes nothing about the verdict.` : null,
+          `The key reaches every ${SC} in your organisation, so give it only to pipelines you would trust with all of them, and store it where your tool keeps its secrets.`) },
+      { h: 'Example: stop a bad load reaching a dashboard', body:
+          p(`Every night a pipeline loads the day's orders into Snowflake, and the Sales dashboard reloads in the morning. When a load brings in orders with no customer, nobody notices until a manager asks why revenue dropped.`) +
+          steps(`Tag the orders datasets <code>nightly-sales</code>, and save their connection as a credential profile.`,
+                `After the load, call <code>run-by-tag</code> with that tag.`,
+                `Ask after each run until every one has finished.`,
+                `If every one <code>SUCCEEDED</code>, reload the dashboard. If any did not, skip the reload and alert the dataset's owner. The dashboard keeps yesterday's good data, and the owner gets the failing rows.`) },
+      { h: 'In Qlik Talend Cloud, with Qlik Automate', body:
+          p(`An automation that runs the load, checks it, and reloads the app only when it passes:`) +
+          steps(`<b>Start</b> the automation on a schedule, or at the end of your pipeline.`,
+                `<b>Start Tasks and wait for completion</b>, from the Qlik Talend Data Integration connector, runs the data task that loads the orders.`,
+                `<b>Call URL</b>: <code>POST</code> to <code>${API}/data-quality/run-by-tag</code>, with the two headers and the body from Step 1.`,
+                `<b>Loop</b> over <code>launched</code> in its answer. Inside it, a <b>Call URL</b> to <code>/data-quality/result</code> with that item's <code>resultPrefix</code>, a <b>Condition</b> on <code>state</code>, and a <b>Sleep</b> of 30 seconds while it is still <code>PENDING</code> or <code>RUNNING</code>. Allow up to an hour.`,
+                `<b>Condition</b>: if every state is <code>SUCCEEDED</code>, <b>Do Reload</b>, from the Qlik Cloud Services connector, reloads the Sales app.`,
+                `Otherwise, send an email, or a Teams or Slack message, naming the datasets that failed, and do not reload.`) +
+          warn(`The key sits in the Call URL block's headers, so anyone who can edit the automation can see it. Keep its editors to the people who should hold the key.`) },
+      { h: 'In Qlik Talend Cloud, with a Talend job', body:
+          p(`The same gate as a Talend Studio job, run as a step in a Talend Management Console plan:`) +
+          steps(`Hold the key in a <b>password</b> context variable, such as <code>context.dq_api_key</code>, so it is stored encrypted rather than in the job.`,
+                `<b>tRESTClient</b>: <code>POST</code> to <code>${API}/data-quality/run-by-tag</code>, with an <code>x-api-key</code> header from the context variable and the JSON body from Step 1.`,
+                `<b>tExtractJSONFields</b> reads <code>launched[*].resultPrefix</code> from the answer, and <b>tFlowToIterate</b> takes the runs one at a time.`,
+                `For each, a <b>tLoop</b> around a <b>tRESTClient</b> to <code>/data-quality/result</code> and a <b>tSleep</b> of 30 seconds, until <code>state</code> is no longer <code>PENDING</code> or <code>RUNNING</code>.`,
+                `If any state is not <code>SUCCEEDED</code>, <b>tDie</b> fails the job, naming the dataset.`,
+                `In the plan, put the job after the load and before the step that publishes or reloads. A failed job stops the plan there.`) +
+          tip(`Try a call from a terminal first, then copy it into the tool. With curl:`) +
+          code(`curl -X POST "${API}/data-quality/run-by-tag" &#92;
+  -H "x-api-key: ${ph('your-api-key')}" &#92;
+  -H "Content-Type: application/json" &#92;
+  -d '{"app_id": "${ph(APPPH)}", "tag": "${ph('tag')}"}'`) },
     ],
   });
 
