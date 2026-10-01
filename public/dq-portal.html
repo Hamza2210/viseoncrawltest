@@ -707,6 +707,47 @@
   .src-res-hd { display: flex; align-items: center; gap: 8px 12px; flex-wrap: wrap; margin: 0 0 14px; }
   .src-res-when { font-size: 12px; color: var(--muted); }
   .src-res-acts { margin-left: auto; display: inline-flex; flex-wrap: wrap; gap: 8px; }
+  /* Why the gate failed: one row per reason, with what the rule wants, how much of the table breaks
+     it, and a way to those records. */
+  .gate-why { margin: 10px 0 16px; border: 1px solid color-mix(in srgb, var(--err) 40%, var(--border)); border-radius: 12px;
+    background: linear-gradient(180deg, color-mix(in srgb, var(--err) 13%, var(--card)), color-mix(in srgb, var(--err) 5%, var(--card)) 75%); }
+  .gate-hd { display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px 12px; }
+  .gate-ico { flex: none; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center;
+    background: color-mix(in srgb, var(--err) 20%, transparent); color: var(--err); }
+  .gate-ico svg { width: 19px; height: 19px; }
+  .gate-t { font-size: 15px; font-weight: 700; color: var(--text); }
+  .gate-s { margin-top: 2px; font-size: 12.5px; line-height: 1.45; color: var(--muted); }
+  .gate-list { list-style: none; margin: 0; padding: 0 10px 10px; display: flex; flex-direction: column; gap: 6px; }
+  .gate-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(170px, 260px) auto; align-items: center; gap: 8px 18px;
+    padding: 11px 14px; border-radius: 9px; border: 1px solid var(--border); background: color-mix(in srgb, var(--card-2) 88%, transparent); }
+  .gate-row[hidden] { display: none; }
+  .gate-row.gate-plain { grid-template-columns: minmax(0, 1fr); }
+  .gate-what { min-width: 0; }
+  .gate-name { display: flex; align-items: center; gap: 9px; min-width: 0; }
+  .gate-dim { flex: none; padding: 2px 8px; border: 1px solid var(--border); border-radius: 999px; font-size: 10px; font-weight: 700;
+    letter-spacing: .05em; text-transform: uppercase; color: var(--muted); background: var(--card); }
+  .gate-col { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 600 13.5px/1.3 ui-monospace, Consolas, monospace;
+    color: var(--text); }
+  .gate-req { margin-top: 4px; font-size: 12.5px; line-height: 1.45; color: var(--muted); overflow-wrap: anywhere; }
+  .gate-measure { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .gate-n { display: flex; justify-content: space-between; gap: 10px; font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .gate-n b { font-size: 14px; color: var(--text); }
+  .gate-pct { color: var(--err); font-weight: 600; }
+  .gate-bar { height: 6px; overflow: hidden; border-radius: 999px; background: color-mix(in srgb, var(--err) 15%, transparent); }
+  .gate-bar i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, color-mix(in srgb, var(--err) 60%, transparent), var(--err)); }
+  .gate-see { white-space: nowrap; }
+  .gate-more-li { padding: 0 4px; }
+  .gate-more { margin-left: 0; }
+  .gate-ft { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; padding: 0 18px 14px; font-size: 12px; color: var(--muted); }
+  .gate-ft .linkbtn { margin-left: 0; }
+  @media (max-width: 760px) {
+    .gate-row { grid-template-columns: minmax(0, 1fr) auto; }
+    .gate-measure { grid-column: 1 / -1; grid-row: 2; }
+  }
+  .fr-filter-note .fr-clear { margin-left: 4px; }
+  .fr-filter-note.fr-note-check { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; margin: 4px 0 10px !important;
+    padding: 8px 12px; border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--border)); border-radius: 9px;
+    background: color-mix(in srgb, var(--accent) 10%, var(--card)); color: var(--text); }
   /* A tabbed result: the headline on top, then its parts in tabs. */
   .ra-head .ds-name { font-size: 20px; margin-bottom: 6px; }
   .ra-head .headline { margin-bottom: 6px; }
@@ -5990,6 +6031,138 @@ document.addEventListener('keydown', e => {
   hd.click();
 });
 
+// ---- Why the gate failed ---------------------------------------------------------------------- //
+// The engine says why in sentences written for a log: "blocker check 'completeness.populated::
+// customer_id' failed on 127 record(s)". Each becomes a row a person can act on: the column and its
+// dimension, what it must be, how many records break it and what share of the table that is, and a
+// way to see exactly those records. A reason that is not a check (a score under the gate's
+// threshold, too many failures overall) reads as a sentence, and one not recognised is shown as the
+// engine wrote it rather than dropped.
+const _GATE_DIM = { completeness: 'Completeness', uniqueness: 'Uniqueness', validity: 'Validity', consistency: 'Consistency',
+  timeliness: 'Timeliness', accuracy: 'Accuracy', integrity: 'Integrity', reasonability: 'Reasonability', precision: 'Precision' };
+const _GATE_REQ = {
+  populated: 'Must not be empty', unique: 'Must be unique', primary_key: 'The key must be present and unique',
+  whole_record: 'No row may be an exact copy of another', domain: 'Must be one of its allowed values',
+  range: 'Must be within its allowed range', date_range: 'Must be a date within its allowed range',
+  format: 'Must match its required format', type: 'Must be the declared type', length: 'Must be within its allowed length',
+  no_future_dates: 'Must not be in the future', scale: 'Must have the declared number of decimal places',
+  outliers: 'Must be within a plausible range', fk: 'Must match a record in the reference table',
+  matches_reference: 'Must match the reference data', authoritative_lookup: 'Must be in the authoritative list',
+  representation: 'Must be written one consistent way', format_stability: "Must keep to the column's usual format",
+  rule: 'Must satisfy this consistency rule',
+};
+// The checks that are about the table rather than one column.
+const _GATE_WHOLE = { primary_key: 'Primary key', whole_record: 'Whole rows', no_future_dates: 'Dates' };
+// Where the failed records' own rule can say it more exactly ("Must be one of: ...", "Must be ≥ 0").
+const _GATE_EXACT = new Set(['format', 'range', 'date_range', 'length', 'domain', 'type']);
+const GATE_SHOW = 6;                                     // rows on show before "Show N more"
+
+function _gateParse(reason) {
+  const t = String(reason || '').trim();
+  let m = /^(\w+) check '([^']+)' failed on ([\d,]+) record\(s\)$/.exec(t);
+  if (m) {
+    const id = m[2], cut = id.indexOf('::');
+    const head = cut < 0 ? id : id.slice(0, cut), target = cut < 0 ? '' : id.slice(cut + 2);
+    const dot = head.indexOf('.');
+    return { type: 'check', sev: m[1], id, dim: dot < 0 ? head : head.slice(0, dot), kind: dot < 0 ? '' : head.slice(dot + 1),
+             target, failed: Number(m[3].replace(/,/g, '')) || 0 };
+  }
+  if ((m = /^overall score ([\d.]+) below threshold ([\d.]+)$/.exec(t))) return { type: 'score', score: Number(m[1]), threshold: Number(m[2]) };
+  if (/^overall score could not be computed$/.test(t)) return { type: 'noscore' };
+  if ((m = /^([\d,]+) check failure\(s\) exceed the limit of ([\d,]+)$/.exec(t))) {
+    return { type: 'cap', n: Number(m[1].replace(/,/g, '')), limit: Number(m[2].replace(/,/g, '')) };
+  }
+  return { type: 'text', text: t };
+}
+/** What a check is about, for its row and for the records filter: its column(s), or what it covers. */
+function _gateTarget(p) {
+  if (p.target) return p.target.split('+').join(' + ');
+  return _GATE_WHOLE[p.kind] || (p.kind || p.id || '').replace(/_/g, ' ');
+}
+function _gatePct(share) {
+  if (share >= 99.95) return '100%';
+  if (share >= 0.1) return share.toFixed(1) + '%';
+  return share > 0 ? '<0.1%' : '0%';
+}
+
+function gatePanel(st, o) {
+  const parsed = ((st.gate && st.gate.reasons) || []).map(_gateParse);
+  const checks = parsed.filter(p => p.type === 'check').sort((a, b) => b.failed - a.failed);
+  const other = parsed.filter(p => p.type !== 'check');
+  const rows = Number(st.rows_assessed) || 0, n = checks.length;
+  const bits = [];
+  if (n) bits.push(`${n} blocker check${n === 1 ? '' : 's'} failed`);
+  if (other.some(p => p.type === 'score' || p.type === 'noscore')) bits.push("the overall score is under the gate's threshold");
+  if (other.some(p => p.type === 'cap')) bits.push('there are more failures than the gate allows');
+  const said = bits.length < 3 ? bits.join(', and ') : bits.slice(0, -1).join(', ') + ', and ' + bits[bits.length - 1];
+  let sub = bits.length ? said + '.' : 'One or more blocking checks failed.';
+  sub = sub.charAt(0).toUpperCase() + sub.slice(1);
+  if (n) sub += ' Any blocker fails the gate, whatever the overall score.';
+  const checkRow = (p, i) => {
+    const share = rows ? Math.min(100, p.failed / rows * 100) : null;
+    const pct = share == null ? '' : _gatePct(share);
+    const count = `<b>${p.failed.toLocaleString()}</b> record${p.failed === 1 ? '' : 's'}`;
+    return `<li class="gate-row" data-check="${esc(p.id)}" title="${esc(p.id)}"${i >= GATE_SHOW ? ' hidden data-gatehidden' : ''}>` +
+      `<div class="gate-what"><div class="gate-name"><span class="gate-dim">${esc(_GATE_DIM[p.dim] || p.dim)}</span>` +
+      `<span class="gate-col">${esc(_gateTarget(p))}</span></div>` +
+      `<div class="gate-req" data-gatereq>${esc(_GATE_REQ[p.kind] || 'Must satisfy its rule')}</div></div>` +
+      `<div class="gate-measure"><div class="gate-n"><span>${count}</span>${pct ? `<span class="gate-pct">${pct} of rows</span>` : ''}</div>` +
+      (share == null ? '' : `<div class="gate-bar" aria-hidden="true"><i style="width:${Math.max(share, 0.8).toFixed(2)}%"></i></div>`) + `</div>` +
+      (o.canSee ? `<button type="button" class="btn-sm gate-see" data-gatesee="${esc(p.id)}" data-failed="${p.failed}" ` +
+                  `aria-label="See the records that fail ${esc(_gateTarget(p))}">See records →</button>` : '') +
+      `</li>`;
+  };
+  const otherRow = p => {
+    const [label, text] = p.type === 'score'
+      ? ['Overall score', `${fmtScore(p.score)} is under the gate's threshold of ${fmtScore(p.threshold)}.`]
+      : p.type === 'noscore' ? ['Overall score', 'It could not be computed, so the gate cannot pass.']
+      : p.type === 'cap' ? ['All failures', `${p.n.toLocaleString()} check failures, over the gate's limit of ${p.limit.toLocaleString()}.`]
+      : ['Reason', p.text];
+    return `<li class="gate-row gate-plain"><div class="gate-what"><div class="gate-name"><span class="gate-dim">${esc(label)}</span></div>` +
+      `<div class="gate-req">${esc(text)}</div></div></li>`;
+  };
+  // "Show N more" goes straight after the checks it reveals; the whole-table reasons come last.
+  const more = n > GATE_SHOW ? `<li class="gate-more-li"><button type="button" class="linkbtn gate-more" data-gatemore>` +
+    `Show ${n - GATE_SHOW} more check${n - GATE_SHOW === 1 ? '' : 's'}</button></li>` : '';
+  const list = checks.map(checkRow).join('') + more + other.map(otherRow).join('');
+  const foot = n ? `<div class="gate-ft"><span>Fix these records, then run it again to pass.</span>` +
+    (o.canSee && o.tabbed ? `<button type="button" class="linkbtn" data-gateall>See all failing records →</button>` : '') +
+    (o.canSee && !o.tabbed ? `<span>They are listed under Failed records, below.</span>` : '') + `</div>` : '';
+  return `<section class="ra-why gate-why" aria-label="Why the quality gate failed">` +
+    `<div class="gate-hd"><span class="gate-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ` +
+    `stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21.5s7.5-3.8 7.5-9.5V5.2L12 2.5 4.5 5.2v6.8c0 5.7 7.5 9.5 7.5 9.5z"/>` +
+    `<path d="m9.6 9.4 4.8 4.8m0-4.8-4.8 4.8"/></svg></span><div><div class="gate-t">Quality gate failed</div>` +
+    `<div class="gate-s">${esc(sub)}</div></div></div>` +
+    (list ? `<ul class="gate-list">${list}</ul>` : '') + foot + `</section>`;
+}
+/** Once the failed records are in, each row says exactly what its rule wants. */
+function _gateEnrich(body, data) {
+  const exps = (data && data.expectations) || {};
+  body.querySelectorAll('.gate-row[data-check]').forEach(row => {
+    const exp = exps[row.dataset.check], req = row.querySelector('[data-gatereq]');
+    if (!exp || !req) return;
+    let text = '';
+    if (_GATE_EXACT.has(exp.kind)) text = (fixFor(exp, '', null).req || '').replace(/\.$/, '');
+    else if (!_GATE_REQ[exp.kind] && exp.description) text = exp.description;
+    if (text) req.textContent = text;
+  });
+}
+/**
+ * Open the failed records at one check's rows (or all of them, for no check). In a tabbed result
+ * that is the Failed records tab; elsewhere they are further down the same result. Records that
+ * have not loaded yet are loaded first and filtered when they arrive.
+ */
+function _gateSee(body, check, failed) {
+  const fr = body.querySelector('.assess-failed');
+  if (!fr) return;
+  fr._frWant = check ? { check, failed } : {};
+  const tab = body.querySelector('[data-ratab="records"]');
+  if (tab && !tab.classList.contains('active')) tab.click();
+  if (fr._frApply) fr._frApply(fr._frWant, true);
+  else { const b = fr.querySelector('[data-loadfr]'); if (b) b.click(); }
+  if (!tab) fr.scrollIntoView({ behavior: dqReduced() ? 'auto' : 'smooth', block: 'start' });
+}
+
 function renderAssessment(r, bodyEl, opts) {
   const isApp = !!(opts && opts.context === 'app');
   const body = bodyEl || $('#assessBody');
@@ -6063,16 +6236,7 @@ function renderAssessment(r, bodyEl, opts) {
   if (tabbed) html = '';
   // Explain a gate failure explicitly: a high score can still fail the gate because
   // the gate is a pass/fail safety check on blocker-severity issues, not an average.
-  if (!gatePass) {
-    const reasons = (st.gate && st.gate.reasons) || [];
-    const items = (reasons.length ? reasons : ['One or more blocking checks failed.'])
-      .map(x => `<li>${x}</li>`).join('');
-    html += `<div class="ra-why" style="margin:10px 0;padding:10px 14px;border-left:4px solid var(--err);background:var(--err-bg);border-radius:4px;">
-        <strong>Why the gate failed</strong>
-        <ul style="margin:6px 0 4px 18px;padding:0;">${items}</ul>
-        <div class="hint">The gate is a pass/fail safety check - any <em>blocker</em>-severity issue fails it regardless of the overall score. Fix the blocking records shown below to pass.</div>
-      </div>`;
-  }
+  if (!gatePass) html += gatePanel(st, { tabbed, canSee: !(opts && opts.noRecords) && !!r.resultPrefix });
   const rowsTxt = st.rows_assessed == null ? '' : st.sampled
     ? `Assessed a random sample of ${Number(st.rows_assessed).toLocaleString()} of ${Number(st.rows_in_source).toLocaleString()} rows.`
     : `Assessed all ${Number(st.rows_assessed).toLocaleString()} rows.`;
@@ -6249,6 +6413,8 @@ function renderAssessment(r, bodyEl, opts) {
         const data = await postJSON(`${API_BASE}/data-quality/failed-records`, HEADERS,
           { result_prefix: frEl.dataset.prefix, limit: 500, app_id: APP_ID });
         showFailedRecords(frEl, data);
+        _gateEnrich(body, data);                         // the gate's rows say exactly what each rule wants
+        if (frEl._frWant && frEl._frApply) frEl._frApply(frEl._frWant, true);   // a See records pressed while loading
       } catch (e) {
         frEl.innerHTML = `<p class="dash-muted" style="color:var(--err)">${esc(e.message)}</p>`;
       }
@@ -6264,6 +6430,18 @@ function renderAssessment(r, bodyEl, opts) {
       frEl.querySelector('[data-loadfr]').addEventListener('click', loadFR);
     }
   }
+  const gp = body.querySelector('.gate-why');
+  if (gp) gp.addEventListener('click', e => {
+    const see = e.target.closest('[data-gatesee]');
+    if (see) { _gateSee(body, see.dataset.gatesee, Number(see.dataset.failed) || 0); return; }
+    if (e.target.closest('[data-gateall]')) { _gateSee(body, '', 0); return; }
+    const more = e.target.closest('[data-gatemore]');
+    if (more) {
+      gp.querySelectorAll('[data-gatehidden]').forEach(li => { li.hidden = false; dqIn(li); });
+      const li = more.closest('li');
+      (li || more).remove();
+    }
+  });
 }
 
 // ---- Queued pinned-rules viewer ------------------------------------------------
@@ -9957,7 +10135,7 @@ function renderExampleFixes(data) {
         <div class="fx-req">${esc(meta.req)}</div>`;
     // Distributional checks (format stability, representation, …) have no single
     // corrected value - show the requirement only, never a blank/null "fix to".
-    if (!meta.valueFix) return `<div class="fx-card" data-sev="${sev}">${head}</div>`;
+    if (!meta.valueFix) return `<div class="fx-card" data-sev="${sev}" data-check="${esc(cid)}">${head}</div>`;
     const rows = groups.get(cid).slice(0, 2).map(r => {
       const rec = r.record || {}, bad = rec[col], { after } = fixFor(exp, bad, popEx);
       if (after == null) return '';                               // never render a null "fix to"
@@ -9970,8 +10148,8 @@ function renderExampleFixes(data) {
           <span class="fx-good" title="${esc(String(after))}">${esc(String(after))}</span>
         </div>`;
     }).filter(Boolean).join('');
-    if (!rows) return `<div class="fx-card" data-sev="${sev}">${head}</div>`;        // no concrete rows - fall back to requirement only
-    return `<div class="fx-card" data-sev="${sev}">${head}
+    if (!rows) return `<div class="fx-card" data-sev="${sev}" data-check="${esc(cid)}">${head}</div>`;        // no concrete rows - fall back to requirement only
+    return `<div class="fx-card" data-sev="${sev}" data-check="${esc(cid)}">${head}
         <div class="fx-legend"><span>row</span><span>current value</span><span></span><span>fix to</span></div>
         ${rows}
       </div>`;
@@ -10147,7 +10325,7 @@ function renderFailedRecords(data) {
       .map(([k, v]) => `${esc(k)}=${esc(v)}`).join('  ·  ')
       + (x.withheld ? `<span class="dash-muted">  ·  +${esc(x.withheld)} withheld</span>` : '');
     const sev = (x.severity || '').toLowerCase();
-    return `<tr class="fr-row ${sev === 'blocker' ? 'fr-blocker' : ''}" data-sev="${esc(sev)}">` +
+    return `<tr class="fr-row ${sev === 'blocker' ? 'fr-blocker' : ''}" data-sev="${esc(sev)}" data-check="${esc(x.check_id || '')}">` +
       `<td class="dash-muted" style="font-variant-numeric:tabular-nums;">${esc(rowNo)}</td>` +
       `<td>${esc(x.dimension)}</td><td>${esc(x.check_id)}</td>` +
       `<td>${sevChip(x.severity)}</td>` +
@@ -10162,8 +10340,8 @@ function renderFailedRecords(data) {
     ? `<p class="dash-muted" style="margin:0 0 6px;">“Row” is the record’s line number in the uploaded file.</p>`
     : `<p class="dash-muted" style="margin:0 0 6px;">“#” is each record’s position in this list. A warehouse table has no fixed row order, so pinpoint a specific row by the column values shown (duplicate copies appear on consecutive lines).</p>`;
   const note = data.truncated
-    ? `<p class="dash-muted">Showing ${recs.length} of ${data.total} failed records (download the file for all).</p>`
-    : `<p class="dash-muted">${data.total} failed record(s).</p>`;
+    ? `<p class="dash-muted fr-total">Showing ${recs.length} of ${data.total} failed records (download the file for all).</p>`
+    : `<p class="dash-muted fr-total">${data.total} failed record(s).</p>`;
   return head + renderFailuresViz(data) + frPolicyNote(pol) +
     `<p class="dash-muted fr-filter-note" style="margin:0 0 6px;"></p>` + rowNote +
     `<div class="fr-scroll"><table class="dash-table">` +
@@ -10176,22 +10354,47 @@ const _FR_FILTER_CAP = 200;
 function showFailedRecords(el, data) {
   if (!el) return;
   el.innerHTML = renderFailedRecords(data);
-  const apply = (sev) => {
-    el.dataset.frSev = sev || '';
+  // Filtered by severity (the legend) or by one check (See records, from the gate). `reveal` brings
+  // the table into view, for a filter asked for from somewhere else on the page.
+  const apply = (f, reveal) => {
+    const sev = (f && f.sev) || '', check = (f && f.check) || '';
+    el.dataset.frSev = sev;
+    el.dataset.frCheck = check;
     let shown = 0;
     el.querySelectorAll('.fr-row').forEach(r => {
-      const vis = (!sev || r.dataset.sev === sev) && shown < _FR_FILTER_CAP;
+      const vis = (!sev || r.dataset.sev === sev) && (!check || r.dataset.check === check) && shown < _FR_FILTER_CAP;
       r.style.display = vis ? '' : 'none';
       if (vis) shown++;
     });
-    el.querySelectorAll('.fx-card').forEach(c => { c.style.display = (!sev || c.dataset.sev === sev) ? '' : 'none'; });
+    el.querySelectorAll('.fx-card').forEach(c => {
+      c.style.display = ((!sev || c.dataset.sev === sev) && (!check || c.dataset.check === check)) ? '' : 'none';
+    });
     el.querySelectorAll('.sev-key[data-sevfilter]').forEach(l => l.classList.toggle('active', !!sev && l.dataset.sevfilter === sev));
+    // The overall count would contradict a list cut down to one check, so it steps back meanwhile.
+    el.querySelectorAll('.fr-total').forEach(p => { p.hidden = !!check; });
     const ntc = el.querySelector('.fr-filter-note');
-    if (ntc) ntc.textContent = sev
-      ? `Showing ${shown}${shown >= _FR_FILTER_CAP ? '+' : ''} ${sev} record${shown === 1 ? '' : 's'} - click ${sev} again to show all.` : '';
+    if (ntc) {
+      ntc.classList.toggle('fr-note-check', !!check);
+      if (check) {
+        const name = _gateTarget(_gateParse(`blocker check '${check}' failed on 0 record(s)`));
+        const of = f.failed > shown ? ` of the ${Number(f.failed).toLocaleString()} that fail it` : '';
+        ntc.innerHTML = `Showing the ${shown} record${shown === 1 ? '' : 's'} kept for <b>${esc(name)}</b>${esc(of)}. ` +
+          `<button type="button" class="linkbtn fr-clear" data-frclear>Show every check</button>`;
+      } else {
+        ntc.textContent = sev
+          ? `Showing ${shown}${shown >= _FR_FILTER_CAP ? '+' : ''} ${sev} record${shown === 1 ? '' : 's'} - click ${sev} again to show all.` : '';
+      }
+    }
+    if (reveal && check) {
+      const t = el.querySelector('.fr-scroll') || ntc;
+      if (t) t.scrollIntoView({ behavior: dqReduced() ? 'auto' : 'smooth', block: 'nearest' });
+    }
   };
+  el._frApply = apply;
   el.querySelectorAll('.sev-key[data-sevfilter]').forEach(l =>
-    l.addEventListener('click', () => apply(el.dataset.frSev === l.dataset.sevfilter ? '' : l.dataset.sevfilter)));
+    l.addEventListener('click', () => apply({ sev: el.dataset.frSev === l.dataset.sevfilter ? '' : l.dataset.sevfilter })));
+  const clear = el.querySelector('.fr-filter-note');
+  if (clear) clear.addEventListener('click', e => { if (e.target.closest('[data-frclear]')) { el._frWant = null; apply({}); } });
 }
 
 // Pull the selected dataset's latest run inline: full scores + criteria + failed records.
@@ -17414,7 +17617,7 @@ const GD_SHOTS = {
   "quality-space": [1600, 812, "7bfbdb7881"],
   "records-policy": [1600, 433, "0850fe5c47"],
   "rules-tab": [1600, 898, "e83acb7c54"],
-  "run-result": [1600, 1381, "c7be226203"],
+  "run-result": [1600, 1381, "27d7222b2c"],
   "runs-on-agent": [1600, 1090, "167a7715e0"],
   "schedule-form-p": [1600, 1133, "b82b8c3aca"],
   "schedule-form-q": [1600, 1181, "2240ecc99a"],
@@ -18077,6 +18280,7 @@ function buildGuides() {
             `Press ${ui('Run assessment')}, or ${ui('Upload & assess')} for a file. The form steps aside while it runs, and the card shows each stage as it goes and how long it has been running. The button stays greyed out until the run is over.`,
             `For a warehouse or database table the checks run as SQL inside your own engine, so even a large table costs you a query rather than a copy.`,
             `When it is done the result takes the form's place: the overall score, whether the quality gate passed, and the nine quality dimensions. The failing records, compliance, metadata and the run's files have a tab each.`,
+            `If the quality gate failed, the result opens with why: each blocking check, what its column must be, and how many records break it. ${ui('See records')} goes straight to just those records.`,
             `${ui('Connection')} and ${ui('Result')}, at the top right of the card, switch between the form and the result, and ${ui('Run again')} runs it again with the same settings. A run keeps going if you move to another source or tab, and its result is there when you come back.`) +
           shot('run-result', `${n(1)} The overall score, with its status, the gate and the source. ${n(2)} The result's parts, a tab each, with Scores open. ${n(3)} Why the gate failed. ${n(4)} Each dimension's score, and ${n(5)} the same scores as a chart. ${n(6)} Back to the form, or to the result.`) +
           note(`Scores are green from 95, amber from 85 and red below that. A dimension your data cannot evidence, such as Timeliness on a table with no date column, is marked <b>not assessed</b> and left out of the score rather than counted as a pass.`) },
