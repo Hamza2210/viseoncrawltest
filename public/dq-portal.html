@@ -2132,7 +2132,7 @@
     transition: transform .13s ease, box-shadow .16s ease,
       background-color .13s, border-color .13s, color .13s;
   }
-  button:not(.tab):not(.side-item):not(.subtab):not(.linkbtn):not(.dchip):not(.apptab):not(.x-close):not(.banner-x):not(.mzoom):not(.sched-caret):not(.inc-kebab):not(.inc-menu-item):not(:disabled):hover,
+  button:not(.tab):not(.side-item):not(.subtab):not(.linkbtn):not(.dchip):not(.apptab):not(.x-close):not(.banner-x):not(.mzoom):not(.sched-caret):not(.inc-kebab):not(.inc-menu-item):not(.gd-clear):not(:disabled):hover,
   .btn-sm:not(:disabled):hover { transform: translateY(-1px) scale(1.03);
     box-shadow: 0 6px 18px color-mix(in srgb, var(--accent2) 26%, transparent); }
   button:not(:disabled):active, .btn-sm:not(:disabled):active { transform: translateY(0) scale(.98); box-shadow: none; }
@@ -2634,11 +2634,18 @@
   /* padding: 0 matters: the app-wide button rule gives every button 11px 18px, which in a 26px circle
      pushed the cross into its bottom-right corner. The cross is drawn, not typed, so it sits in the
      exact centre whatever the font does with a multiplication sign. */
-  .gd-clear { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); width: 26px; height: 26px; border-radius: 50%;
+  /* Centred by auto margins, NOT by transform. The app-wide hover lift and press squash both set
+     `transform`, which replaced a translateY(-50%) here and dropped the button half its height below
+     the field the moment the pointer reached it. It is also left out of that lift (see the
+     micro-interactions rule), and held still when pressed: it highlights rather than moves. */
+  .gd-clear { position: absolute; right: 8px; top: 0; bottom: 0; margin: auto 0; width: 26px; height: 26px; border-radius: 50%;
     display: grid; place-items: center; padding: 0; border: 0; box-shadow: none;
-    background: var(--idle-bg); color: var(--muted); cursor: pointer; line-height: 1; visibility: hidden; }
+    background: var(--idle-bg); color: var(--muted); cursor: pointer; line-height: 1; visibility: hidden;
+    transition: background-color .13s, color .13s; }
   .gd-clear svg { width: 12px; height: 12px; }
-  .gd-clear:hover { color: var(--text); }
+  .gd-search .gd-clear:hover { color: var(--text); background: color-mix(in srgb, var(--accent) 30%, var(--idle-bg)); }
+  .gd-search .gd-clear:active { transform: none; box-shadow: none; background: color-mix(in srgb, var(--accent) 42%, var(--idle-bg)); }
+  .gd-search .gd-clear:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
   .gd-count { color: var(--muted); font-size: 12.5px; }
 
   .gd-carousel { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 10px; }
