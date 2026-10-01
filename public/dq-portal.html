@@ -151,13 +151,11 @@
      scale(1.06)) to the card-shaped things you click. Kept at 1.012-1.02: enough to confirm the
      target under the cursor, not enough to reflow anything around it. Table rows are excluded
      deliberately - a transform on a <tr> fights the sticky header and the collapsed borders. */
-  .source-card, .cmp-choose-card { transition: transform .12s var(--dq-ease), border-color .12s var(--dq-ease), background-color .12s var(--dq-ease); }
+  .source-card, .cmp-choose-card, .lng-node { transition: transform .12s var(--dq-ease), border-color .12s var(--dq-ease), background-color .12s var(--dq-ease); }
   .tile:hover       { transform: translateY(-3px) scale(1.015); }
-  .dsp-card:hover   { transform: translateY(-1px) scale(1.012); }
-  .lin2-node:hover  { transform: translateY(-1px) scale(1.012); }
+  .lng-node.go:hover { transform: translateY(-1px) scale(1.012); }
   .source-card:hover{ transform: translateY(-1px) scale(1.02); }
   .cmp-choose-card:hover { transform: translateY(-1px) scale(1.01); }
-  .lin2-focus:hover { transform: none; }        /* the focus node is not a target, it is the subject */
   .dq-in { animation: dqIn .26s var(--dq-ease) both; }
   /* Page-level entry is deliberately bigger than content-level: a whole tab changing should read
      as a change of place, and at 6px it did not register at all. */
@@ -193,7 +191,7 @@
     .overview-top > #dashDetail { transition: none !important; }
     /* The shimmer keeps its shape but stops moving, and nothing grows under the cursor. */
     .sk { animation: none !important; background: var(--idle-bg) !important; }
-    .tile:hover, .dsp-card:hover, .lin2-node:hover, .source-card:hover, .cmp-choose-card:hover,
+    .tile:hover, .lng-node.go:hover, .source-card:hover, .cmp-choose-card:hover,
     .btn-sm:not(:disabled):hover, .linkbtn:hover { transform: none !important; }
     /* The layout still changes, it just stops sliding there. */
     .overview-top, .overview-top > #dashDetail, .overview-top > .galaxy-card,
@@ -2111,82 +2109,12 @@
   .lin-node.lin-amber { border-color: rgba(251,191,36,.42); }
   .lin-label { font-weight: 600; font-size: 13px; word-break: break-word; }
 
-  /* ---- Dependency lineage graph ------------------------------------------------------ */
-  .lin2-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 0 0 14px; }
-  .lin2-bar label { margin: 0; font-size: 12px; font-weight: 600; color: var(--muted); }
-  .lin2-bar select { width: auto; min-width: 260px; max-width: 420px; }
+  /* ---- Dependency lineage: the Source data scope -------------------------------------- */
   .lin2-skip { font-size: 12px; color: var(--muted); }
-
-  /* Summary strip: the focus object on the left, the two counts on the right. Downstream is
-     given the emphasis because it is the blast radius, which is the question worth asking. */
-  /* Dataset picker. A <select> cannot show a score, a stage and tags, which are exactly the
-     things you choose a dataset BY, so the control shows them and filters on them. */
-  .dsp { border: 1px solid var(--border); border-radius: 12px; background: var(--card-2);
-    padding: 12px; margin-bottom: 18px; }
-  .dsp-top { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-  .dsp-search { position: relative; flex: 1 1 260px; display: flex; align-items: center; }
-  .dsp-mag { position: absolute; left: 11px; font-size: 12px; opacity: .65; pointer-events: none; }
-  .dsp-search input { width: 100%; box-sizing: border-box; padding: 9px 12px 9px 32px; margin: 0;
-    font: inherit; font-size: 13px; border-radius: 9px; border: 1px solid var(--border);
-    background: var(--card); color: var(--text); }
-  .dsp-search input:focus { outline: none; border-color: var(--accent); }
-  .dsp-search input::-webkit-search-cancel-button { filter: invert(.6); }
-  .dsp-count { font-size: 12px; color: var(--muted); white-space: nowrap; }
-
-  .dsp-filters { display: flex; flex-direction: column; gap: 6px; margin-top: 11px; }
-  .dsp-filters:empty { display: none; }
-  .dsp-fg { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-  .dsp-fl { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
-    color: var(--muted); width: 52px; flex: none; }
-  .dsp-chip { cursor: pointer; font: inherit; font-size: 11px; padding: 3px 9px; border-radius: 999px;
-    border: 1px solid var(--border); background: var(--card); color: var(--muted);
-    white-space: nowrap; opacity: .62; transition: opacity .12s ease, border-color .12s ease; }
-  .dsp-chip:hover { opacity: .9; }
-  .dsp-chip.on { opacity: 1; color: var(--text); border-color: var(--accent); }
-  .dsp-chip.medal { opacity: .55; }
-  .dsp-chip.medal.on { opacity: 1; }
-
-  .dsp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(232px, 1fr));
-    gap: 9px; margin-top: 12px; max-height: 296px; overflow-y: auto; padding-right: 2px; }
-  .dsp-card { display: block; width: 100%; text-align: left; cursor: pointer; font: inherit;
-    padding: 10px 11px; border-radius: 10px; border: 1px solid var(--border);
-    border-left: 3px solid var(--idle); background: var(--card); color: var(--text);
-    transition: transform .12s ease, border-color .12s ease, box-shadow .12s ease; }
-  .dsp-card:hover { transform: translateY(-1px); box-shadow: var(--shadow-sm); border-color: var(--accent); }
-  .dsp-card[data-rag="green"] { border-left-color: var(--ok); }
-  .dsp-card[data-rag="amber"] { border-left-color: var(--run); }
-  .dsp-card[data-rag="red"]   { border-left-color: var(--err); }
-  .dsp-card.on { border-top-color: var(--accent); border-right-color: var(--accent);
-    border-bottom-color: var(--accent); background: var(--accent-soft);
-    box-shadow: 0 0 0 1px var(--accent) inset; }
-  .dsp-ch { display: flex; align-items: center; gap: 7px; min-width: 0; }
-  .dsp-ico { font-size: 14px; flex: none; line-height: 1; }
-  .dsp-name { font-size: 13px; font-weight: 650; word-break: break-word; line-height: 1.3; }
-  .dsp-sch { color: var(--muted); font-weight: 500; }
-  .dsp-cm { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; margin-top: 6px;
-    font-size: 11px; color: var(--muted); }
-  .dsp-score { display: inline-flex; align-items: center; gap: 4px; }
-  .dsp-score b { color: var(--text); font-weight: 650; }
-  .dsp-ct { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 6px; }
-  .dsp-ct span { font-size: 10px; padding: 1px 6px; border-radius: 999px; color: var(--muted);
-    background: var(--card-2); border: 1px solid var(--border); }
-  .dsp .lin2-skip { display: block; margin-top: 11px; }
-  /* The tag row is the one that grows without bound, so it gets its own ceiling and scrolls
-     rather than pushing the graph off the screen. */
-  .dsp-fg { max-height: 88px; overflow-y: auto; }
-  .dsp-more-tags { font-style: italic; }
-  .dsp-more { grid-column: 1 / -1; font-size: 12px; color: var(--muted); text-align: center;
-    padding: 9px; border-top: 1px dashed var(--border); margin-top: 3px; }
-  .dsp-none { grid-column: 1 / -1; font-size: 12.5px; color: var(--muted); padding: 14px;
-    text-align: center; border: 1px dashed var(--border); border-radius: 10px; }
-  .lin2-sum { display: flex; align-items: center; justify-content: space-between; gap: 16px;
-    flex-wrap: wrap; padding: 13px 15px; margin-bottom: 18px; border: 1px solid var(--border);
-    border-radius: 12px; background: var(--card-2); }
-  .lin2-sum-h { font-size: 13px; color: var(--text); line-height: 1.5; }
-  .lin2-sum-h strong { font-weight: 650; }
+  .lin2-skip:empty { display: none; }
   .lin2-pills { display: flex; gap: 8px; flex-wrap: wrap; }
   .lin2-pill { display: inline-flex; align-items: baseline; gap: 6px; padding: 6px 11px;
-    border-radius: 9px; background: var(--card); border: 1px solid var(--border); }
+    border-radius: 9px; background: var(--card-2); border: 1px solid var(--border); }
   .lin2-pill b { font-size: 16px; font-weight: 700; color: var(--text); line-height: 1; }
   .lin2-pill span { font-size: 11px; color: var(--muted); text-transform: uppercase;
     letter-spacing: .05em; font-weight: 600; }
@@ -2195,67 +2123,261 @@
   .lin2-warn { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px;
     border-radius: 8px; font-size: 12px; color: var(--run);
     background: var(--run-bg); border: 1px solid color-mix(in srgb, var(--run) 35%, transparent); }
-
-  .lin2-graph { position: relative; display: grid; grid-template-columns: 1fr minmax(180px, 230px) 1fr;
-    gap: 14px 54px; align-items: start; }
-  .lin2-edges { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none;
-    overflow: visible; z-index: 0; }
-  .lin2-col { display: flex; flex-direction: column; gap: 10px; min-width: 0; position: relative; z-index: 1; }
-  .lin2-col[data-side="focus"] { justify-content: center; align-self: center; }
-  .lin2-ch { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em;
-    color: var(--muted); margin-bottom: 2px; }
-  .lin2-col[data-side="down"] .lin2-ch { text-align: right; }
-
-  .lin2-node { display: flex; gap: 10px; align-items: center; padding: 10px 12px; min-width: 0;
-    border: 1px solid var(--border); border-left: 3px solid var(--idle); border-radius: 10px;
-    background: var(--card); transition: transform .12s ease, border-color .12s ease, box-shadow .12s ease; }
-  .lin2-node:hover { transform: translateY(-1px); box-shadow: var(--shadow-sm);
-    border-color: var(--accent); }
-  .lin2-node[data-rag="green"] { border-left-color: var(--ok); }
-  .lin2-node[data-rag="amber"] { border-left-color: var(--run); }
-  .lin2-node[data-rag="red"]   { border-left-color: var(--err); }
-  .lin2-ico { font-size: 17px; flex: none; line-height: 1; }
-  .lin2-nb { min-width: 0; flex: 1; }
-  .lin2-name { font-size: 13px; font-weight: 650; color: var(--text); word-break: break-word; line-height: 1.3; }
-  .lin2-sch { color: var(--muted); font-weight: 500; }
-  .lin2-meta { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; margin-top: 4px; }
-  .lin2-kind { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em;
-    color: var(--muted); background: var(--card-2); border: 1px solid var(--border);
-    border-radius: 5px; padding: 1px 5px; }
-  .lin2-score { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; color: var(--muted); }
-  .lin2-score b { color: var(--text); font-weight: 650; }
-
-  /* The relation being explained. Larger, accented, and the only node with a gradient edge. */
-  .lin2-focus { border: 1px solid var(--accent); border-left: 3px solid var(--accent);
-    background: var(--accent-soft); padding: 14px; box-shadow: var(--shadow-sm); }
-  .lin2-focus .lin2-name { font-size: 14px; }
-  .lin2-focus:hover { transform: none; }
-
-  .lin2-edge { stroke: color-mix(in srgb, var(--muted) 42%, transparent); stroke-width: 2.1; fill: none;
-    transition: stroke .12s ease, stroke-width .12s ease; }
-  .lin2-edge[data-rag="green"] { stroke: color-mix(in srgb, var(--ok) 62%, transparent); }
-  .lin2-edge[data-rag="amber"] { stroke: color-mix(in srgb, var(--run) 70%, transparent); }
-  .lin2-edge[data-rag="red"]   { stroke: color-mix(in srgb, var(--err) 70%, transparent); }
-  .lin2-edge.hl { stroke: var(--accent); stroke-width: 3; }
   .lin2-empty { font-size: 12.5px; color: var(--muted); padding: 11px 12px; border-radius: 10px;
     border: 1px dashed var(--border); background: var(--card-2); line-height: 1.5; }
   .lin2-empty.bad { color: var(--run); border-color: color-mix(in srgb, var(--run) 35%, transparent); }
-  .lin2-notes { margin-top: 18px; display: flex; flex-direction: column; gap: 7px; }
+  .lin2-notes { margin-top: 14px; display: flex; flex-direction: column; gap: 9px; }
   .lin2-note { display: flex; gap: 8px; align-items: flex-start; font-size: 12px; color: var(--muted);
     line-height: 1.5; }
   .lin2-note .lin-rag { margin-top: 5px; }
-  @media (max-width: 860px) {
-    .lin2-graph { grid-template-columns: 1fr; gap: 12px; }
-    .lin2-edges { display: none; }
-    .lin2-col[data-side="down"] .lin2-ch { text-align: left; }
+
+  /* The header's tools: the scope (Qlik only), search, the dataset filter and Refresh. */
+  /* The text keeps a readable column; the tools take what is left and wrap inside it. */
+  #lineagePanel .tab-intro { grid-template-columns: auto minmax(min(100%, 360px), 1fr) minmax(0, auto); }
+  #lineagePanel .tab-intro > .lng-tools { grid-column: 3; grid-row: 1 / -1; align-self: center; margin-left: 18px; }
+  @media (max-width: 1100px) {
+    #lineagePanel .tab-intro { grid-template-columns: auto minmax(0, 1fr); }
+    #lineagePanel .tab-intro > .lng-tools { grid-column: 1 / -1; grid-row: auto; margin: 14px 0 0; justify-content: flex-start; }
   }
+  .lng-tools { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
+  .lng-tools .scope-toggle { margin-left: 0; }
+  .lng-tools .cmpx-jump { width: min(290px, 24vw); min-width: 200px; }
+  .lng-tbtn { display: inline-flex; align-items: center; gap: 8px; height: 38px; padding: 0 12px; white-space: nowrap; cursor: pointer;
+    border: 1px solid var(--border); border-radius: 10px; background: var(--card); color: var(--text); font: inherit; font-size: 13px; }
+  .lng-tbtn svg { width: 15px; height: 15px; flex: none; color: var(--accent); }
+  .lng-tbtn .lng-caret { display: inline-flex; }
+  .lng-tbtn .lng-caret svg { width: 13px; height: 13px; color: var(--muted); }
+  .lng-tbtn:hover, .lng-tbtn.on { border-color: var(--accent); }
+  .lng-tbtn.on { background: color-mix(in srgb, var(--accent) 12%, var(--card)); }
+  .lng-fmenu { left: auto; right: 0; min-width: 250px; max-height: 420px; overflow-y: auto; }
+  .lng-fg { padding: 2px 0; margin-top: 4px; border-top: 1px solid var(--border); }
+  .lng-fgl { padding: 7px 10px 3px; font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .inc-menu-item.lng-fi { display: flex; align-items: center; gap: 8px; }
+  .lng-fck { flex: none; width: 14px; height: 14px; display: inline-flex; color: var(--accent); visibility: hidden; }
+  .lng-fck svg { width: 14px; height: 14px; }
+  .lng-fi.on .lng-fck { visibility: visible; }
+  .lng-fil { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .lng-fn { flex: none; font-size: 11px; color: var(--muted); }
+  .inc-menu-item.lng-more-tags { font-style: italic; color: var(--muted); }
+
+  #srcLinWrap { container: lngwrap / inline-size; }
+  .lng-layout { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; align-items: start; }
+  .lng-main { container: lngmain / inline-size; min-width: 0; display: flex; flex-direction: column; gap: 14px; }
+  /* Dataset, view and the key: three panels in a row, as tall as each other. */
+  .lng-bar { display: grid; grid-template-columns: minmax(240px, 1fr) auto auto; gap: 12px; align-items: stretch; }
+  .lng-field, .lng-legend { min-width: 0; border: 1px solid var(--border); border-radius: 14px; background: var(--card); padding: 10px 14px 12px; }
+  .lng-field { display: flex; flex-direction: column; gap: 7px; }
+  .lng-field.lng-viewf { min-width: max-content; }   /* the switch never squeezes past its own buttons */
+  .lng-fl { font-size: 12px; font-weight: 600; color: var(--muted); }
+  .lng-combo { position: relative; display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 6px 0 7px;
+    border: 1px solid var(--border); border-radius: 10px; background: var(--card-2); }
+  .lng-combo:focus-within, .lng-combo.open { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent); }
+  .lng-combo-ico { flex: none; width: 27px; height: 27px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center;
+    font-size: 14px; color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, var(--card)); }
+  .lng-combo-ico svg { width: 15px; height: 15px; }
+  .lng-combo input { flex: 1 1 auto; min-width: 0; height: 100%; padding: 0; margin: 0; border: 0; outline: 0; box-shadow: none;
+    background: transparent; color: var(--text); font: inherit; font-size: 13.5px; font-weight: 600; }
+  .lng-combo input:focus { box-shadow: none; }
+  .lng-combo-x { flex: none; width: 26px; height: 26px; padding: 0; border: 0; border-radius: 7px; display: inline-flex; align-items: center;
+    justify-content: center; background: none; color: var(--muted); cursor: pointer; }
+  .lng-combo-x svg { width: 14px; height: 14px; }
+  .lng-combo-x:hover { color: var(--text); background: var(--idle-bg); }
+  .lng-combo-list { position: absolute; z-index: 70; top: calc(100% + 6px); left: -1px; right: -1px; min-width: 320px; max-height: 390px;
+    overflow: auto; padding: 5px; background: var(--card); border: 1px solid var(--border); border-radius: 11px; box-shadow: var(--shadow-md); }
+  .lng-opt-hd { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 8px 7px; font-size: 11.5px; color: var(--muted); }
+  .lng-opt { display: flex; align-items: center; gap: 10px; padding: 7px 8px; border-radius: 8px; cursor: pointer; }
+  .lng-opt.at { background: var(--idle-bg); }
+  .lng-opt-ico { flex: none; width: 24px; text-align: center; font-size: 14px; line-height: 1; }
+  .lng-opt-b { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+  .lng-opt-n { display: flex; min-width: 0; font-size: 13px; font-weight: 650; white-space: nowrap; }
+  .lng-opt.on .lng-opt-n { color: var(--accent); }
+  .lng-opt-m { display: flex; align-items: center; gap: 4px 8px; flex-wrap: wrap; font-size: 11px; color: var(--muted); }
+  .lng-opt-m .medal { font-size: 10px; }
+  .lng-opt-m b { color: var(--text); font-weight: 650; }
+  .lng-opt-none, .lng-opt-more { padding: 12px 10px; font-size: 12px; color: var(--muted); text-align: center; }
+  .lng-sch { color: var(--muted); font-weight: 500; }
+  .lng-seg { display: inline-flex; gap: 3px; height: 40px; padding: 3px; border: 1px solid var(--border); border-radius: 10px; background: var(--card-2); }
+  .lng-seg button { padding: 0 15px; border: 0; border-radius: 7px; background: transparent; color: var(--muted); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .lng-seg button:hover { color: var(--text); }
+  .lng-seg button.on { background: var(--accent); color: var(--accent-fg); }
+  .lng-legend { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px 14px; font-size: 12px; color: var(--muted); }
+  .lng-legend > span { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+  .lng-legend svg { width: 14px; height: 14px; }
+  .lng-key { display: inline-block; width: 22px; border-top: 2px solid var(--lng-edge); }
+  .lng-key.dashed { border-top-style: dashed; }
+  /* Kinds keep one colour each wherever they appear: the node, the lists and the key. */
+  #lineagePanel { --lng-edge: color-mix(in srgb, var(--accent) 72%, #38bdf8); --lng-table: var(--accent); --lng-view: var(--cat-3); --lng-other: #94a2be; }
+  .k-table { --k: var(--lng-table); } .k-view { --k: var(--lng-view); } .k-other { --k: var(--lng-other); }
+  .lng-legend .k-table svg, .lng-legend .k-view svg, .lng-legend .k-other svg { color: var(--k); }
+
+  /* The graph: laid out by the page, then moved and zoomed as one picture. */
+  /* clip, not just hidden: a hidden box can still be scrolled, by focus or find-in-page, which
+     would slide the graph under its own overview. */
+  .lng-canvas { position: relative; height: 520px; overflow: hidden; overflow: clip; cursor: grab; touch-action: none; user-select: none;
+    border: 1px solid var(--border); border-radius: 16px;
+    background: radial-gradient(circle, color-mix(in srgb, var(--muted) 14%, transparent) 1px, transparent 1.3px) 0 0 / 22px 22px, var(--card-2); }
+  .lng-canvas.grabbing { cursor: grabbing; }
+  .lng-world { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+  .lng-edges { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; }
+  /* stroke-opacity, not opacity: opacity makes every path its own layer, and a few hundred of
+     them made each pan and zoom repaint the lot. */
+  .lng-edge { fill: none; stroke: var(--lng-edge); stroke-width: 1.8; stroke-opacity: .8; transition: stroke-opacity .12s, stroke-width .12s; }
+  .lng-edge.ind { stroke-dasharray: 5 5; stroke-opacity: .7; }
+  .lng-edge.hl { stroke-width: 2.8; stroke-opacity: 1; }
+  .lng-edot { fill: var(--lng-edge); }
+  #lngArrow path { fill: var(--lng-edge); }
+  .lng-node { position: absolute; display: flex; align-items: center; gap: 12px; padding: 12px 13px 12px 14px; cursor: default;
+    border: 1px solid var(--border); border-radius: 14px; background: var(--card); box-shadow: var(--shadow-sm); }
+  .lng-node.go { cursor: pointer; }
+  .lng-node.go:hover, .lng-node.go:focus-visible { border-color: var(--accent); outline: none; }
+  .lng-node.ind { background: color-mix(in srgb, var(--card) 70%, var(--card-2)); border-style: dashed; }
+  .lng-focus { border: 1.5px solid var(--accent); background: color-mix(in srgb, var(--accent) 11%, var(--card));
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 16%, transparent), 0 12px 32px -14px color-mix(in srgb, var(--accent) 70%, transparent); }
+  .lng-void { padding: 0; border: 0; background: transparent; box-shadow: none; }
+  .lng-void .lin2-empty { width: 100%; }
+  .lng-nico { flex: none; width: 38px; height: 38px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+    color: #fff; background: var(--k, var(--accent)); }
+  .lng-nico svg { width: 18px; height: 18px; }
+  .lng-nico-lg { width: 46px; height: 46px; } .lng-nico-lg svg { width: 22px; height: 22px; }
+  .lng-nico-sm { width: 30px; height: 30px; } .lng-nico-sm svg { width: 15px; height: 15px; }
+  .lng-nb { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .lng-nname { display: flex; min-width: 0; font-size: 13.5px; font-weight: 700; color: var(--text); white-space: nowrap; }
+  /* A long name gives up its schema first: the object's own name is what tells two apart. */
+  .lng-nname .lng-sch, .lng-li-n .lng-sch, .lng-opt-n .lng-sch { flex: 0 99 auto; min-width: 1.8em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .lng-nname .lng-on, .lng-li-n .lng-on, .lng-opt-n .lng-on { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .lng-gate { display: inline-block; margin-left: 6px; padding: 0 6px; border-radius: 999px; font-size: 10.5px; font-weight: 700;
+    line-height: 1.5; color: var(--err); background: var(--err-bg); }
+  .lng-focus:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+  .lng-focus .lng-nname { font-size: 14.5px; }
+  .lng-nsrc, .lng-nkind { font-size: 11.5px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .lng-nst { display: inline-flex; align-items: center; gap: 6px; margin-top: 2px; font-size: 11.5px; color: var(--muted); white-space: nowrap; }
+  .lng-nst b { color: var(--text); font-weight: 650; }
+  [data-rag="green"] > .lng-nb .lng-nst, .lng-nst.green { color: var(--ok); }
+  [data-rag="amber"] > .lng-nb .lng-nst, .lng-nst.amber { color: var(--run); }
+  [data-rag="red"] > .lng-nb .lng-nst, .lng-nst.red { color: var(--err); }
+  .lng-nchev { flex: none; display: inline-flex; color: var(--muted); }
+  .lng-nchev svg { width: 16px; height: 16px; }
+  .lng-node.go:hover .lng-nchev { color: var(--accent); }
+  .lng-chip { position: absolute; z-index: 2; left: 14px; top: 14px; display: flex; align-items: center; gap: 10px; padding: 8px 14px 8px 9px;
+    pointer-events: none; border: 1px solid var(--border); border-radius: 12px; background: color-mix(in srgb, var(--card) 92%, transparent); }
+  .lng-chip-ico { flex: none; width: 30px; height: 30px; border-radius: 9px; display: inline-flex; align-items: center; justify-content: center;
+    color: var(--accent); background: color-mix(in srgb, var(--accent) 15%, var(--card)); }
+  .lng-chip-ico svg { width: 16px; height: 16px; }
+  .lng-chip strong { display: block; font-size: 13px; }
+  .lng-chip-sub { display: block; font-size: 11.5px; color: var(--muted); }
+  .lng-nav { position: absolute; z-index: 2; left: 14px; bottom: 14px; display: flex; gap: 8px; padding: 8px;
+    border: 1px solid var(--border); border-radius: 12px; background: color-mix(in srgb, var(--card) 94%, transparent); }
+  .lng-canvas[data-navside="right"] .lng-nav { left: auto; right: 14px; }
+  .lng-mini { display: block; cursor: pointer; border-radius: 6px; }
+  .lng-mini-e { fill: none; stroke: color-mix(in srgb, var(--lng-edge) 70%, transparent); stroke-width: 1; }
+  .lng-mini-e.ind { stroke-dasharray: 2 2; }
+  .lng-mini-n { fill: var(--lng-edge); }
+  .lng-mini-f { fill: var(--accent); }
+  .lng-mini-vp { fill: color-mix(in srgb, var(--accent) 10%, transparent); stroke: color-mix(in srgb, var(--accent) 65%, transparent); stroke-width: 1; }
+  .lng-zoom { display: flex; flex-direction: column; justify-content: space-between; gap: 4px; }
+  .lng-zoom button { width: 28px; height: 26px; padding: 0; display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
+    border: 1px solid var(--border); border-radius: 7px; background: var(--card-2); color: var(--text); }
+  .lng-zoom button svg { width: 14px; height: 14px; }
+  .lng-zoom button:hover { border-color: var(--accent); color: var(--accent); }
+  .lng-blank { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; min-height: 320px; padding: 24px;
+    text-align: center; color: var(--muted); font-size: 13px; border: 1px solid var(--border); border-radius: 16px;
+    background: radial-gradient(circle, color-mix(in srgb, var(--muted) 14%, transparent) 1px, transparent 1.3px) 0 0 / 22px 22px, var(--card-2); }
+  .lng-blank svg { width: 36px; height: 36px; color: var(--accent); opacity: .7; }
+  .lng-blank:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .lng-blank p { margin: 0; max-width: 460px; line-height: 1.55; }
+  .lng-loading { display: flex; align-items: center; justify-content: center; gap: 8px; height: 320px; color: var(--muted); font-size: 13px;
+    border: 1px solid var(--border); border-radius: 16px; background: var(--card-2); }
+
+  /* The other direction, as a table under the graph. */
+  .lng-other { border: 1px solid var(--border); border-radius: 16px; background: var(--card); }
+  .lng-other-hd { width: 100%; display: flex; align-items: center; gap: 12px; padding: 13px 16px; cursor: pointer; text-align: left;
+    border: 0; border-radius: 16px; background: none; color: var(--text); font: inherit; }
+  .lng-other-ico { flex: none; width: 34px; height: 34px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+    color: #fff; background: var(--accent); }
+  .lng-other-ico svg { width: 16px; height: 16px; }
+  .lng-other-t { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .lng-other-t strong { font-size: 14px; }
+  .lng-other-t span { font-size: 12px; color: var(--muted); }
+  .lng-other-n { flex: none; font-size: 12px; color: var(--muted); border: 1px solid var(--border); border-radius: 999px; padding: 1px 9px; }
+  .lng-other-chev { flex: none; display: inline-flex; color: var(--muted); transition: transform .15s var(--dq-ease); }
+  .lng-other-chev svg { width: 16px; height: 16px; }
+  .lng-other.open .lng-other-chev { transform: rotate(180deg); }
+  .lng-other-body { padding: 0 16px 16px; }
+  .lng-tbl-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 12px; }
+  .lng-tbl { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  .lng-tbl th { padding: 10px 14px; text-align: left; font-weight: 600; color: var(--muted); white-space: nowrap;
+    border-bottom: 1px solid var(--border); background: var(--card-2); }
+  .lng-tbl td { padding: 9px 14px; white-space: nowrap; border-bottom: 1px solid var(--border); }
+  .lng-tbl tr:last-child td { border-bottom: 0; }
+  .lng-tbl tr.go { cursor: pointer; }
+  .lng-tbl tr.go:hover td, .lng-tbl tr.go:focus-visible td { background: var(--idle-bg); }
+  .lng-tbl tr.go:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .lng-tname { display: inline-flex; align-items: center; gap: 9px; font-weight: 600; }
+  .lng-tname .lng-nico { width: 26px; height: 26px; }
+  .lng-tname .lng-nico svg { width: 13px; height: 13px; }
+  .lng-tvia { display: block; font-size: 11px; font-weight: 400; color: var(--muted); }
+
+  /* The dataset panel. */
+  .lng-side { min-width: 0; padding: 0 16px 16px; border: 1px solid var(--border); border-radius: 16px; background: var(--card); }
+  .lng-tabs { display: flex; gap: 4px; margin: 0 -16px 16px; padding: 0 10px; border-bottom: 1px solid var(--border); }
+  .lng-tab { margin-bottom: -1px; padding: 13px 9px 11px; border: 0; border-bottom: 2px solid transparent; background: none; color: var(--muted);
+    font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .lng-tab:hover { color: var(--text); }
+  .lng-tab.on { color: var(--text); border-bottom-color: var(--accent); }
+  .lng-dhead { display: flex; align-items: flex-start; gap: 12px; }
+  .lng-dt { flex: 1 1 auto; min-width: 0; }
+  .lng-dname { display: flex; align-items: center; gap: 4px; font-size: 15px; font-weight: 800; }
+  .lng-dname > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .lng-copy { flex: none; width: 24px; height: 24px; padding: 0; display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
+    border: 0; border-radius: 6px; background: none; color: var(--muted); }
+  .lng-copy svg { width: 14px; height: 14px; }
+  .lng-copy:hover { color: var(--text); background: var(--idle-bg); }
+  .lng-copy.done { color: var(--ok); }
+  .lng-dsub { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 3px; font-size: 12px; color: var(--muted); }
+  .lng-dpills { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; margin-top: 3px; }
+  .lng-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 16px 0; padding: 14px 0;
+    border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+  .lng-stats span { display: block; margin-bottom: 4px; font-size: 11.5px; color: var(--muted); }
+  .lng-stats b { font-size: 13px; font-weight: 700; }
+  .lng-sec { margin-bottom: 18px; }
+  .lng-sec h4 { margin: 0 0 9px; font-size: 13.5px; font-weight: 700; }
+  .lng-sec h4 span { color: var(--muted); font-weight: 500; }
+  .lng-li { width: 100%; display: flex; align-items: center; gap: 10px; margin: 0 0 6px; padding: 8px 10px; text-align: left;
+    border: 1px solid var(--border); border-radius: 11px; background: var(--card-2); color: var(--text); font: inherit; }
+  .lng-li.go { cursor: pointer; }
+  .lng-li.go:hover { border-color: var(--accent); }
+  .lng-li.cur { border-color: color-mix(in srgb, var(--accent) 55%, var(--border)); background: color-mix(in srgb, var(--accent) 9%, var(--card-2)); }
+  .lng-li-b { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .lng-li-n { display: flex; min-width: 0; font-size: 13px; font-weight: 600; white-space: nowrap; }
+  .lng-li-s { font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .lng-li-chev { flex: none; display: inline-flex; color: var(--muted); }
+  .lng-li-chev svg { width: 15px; height: 15px; }
+  .lng-more { padding: 2px 0; border: 0; background: none; color: var(--accent); font: inherit; font-size: 12px; cursor: pointer; }
+  .lng-path-built { margin: 0 0 6px 14px; padding: 7px 0 7px 16px; border-left: 2px solid var(--border); font-size: 12px; color: var(--muted); }
+  .lng-path-up { margin-left: 14px; }
+  .lng-qa { display: flex; flex-direction: column; gap: 8px; }
+  .lng-qa-btn { display: flex; align-items: center; justify-content: center; gap: 8px; height: 42px; cursor: pointer;
+    border: 1px solid color-mix(in srgb, var(--accent) 50%, var(--border)); border-radius: 11px; background: transparent;
+    color: var(--accent); font: inherit; font-size: 13.5px; font-weight: 600; }
+  .lng-qa-btn svg { width: 16px; height: 16px; }
+  .lng-qa-btn:hover { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+  .lng-qa-btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
+  .lng-qa-btn.primary:hover { filter: brightness(1.08); }
+  .lng-ihead { margin: 0 0 12px; font-size: 13px; line-height: 1.55; }
+  .lng-ipills { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+  .lng-pane .lin2-warn { margin-bottom: 4px; }
+  @container lngwrap (max-width: 1060px) { .lng-layout { grid-template-columns: minmax(0, 1fr); } }
+  /* The bar answers to the column it sits in, not the whole tab: beside the panel it has less room. */
+  @container lngmain (max-width: 900px) { .lng-bar { grid-template-columns: minmax(0, 1fr) auto; } .lng-legend { grid-column: 1 / -1; } }
+  @container lngmain (max-width: 540px) { .lng-bar { grid-template-columns: minmax(0, 1fr); } }
+  @container lngwrap (max-width: 540px) { .lng-stats { grid-template-columns: 1fr 1fr; } }
 
   /* Micro-interactions: a gentle grow/lift on hover for clickable things */
   .tab, button, .btn-sm, .linkbtn, .apptab, .sched-caret, .x-close {
     transition: transform .13s ease, box-shadow .16s ease,
       background-color .13s, border-color .13s, color .13s;
   }
-  button:not(.tab):not(.side-item):not(.subtab):not(.linkbtn):not(.dchip):not(.apptab):not(.x-close):not(.banner-x):not(.mzoom):not(.sched-caret):not(.inc-kebab):not(.inc-menu-item):not(.gd-clear):not(.gd-tocb):not(.cmp-choose-card):not(.cmpx-count):not(.cmpx-chip):not(:disabled):hover,
+  button:not(.tab):not(.side-item):not(.subtab):not(.linkbtn):not(.dchip):not(.apptab):not(.x-close):not(.banner-x):not(.mzoom):not(.sched-caret):not(.inc-kebab):not(.inc-menu-item):not(.gd-clear):not(.gd-tocb):not(.cmp-choose-card):not(.cmpx-count):not(.cmpx-chip):not(.lngb):not(.lng-tab):not(.lng-li):not(.lng-other-hd):not(.lng-copy):not(.lng-qa-btn):not(.lng-more):not(:disabled):hover,
   .btn-sm:not(:disabled):hover { transform: translateY(-1px) scale(1.03);
     box-shadow: 0 6px 18px color-mix(in srgb, var(--accent2) 26%, transparent); }
   button:not(:disabled):active, .btn-sm:not(:disabled):active { transform: translateY(0) scale(.98); box-shadow: none; }
@@ -4153,30 +4275,55 @@
       <span class="tab-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="5.8" cy="12" r="2.5"/><circle cx="18.2" cy="6.6" r="2.5"/><circle cx="18.2" cy="17.4" r="2.5"/><path d="M8.1 10.9l7.8-3.3M8.1 13.1l7.8 3.3"/></svg></span>
       <h2>Data lineage</h2>
       <p id="linIntro">Where this app's data comes from (upstream sources) and what depends on it (downstream), traced from Qlik. Cached for 24h; use Refresh to re-pull.</p>
-    </div>
-    <div class="card">
-      <h2><span id="linTitle">Sources &amp; consumers</span>
+      <div class="lng-tools">
         <span class="scope-toggle" id="linScopeToggle">
           <button type="button" class="scope-btn active" data-scope="app">App data</button>
           <button type="button" class="scope-btn" data-scope="source">Source data</button>
         </span>
-        <button class="linkbtn" id="lineageRefresh">Refresh</button>
-      </h2>
+        <div class="cmpx-jump lng-src-only" id="lngJump">
+          <label class="cmpx-jump-box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6"/></svg><input type="search" id="lngJumpIn" placeholder="Search datasets..." autocomplete="off" spellcheck="false" aria-label="Search datasets" aria-controls="lngJumpList" aria-expanded="false"><kbd id="lngJumpKbd">Ctrl K</kbd></label>
+          <div class="cmpx-jump-list" id="lngJumpList" role="listbox" hidden></div>
+        </div>
+        <div class="inc-menu-wrap lng-src-only" id="lngFilterWrap">
+          <button type="button" class="lng-tbtn lngb" id="lngFilterBtn" aria-haspopup="menu" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5.5h16l-6.2 7.3v5.4l-3.6 1.8v-7.2z"/></svg><span id="lngFilterLbl">All datasets</span><span class="lng-caret"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></span></button>
+          <div class="inc-menu lng-fmenu" id="lngFilterMenu" role="menu"></div>
+        </div>
+        <button type="button" class="lng-tbtn lngb" id="lineageRefresh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11.5a8 8 0 1 1-2.4-5.7L20 8"/><path d="M20 3.5V8h-4.5"/></svg>Refresh</button>
+      </div>
+    </div>
+    <div class="card" id="linAppCard">
+      <h2><span id="linTitle">Sources &amp; consumers</span></h2>
       <p class="dash-muted" id="lineageCtx"></p>
       <div id="lineageBody"><p class="dash-muted">Loading…</p></div>
-      <div id="srcLinWrap" style="display:none;">
-        <div class="dsp" id="linPick">
-          <div class="dsp-top">
-            <span class="dsp-search"><span class="dsp-mag" aria-hidden="true">🔍</span>
-              <input type="search" id="linPickQ" autocomplete="off" placeholder="Search by name, schema or tag…" aria-label="Search datasets">
-            </span>
-            <span class="dsp-count" id="linPickCount"></span>
+    </div>
+    <div id="srcLinWrap" style="display:none;">
+      <div class="lng-layout">
+        <div class="lng-main">
+          <div class="lng-bar" id="lngBar" style="display:none;">
+            <div class="lng-field"><span class="lng-fl" id="lngComboLbl">Dataset</span>
+              <div class="lng-combo" id="lngCombo">
+                <span class="lng-combo-ico" id="lngComboIco"></span>
+                <input type="text" id="linPickQ" role="combobox" autocomplete="off" spellcheck="false" placeholder="Pick a dataset" aria-labelledby="lngComboLbl" aria-controls="lngComboOpts" aria-expanded="false" aria-autocomplete="list">
+                <button type="button" class="lng-combo-x lngb" id="lngComboX" aria-label="Choose another dataset" data-tip="Choose another dataset"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg></button>
+                <div class="lng-combo-list" id="lngComboList" hidden></div>
+              </div>
+            </div>
+            <div class="lng-field lng-viewf"><span class="lng-fl">View</span>
+              <div class="lng-seg" id="lngView" role="group" aria-label="Which way to look">
+                <button type="button" class="lngb on" data-view="down" aria-pressed="true">Downstream</button>
+                <button type="button" class="lngb" data-view="up" aria-pressed="false">Upstream</button>
+                <button type="button" class="lngb" data-view="both" aria-pressed="false">Both</button>
+              </div>
+            </div>
+            <div class="lng-legend" aria-label="Key">
+              <span><i class="lng-key"></i>Direct</span><span><i class="lng-key dashed"></i>Indirect</span>
+              <span class="k-table"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M3.5 9.5h17M3.5 14.5h17M9.5 9.5v10"/></svg>Table</span><span class="k-view"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 12s3.4-6.3 9.5-6.3 9.5 6.3 9.5 6.3-3.4 6.3-9.5 6.3S2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.6"/></svg>View</span><span class="k-other"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 7.5 4.5 12 9 16.5M15 7.5l4.5 4.5-4.5 4.5"/></svg>Other</span>
+            </div>
           </div>
-          <div class="dsp-filters" id="linPickFilters"></div>
-          <div class="dsp-grid" id="linPickGrid"></div>
           <div class="lin2-skip" id="srcLinSkip"></div>
+          <div id="srcLineageBody"><p class="dash-muted">Loading…</p></div>
         </div>
-        <div id="srcLineageBody"><p class="dash-muted">Loading…</p></div>
+        <aside class="lng-side" id="lngSide" aria-label="The dataset" style="display:none;"></aside>
       </div>
     </div>
   </div>
@@ -12471,8 +12618,8 @@ function _linIcon(s) {
  * must not be duplicated between them is the DECISION, including its wording. "Unknown is not
  * healthy" stops being true the moment one of them starts phrasing it its own way.
  */
-function _linQuality(label) {
-  const m = _linMatch(label, dashDatasetsAll || []);
+function _linQuality(label, pool, exactOnly) {
+  const m = _linMatch(label, pool || dashDatasetsAll || [], exactOnly);
   const rag = _linRag(m);
   if (m && rag !== 'unknown') {
     return { m, rag, score: m.d.score, when: m.d.lastSeen || '', note: '',
@@ -12518,33 +12665,42 @@ function _linItem(s) {
 // visible rather than silent.
 const LINEAGE_ENGINES = new Set(['postgres', 'redshift', 'sqlserver', 'synapse', 'fabric']);
 
-// What kind of object each node is. A view breaking because its table changed is a different
-// story from a stored procedure breaking, so the kind is shown rather than assumed.
-const _SRCLIN_ICO = { table: '🗄️', view: '🪟', matview: '🧊', external: '🔗', foreign: '🔗' };
-function _srcLinIcon(kind) { return _SRCLIN_ICO[String(kind || '').toLowerCase()] || '⚙️'; }
+// Each object's kind as a line icon, in one colour per kind wherever it appears. A view breaking
+// because its table changed is a different story from a procedure breaking, so the kind is shown.
+const _LNG_ICO = {
+  table: _cmpIco('<rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M3.5 9.5h17M3.5 14.5h17M9.5 9.5v10"/>', 1.8),
+  view: _cmpIco('<path d="M2.5 12s3.4-6.3 9.5-6.3 9.5 6.3 9.5 6.3-3.4 6.3-9.5 6.3S2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.6"/>', 1.8),
+  other: _cmpIco('<path d="M9 7.5 4.5 12 9 16.5M15 7.5l4.5 4.5-4.5 4.5"/>', 1.9),
+  db: _cmpIco('<ellipse cx="12" cy="6" rx="7.5" ry="2.8"/><path d="M4.5 6v12c0 1.5 3.4 2.8 7.5 2.8s7.5-1.3 7.5-2.8V6"/><path d="M4.5 12c0 1.5 3.4 2.8 7.5 2.8s7.5-1.3 7.5-2.8"/>', 1.8),
+  share: _cmpIco('<circle cx="6" cy="12" r="2.4"/><circle cx="18" cy="6.5" r="2.4"/><circle cx="18" cy="17.5" r="2.4"/><path d="M8.2 11l7.6-3.4M8.2 13l7.6 3.4"/>', 1.8),
+  down: _cmpIco('<path d="M6 9l6 6 6-6"/>', 2.2),
+  arrow: _cmpIco('<path d="M5 12h13M13 6.5 18.5 12 13 17.5"/>', 2),
+  plus: _cmpIco('<path d="M12 5.5v13M5.5 12h13"/>', 2.2),
+  minus: _cmpIco('<path d="M5.5 12h13"/>', 2.2),
+  fit: _cmpIco('<path d="M4.5 9V4.5H9M15 4.5h4.5V9M19.5 15v4.5H15M9 19.5H4.5V15"/>', 2),
+  copy: _cmpIco('<rect x="8.5" y="8.5" width="11" height="11" rx="2"/><path d="M15.5 8.5V6A1.5 1.5 0 0 0 14 4.5H6A1.5 1.5 0 0 0 4.5 6v8A1.5 1.5 0 0 0 6 15.5h2.5"/>', 1.8),
+  open: _cmpIco('<path d="M14 4.5h5.5V10"/><path d="M19.5 4.5 11 13"/><path d="M18 14v4a1.5 1.5 0 0 1-1.5 1.5h-10A1.5 1.5 0 0 1 5 18V8a1.5 1.5 0 0 1 1.5-1.5h4"/>', 1.9),
+  report: _cmpIco('<path d="M14 3.5H7A1.5 1.5 0 0 0 5.5 5v14A1.5 1.5 0 0 0 7 20.5h10a1.5 1.5 0 0 0 1.5-1.5V8z"/><path d="M14 3.5V8h4.5M9 12.5h6M9 16h6"/>', 1.8),
+};
+function _lngKindCls(kind) {
+  const k = String(kind || '').toLowerCase();
+  if (k === 'table' || k === 'base table' || k === 'external' || k === 'foreign') return 'table';
+  if (k === 'view' || k === 'matview' || k === 'materialized_view' || k === 'materialised_view') return 'view';
+  return 'other';
+}
 
 // T-SQL hands back type_desc verbatim (SQL_STORED_PROCEDURE, SQL_TABLE_VALUED_FUNCTION). Those
 // are database words, not English ones, and they blow the width of a chip.
-const _SRCLIN_KIND = { matview: 'materialised view', sql_stored_procedure: 'procedure',
-  sql_table_valued_function: 'function', sql_scalar_function: 'function',
+const _SRCLIN_KIND = { matview: 'materialised view', materialized_view: 'materialised view',
+  sql_stored_procedure: 'procedure', sql_table_valued_function: 'function', sql_scalar_function: 'function',
   sql_inline_table_valued_function: 'function', foreign: 'foreign table' };
 function _srcLinKind(kind) {
   const k = String(kind || '').toLowerCase();
   return _SRCLIN_KIND[k] || k.replace(/_/g, ' ');
 }
-
-/** One node card. The quality decision and its wording come from _linQuality, never restated. */
-function _lin2Node(n, eid) {
-  const label = n.schema ? `${n.schema}.${n.name}` : n.name;
-  const q = _linQuality(label);
-  const kind = n.kind && n.kind !== 'unknown' ? `<span class="lin2-kind">${esc(_srcLinKind(n.kind))}</span>` : '';
-  const score = q.note
-    ? `<span class="lin2-score"><span class="lin-rag ${q.rag}"></span>${esc(q.note)}</span>`
-    : `<span class="lin2-score"><span class="lin-rag ${q.rag}"></span><b>${num1(q.score)}</b> ${esc(q.rag)}</span>`;
-  return `<div class="lin2-node" data-rag="${q.rag}" data-eid="${eid}" title="${q.tip}">` +
-    `<span class="lin2-ico">${_srcLinIcon(n.kind)}</span><div class="lin2-nb">` +
-    `<div class="lin2-name">${n.schema ? `<span class="lin2-sch">${esc(n.schema)}.</span>` : ''}${esc(n.name)}</div>` +
-    `<div class="lin2-meta">${kind}${score}</div></div></div>`;
+function _lngKindLabel(kind) {
+  const k = kind && kind !== 'unknown' ? _srcLinKind(kind) : 'object';
+  return k.charAt(0).toUpperCase() + k.slice(1);
 }
 
 /** A direction that produced no graph. Each reason gets its own wording - see sql_lineage.py. */
@@ -12556,63 +12712,14 @@ function _srcLinEmpty(block, whatIsIt) {
   return `<div class="lin2-empty bad">Could not be read from the catalog. That is not the same as nothing being there.</div>`;
 }
 
-/**
- * Draw the edges, measured from the laid-out nodes rather than guessed.
- *
- * Done in JS because the columns are ordinary flow content of unknown height: an SVG authored up
- * front would have to re-implement the layout to know where anything ended up. Skipped entirely
- * below the breakpoint, where the columns stack and a curve between them would cross the text.
- */
-function _lin2DrawEdges(host) {
-  const g = host.querySelector('.lin2-graph'), svg = host.querySelector('.lin2-edges');
-  if (!g || !svg) return;
-  const focus = g.querySelector('.lin2-focus');
-  if (!focus || g.clientWidth < 620) { svg.innerHTML = ''; return; }
-  const gb = g.getBoundingClientRect(), fb = focus.getBoundingClientRect();
-  svg.setAttribute('viewBox', `0 0 ${Math.max(1, Math.round(gb.width))} ${Math.max(1, Math.round(gb.height))}`);
-  const fy = fb.top + fb.height / 2 - gb.top;
-  const out = [];
-  g.querySelectorAll('.lin2-node[data-eid]').forEach(n => {
-    const b = n.getBoundingClientRect(), up = n.dataset.eid.startsWith('up');
-    const ny = b.top + b.height / 2 - gb.top;
-    const x1 = (up ? b.right : fb.right) - gb.left, y1 = up ? ny : fy;
-    const x2 = (up ? fb.left : b.left) - gb.left,  y2 = up ? fy : ny;
-    const dx = Math.max(16, (x2 - x1) * 0.45);
-    out.push(`<path class="lin2-edge" data-edge="${esc(n.dataset.eid)}" data-rag="${esc(n.dataset.rag || 'unknown')}" ` +
-      `d="M${x1.toFixed(1)} ${y1.toFixed(1)} C${(x1 + dx).toFixed(1)} ${y1.toFixed(1)}, ` +
-      `${(x2 - dx).toFixed(1)} ${y2.toFixed(1)}, ${x2.toFixed(1)} ${y2.toFixed(1)}"/>`);
-  });
-  svg.innerHTML = out.join('');
-  // Hovering a node lights its own edge. The hit target is the card, which is far easier to hit
-  // than a 1.6px curve.
-  g.querySelectorAll('.lin2-node[data-eid]').forEach(n => {
-    const p = svg.querySelector(`[data-edge="${n.dataset.eid}"]`);
-    if (!p) return;
-    n.addEventListener('mouseenter', () => p.classList.add('hl'));
-    n.addEventListener('mouseleave', () => p.classList.remove('hl'));
-  });
-}
-
-let _lin2RedrawPending = false;
-window.addEventListener('resize', () => {
-  if (_lin2RedrawPending) return;
-  _lin2RedrawPending = true;
-  requestAnimationFrame(() => {
-    _lin2RedrawPending = false;
-    const b = $('#srcLineageBody');
-    if (b && b.offsetParent) _lin2DrawEdges(b);
-  });
-});
-
 // The picker's state. `all` is the offered set; everything else narrows it.
 const linPick = { all: [], q: '', stages: new Set(), tags: new Set(), sources: new Set(), sel: '',
-                  allTags: false };
+                  allTags: false, at: 0 };
 
 // Caps, both MEASURED rather than assumed (see docs; the benchmark is in the commit that added
-// this). Rendering 5,000 cards costs 61ms, which is survivable, so the grid cap is about
-// browsability, not speed: a wall of five thousand cards is not something anyone reads, and the
-// answer is the search box. The TAG cap is the one that fixes a real break - one chip per distinct
-// tag reached 785px of chips at 200 tags, taller than the picker itself.
+// this). The list cap is about browsability, not speed: a list of five thousand datasets is not
+// something anyone reads, and the answer is the search box. The TAG cap fixes a real break: one
+// entry per distinct tag reached 785px at 200 tags, taller than the screen.
 const LIN_PICK_MAX = 150;
 const LIN_PICK_TAGS = 12;
 
@@ -12629,35 +12736,63 @@ function linPickList() {
   });
 }
 
-/** One dataset card: the score, the stage and the tags you would choose it BY. */
-function linPickCard(d) {
-  const e = entryFor(d.key), name = d.name || d.slug || '';
-  const dot = name.lastIndexOf('.');
-  const rag = ['green', 'amber', 'red'].includes(String(d.status || '')) ? d.status : 'unknown';
+/** A name with its schema set back, so the object's own name reads first and is the last part
+ *  to be cut short. An object's schema is passed in on its own, because a quoted name can itself
+ *  contain a dot; a dataset's label is split at its last one. */
+function _lngNameHtml(label, schema) {
+  const t = String(label || '');
+  let sch = '', obj = t;
+  if (schema != null) {
+    if (schema) { sch = String(schema) + '.'; obj = t.slice(sch.length); }
+  } else {
+    const dot = t.lastIndexOf('.');
+    if (dot > 0) { sch = t.slice(0, dot + 1); obj = t.slice(dot + 1); }
+  }
+  return (sch ? `<span class="lng-sch">${esc(sch)}</span>` : '') + `<span class="lng-on">${esc(obj)}</span>`;
+}
+// The dashboard's own words for a quality status, so a dataset reads the same here as on the
+// Overview. A failed quality gate is said as well: a green score can still fail its gate.
+const _LNG_RAG = { green: 'Green', amber: 'Amber', red: 'Red' };
+const _lngRagOf = d => ['green', 'amber', 'red'].includes(String((d && d.status) || '')) ? d.status : 'unknown';
+const _lngGate = d => d && d.gate === false ? `<span class="lng-gate">gate failed</span>` : '';
+const _lngAnd = list => list.length <= 1 ? (list[0] || '')
+  : list.length <= 5 ? `${list.slice(0, -1).join(', ')} and ${list[list.length - 1]}`
+    : `${list.slice(0, 4).join(', ')} and ${list.length - 4} more`;
+
+/** One dataset in the Dataset list: what you would choose it BY, its source, stage, score and tags. */
+function linPickCard(d, i) {
+  const e = entryFor(d.key), rag = _lngRagOf(d), name = d.name || d.slug || '';
   const score = (typeof d.score === 'number')
-    ? `<span class="dsp-score"><span class="lin-rag ${rag}"></span><b>${num1(d.score)}</b></span>`
-    : `<span class="dsp-score"><span class="lin-rag unknown"></span>not assessed</span>`;
+    ? `<span><span class="lin-rag ${rag}"></span><b>${num1(d.score)}</b></span>` : `<span><span class="lin-rag unknown"></span>no score yet</span>`;
   const stage = e.stage ? `<span class="medal ${e.stage}">${MEDAL_LABEL[e.stage]}</span>` : '';
-  const tags = (e.tags || []).length
-    ? `<div class="dsp-ct">${(e.tags || []).map(t => `<span>🏷️ ${esc(t)}</span>`).join('')}</div>` : '';
-  return `<button type="button" class="dsp-card${d.resultPrefix === linPick.sel ? ' on' : ''}" ` +
-    `data-rag="${rag}" data-prefix="${esc(d.resultPrefix)}" data-fmt="${esc(d.sourceFormat || '')}">` +
-    `<span class="dsp-ch"><span class="dsp-ico">${srcIcon(d.sourceFormat)}</span>` +
-    `<span class="dsp-name">${dot > 0 ? `<span class="dsp-sch">${esc(name.slice(0, dot + 1))}</span>` : ''}${esc(dot > 0 ? name.slice(dot + 1) : name)}</span></span>` +
-    `<span class="dsp-cm">${esc(sourceLabel(d.sourceFormat))}${stage}${score}</span>${tags}</button>`;
+  const tags = (e.tags || []).slice(0, 3).map(t => `<span>🏷️ ${esc(t)}</span>`).join('');
+  return `<div class="lng-opt${d.resultPrefix === linPick.sel ? ' on' : ''}${i === linPick.at ? ' at' : ''}" id="lngOpt-${i}" role="option" ` +
+    `aria-selected="${d.resultPrefix === linPick.sel}" title="${esc(name)}" data-prefix="${esc(d.resultPrefix)}" data-fmt="${esc(d.sourceFormat || '')}">` +
+    `<span class="lng-opt-ico">${srcIcon(d.sourceFormat)}</span><span class="lng-opt-b">` +
+    `<span class="lng-opt-n">${_lngNameHtml(name)}</span>` +
+    `<span class="lng-opt-m">${esc(sourceLabel(d.sourceFormat))}${stage}${score}${tags}</span></span></div>`;
 }
 
-/** The filter rows. A group with fewer than two choices is not a filter, so it is not shown. */
+/** The All datasets menu. A group with fewer than two choices is not a filter, so it is not shown. */
 function renderLinPickFilters() {
-  const rows = [];
-  const grp = (label, chips) => chips.length >= 2
-    ? `<div class="dsp-fg"><span class="dsp-fl">${label}</span>${chips.join('')}</div>` : '';
-  const chip = (kind, v, label, cls) =>
-    `<button type="button" class="dsp-chip${cls ? ' ' + cls : ''}${linPick[kind].has(v) ? ' on' : ''}" ` +
-    `data-fk="${kind}" data-fv="${esc(v)}">${label}</button>`;
+  const menu = $('#lngFilterMenu'); if (!menu) return;
+  const grp = (label, items) => items.length >= 2
+    ? `<div class="lng-fg" role="group" aria-labelledby="lngFg-${label.toLowerCase()}">` +
+      `<div class="lng-fgl" id="lngFg-${label.toLowerCase()}">${label}</div>${items.join('')}</div>` : '';
+  const count = (kind, v) => linPick.all.filter(d => kind === 'sources' ? String(d.sourceFormat || '').toLowerCase() === v
+    : kind === 'stages' ? entryFor(d.key).stage === v : (entryFor(d.key).tags || []).includes(v)).length;
+  const item = (kind, v, label) =>
+    `<button type="button" class="inc-menu-item lng-fi${linPick[kind].has(v) ? ' on' : ''}" role="menuitemcheckbox" ` +
+    `aria-checked="${linPick[kind].has(v)}" data-fk="${kind}" data-fv="${esc(v)}"><span class="lng-fck">${CMP_ICO.check}</span>` +
+    `<span class="lng-fil">${label}</span><span class="lng-fn">${count(kind, v)}</span></button>`;
+  const any = linPick.stages.size + linPick.tags.size + linPick.sources.size;
+  const rows = [`<button type="button" class="inc-menu-item lng-fi${any ? '' : ' on'}" role="menuitemradio" aria-checked="${!any}" data-fall="1">` +
+    `<span class="lng-fck">${CMP_ICO.check}</span><span class="lng-fil">All datasets</span><span class="lng-fn">${linPick.all.length}</span></button>`];
 
+  const srcs = [...new Set(linPick.all.map(d => String(d.sourceFormat || '').toLowerCase()).filter(Boolean))].sort();
+  rows.push(grp('Source', srcs.map(f => item('sources', f, srcIcon(f) + ' ' + esc(sourceLabel(f))))));
   const stages = MEDALLIONS.filter(m => linPick.all.some(d => entryFor(d.key).stage === m));
-  rows.push(grp('Stage', stages.map(m => chip('stages', m, MEDAL_LABEL[m], 'medal ' + m))));
+  rows.push(grp('Stage', stages.map(m => item('stages', m, MEDAL_LABEL[m]))));
 
   // Ranked by how many datasets carry each tag, so the cap keeps the USEFUL ones rather than
   // whichever sort alphabetically first. A selected tag is always shown, or it could not be
@@ -12667,81 +12802,245 @@ function renderLinPickFilters() {
   const ranked = [...freq.keys()].sort((a, b) => (freq.get(b) - freq.get(a)) || a.localeCompare(b));
   const shown = linPick.allTags ? ranked
     : ranked.filter((t, i) => i < LIN_PICK_TAGS || linPick.tags.has(t));
-  const tagChips = shown.map(t => chip('tags', t, '🏷️ ' + esc(t)));
+  const tagItems = shown.map(t => item('tags', t, '🏷️ ' + esc(t)));
   if (ranked.length > shown.length || linPick.allTags) {
-    tagChips.push(`<button type="button" class="dsp-chip dsp-more-tags" data-moretags="1">` +
-      (linPick.allTags ? 'show fewer' : `+${ranked.length - shown.length} more`) + `</button>`);
+    tagItems.push(`<button type="button" class="inc-menu-item lng-fi lng-more-tags" role="menuitem" data-moretags="1"><span class="lng-fck"></span>` +
+      `<span class="lng-fil">${linPick.allTags ? 'show fewer' : `+${ranked.length - shown.length} more`}</span></button>`);
   }
-  rows.push(grp('Tag', tagChips));
+  rows.push(grp('Tag', tagItems));
+  menu.innerHTML = rows.filter(Boolean).join('');
 
-  const srcs = [...new Set(linPick.all.map(d => String(d.sourceFormat || '').toLowerCase()).filter(Boolean))].sort();
-  rows.push(grp('Source', srcs.map(f => chip('sources', f, srcIcon(f) + ' ' + esc(sourceLabel(f))))));
+  // The button says what is narrowing the list, so a short list never looks like a small estate.
+  const on = [...linPick.sources].map(f => sourceLabel(f)).concat([...linPick.stages].map(m => MEDAL_LABEL[m]), [...linPick.tags]);
+  $('#lngFilterLbl').textContent = !on.length ? 'All datasets' : on.length === 1 ? on[0] : `${on.length} filters`;
+  $('#lngFilterBtn').classList.toggle('on', !!on.length);
+}
 
-  $('#linPickFilters').innerHTML = rows.filter(Boolean).join('');
+/** The combobox shows the dataset on screen whenever you are not typing in it. */
+function _lngComboValue(force) {
+  const inp = $('#linPickQ'), ico = $('#lngComboIco'); if (!inp) return;
+  const d = linPick.all.find(x => x.resultPrefix === linPick.sel);
+  if (force || document.activeElement !== inp) inp.value = d ? (d.name || d.slug || '') : '';
+  if (ico) ico.innerHTML = d ? srcIcon(d.sourceFormat) : CMP_ICO.search;
 }
 
 function renderLinPicker() {
   const list = linPickList();
   renderLinPickFilters();
   const narrowed = !!(linPick.q.trim() || linPick.stages.size || linPick.tags.size || linPick.sources.size);
-  // When the cap bites, the TOP line has to say so. The notice under the grid is below the scroll
-  // fold, and "400 datasets" over a grid holding 150 is a quiet lie.
+  // When the cap bites, the TOP line has to say so: "400 datasets" over a list holding 150 is a
+  // quiet lie.
   const countTxt = list.length > LIN_PICK_MAX
     ? `showing ${LIN_PICK_MAX} of ${list.length}`
     : (list.length === linPick.all.length
         ? `${linPick.all.length} dataset${linPick.all.length === 1 ? '' : 's'}`
         : `${list.length} of ${linPick.all.length}`);
-  $('#linPickCount').innerHTML = countTxt
-    // "No dataset matches" with no visible cause is a support call, so the way out is always shown.
-    + (narrowed ? ` <button type="button" class="linkbtn" id="linPickClear">Clear</button>` : '');
-  // Capped, and SAID so: silently showing the first 150 of 5,000 reads as "that is all of them".
   const shownList = list.slice(0, LIN_PICK_MAX);
-  $('#linPickGrid').innerHTML = (list.length
-      ? shownList.map(linPickCard).join('')
-      : `<div class="dsp-none">No dataset matches this search or filter.</div>`)
-    + (list.length > shownList.length
-        ? `<div class="dsp-more">Showing the first ${LIN_PICK_MAX} of ${list.length}. Search or filter to narrow it down.</div>`
-        : '');
+  linPick.at = Math.min(Math.max(0, linPick.at || 0), Math.max(0, shownList.length - 1));
+  // "No dataset matches" with no visible cause is a support call, so the way out is always shown.
+  // Only the datasets are in the listbox: a screen reader arrowing through it hears options only.
+  $('#lngComboList').innerHTML =
+    `<div class="lng-opt-hd"><span id="linPickCount">${countTxt}</span>` +
+      (narrowed ? `<button type="button" class="linkbtn" id="linPickClear">Clear</button>` : '') + `</div>` +
+    `<div id="lngComboOpts" role="listbox" aria-label="Datasets">${shownList.map(linPickCard).join('')}</div>` +
+    (list.length ? '' : `<div class="lng-opt-none">No dataset matches this search or filter.</div>`) +
+    (list.length > shownList.length
+      ? `<div class="lng-opt-more">Showing the first ${LIN_PICK_MAX} of ${list.length}. Search or filter to narrow it down.</div>` : '');
+  _lngComboValue();
 }
 
-// Delegated, because the grid and the chips are both rebuilt on every keystroke.
+let _lngFocusNext = false;            // put the cursor on the new dataset's card once it is drawn
+function _lngPick(prefix, opts) {
+  const d = linPick.all.find(x => x.resultPrefix === prefix);
+  if (!d) return;
+  // Picking the dataset already on screen does nothing, unless its graph never arrived: then it is
+  // read again, which is how a failed read is retried.
+  if (prefix === linPick.sel && _lngState && _lngState.g && _lngState.d && _lngState.d.resultPrefix === prefix) return;
+  linPick.sel = prefix;
+  linPick.selFmt = d.sourceFormat || '';
+  linPick.selKey = d.key;
+  if (opts && opts.focus) _lngFocusNext = true;
+  renderLinPicker();
+  showSourceLineage();
+}
+function _lngShowTab(k, focus) {
+  lngSideTab = k;
+  document.querySelectorAll('#lngSide .lng-tab').forEach(b => {
+    const on = b.dataset.stab === k;
+    b.classList.toggle('on', on); b.setAttribute('aria-selected', String(on)); b.tabIndex = on ? 0 : -1;
+    if (on && focus) b.focus();
+  });
+  document.querySelectorAll('#lngSide .lng-pane').forEach(p => { p.hidden = p.dataset.pane !== k; });
+}
+
+// Wired once: the list and the menu are rebuilt on every keystroke, so everything is delegated.
 function wireLinPicker() {
-  const host = $('#linPick');
-  if (!host || host._wired) return;
-  host._wired = true;
-  $('#linPickQ').addEventListener('input', e => { linPick.q = e.target.value; renderLinPicker(); });
-  host.addEventListener('click', e => {
+  const combo = $('#lngCombo');
+  if (!combo || combo._wired) return;
+  combo._wired = true;
+  const inp = $('#linPickQ'), list = $('#lngComboList');
+  const opts = () => [...list.querySelectorAll('.lng-opt')];
+  // The highlighted option is named to assistive technology as well as drawn.
+  const mark = () => {
+    const os = opts();
+    os.forEach((o, i) => o.classList.toggle('at', i === linPick.at));
+    const o = os[linPick.at];
+    if (o && !list.hidden) { inp.setAttribute('aria-activedescendant', o.id); o.scrollIntoView({ block: 'nearest' }); }
+    else inp.removeAttribute('aria-activedescendant');
+  };
+  const open = () => { list.hidden = false; combo.classList.add('open'); inp.setAttribute('aria-expanded', 'true'); mark(); };
+  const close = () => {
+    list.hidden = true; combo.classList.remove('open'); inp.setAttribute('aria-expanded', 'false');
+    inp.removeAttribute('aria-activedescendant');
+    if (linPick.q) { linPick.q = ''; renderLinPicker(); }
+  };
+  // Choosing keeps the cursor in the box, so the keyboard is where it was, with the name back in it.
+  const choose = prefix => { close(); _lngPick(prefix); _lngComboValue(true); inp.select(); };
+  const openFresh = () => {
+    linPick.q = '';
+    linPick.at = Math.max(0, linPickList().findIndex(d => d.resultPrefix === linPick.sel));
+    renderLinPicker(); open();
+  };
+  inp.addEventListener('focus', () => { openFresh(); inp.select(); });
+  inp.addEventListener('input', () => { linPick.q = inp.value; linPick.at = 0; renderLinPicker(); open(); });
+  inp.addEventListener('blur', () => setTimeout(() => { if (document.activeElement !== inp) { close(); _lngComboValue(); } }, 150));
+  inp.addEventListener('keydown', e => {
+    const n = opts().length;
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (list.hidden) { openFresh(); return; }
+      if (n) { linPick.at = (linPick.at + (e.key === 'ArrowDown' ? 1 : n - 1)) % n; mark(); }
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      const o = list.hidden ? null : opts()[linPick.at];
+      if (o) choose(o.dataset.prefix);
+    } else if (e.key === 'Escape' && !list.hidden) {
+      close(); _lngComboValue(true); inp.select();
+    }
+  });
+  $('#lngComboX').addEventListener('click', () => { inp.value = ''; inp.focus(); openFresh(); });
+  // mousedown, not click: a click would blur the box first, and the blur closes the list
+  list.addEventListener('mousedown', e => {
+    e.preventDefault();
     if (e.target.id === 'linPickClear') {
-      linPick.q = ''; $('#linPickQ').value = '';
+      linPick.q = ''; inp.value = '';
       linPick.stages.clear(); linPick.tags.clear(); linPick.sources.clear();
-      renderLinPicker();
+      renderLinPicker(); mark();
       return;
     }
-    if (e.target.closest('.dsp-more-tags')) { linPick.allTags = !linPick.allTags; renderLinPicker(); return; }
-    const chip = e.target.closest('.dsp-chip');
-    if (chip) {
-      const set = linPick[chip.dataset.fk], v = chip.dataset.fv;
-      if (set.has(v)) set.delete(v); else set.add(v);
-      renderLinPicker();
+    const o = e.target.closest('.lng-opt');
+    if (o) choose(o.dataset.prefix);
+  });
+
+  // All datasets: several can be ticked, so the menu stays open until you click or tab away from
+  // it, or press Escape, which hands the cursor back to the button.
+  const fb = $('#lngFilterBtn'), fm = $('#lngFilterMenu');
+  let fmBusy = false;
+  const fclose = () => { fm.classList.remove('open'); fb.setAttribute('aria-expanded', 'false'); };
+  fb.addEventListener('click', e => {
+    e.stopPropagation();
+    const o = !fm.classList.contains('open');
+    fm.classList.toggle('open', o); fb.setAttribute('aria-expanded', String(o));
+  });
+  fm.addEventListener('mousedown', () => { fmBusy = true; setTimeout(() => { fmBusy = false; }, 0); });
+  fm.addEventListener('click', e => {
+    e.stopPropagation();
+    const it = e.target.closest('.lng-fi'); if (!it) return;
+    const again = it.dataset.fall ? '[data-fall]' : it.dataset.moretags ? '[data-moretags]'
+      : `[data-fk="${it.dataset.fk}"][data-fv="${CSS.escape(it.dataset.fv)}"]`;
+    if (it.dataset.fall) { linPick.stages.clear(); linPick.tags.clear(); linPick.sources.clear(); }
+    else if (it.dataset.moretags) linPick.allTags = !linPick.allTags;
+    else { const set = linPick[it.dataset.fk], v = it.dataset.fv; if (set.has(v)) set.delete(v); else set.add(v); }
+    fmBusy = true;                         // the rebuild below takes the focused item with it
+    renderLinPicker();
+    const back = fm.querySelector(again);
+    if (back) back.focus();
+    fmBusy = false;
+  });
+  fm.addEventListener('focusout', e => {
+    if (fmBusy) return;
+    if (!e.relatedTarget || !e.relatedTarget.closest || !e.relatedTarget.closest('#lngFilterWrap')) fclose();
+  });
+  document.addEventListener('click', e => { if (!e.target.closest || !e.target.closest('#lngFilterWrap')) fclose(); });
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape' || !fm.classList.contains('open')) return;
+    if (fm.contains(document.activeElement)) fb.focus();
+    fclose();
+  });
+
+  $('#lngView').addEventListener('click', e => {
+    const b = e.target.closest('[data-view]'); if (!b || b.dataset.view === lngView) return;
+    lngView = b.dataset.view;
+    $('#lngView').querySelectorAll('[data-view]').forEach(x => {
+      x.classList.toggle('on', x === b); x.setAttribute('aria-pressed', String(x === b)); });
+    lngCam.moved = false;
+    _lngPaint();
+  });
+
+  // The graph, the table under it and the side panel are redrawn on every pick, so their actions
+  // are read from whatever is there when you click.
+  const wrap = $('#srcLinWrap');
+  wrap.addEventListener('click', e => {
+    const t = e.target; if (!t || !t.closest || t.closest('#lngCombo')) return;
+    const go = t.closest('.lng-node.go, .lng-li.go, tr.go');
+    // detail 0 is a click made with the keyboard: the cursor then follows to the new dataset
+    if (go) { _lngPick(go.dataset.prefix, { focus: e.detail === 0 }); return; }
+    if (t.closest('[data-lngretry]')) { showSourceLineage(); return; }
+    const tab = t.closest('[data-stab]');
+    if (tab) { _lngShowTab(tab.dataset.stab); return; }
+    if (t.closest('.lng-other-hd')) {
+      lngOtherOpen = !lngOtherOpen;
+      const sec = t.closest('.lng-other');
+      sec.classList.toggle('open', lngOtherOpen);
+      sec.querySelector('.lng-other-hd').setAttribute('aria-expanded', String(lngOtherOpen));
+      sec.querySelector('.lng-other-body').hidden = !lngOtherOpen;
       return;
     }
-    const card = e.target.closest('.dsp-card');
-    if (card && card.dataset.prefix !== linPick.sel) {
-      linPick.sel = card.dataset.prefix;
-      linPick.selFmt = card.dataset.fmt || '';
-      renderLinPicker();
-      showSourceLineage();
+    const cp = t.closest('.lng-copy'); if (cp) { _lngCopy(cp); return; }
+    const more = t.closest('[data-lngmore]');
+    if (more) {
+      const k = more.dataset.lngmore;
+      _lngMore[k] = !_lngMore[k];
+      _lngSide();
+      const back = $(`#lngSide [data-lngmore="${k}"]`); if (back) back.focus();
+      return;
+    }
+    const act = t.closest('[data-lngact]');
+    if (act && _lngState && _lngState.d) {
+      if (act.dataset.lngact === 'dash') lngOpenDash(_lngState.d);
+      else if (act.dataset.lngact === 'report') cmpOpenReport(_lngState.d.resultPrefix);
+      return;
+    }
+    const z = t.closest('[data-zoom]');
+    if (z) {
+      const cv = $('#lngCanvas'); if (!cv || !_lngLast) return;
+      if (z.dataset.zoom === 'fit') { _lngFit(_lngLast, cv, 1, 0.02); lngCam.moved = true; _lngApplyCam(); }
+      else _lngZoom(z.dataset.zoom === 'in' ? 1.25 : 1 / 1.25, cv.clientWidth / 2, cv.clientHeight / 2);
+    }
+  });
+  wrap.addEventListener('keydown', e => {
+    const t = e.target; if (!t || !t.matches) return;
+    if ((e.key === 'Enter' || e.key === ' ') && t.matches('.lng-node.go, tr.go')) {
+      e.preventDefault(); _lngPick(t.dataset.prefix, { focus: true }); return;
+    }
+    // The side panel's tabs move with the arrow keys, as tabs do.
+    if (t.matches('.lng-tab') && ['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) {
+      e.preventDefault();
+      const ks = [...document.querySelectorAll('#lngSide .lng-tab')].map(b => b.dataset.stab), i = ks.indexOf(t.dataset.stab);
+      const j = e.key === 'Home' ? 0 : e.key === 'End' ? ks.length - 1 : (i + (e.key === 'ArrowRight' ? 1 : ks.length - 1)) % ks.length;
+      _lngShowTab(ks[j], true);
     }
   });
 }
 
-async function loadSourceLineage() {
+async function loadSourceLineage(refresh) {
   if (!configOK) return;
   const body = $('#srcLineageBody'), skip = $('#srcLinSkip');
+  if (refresh) _lngCache.clear();
   // The colours come from the dashboard's dataset list, exactly as the Qlik lineage tab does.
   // Landing here first would otherwise paint every node "no matching dataset", which looks like
   // a finding and is really just an empty cache.
-  if (!(dashDatasetsAll || []).length) {
+  if (refresh || !(dashDatasetsAll || []).length) {
     body.innerHTML = `<p class="dash-muted"><span class="spin"></span> Loading datasets…</p>`;
     try { await loadDashboard(); } catch (_) { /* colouring degrades to unknown */ }
   }
@@ -12753,8 +13052,13 @@ async function loadSourceLineage() {
     ? `${other.length} dataset${other.length === 1 ? '' : 's'} not listed: ${names.join(', ')} `
       + `${names.length === 1 ? 'does' : 'do'} not publish dependency metadata.`
     : '';
-  $('#linPick').style.display = ds.length ? '' : 'none';
+  $('#lngBar').style.display = ds.length ? '' : 'none';
+  $('#lngSide').style.display = ds.length ? '' : 'none';
+  // With nothing to filter the filter goes too. Search stays: it can still say why a dataset has
+  // no lineage to show.
+  $('#lngFilterWrap').style.display = ds.length ? '' : 'none';
   if (!ds.length) {
+    linPick.all = []; linPick.sel = ''; linPick.selKey = ''; _lngState = null; _lngLast = null;
     body.innerHTML = `<div class="lin2-empty">No assessed dataset on this ${esc(SCOPE_NOUN)} comes from a warehouse that publishes dependency metadata. The ones that do are PostgreSQL, Amazon Redshift, SQL Server, Azure Synapse and Microsoft Fabric.</div>`;
     return;
   }
@@ -12763,78 +13067,627 @@ async function loadSourceLineage() {
   // narrowing to nothing against something that is not there any more.
   const liveTags = new Set(ds.flatMap(d => entryFor(d.key).tags || []));
   const liveSrc = new Set(ds.map(d => String(d.sourceFormat || '').toLowerCase()));
+  const liveStage = new Set(ds.map(d => entryFor(d.key).stage).filter(Boolean));
   linPick.tags.forEach(t => { if (!liveTags.has(t)) linPick.tags.delete(t); });
   linPick.sources.forEach(f => { if (!liveSrc.has(f)) linPick.sources.delete(f); });
-  if (!ds.some(d => d.resultPrefix === linPick.sel)) {
-    linPick.sel = ds[0].resultPrefix;
-    linPick.selFmt = ds[0].sourceFormat || '';
-  }
+  linPick.stages.forEach(m => { if (!liveStage.has(m)) linPick.stages.delete(m); });
+  // Keep the dataset on screen: by its run, and failing that by the dataset itself, because a
+  // refresh after a new assessment gives the same dataset a new run.
+  const cur = ds.find(d => d.resultPrefix === linPick.sel)
+    || (linPick.selKey ? ds.find(d => d.key === linPick.selKey) : null) || ds[0];
+  linPick.sel = cur.resultPrefix;
+  linPick.selFmt = cur.sourceFormat || '';
+  linPick.selKey = cur.key;
   wireLinPicker();
   renderLinPicker();
   showSourceLineage();
 }
 
+// ---- Reading the graph -----------------------------------------------------------------------
+// One answer per run, kept for the visit: going back to a dataset, or reaching one again through
+// another's graph, is a second read of the same file. Refresh empties it.
+const _lngCache = new Map();
+function _lngFetch(prefix, fmt) {
+  if (!_lngCache.has(prefix)) {
+    const p = postJSON(`${API_BASE}/data-quality/source-lineage`, HEADERS,
+      { result_prefix: prefix, source_format: fmt || undefined });
+    p.catch(() => _lngCache.delete(prefix));     // a failure is not remembered
+    _lngCache.set(prefix, p);
+  }
+  return _lngCache.get(prefix);
+}
+
+// The connection a source dataset was read through, as its run folder names it: the slug is the
+// host or cluster, then the schema and the table, with everything but letters and digits removed.
+const _lngNorm = v => String(v || '').replace(/[^0-9A-Za-z]/g, '').toLowerCase();
+function _lngConn(d, schema, table) {
+  const slug = _lngNorm(d && (d.slug || String(d.key || '').split('/').pop()));
+  const tail = _lngNorm(schema) + _lngNorm(table);
+  return slug && tail && slug.length > tail.length && slug.endsWith(tail) ? slug.slice(0, slug.length - tail.length) : null;
+}
+function _lngConnOf(x) {
+  const nm = String((x && x.name) || ''), dot = nm.lastIndexOf('.');
+  return dot > 0 ? _lngConn(x, nm.slice(0, dot), nm.slice(dot + 1)) : null;
+}
+/** The datasets an object in this graph can be: same source, and the same connection where the
+ *  run folders say which. A same-named table in another warehouse is someone else's table. */
+function _lngPool(d, g) {
+  const fmt = String((d && d.sourceFormat) || '').toLowerCase(), conn = _lngConn(d, g.schema, g.table);
+  return (dashDatasetsAll || []).filter(x => isSourceDataset(x) && String(x.sourceFormat || '').toLowerCase() === fmt
+    && (conn === null || _lngConnOf(x) === null || _lngConnOf(x) === conn));
+}
+
+/** One object as drawn: the catalog's own fields, plus what the dashboard knows about it. It is
+ *  matched by its exact name, among the datasets of this graph's own connection only: the prefix
+ *  rule exists for Qlik's file names, and a guessed match puts someone else's score, records and
+ *  lineage on this object. */
+function _lngNode(n, dir, via, pool) {
+  const label = n.schema ? `${n.schema}.${n.name}` : n.name;
+  const q = _linQuality(label, pool, true);
+  const ds = q.m ? q.m.d : null;
+  const d = ds ? (linPick.all.find(x => x.key === ds.key) || null) : null;
+  return { n, label, dir, via: via || '', q, d, ds, key: n.key || `${n.schema || ''}.${n.name}`.toLowerCase().replace(/^\./, '') };
+}
+
+// Indirect: one step further, through each assessed dataset in between, from THAT dataset's own
+// catalog read. A warehouse records only direct dependencies, so this is the only honest way to
+// go further, and it stops where nothing in between has been assessed. A step that could not be
+// taken is reported, never drawn as "nothing further".
+const LNG_HOP_MAX = 10;
+const LNG_IND_MAX = 300;              // indirect objects kept, however many the steps return
+async function _lngIndirect(direct, dir, seen, pool) {
+  const via = direct.filter(x => x.d && x.d.resultPrefix);
+  const hops = via.slice(0, LNG_HOP_MAX);
+  const got = await Promise.all(hops.map(x => _lngFetch(x.d.resultPrefix, x.d.sourceFormat).catch(() => null)));
+  const out = [], unread = [], partial = [];
+  let dropped = 0;
+  got.forEach((r, i) => {
+    const blk = r && r.available && r.lineage ? r.lineage[dir === 'down' ? 'downstream' : 'upstream'] : null;
+    const st = blk && blk.status;
+    // a failed read, a run with no lineage recorded, or a direction its catalog could not answer
+    if (!blk || (st !== 'read' && !(dir === 'up' && st === 'not_applicable'))) { unread.push(hops[i].label); return; }
+    if (blk.note) partial.push(hops[i].label);     // its catalog says it leaves some out
+    (blk.nodes || []).forEach(n => {
+      const x = _lngNode(n, dir, hops[i].label, pool);
+      if (seen.has(x.key)) return;
+      seen.add(x.key);
+      if (out.length >= LNG_IND_MAX) { dropped++; return; }
+      out.push(x);
+    });
+  });
+  return { nodes: out, skipped: via.length - hops.length, unread, partial, dropped };
+}
+
+let lngView = 'down';                 // down | up | both, kept from one dataset to the next
+let lngSideTab = 'details';
+let lngOtherOpen = true;
+let _lngState = null;                 // the graph on screen
+let _lngLast = null;                  // and its layout
+const _lngMore = {};                  // side-panel lists opened past their first few
+const lngCam = { x: 0, y: 0, k: 1, moved: false };
+const _lngBlank = (d, label, r) => ({ d, label, r, g: null, up: [], down: [], skipped: 0, unread: [], partial: [], dropped: 0 });
+
 async function showSourceLineage() {
-  const body = $('#srcLineageBody');
-  const opt = linPick.sel ? { value: linPick.sel, dataset: { fmt: linPick.selFmt || '' } } : null;
-  if (!opt) return;
-  body.innerHTML = `<p class="dash-muted"><span class="spin"></span> Reading the dependency graph…</p>`;
+  const body = $('#srcLineageBody'), sel = linPick.sel;
+  if (!sel) return;
+  const d = linPick.all.find(x => x.resultPrefix === sel), label = (d && (d.name || d.slug)) || '';
+  body.innerHTML = `<div class="lng-loading"><span class="spin"></span> Reading the dependency graph…</div>`;
+  // The panel follows the pick at once: while it loads, and if the read fails, it describes and
+  // acts on the dataset in the Dataset box, never on the one before it.
+  _lngState = _lngBlank(d, label, { reason: 'Reading the dependency graph…' });
+  _lngSide();
   try {
-    const r = await postJSON(`${API_BASE}/data-quality/source-lineage`, HEADERS,
-      { result_prefix: opt.value, source_format: opt.dataset.fmt || undefined });
-    const d = linPick.all.find(x => x.resultPrefix === opt.value);
-    renderSourceLineage(r, (d && (d.name || d.slug)) || '');
+    const r = await _lngFetch(sel, linPick.selFmt);
+    if (linPick.sel !== sel) return;                 // a later pick won
+    await renderSourceLineage(r, label, d);
   } catch (e) {
-    body.innerHTML = `<p class="dash-muted" style="color:var(--err)">${esc(e.message)}</p>`;
+    if (linPick.sel !== sel) return;
+    _lngState = _lngBlank(d, label, { reason: e.message });
+    body.innerHTML = `<div class="lng-blank">${_LNG_ICO.share}<p>${esc(e.message)}</p>` +
+      `<button type="button" class="btn-sm" data-lngretry="1">Try again</button></div>`;
+    _lngSide();
+    _lngLandFocus(body.querySelector('[data-lngretry]'));
   }
 }
 
-function renderSourceLineage(r, label) {
-  const body = $('#srcLineageBody');
+async function renderSourceLineage(r, label, d) {
+  const body = $('#srcLineageBody'), sel = linPick.sel;
   if (!r || !r.available) {
-    body.innerHTML = `<div class="lin2-empty">${esc((r && r.reason) || 'No dependency lineage for this dataset.')}</div>`;
+    _lngState = _lngBlank(d, label, r);
+    body.innerHTML = `<div class="lng-blank" tabindex="-1">${_LNG_ICO.share}<p>${esc((r && r.reason) || 'No dependency lineage for this dataset.')}</p></div>`;
+    _lngSide();
+    _lngLandFocus(body.querySelector('.lng-blank'));
     return;
   }
-  const g = r.lineage || {};
-  const up = (g.upstream || {}).nodes || [], down = (g.downstream || {}).nodes || [];
-  const upHtml = up.length ? up.map((n, i) => _lin2Node(n, 'up-' + i)).join('')
-                           : _srcLinEmpty(g.upstream, 'it is built from');
-  const downHtml = down.length ? down.map((n, i) => _lin2Node(n, 'down-' + i)).join('')
-                               : _srcLinEmpty(g.downstream, 'else is built on it');
-  // Downstream leads, and is the only count that changes colour, because it is the blast radius:
-  // the objects that break when this one does. That is the question the catalog alone can answer.
-  const pills =
-    `<span class="lin2-pill${down.length ? ' hot' : ''}"><b>${down.length}</b><span>built on it</span></span>` +
-    `<span class="lin2-pill"><b>${up.length}</b><span>built from</span></span>`;
-  const warn = g.complete ? '' : `<span class="lin2-warn">⚠ known to be incomplete</span>`;
-  const notes = (g.caveats || []).map(c =>
-    `<div class="lin2-note"><span class="lin-rag unknown"></span><span>${esc(c)}</span></div>`).join('');
-  const stamp = g.run_id
-    // fmtWhen parses the run-id shape ONLY; an ISO generated_at_utc would print raw. The catalog
-    // is read during the run, so the two mean the same thing.
-    ? `<div class="lin2-note"><span class="lin-rag unknown"></span><span>Read from the catalog ${esc(fmtWhen(g.run_id))}.</span></div>`
-    : '';
-
-  body.innerHTML =
-    `<div class="lin2-sum"><div class="lin2-sum-h"><strong>${esc(g.headline || '')}</strong></div>` +
-      `<div class="lin2-pills">${warn}${pills}</div></div>` +
-    `<div class="lin2-graph"><svg class="lin2-edges" preserveAspectRatio="none" aria-hidden="true"></svg>` +
-      `<div class="lin2-col dq-stagger" data-side="up"><div class="lin2-ch">Built from</div>${upHtml}</div>` +
-      `<div class="lin2-col" data-side="focus">` +
-        `<div class="lin2-node lin2-focus"><span class="lin2-ico">${_srcLinIcon(g.relkind)}</span><div class="lin2-nb">` +
-        `<div class="lin2-name">${esc(label || g.table || '')}</div>` +
-        `<div class="lin2-meta"><span class="lin2-kind">${esc(g.relkind && g.relkind !== 'unknown' ? _srcLinKind(g.relkind) : 'relation')}</span>` +
-        `<span class="lin2-score">${esc(sourceLabel(g.engine))}</span></div></div></div></div>` +
-      `<div class="lin2-col dq-stagger" data-side="down"><div class="lin2-ch">Built on it</div>${downHtml}</div>` +
-    `</div>` +
-    (notes || stamp ? `<div class="lin2-notes">${notes}${stamp}</div>` : '');
-
-  dqIn(body);
-  // After layout, not during: the curves are measured from where the cards actually landed. The
-  // entry animation is a uniform translate on a shared ancestor, so it shifts the graph box and
-  // every node by the same amount and the measured offsets between them are unaffected.
-  requestAnimationFrame(() => _lin2DrawEdges(body));
+  const g = r.lineage || {}, pool = _lngPool(d, g);
+  const seen = new Set([`${g.schema || ''}.${g.table || ''}`.toLowerCase().replace(/^\./, '')]);
+  const direct = (blk, dir) => ((blk || {}).nodes || []).map(n => { const x = _lngNode(n, dir, '', pool); seen.add(x.key); return x; });
+  const up = direct(g.upstream, 'up'), down = direct(g.downstream, 'down');
+  const [iu, id] = await Promise.all([_lngIndirect(up, 'up', seen, pool), _lngIndirect(down, 'down', seen, pool)]);
+  if (linPick.sel !== sel) return;
+  _lngState = { d, label, r, g, up: up.concat(iu.nodes), down: down.concat(id.nodes), skipped: iu.skipped + id.skipped,
+    unread: iu.unread.map(l => ({ label: l, dir: 'up' })).concat(id.unread.map(l => ({ label: l, dir: 'down' }))),
+    partial: [...new Set(iu.partial.concat(id.partial))], dropped: iu.dropped + id.dropped };
+  lngCam.moved = false;
+  _lngPaint();
 }
+
+// The layout is computed, not measured: every card is the same size, so the page knows where each
+// one is before drawing it, and the edges, the minimap and the zoom all work from those numbers.
+// A column draws its first LNG_DRAW_MAX objects and says how many more there are; the side panel
+// lists every one.
+const LNG = { nw: 272, nh: 96, fw: 292, fh: 108, gy: 14, cg: 150, pad: 28 };
+const LNG_NAV = 116;                  // the strip at the bottom that holds the overview and zoom
+const LNG_DRAW_MAX = 150;
+function _lngLayout(st, view, avail) {
+  const cols = view === 'up' ? [['up', st.up], ['focus']] : view === 'down' ? [['focus'], ['down', st.down]]
+    : [['up', st.up], ['focus'], ['down', st.down]];
+  const info = cols.map(([kind, items]) => {
+    if (kind === 'focus') return { kind, w: LNG.fw, h: LNG.fh };
+    const drawn = items.slice(0, LNG_DRAW_MAX), more = items.length - drawn.length, n = drawn.length + (more ? 1 : 0);
+    return { kind, w: LNG.nw, items: items.length ? drawn : null, more, h: n ? n * LNG.nh + (n - 1) * LNG.gy : LNG.nh };
+  });
+  const H = Math.max(...info.map(c => c.h));
+  const used = info.reduce((a, c) => a + c.w, 0) + 2 * LNG.pad + 36;
+  const cg = Math.round(Math.max(LNG.cg, Math.min(360, ((avail || 0) - used) / (info.length - 1))));
+  const nodes = [];
+  let x = LNG.pad;
+  info.forEach(c => {
+    const top = LNG.pad + (H - c.h) / 2;
+    if (c.kind === 'focus') nodes.push({ id: 'focus', x, y: top, w: c.w, h: c.h, focus: true });
+    else if (!c.items) nodes.push({ id: c.kind + '-none', x, y: top, w: c.w, h: c.h, empty: c.kind });
+    else {
+      c.items.forEach((it, i) => nodes.push({ id: `${c.kind}-${i}`, x, y: top + i * (LNG.nh + LNG.gy), w: c.w, h: LNG.nh, it, dir: c.kind }));
+      if (c.more) nodes.push({ id: `${c.kind}-more`, x, y: top + c.items.length * (LNG.nh + LNG.gy), w: c.w, h: LNG.nh, more: c.more, dir: c.kind });
+    }
+    x += c.w + cg;
+  });
+  const f = nodes.find(n => n.focus);
+  // Arrows point from what something is built from to what is built on it.
+  const edges = nodes.filter(n => n.it).map(n => {
+    const down = n.dir === 'down';
+    return { id: n.id, ind: !!n.it.via,
+      x1: down ? f.x + f.w : n.x + n.w, y1: down ? f.y + f.h / 2 : n.y + n.h / 2,
+      x2: down ? n.x : f.x, y2: down ? n.y + n.h / 2 : f.y + f.h / 2 };
+  });
+  return { W: x - cg + LNG.pad, H: H + 2 * LNG.pad, nodes, edges };
+}
+const _lngF = v => v.toFixed(1);
+function _lngCurve(e, scale, ox, oy) {
+  const k = scale || 1, X = v => (ox || 0) + v * k, Y = v => (oy || 0) + v * k;
+  const dx = Math.max(40, (e.x2 - e.x1) * 0.5);
+  return `M${_lngF(X(e.x1))} ${_lngF(Y(e.y1))} C${_lngF(X(e.x1 + dx))} ${_lngF(Y(e.y1))}, ` +
+    `${_lngF(X(e.x2 - dx))} ${_lngF(Y(e.y2))}, ${_lngF(X(e.x2 - (scale ? 0 : 3)))} ${_lngF(Y(e.y2))}`;
+}
+
+function _lngStatusHtml(q) {
+  // With no score, the words are _linQuality's own: it alone decides what an unknown node is called.
+  return q.note ? `<span class="lin-rag ${q.rag}"></span>${esc(q.note)}`
+    : `<span class="lin-rag ${q.rag}"></span>${_LNG_RAG[q.rag] || esc(q.rag)} · <b>${num1(q.score)}</b>${_lngGate(q.m && q.m.d)}`;
+}
+// The full name first, then _linQuality's own words, for anything drawn too narrow to read whole.
+const _lngTip = it => `${esc(it.label)}&#10;${it.q.tip}`;
+function _lngNodeHtml(n) {
+  const it = n.it, kc = _lngKindCls(it.n.kind), m = it.ds;
+  const kind = _lngKindLabel(it.n.kind) + (m && typeof m.rows === 'number' ? ` · ${numInt(m.rows)} rows` : '');
+  const src = esc(sourceLabel(_lngState.g.engine)) + (it.via ? ` · via ${esc(it.via)}` : '');
+  const go = it.d ? ` role="button" tabindex="0" data-prefix="${esc(it.d.resultPrefix)}" aria-label="Show the lineage of ${esc(it.label)}"` : '';
+  return `<div class="lng-node${it.d ? ' go' : ''}${it.via ? ' ind' : ''}" data-nid="${n.id}" data-rag="${it.q.rag}" title="${_lngTip(it)}"${go} ` +
+    `style="left:${n.x}px;top:${n.y}px;width:${n.w}px;height:${n.h}px;">` +
+    `<span class="lng-nico k-${kc}">${_LNG_ICO[kc]}</span><span class="lng-nb">` +
+    `<span class="lng-nname">${_lngNameHtml(it.label, it.n.schema || '')}</span><span class="lng-nsrc">${src}</span>` +
+    `<span class="lng-nkind">${esc(kind)}</span><span class="lng-nst">${_lngStatusHtml(it.q)}</span></span>` +
+    (it.d ? `<span class="lng-nchev">${CMP_ICO.chev}</span>` : '') + `</div>`;
+}
+function _lngFocusHtml(st, n) {
+  const d = st.d || {}, g = st.g, rag = _lngRagOf(d);
+  const status = typeof d.score === 'number'
+    ? `<span class="lin-rag ${rag}"></span>${_LNG_RAG[rag] || 'Scored'} · <b>${num1(d.score)}</b>${_lngGate(d)}`
+    : `<span class="lin-rag unknown"></span>no score yet`;
+  return `<div class="lng-node lng-focus" data-nid="focus" data-rag="${rag}" tabindex="-1" title="${esc(st.label)}" ` +
+    `aria-label="${esc(st.label)}, the dataset on screen" style="left:${n.x}px;top:${n.y}px;width:${n.w}px;height:${n.h}px;">` +
+    `<span class="lng-nico lng-nico-lg">${_LNG_ICO.db}</span><span class="lng-nb">` +
+    `<span class="lng-nname">${_lngNameHtml(st.label || g.table || '')}</span>` +
+    `<span class="lng-nsrc">${esc(sourceLabel(g.engine))}</span>` +
+    `<span class="lng-nkind">${esc(_lngKindLabel(g.relkind))}${typeof d.rows === 'number' ? ` · ${numInt(d.rows)} rows` : ''}</span>` +
+    `<span class="lng-nst">${status}</span></span></div>`;
+}
+function _lngVoidHtml(st, n) {
+  const blk = n.empty === 'up' ? st.g.upstream : st.g.downstream;
+  return `<div class="lng-node lng-void" data-nid="${n.id}" style="left:${n.x}px;top:${n.y}px;width:${n.w}px;height:${n.h}px;">` +
+    _srcLinEmpty(blk, n.empty === 'up' ? 'it is built from' : 'else is built on it') + `</div>`;
+}
+function _lngMoreHtml(n) {
+  return `<div class="lng-node lng-void" data-nid="${n.id}" style="left:${n.x}px;top:${n.y}px;width:${n.w}px;height:${n.h}px;">` +
+    `<div class="lin2-empty">${n.more} more ${n.more === 1 ? 'is' : 'are'} not drawn here. The side panel lists every one.</div></div>`;
+}
+function _lngMiniHtml(L) {
+  const MW = 150, MH = 84, m = Math.min(MW / L.W, MH / L.H), ox = (MW - L.W * m) / 2, oy = (MH - L.H * m) / 2;
+  const P = v => _lngF(v);
+  const edges = L.edges.map(e => `<path class="lng-mini-e${e.ind ? ' ind' : ''}" d="${_lngCurve(e, m, ox, oy)}"/>`).join('');
+  const dots = L.nodes.map(n => n.focus
+    ? `<rect class="lng-mini-f" x="${P(ox + n.x * m)}" y="${P(oy + (n.y + n.h / 2) * m - 4)}" width="${P(Math.max(14, n.w * m))}" height="8" rx="4"/>`
+    : n.it ? `<circle class="lng-mini-n" cx="${P(ox + (n.dir === 'down' ? n.x : n.x + n.w) * m)}" cy="${P(oy + (n.y + n.h / 2) * m)}" r="3"/>` : '').join('');
+  return `<svg class="lng-mini" id="lngMini" width="${MW}" height="${MH}" viewBox="0 0 ${MW} ${MH}" data-m="${m}" data-ox="${ox}" data-oy="${oy}" ` +
+    `role="img" aria-label="Overview of the graph. Click to move the view there.">${edges}${dots}` +
+    `<rect class="lng-mini-vp" id="lngMiniVp" x="0" y="0" width="0" height="0" rx="2"/></svg>`;
+}
+function _lngCanvasHtml(st, L) {
+  const chip = { down: ['Downstream lineage', 'What is built on this dataset'],
+                 up: ['Upstream lineage', 'What this dataset is built from'],
+                 both: ['Upstream and downstream', 'What it is built from, and what is built on it'] }[lngView];
+  // The overview sits in the corner under the shorter column, so it covers as little as it can.
+  const left = lngView === 'down' ? 1 : st.up.length, right = lngView === 'up' ? 1 : st.down.length;
+  const paths = L.edges.map(e => {
+    const dx = Math.max(40, (e.x2 - e.x1) * 0.5), t = 0.3, u = 1 - t;
+    const px = u * u * u * e.x1 + 3 * u * u * t * (e.x1 + dx) + 3 * u * t * t * (e.x2 - dx) + t * t * t * e.x2;
+    const py = u * u * u * e.y1 + 3 * u * u * t * e.y1 + 3 * u * t * t * e.y2 + t * t * t * e.y2;
+    return `<path class="lng-edge${e.ind ? ' ind' : ''}" data-edge="${e.id}" d="${_lngCurve(e)}" marker-end="url(#lngArrow)"/>` +
+      `<circle class="lng-edot" data-edge="${e.id}" cx="${_lngF(px)}" cy="${_lngF(py)}" r="3.4"/>`;
+  }).join('');
+  const nodes = L.nodes.map(n => n.focus ? _lngFocusHtml(st, n) : n.empty ? _lngVoidHtml(st, n)
+    : n.more ? _lngMoreHtml(n) : _lngNodeHtml(n)).join('');
+  return `<div class="lng-canvas" id="lngCanvas" data-view="${lngView}" data-navside="${left <= right ? 'left' : 'right'}">` +
+      `<div class="lng-world" id="lngWorld" style="width:${L.W}px;height:${L.H}px;">` +
+        `<svg class="lng-edges" width="${L.W}" height="${L.H}" viewBox="0 0 ${L.W} ${L.H}" aria-hidden="true">` +
+          `<defs><marker id="lngArrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z"/></marker></defs>` +
+          paths + `</svg>${nodes}</div>` +
+      `<div class="lng-chip"><span class="lng-chip-ico">${_LNG_ICO.share}</span><span><strong>${chip[0]}</strong><span class="lng-chip-sub">${chip[1]}</span></span></div>` +
+      `<div class="lng-nav">${_lngMiniHtml(L)}<div class="lng-zoom">` +
+        `<button type="button" class="lngb" data-zoom="in" aria-label="Zoom in" data-tip="Zoom in (or Ctrl + scroll)">${_LNG_ICO.plus}</button>` +
+        `<button type="button" class="lngb" data-zoom="out" aria-label="Zoom out" data-tip="Zoom out">${_LNG_ICO.minus}</button>` +
+        `<button type="button" class="lngb" data-zoom="fit" aria-label="Fit the whole graph" data-tip="Fit the whole graph">${_LNG_ICO.fit}</button>` +
+      `</div></div></div>`;
+}
+function _lngOtherHtml(st, view) {
+  if (view === 'both') return '';
+  const dir = view === 'down' ? 'up' : 'down', items = dir === 'up' ? st.up : st.down;
+  const blk = dir === 'up' ? st.g.upstream : st.g.downstream;
+  const t = dir === 'up' ? ['Upstream lineage', 'What this dataset is built from'] : ['Downstream lineage', 'What is built on this dataset'];
+  const rows = items.map(it => {
+    const m = it.ds, kc = _lngKindCls(it.n.kind);
+    return `<tr${it.d ? ` class="go" tabindex="0" data-prefix="${esc(it.d.resultPrefix)}"` : ''} title="${_lngTip(it)}">` +
+      `<td><span class="lng-tname"><span class="lng-nico k-${kc}">${_LNG_ICO[kc]}</span><span>${_lngNameHtml(it.label, it.n.schema || '')}` +
+        (it.via ? `<span class="lng-tvia">via ${esc(it.via)}</span>` : '') + `</span></span></td>` +
+      `<td>${esc(sourceLabel(st.g.engine))}</td><td>${esc(_lngKindLabel(it.n.kind))}</td>` +
+      `<td>${m && typeof m.rows === 'number' ? numInt(m.rows) : '-'}</td>` +
+      `<td>${m && m.lastSeen ? esc(_cmpDay(m.lastSeen, true)) : '-'}</td>` +
+      `<td><span class="lng-nst ${it.q.rag}">${_lngStatusHtml(it.q)}</span></td></tr>`;
+  }).join('');
+  return `<section class="lng-other${lngOtherOpen ? ' open' : ''}" data-dir="${dir}">` +
+    `<button type="button" class="lng-other-hd" aria-expanded="${lngOtherOpen}"><span class="lng-other-ico">${_LNG_ICO.arrow}</span>` +
+      `<span class="lng-other-t"><strong>${t[0]}</strong><span>${t[1]}</span></span>` +
+      `<span class="lng-other-n">${items.length}</span><span class="lng-other-chev">${_LNG_ICO.down}</span></button>` +
+    `<div class="lng-other-body"${lngOtherOpen ? '' : ' hidden'}>` +
+      (items.length ? `<div class="lng-tbl-wrap"><table class="lng-tbl"><thead><tr><th>Dataset</th><th>Source</th><th>Type</th>` +
+          `<th>Records</th><th>Last assessed</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table></div>`
+        : _srcLinEmpty(blk, dir === 'up' ? 'it is built from' : 'else is built on it')) +
+    `</div></section>`;
+}
+
+function _lngPaint() {
+  const st = _lngState, body = $('#srcLineageBody');
+  if (!st || !st.g) { _lngSide(); return; }
+  const L = _lngLast = _lngLayout(st, lngView, body.clientWidth);
+  body.innerHTML = _lngCanvasHtml(st, L) + _lngOtherHtml(st, lngView);
+  _lngWireCanvas(L);
+  _lngSide();
+  dqIn(body);
+  _lngLandFocus($('#lngWorld .lng-focus'));
+}
+// Reached from the keyboard (a card, a row, a list item or search), the cursor lands on the new
+// dataset: its card, or the message saying it has no lineage, or Try again. Never back at the top.
+function _lngLandFocus(el) {
+  if (!_lngFocusNext) return;
+  _lngFocusNext = false;
+  if (el) el.focus({ preventScroll: true });
+}
+
+// ---- Moving around the graph -----------------------------------------------------------------
+// Fitted to start with, but never so small it cannot be read: a long column opens on the dataset
+// itself, and Fit (the corner button) shows everything at whatever size that takes.
+function _lngFit(L, cv, cap, floor) {
+  const cw = cv.clientWidth, ch = cv.clientHeight, top = 66, side = 18, bottom = LNG_NAV;
+  const fit = Math.min(cap || 1, (cw - 2 * side) / L.W, (ch - top - bottom) / L.H);
+  const k = Math.max(floor == null ? 0.55 : floor, fit);
+  lngCam.k = k;
+  if (k <= fit + 1e-6) {
+    lngCam.x = (cw - L.W * k) / 2;
+    lngCam.y = top + (ch - top - bottom - L.H * k) / 2;
+  } else {
+    const f = L.nodes.find(n => n.focus);
+    lngCam.x = Math.min(side, (cw - L.W * k) / 2);
+    lngCam.y = top + (ch - top - bottom) / 2 - (f.y + f.h / 2) * k;
+  }
+}
+function _lngApplyCam() {
+  const w = $('#lngWorld'), cv = $('#lngCanvas'); if (!w || !cv) return;
+  w.style.transform = `translate(${_lngF(lngCam.x)}px, ${_lngF(lngCam.y)}px) scale(${lngCam.k.toFixed(4)})`;
+  const mini = $('#lngMini'), vp = $('#lngMiniVp');
+  if (!mini || !vp) return;
+  const m = +mini.dataset.m, ox = +mini.dataset.ox, oy = +mini.dataset.oy;
+  let x0 = Math.max(0, ox + (-lngCam.x / lngCam.k) * m), y0 = Math.max(0, oy + (-lngCam.y / lngCam.k) * m);
+  let x1 = Math.min(150, ox + ((cv.clientWidth - lngCam.x) / lngCam.k) * m);
+  let y1 = Math.min(84, oy + ((cv.clientHeight - lngCam.y) / lngCam.k) * m);
+  // never smaller than a few pixels, or a big graph's overview loses the box that says where you are
+  if (x1 - x0 < 4) { const c = (x0 + x1) / 2; x0 = Math.max(0, c - 2); x1 = Math.min(150, x0 + 4); }
+  if (y1 - y0 < 4) { const c = (y0 + y1) / 2; y0 = Math.max(0, c - 2); y1 = Math.min(84, y0 + 4); }
+  vp.setAttribute('x', _lngF(x0)); vp.setAttribute('y', _lngF(y0));
+  vp.setAttribute('width', _lngF(Math.max(0, x1 - x0))); vp.setAttribute('height', _lngF(Math.max(0, y1 - y0)));
+}
+function _lngZoom(f, cx, cy) {
+  // The floor gives way to a Fit that went below it, so zooming out never jumps back in.
+  const k2 = Math.max(Math.min(0.15, lngCam.k), Math.min(2, lngCam.k * f)), r = k2 / lngCam.k;
+  lngCam.x = cx - (cx - lngCam.x) * r;
+  lngCam.y = cy - (cy - lngCam.y) * r;
+  lngCam.k = k2;
+  lngCam.moved = true;
+  _lngApplyCam();
+}
+function _lngWireCanvas(L) {
+  const cv = $('#lngCanvas'); if (!cv) return;
+  cv.style.height = Math.round(Math.min(700, Math.max(460, L.H * Math.min(1, (cv.clientWidth - 36) / L.W) + 66 + LNG_NAV))) + 'px';
+  _lngFit(L, cv, 1);
+  _lngApplyCam();
+  // One pointer drags the picture and two pinch to zoom. Each is tracked by its own id, so a
+  // second finger landing does not throw the first one's drag across the graph. The cards you can
+  // follow, the overview and the buttons keep their own clicks.
+  const pts = new Map();
+  let drag = null, pinch = null;
+  const pair = () => { const [a, b] = [...pts.values()]; return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, d: Math.hypot(a.x - b.x, a.y - b.y) || 1 }; };
+  const startDrag = (id, p) => { drag = { id, x: p.x, y: p.y, cx: lngCam.x, cy: lngCam.y }; };
+  cv.addEventListener('pointerdown', e => {
+    if (e.button !== 0 || e.target.closest('.lng-node.go, .lng-nav')) return;
+    pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    cv.setPointerCapture(e.pointerId);
+    if (pts.size === 1) startDrag(e.pointerId, pts.get(e.pointerId));
+    else if (pts.size === 2) { drag = null; pinch = pair(); }
+    cv.classList.add('grabbing');
+  });
+  cv.addEventListener('pointermove', e => {
+    if (!pts.has(e.pointerId)) return;
+    pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pinch && pts.size >= 2) {
+      const p = pair(), r = cv.getBoundingClientRect();
+      lngCam.x += p.x - pinch.x; lngCam.y += p.y - pinch.y;          // the pair moves the picture
+      _lngZoom(p.d / pinch.d, p.x - r.left, p.y - r.top);            // and their spread zooms it
+      pinch = p;
+    } else if (drag && e.pointerId === drag.id) {
+      lngCam.x = drag.cx + e.clientX - drag.x; lngCam.y = drag.cy + e.clientY - drag.y;
+      lngCam.moved = true;
+      _lngApplyCam();
+    }
+  });
+  const end = e => {
+    if (!pts.delete(e.pointerId)) return;
+    if (pts.size < 2) pinch = null;
+    if (pts.size === 1) { const [id, p] = [...pts.entries()][0]; startDrag(id, p); }   // the finger left carries on
+    if (!pts.size) { drag = null; cv.classList.remove('grabbing'); }
+  };
+  cv.addEventListener('pointerup', end);
+  cv.addEventListener('pointercancel', end);
+  // Ctrl (or Cmd) and the wheel zooms; the wheel alone still scrolls the page, as it does everywhere else.
+  cv.addEventListener('wheel', e => {
+    if (!e.ctrlKey && !e.metaKey) return;
+    e.preventDefault();
+    const r = cv.getBoundingClientRect();
+    _lngZoom(e.deltaY < 0 ? 1.12 : 1 / 1.12, e.clientX - r.left, e.clientY - r.top);
+  }, { passive: false });
+  // The canvas never scrolls: should anything scroll it all the same, the scroll becomes a move of
+  // the picture, so the overview and the corner chip stay where they belong.
+  cv.addEventListener('scroll', () => {
+    const dx = cv.scrollLeft, dy = cv.scrollTop;
+    if (!dx && !dy) return;
+    cv.scrollLeft = 0; cv.scrollTop = 0;
+    lngCam.x -= dx; lngCam.y -= dy; lngCam.moved = true;
+    _lngApplyCam();
+  });
+  // A card reached with Tab is brought into the clear part of the canvas, clear of the chip above
+  // and the overview below.
+  cv.addEventListener('focusin', e => {
+    const n = e.target.closest && e.target.closest('.lng-node'); if (!n) return;
+    // the card's own place in the layout, which is where its inline style puts it
+    const at = v => parseFloat(n.style[v]) || 0, k = lngCam.k;
+    const x = at('left') * k + lngCam.x, y = at('top') * k + lngCam.y, w = at('width') * k, h = at('height') * k;
+    const L0 = 18, T0 = 66, R0 = cv.clientWidth - 18, B0 = cv.clientHeight - LNG_NAV;
+    const dx = x < L0 ? L0 - x : x + w > R0 ? R0 - (x + w) : 0;
+    const dy = y < T0 ? T0 - y : y + h > B0 ? B0 - (y + h) : 0;
+    if (dx || dy) { lngCam.x += dx; lngCam.y += dy; lngCam.moved = true; _lngApplyCam(); }
+  });
+  const mini = $('#lngMini');
+  mini.addEventListener('click', e => {
+    const r = mini.getBoundingClientRect(), m = +mini.dataset.m;
+    const wx = (e.clientX - r.left - +mini.dataset.ox) / m, wy = (e.clientY - r.top - +mini.dataset.oy) / m;
+    lngCam.x = cv.clientWidth / 2 - wx * lngCam.k; lngCam.y = cv.clientHeight / 2 - wy * lngCam.k;
+    lngCam.moved = true;
+    _lngApplyCam();
+  });
+  // Hovering a card lights its own edge. The hit target is the card, which is far easier to hit
+  // than a 2px curve. One listener for the whole canvas, not one per card: a big graph has hundreds.
+  const lit = new Map();
+  cv.querySelectorAll('[data-edge]').forEach(p => {
+    if (!lit.has(p.dataset.edge)) lit.set(p.dataset.edge, []);
+    lit.get(p.dataset.edge).push(p);
+  });
+  let on = null;
+  const light = id => {
+    if (on === id) return;
+    (lit.get(on) || []).forEach(p => p.classList.remove('hl'));
+    on = id;
+    (lit.get(id) || []).forEach(p => p.classList.add('hl'));
+  };
+  cv.addEventListener('mouseover', e => { const n = e.target.closest && e.target.closest('.lng-node[data-nid]'); light(n ? n.dataset.nid : null); });
+  cv.addEventListener('mouseleave', () => light(null));
+}
+let _lngRedrawPending = false;
+window.addEventListener('resize', () => {
+  if (_lngRedrawPending) return;
+  _lngRedrawPending = true;
+  requestAnimationFrame(() => {
+    _lngRedrawPending = false;
+    const cv = $('#lngCanvas');
+    if (!cv || !cv.offsetParent || !_lngLast) return;
+    if (!lngCam.moved) _lngFit(_lngLast, cv, 1);
+    _lngApplyCam();
+  });
+});
+
+// ---- The side panel: the dataset, and what is known about its lineage ----------------------------
+function _lngLi(it) {
+  const kc = _lngKindCls(it.n.kind), m = it.ds;
+  const sub = _lngKindLabel(it.n.kind) + (m && typeof m.rows === 'number' ? ` · ${numInt(m.rows)} rows` : '') + (it.via ? ` · via ${it.via}` : '');
+  const tag = it.d ? 'button' : 'div';
+  return `<${tag}${it.d ? ` type="button" data-prefix="${esc(it.d.resultPrefix)}"` : ''} class="lng-li${it.d ? ' go' : ''}" title="${_lngTip(it)}">` +
+    `<span class="lng-nico lng-nico-sm k-${kc}">${_LNG_ICO[kc]}</span><span class="lng-li-b">` +
+    `<span class="lng-li-n">${_lngNameHtml(it.label, it.n.schema || '')}</span><span class="lng-li-s">${esc(sub)}</span></span>` +
+    `<span class="lin-rag ${it.q.rag}"></span>${it.d ? `<span class="lng-li-chev">${CMP_ICO.chev}</span>` : ''}</${tag}>`;
+}
+function _lngList(items, key, blk, what) {
+  if (!items.length) return _srcLinEmpty(blk, what);
+  const cap = 5, all = _lngMore[key] || items.length <= cap + 1;
+  return (all ? items : items.slice(0, cap)).map(_lngLi).join('') +
+    (items.length > cap + 1 ? `<button type="button" class="lng-more" data-lngmore="${key}">${all ? 'Show fewer' : `Show all ${items.length}`}</button>` : '');
+}
+function _lngCopy(btn) {
+  const done = () => {
+    btn.classList.add('done'); btn.setAttribute('data-tip', 'Copied');
+    setTimeout(() => { btn.classList.remove('done'); btn.setAttribute('data-tip', 'Copy the name'); }, 1400);
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(btn.dataset.copy || '').then(done, () => {});
+}
+async function lngOpenDash(d) {
+  dashScope = 'source';           // set first, so the dataset is in the scoped list it opens from
+  switchTab('dashboard');
+  await loadDashboard();
+  await selectDataset(d.key, d.name || d.slug || '');
+}
+
+function _lngSide() {
+  const side = $('#lngSide'), st = _lngState;
+  if (!side || !st) return;
+  const d = st.d || {}, g = st.g, rag = _lngRagOf(d);
+  const pill = typeof d.score === 'number'
+    ? `<span class="cmpx-pill ${rag === 'unknown' ? 'muted' : rag}"><span class="cmpx-pill-dot"></span>${_LNG_RAG[rag] || 'Scored'}</span>` +
+      (d.gate === false ? `<span class="cmpx-pill red"><span class="cmpx-pill-dot"></span>Gate failed</span>` : '')
+    : `<span class="cmpx-pill muted"><span class="cmpx-pill-dot"></span>No score yet</span>`;
+  const kind = g ? _lngKindLabel(g.relkind) : 'Dataset';
+  const tabs = `<div class="lng-tabs" role="tablist" aria-label="About this dataset">` + [['details', 'Dataset details'], ['info', 'Lineage info']].map(([k, l]) =>
+    `<button type="button" class="lng-tab${lngSideTab === k ? ' on' : ''}" role="tab" id="lngTab-${k}" aria-controls="lngPane-${k}" ` +
+    `aria-selected="${lngSideTab === k}" tabindex="${lngSideTab === k ? 0 : -1}" data-stab="${k}">${l}</button>`).join('') + `</div>`;
+  const direct = list => list.filter(x => !x.via).length;
+
+  const head = `<div class="lng-dhead"><span class="lng-nico lng-nico-lg">${_LNG_ICO.db}</span><div class="lng-dt">` +
+      `<div class="lng-dname"><span title="${esc(st.label)}">${esc(st.label)}</span>` +
+        `<button type="button" class="lng-copy" data-copy="${esc(st.label)}" aria-label="Copy the name" data-tip="Copy the name">${_LNG_ICO.copy}</button></div>` +
+      `<div class="lng-dsub">${esc(sourceLabel(d.sourceFormat))}<span class="cmpx-sep">•</span>${esc(kind)}</div></div>` +
+      `<span class="lng-dpills">${pill}</span></div>`;
+  const stats = `<div class="lng-stats"><div><span>Score</span><b>${num1(d.score)}</b></div>` +
+    `<div><span>Records</span><b>${numInt(d.rows)}</b></div><div><span>Last assessed</span><b>${esc(_cmpDay(d.lastSeen, true))}</b></div></div>`;
+  const usedBy = g ? `<div class="lng-sec"><h4>Used by <span>(${st.down.length})</span></h4>` +
+    _lngList(st.down, 'down', g.downstream, 'else is built on it') + `</div>` : '';
+  const path = g ? `<div class="lng-sec"><h4>Lineage path</h4>` +
+    `<div class="lng-li cur" title="${esc(st.label)}"><span class="lng-nico lng-nico-sm">${_LNG_ICO.db}</span><span class="lng-li-b">` +
+      `<span class="lng-li-n">${_lngNameHtml(st.label)}</span><span class="lng-li-s">${esc(sourceLabel(g.engine))} · ${esc(kind)}</span></span></div>` +
+    `<div class="lng-path-built">Built from</div><div class="lng-path-up">` +
+      _lngList(st.up, 'up', g.upstream, 'it is built from') + `</div></div>` : '';
+  const qa = `<div class="lng-sec"><h4>Quick actions</h4><div class="lng-qa">` +
+    `<button type="button" class="lng-qa-btn primary" data-lngact="dash">Open in dashboard ${_LNG_ICO.open}</button>` +
+    `<button type="button" class="lng-qa-btn" data-lngact="report">${_LNG_ICO.report} View full report</button></div></div>`;
+
+  let info;
+  if (!g) info = `<div class="lin2-empty">${esc((st.r && st.r.reason) || 'No dependency lineage for this dataset.')}</div>`;
+  else {
+    const nDown = direct(st.down), nUp = direct(st.up), nInd = st.down.length + st.up.length - nDown - nUp;
+    // Downstream leads, and is the only count that changes colour, because it is the blast radius:
+    // the objects that break when this one does. That is the question the catalog alone can answer.
+    const pills = `<span class="lin2-pill${nDown ? ' hot' : ''}"><b>${nDown}</b><span>built on it</span></span>` +
+      `<span class="lin2-pill"><b>${nUp}</b><span>built from</span></span>` +
+      (nInd ? `<span class="lin2-pill"><b>${nInd}</b><span>indirect</span></span>` : '');
+    const note = t => `<div class="lin2-note"><span class="lin-rag unknown"></span><span>${t}</span></div>`;
+    // What this graph cannot show is said in so many words, never left to look like "nothing".
+    const upU = st.unread.filter(u => u.dir === 'up').map(u => u.label), downU = st.unread.filter(u => u.dir === 'down').map(u => u.label);
+    const gaps = (downU.length ? note(`What is built on ${esc(_lngAnd(downU))} could not be read, so objects further out may be missing.`) : '') +
+      (upU.length ? note(`What ${esc(_lngAnd(upU))} ${upU.length === 1 ? 'is' : 'are'} built from could not be read, so objects further back may be missing.`) : '') +
+      (st.partial.length ? note(`The catalog${st.partial.length === 1 ? '' : 's'} of ${esc(_lngAnd(st.partial))} ${st.partial.length === 1 ? 'does' : 'do'} not record everything either, so objects found through ${st.partial.length === 1 ? 'it' : 'them'} may be missing.`) : '');
+    const notes = (g.caveats || []).map(c => note(esc(c))).join('') +
+      // fmtWhen parses the run-id shape ONLY; an ISO generated_at_utc would print raw. The catalog
+      // is read during the run, so the two mean the same thing.
+      (g.run_id ? note(`Read from the catalog ${esc(fmtWhen(g.run_id))}.`) : '') + gaps +
+      note('Indirect objects are found through the assessed datasets in between, each from its own catalog read. ' +
+        'Past an object that has not been assessed, the graph stops at what this catalog records directly.' +
+        (st.skipped ? ` Looked up through the first ${LNG_HOP_MAX} only; ${st.skipped} more were not followed.` : '') +
+        (st.dropped ? ` The first ${LNG_IND_MAX} found are shown; ${st.dropped} more are not.` : '')) +
+      note('This is object dependency lineage: what the catalog records about how each object is defined. It is not pipeline lineage. A warehouse does not know which job loaded a table, so neither do we.') +
+      note('Drag the graph to move around it. Zoom with the buttons in its corner, or hold Ctrl and scroll.');
+    const incomplete = !g.complete || st.unread.length || st.partial.length || st.skipped || st.dropped;
+    info = `<p class="lng-ihead">${esc(g.headline || '')}</p><div class="lng-ipills">${pills}</div>` +
+      (incomplete ? `<span class="lin2-warn">⚠ known to be incomplete</span>` : '') +
+      `<div class="lin2-notes">${notes}</div>`;
+  }
+  side.innerHTML = tabs +
+    `<div class="lng-pane" id="lngPane-details" role="tabpanel" aria-labelledby="lngTab-details" data-pane="details"${lngSideTab === 'details' ? '' : ' hidden'}>${head}${stats}${usedBy}${path}${qa}</div>` +
+    `<div class="lng-pane" id="lngPane-info" role="tabpanel" aria-labelledby="lngTab-info" data-pane="info"${lngSideTab === 'info' ? '' : ' hidden'}>${info}</div>`;
+}
+
+// The header's search jumps to any dataset with lineage, whatever the Dataset list is filtered to.
+// Ctrl+K, or Cmd+K on a Mac, puts the cursor in it while this tab shows source data.
+(function wireLineageJump() {
+  const inp = $('#lngJumpIn'), list = $('#lngJumpList'), kbd = $('#lngJumpKbd');
+  if (!inp || !list) return;
+  if (kbd && /Mac|iPhone|iPad/.test(navigator.platform || '')) kbd.textContent = '⌘K';
+  let hits = [], at = 0;
+  const close = () => { list.hidden = true; inp.setAttribute('aria-expanded', 'false'); };
+  const paint = () => {
+    const q = inp.value.trim();
+    if (!q) { close(); return; }
+    hits = linPick.all.filter(d => _cmpHit(d, q)).sort((a, b) => _cmpName(a).localeCompare(_cmpName(b))).slice(0, 8);
+    at = Math.min(at, Math.max(hits.length - 1, 0));
+    // A dataset that IS there but has no lineage gets a reason, not a shrug.
+    const elsewhere = hits.length ? null : (dashDatasetsAll || []).find(d => isSourceDataset(d) && _cmpHit(d, q)
+      && !LINEAGE_ENGINES.has(String(d.sourceFormat || '').toLowerCase()));
+    list.innerHTML = hits.length ? hits.map((d, i) => `<div class="cmpx-jump-item${i === at ? ' on' : ''}" role="option" aria-selected="${i === at}" data-i="${i}">` +
+        `<span class="cmpx-ico cmpx-ico-sm">${srcIcon(d.sourceFormat)}</span><span class="cmpx-jump-name" title="${esc(_cmpName(d))}">${esc(_cmpName(d))}</span>` +
+        `<span class="cmpx-jump-scope">${esc(sourceLabel(d.sourceFormat))}</span></div>`).join('')
+      : `<div class="cmpx-jump-none">${elsewhere
+          ? `${esc(_cmpName(elsewhere))} is from ${esc(sourceLabel(elsewhere.sourceFormat))}, which does not publish dependency metadata.`
+          : `No dataset matches “${esc(q)}”`}</div>`;
+    list.hidden = false; inp.setAttribute('aria-expanded', 'true');
+  };
+  const pick = d => {
+    if (!d) return;
+    inp.value = ''; close(); inp.blur();
+    if (!linPickList().some(x => x.resultPrefix === d.resultPrefix)) {   // filtered out: clear the filters
+      linPick.stages.clear(); linPick.tags.clear(); linPick.sources.clear();
+    }
+    if (d.resultPrefix === linPick.sel && _lngState && _lngState.g) {
+      renderLinPicker();
+      const f = $('#lngWorld .lng-focus'); if (f) f.focus({ preventScroll: true });
+    } else _lngPick(d.resultPrefix, { focus: true });
+  };
+  inp.addEventListener('input', () => { at = 0; paint(); });
+  inp.addEventListener('focus', paint);
+  inp.addEventListener('blur', () => setTimeout(close, 150));
+  inp.addEventListener('keydown', e => {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      if (!hits.length) return;
+      e.preventDefault();
+      at = (at + (e.key === 'ArrowDown' ? 1 : hits.length - 1)) % hits.length;
+      paint();
+    } else if (e.key === 'Enter') { e.preventDefault(); if (!list.hidden) pick(hits[at]); }
+    else if (e.key === 'Escape') { if (inp.value) { inp.value = ''; close(); } else inp.blur(); }
+  });
+  list.addEventListener('mousedown', e => {
+    const it = e.target.closest('.cmpx-jump-item'); if (!it) return;
+    e.preventDefault(); pick(hits[+it.dataset.i]);
+  });
+  document.addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && (e.key === 'k' || e.key === 'K')) {
+      const tab = $('#lineagePanel');
+      if (!tab || tab.style.display === 'none' || linScope !== 'source') return;
+      e.preventDefault(); inp.focus(); inp.select();
+    }
+  });
+})();
 
 // ---- The Lineage tab's two scopes ---------------------------------------- //
 // Same pattern as Dashboard, Incidents and Compliance. The portal has no Qlik app to scope
@@ -12845,18 +13698,18 @@ function applyLinScope() {
   document.querySelectorAll('#linScopeToggle .scope-btn')
     .forEach(b => b.classList.toggle('active', b.dataset.scope === linScope));
   const srcMode = linScope === 'source';
-  $('#lineageBody').style.display = srcMode ? 'none' : '';
+  $('#linAppCard').style.display = srcMode ? 'none' : '';
   $('#srcLinWrap').style.display = srcMode ? 'block' : 'none';
-  $('#linTitle').textContent = srcMode ? 'Dependencies' : 'Sources & consumers';
-  $('#lineageCtx').style.display = srcMode ? 'none' : '';
+  // Search and the dataset filter are about warehouse datasets; the app view has neither.
+  document.querySelectorAll('#lineagePanel .lng-src-only').forEach(el => { el.style.display = srcMode ? '' : 'none'; });
   $('#linIntro').textContent = srcMode
-    ? 'What each assessed relation is built from, and what is built on it, read from the warehouse\'s own catalog during the assessment. This is object dependency lineage: what the catalog records about defining queries. It is not pipeline lineage - a warehouse does not know which job loaded a table, so neither do we.'
+    ? 'What each assessed table or view is built from, and what is built on it, read from the warehouse\'s own catalog during the assessment, with the quality of each. This is object dependency lineage, not pipeline lineage: a warehouse does not know which job loaded a table, so neither do we.'
     : "Where this app's data comes from (upstream sources) and what depends on it (downstream), traced from Qlik. Cached for 24h; use Refresh to re-pull.";
 }
 
 function loadLineageTab(refresh) {
   applyLinScope();
-  if (linScope === 'source') loadSourceLineage(); else loadLineage(refresh);
+  if (linScope === 'source') loadSourceLineage(refresh); else loadLineage(refresh);
 }
 
 document.querySelectorAll('#linScopeToggle .scope-btn').forEach(b =>
@@ -12884,7 +13737,7 @@ function _linNorm(v) { return _linLeaf(v).toLowerCase().replace(/[^a-z0-9]+/g, '
  * RestConnectorMasterTable -> MasterTable, which nothing supports. Refusing to guess is the point:
  * a wrong match paints a source with an unrelated table's score.
  */
-function _linMatch(label, datasets) {
+function _linMatch(label, datasets, exactOnly) {
   const leaf = _linLeaf(label), n = _linNorm(label);
   if (!n) return null;
   const by = new Map();
@@ -12898,8 +13751,10 @@ function _linMatch(label, datasets) {
 
   const exact = uniq(n);
   if (exact) return { d: exact, how: 'name' };
+  // The prefix rule is for Qlik's layered file names. A warehouse object called stg_sales.orders
+  // is a different table from sales.orders, so a caller drawing warehouse objects turns it off.
   const us = leaf.indexOf('_');
-  if (us > 0 && us <= 3) {
+  if (!exactOnly && us > 0 && us <= 3) {
     const tail = uniq(_linNorm(leaf.slice(us + 1)));
     if (tail) return { d: tail, how: 'matched on ' + leaf.slice(0, us) + '_ prefix' };
   }
@@ -15927,8 +16782,8 @@ const GD_SHOTS = {
   "history-q": [1600, 979, "539a02e628"],
   "incidents-p": [1600, 1164, "6eec682b3f"],
   "incidents-q": [1600, 1163, "af3ae60198"],
-  "lineage-app": [1600, 1161, "ccb02d035f"],
-  "lineage-source": [1600, 1146, "7d82aece98"],
+  "lineage-app": [1600, 1141, "8605e85254"],
+  "lineage-source": [1600, 1129, "cc5e81a146"],
   "onprem-file": [1600, 1461, "fbd79aaab9"],
   "overview-top-p": [1600, 609, "2906120567"],
   "overview-top-q": [1600, 584, "5d61e45e4c"],
@@ -16060,8 +16915,10 @@ const GD_SHOW = {
     tip: 'How much of a failing row is kept, for every dataset in the organisation.' },
   'agents': { tab: 'agents', sel: '#agtName', tip: 'Name the machine and press <b>Register</b>. The download is just above.' },
   'apikeys': { tab: 'apikeys', sel: '#akName', tip: 'Name the key after what will use it, choose when it expires, and press <b>Create key</b>.' },
-  'lineage': { tab: 'lineage', sel: '#linScopeToggle, #srcLinWrap',
-    tip: 'Pick a dataset to see what it is built from and what is built on it.' },
+  'lineage': { tab: 'lineage', sel: '#lngCombo',
+    prep: () => { if (linScope !== 'source') { linScope = 'source'; loadLineageTab(); } },
+    miss: 'No assessed dataset here comes from a warehouse that publishes dependency metadata, so there is no lineage to show.',
+    tip: 'Pick a dataset, then which way to look: what is built on it, or what it is built from.' },
   'model-strip': { tab: 'model', sel: '#modelIntegrity',
     tip: 'Whether each association actually holds. Click it for every link in full.' },
   'history': { tab: 'history', sel: '#historySubtabs, #historyList', tip: 'Every run. Open one for its full report.' },
@@ -17402,15 +18259,17 @@ dq-agent-service.cmd RESTART`) +
           shot('lineage-app', `The ${ui('App data')} view: the sources that load this app on the left and what consumes it on the right, each with its quality score where one exists.`) } : { h: 'What you are looking at', body:
           p(`Object dependencies read from your warehouse's own catalog during each assessment: what each assessed table or view is built from, and what is built on it.`) },
       { h: 'Reading the source lineage', body: steps(
-          `Pick a dataset from the cards at the top. Each shows its source and its score, and you can search by name, schema or tag. ${showme('lineage')}`,
-          `The panel says how many objects it is built from and how many are built on it.`,
-          `${ui('Built from')} lists its inputs on the left and ${ui('Built on it')} its dependants on the right. Every object carries its own quality score and status.`) +
-          shot('lineage-source', `${n(1)} The dataset picked, ${n(2)} what it is built from, ${n(3)} what is built on it, and ${n(4)} a warning that this catalog does not record everything.`) +
-          tip(`A red view built from one red table and one green table tells you where to look: follow the red input.`) },
+          `${n(1)} Pick a dataset under ${ui('Dataset')}: type to search it by name, schema or tag, or press ${ui('Ctrl K')} to search from anywhere on the tab. ${ui('All datasets')} narrows the list by source, stage or tag. ${showme('lineage')}`,
+          `${n(2)} ${ui('Downstream')} draws what is built on it, ${ui('Upstream')} what it is built from, and ${ui('Both')} the two at once.`,
+          `${n(3)} Every object shows its kind and its quality. A dashed line is indirect: one step further out, found through an assessed dataset in between. Click an object that has been assessed to follow the lineage from there.`,
+          `${n(4)} The other direction is listed under the graph, with each object's records, when it was last assessed and its status.`,
+          `${n(5)} ${ui('Lineage info')} says how much the catalog recorded, what it may have missed, and when it was read.`) +
+          shot('lineage-source', `${n(1)} The dataset, ${n(2)} which way to look, ${n(3)} what is built on it, ${n(4)} what it is built from, and ${n(5)} how complete the catalog's answer is.`) +
+          tip(`Drag the graph to move around it, and zoom with the buttons in its corner or Ctrl and the scroll wheel. A red view built from one red table and one green table tells you where to look: follow the red input.`) },
       { h: 'Honest about the gaps', body: list(
-          `${ui('known to be incomplete')} appears where a catalog does not record everything. Redshift, for example, does not record dependencies for late-binding views, so those are missing from the graph.`,
+          `${ui('known to be incomplete')} appears in ${ui('Lineage info')} where a catalog does not record everything. Redshift, for example, does not record dependencies for late-binding views, so those are missing from the graph.`,
           `Sources that publish no dependency metadata, such as S3 files, on-premises files and parquet, are listed as not shown rather than drawn as if they had no inputs.`,
-          `The graph shows when it was read from the catalog.`) +
+          `${ui('Lineage info')} shows when it was read from the catalog, and says when a dataset in between could not be read.`) +
           note(`This is object dependency lineage: what the catalog records about how objects are defined. It is not pipeline lineage. A warehouse does not know which job loaded a table, so neither do we.`) },
     ],
   });
