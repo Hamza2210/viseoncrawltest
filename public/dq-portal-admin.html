@@ -3,240 +3,514 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Differentia · Data Assurance Admin</title>
+<title>Data Assurance · Admin Portal</title>
 <!--
-  Admin portal: create orgs + users (users are created in Auth0 AND provisioned in
-  dq-portal-users so they can log in). Admin-only - the page checks /portal/auth/me
-  and requires role=admin; the endpoints re-check server-side. Cookie auth only.
-  Edit API_BASE below if the DQ API host ever changes.
+  Admin portal: organisations, users, tag access, on-premises agents and the activity log.
+  Users are created in Auth0 AND provisioned in dq-portal-users so they can log in. Admin-only:
+  the page checks /portal/auth/me and requires role=admin (or a platform super-admin); every
+  endpoint re-checks server-side, so hiding a control here is presentation, never the boundary.
+  Cookie auth only. Edit API_BASE below if the DQ API host ever changes.
+
+  Super-admins see every organisation, create organisations, and pick the organisation a new user
+  joins. An org-admin sees their own organisation only, and a new user always joins it.
 -->
 <style>
-  :root{ --bg:#0b1020; --card:rgba(18,26,48,.72); --ink:#eaf0ff; --muted:#9fb0d6;
-    --line:rgba(120,140,190,.22); --accent:#5b8cff; --accent2:#37e0c8; --danger:#ff6b7d; --ok:#37e0c8; }
-  *{box-sizing:border-box}
-  body{margin:0;min-height:100vh;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-    color:var(--ink);background:radial-gradient(1200px 700px at 15% -10%,#1a2650,transparent 60%),
-    radial-gradient(1000px 600px at 110% 10%,#123f3a,transparent 55%),var(--bg);}
-  header{display:flex;align-items:center;gap:12px;padding:16px 24px;border-bottom:1px solid var(--line)}
-  header .dot{width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,var(--accent),var(--accent2))}
-  header .t{font-weight:700}
-  header .t small{display:block;color:var(--muted);font-weight:500;font-size:11px;letter-spacing:.3px}
-  header .spacer{flex:1}
-  header .who{color:var(--muted);font-size:13px}
-  .wrap{max-width:900px;margin:0 auto;padding:28px 24px 60px}
-  h1{font-size:22px;margin:6px 0 4px}
-  .sub{color:var(--muted);font-size:13.5px;margin:0 0 22px}
-  .grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
-  @media (max-width:760px){.grid{grid-template-columns:1fr}}
-  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px 20px 18px;backdrop-filter:blur(12px)}
-  .card h2{font-size:15px;margin:0 0 4px}
-  .card p.hint{color:var(--muted);font-size:12px;margin:0 0 14px;line-height:1.5}
-  label{display:block;font-size:12px;color:var(--muted);margin:12px 0 5px}
-  input,select{width:100%;padding:10px 12px;border-radius:9px;border:1px solid var(--line);
-    background:rgba(9,15,32,.6);color:var(--ink);font-size:13.5px;outline:none}
-  input:focus,select:focus{border-color:var(--accent)}
-  .row{display:flex;gap:8px}
-  .row > *{flex:1}
-  .btn{margin-top:16px;width:100%;padding:11px 14px;border:0;border-radius:10px;cursor:pointer;font-size:14px;font-weight:650;
-    color:#06122b;background:linear-gradient(135deg,var(--accent),var(--accent2));transition:filter .12s}
-  .btn:hover{filter:brightness(1.06)} .btn:disabled{opacity:.55;cursor:default}
-  .btn-ghost{background:transparent;color:var(--muted);border:1px solid var(--line);font-weight:500;padding:8px 10px;width:auto;margin:0}
-  .msg{margin-top:12px;padding:9px 12px;border-radius:9px;font-size:12.5px;line-height:1.5;display:none}
-  .msg.show{display:block}
-  .msg.ok{border:1px solid rgba(55,224,200,.35);background:rgba(55,224,200,.10);color:#c9fff4}
-  .msg.err{border:1px solid rgba(255,107,125,.35);background:rgba(255,107,125,.10);color:#ffd5db}
-  .orgcount{color:var(--muted);font-size:11.5px;margin-top:8px}
-  .userstable{margin-top:12px;display:flex;flex-direction:column;gap:6px}
-  .urow{display:flex;align-items:center;gap:10px;padding:9px 12px;border:1px solid var(--line);border-radius:9px;background:rgba(9,15,32,.35)}
-  .urow .uemail{flex:1;font-size:13px;word-break:break-all}
-  .urow .utag{font-size:11px;color:var(--muted);padding:2px 8px;border:1px solid var(--line);border-radius:999px;white-space:nowrap}
-  .urow .utag.admin{color:#c9fff4;border-color:rgba(55,224,200,.35)}
-  /* Waiting on the person, not on us: amber rather than the neutral grey of a normal tag. */
-  .urow .utag.pending{color:#ffd8a8;border-color:rgba(255,170,60,.45)}
-  .urow .uemail{min-width:0}
-  .urow .urole{width:auto;min-width:130px;flex:0 0 auto;padding:5px 26px 5px 10px;border:1px solid var(--line);border-radius:8px;background:rgba(9,15,32,.6);color:var(--ink);font-size:12.5px;cursor:pointer}
-  .urow .urole option{background:#0e1830;color:var(--ink)}
-  .urow .urole:focus{border-color:var(--accent);outline:none}
-  .urow .udel{padding:6px 11px;border:1px solid rgba(255,107,125,.4);background:transparent;color:var(--danger);border-radius:8px;cursor:pointer;font-size:12px}
-  .urow .udel:hover{background:rgba(255,107,125,.12)}
-  .urow .udel:disabled{opacity:.35;cursor:default}
-  .uempty{color:var(--muted);font-size:12.5px;padding:8px 2px}
-  /* On-premises agents. A dot rather than a word for health: the list is scanned, not read, and
-     an operator wants to see at a glance that one machine is the wrong colour. */
-  .agentadd{display:flex;gap:8px;align-items:center}
-  .agentadd input{flex:1;min-width:0}
-  .adot{width:9px;height:9px;border-radius:50%;flex:0 0 auto;background:var(--muted)}
-  .adot.online{background:#37e0c8;box-shadow:0 0 7px rgba(55,224,200,.7)}
-  .adot.stale{background:#ffaa3c;box-shadow:0 0 7px rgba(255,170,60,.55)}
-  .adot.offline,.adot.revoked{background:#ff6b7d}
-  .arow .aname{flex:1;font-size:13px;word-break:break-all}
-  .arow .aid{font-size:11.5px;color:var(--muted);font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
-  .atoken{margin-top:10px;padding:11px 13px;border:1px solid rgba(55,224,200,.35);border-radius:9px;
-    background:rgba(55,224,200,.07);font-size:12.5px;line-height:1.6}
-  .atoken{position:relative;padding-right:44px}
-  .ax{position:absolute;top:9px;right:10px;width:24px;height:24px;padding:0;line-height:1;
-    border-radius:6px;border:1px solid var(--line);background:transparent;color:var(--muted);
-    font-size:15px;cursor:pointer}
-  .ax:hover{color:var(--ink);border-color:var(--muted)}
-  .ai{width:26px;height:26px;padding:0;border-radius:50%;font-size:13px;font-weight:700;
-    font-family:Georgia,'Times New Roman',serif;align-self:center}
-  .atoken .ah{font-weight:600;margin-top:13px}
-  .atoken .ah:first-child{margin-top:0}
-  .atoken .ali{margin-top:5px;padding-left:16px;text-indent:-16px}
-  .atoken .afine{font-size:12.5px;color:var(--muted);margin-top:8px}
-  .atoken code{display:block;margin:6px 0 6px 16px;padding:8px 10px;border-radius:7px;background:rgba(3,8,20,.6);
-    font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;word-break:break-all;color:#c9fff4}
-  /* Tag catalogue: add on one line, then one row per tag with its restricts toggle + remove. */
-  .tagadd{display:flex;gap:8px;align-items:center}
-  .tagadd input{flex:1;min-width:0}
-  .taglist{display:flex;flex-direction:column;gap:6px;margin:10px 0 4px}
-  .tagrow{display:flex;align-items:center;gap:10px;padding:7px 11px;border:1px solid var(--line);border-radius:9px;background:rgba(9,15,32,.35)}
-  .tagrow .tname{flex:1;font-size:13px;word-break:break-all}
-  .tagrow .tres{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:var(--muted);cursor:pointer;white-space:nowrap}
-  .tagrow .tres input{accent-color:var(--accent);cursor:pointer}
-  .tagrow.on{border-color:rgba(255,170,60,.45)}
-  .tagrow.on .tres{color:#ffd8a8}
-  .tagrow .tdel{padding:3px 9px;border:1px solid var(--line);background:transparent;color:var(--muted);border-radius:7px;cursor:pointer;font-size:12px}
-  .tagrow .tdel:hover{border-color:rgba(255,107,125,.5);color:var(--danger)}
-  /* Tag colour: a fixed palette of swatches, not a colour wheel. The value is rendered as a pill
-     behind white-ish text on two different surfaces, so a free picker's first gift is an
-     unreadable tag - and nobody asked to express a colour, only to tell two tags apart. */
-  .tagrow .tdot{flex:none;width:14px;height:14px;border-radius:50%;border:1px solid rgba(255,255,255,.25)}
-  .swatches{display:flex;gap:5px;flex:none}
-  .sw{width:17px;height:17px;padding:0;border-radius:50%;border:2px solid transparent;cursor:pointer;
-    box-shadow:0 0 0 1px rgba(255,255,255,.22) inset}
-  .sw:hover{transform:scale(1.12)}
-  .sw.on{border-color:var(--ink)}
-  .sw.auto{background:repeating-conic-gradient(#8899bb 0 25%,#5b6b8a 0 50%)}
-  .tagname-pill{display:inline-flex;align-items:center;gap:7px;padding:2px 11px;border-radius:999px;
-    font-size:12.5px;font-weight:600;background:var(--tint);border:1px solid var(--tintline)}
-  /* Member grants: toggle chips instead of a comma-separated box. */
-  .grantchips{display:flex;flex-wrap:wrap;gap:6px;flex:1;min-width:0}
-  .grantchip{font-size:11.5px;padding:3px 10px;border:1px solid var(--line);border-radius:999px;background:transparent;color:var(--muted);cursor:pointer;white-space:nowrap}
-  .grantchip:hover{color:var(--ink)}
-  .grantchip.on{color:#0b1020;background:var(--accent);border-color:var(--accent);font-weight:700}
-  .grantchip:disabled{opacity:.4;cursor:default}
-  #denied,#loading{max-width:520px;margin:16vh auto;text-align:center;color:var(--muted)}
-  #denied h1{color:var(--ink)}
-  a{color:var(--accent2);text-decoration:none}
-  code{background:rgba(9,15,32,.6);padding:1px 5px;border-radius:5px;font-size:12px}
+  :root {
+    --bg: #070e1f; --line: rgba(96,128,200,.18); --line2: rgba(96,128,200,.32);
+    --ink: #e8eeff; --muted: #93a4c8; --dim: #6f82ab;
+    --accent: #4f8cff; --accent2: #7c5cff; --ok: #34d399; --warn: #fbbf24; --danger: #f87171;
+    --grad: linear-gradient(90deg, #3b82f6, #6366f1 62%, #8b5cf6);
+    --panel: linear-gradient(180deg, rgba(17,31,64,.88), rgba(11,21,44,.88));
+    --r: 14px;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body { margin: 0; min-height: 100vh; color: var(--ink);
+    font: 14px/1.45 Inter, "Segoe UI", system-ui, -apple-system, Roboto, Helvetica, Arial, sans-serif;
+    background: radial-gradient(1100px 600px at 75% -12%, rgba(59,130,246,.13), transparent 60%),
+                radial-gradient(900px 500px at -10% 110%, rgba(124,92,255,.08), transparent 60%), var(--bg); }
+  button, input, select { font: inherit; }
+  a { color: #8db4ff; text-decoration: none; }
+  svg.i { width: 18px; height: 18px; flex: none; }
+  code { background: rgba(9,15,32,.7); padding: 1px 5px; border-radius: 5px; font-size: 12px; }
+
+  /* ---------------------------------------------------------------- shell */
+  .shell { display: grid; grid-template-columns: 240px minmax(0, 1fr); min-height: 100vh; }
+  .sb { position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; gap: 4px; padding: 18px 14px 14px;
+    background: linear-gradient(180deg, #0b1631, #091228); border-right: 1px solid var(--line); overflow-y: auto; }
+  .brand { display: flex; align-items: center; gap: 11px; padding: 2px 6px 18px; }
+  .logo { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; flex: none;
+    background: var(--grad); color: #fff; font-weight: 800; font-size: 15px; box-shadow: 0 6px 18px -6px rgba(79,140,255,.8); }
+  .brand b { display: block; font-size: 15px; line-height: 1.15; }
+  .brand small { color: var(--muted); font-size: 11.5px; }
+  .sb-title h1 { margin: 4px 8px 4px; font-size: 19px; letter-spacing: -.01em; }
+  .sb-title p { margin: 0 8px 16px; color: var(--muted); font-size: 12.5px; line-height: 1.5; }
+  .nav { display: grid; gap: 3px; }
+  .nav button { display: flex; align-items: center; gap: 12px; width: 100%; padding: 10px 12px; border: 0; border-radius: 10px;
+    background: none; color: var(--muted); font-weight: 500; cursor: pointer; text-align: left; }
+  .nav button:hover { color: var(--ink); background: rgba(79,140,255,.08); }
+  .nav button[aria-current="page"] { color: #fff; background: linear-gradient(90deg, rgba(59,130,246,.38), rgba(59,130,246,.10));
+    box-shadow: inset 3px 0 0 var(--accent); }
+  .sb-back { display: flex; align-items: center; gap: 8px; margin: 14px 8px 0; color: var(--muted); font-size: 12.5px; }
+  .sb-back:hover { color: var(--ink); }
+  .sb-foot { margin-top: auto; padding-top: 14px; border-top: 1px solid var(--line); display: grid; gap: 12px; }
+  .me { display: flex; align-items: center; gap: 10px; padding: 0 4px; min-width: 0; }
+  .avatar { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; flex: none; font-weight: 700;
+    color: #cfe0ff; background: rgba(79,140,255,.2); border: 1px solid var(--line2); text-transform: uppercase; }
+  .avatar.sm { width: 26px; height: 26px; font-size: 11.5px; }
+  .me b { display: block; font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .me small { color: var(--muted); font-size: 11.5px; }
+  .me > div { min-width: 0; }
+  .health { display: flex; align-items: center; gap: 8px; padding: 0 6px; font-size: 12px; color: var(--muted); }
+  .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; background: var(--dim); }
+  .dot.ok { background: var(--ok); box-shadow: 0 0 8px rgba(52,211,153,.7); }
+  .dot.warn { background: var(--warn); box-shadow: 0 0 8px rgba(251,191,36,.6); }
+  .dot.bad { background: var(--danger); }
+
+  .top { position: sticky; top: 0; z-index: 30; display: flex; align-items: center; gap: 14px; padding: 12px 24px;
+    background: rgba(7,14,31,.84); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }
+  .iconbtn.menu-btn { display: none; }
+  .search { position: relative; flex: 0 1 500px; }
+  .search > svg { position: absolute; left: 12px; top: 0; bottom: 0; margin: auto 0; width: 16px; height: 16px; color: var(--muted); }
+  .search input { width: 100%; padding: 9px 74px 9px 38px; border-radius: 10px; border: 1px solid var(--line2);
+    background: rgba(15,27,56,.7); color: var(--ink); outline: none; }
+  .search input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(79,140,255,.2); }
+  .search kbd { position: absolute; right: 10px; top: 0; bottom: 0; margin: auto 0; height: 22px; display: grid; place-items: center;
+    padding: 0 7px; border-radius: 6px; border: 1px solid var(--line2); color: var(--muted); font: 11px/1 ui-monospace, monospace; }
+  .top-r { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+  .iconbtn { position: relative; width: 38px; height: 38px; display: grid; place-items: center; border-radius: 10px;
+    border: 1px solid transparent; background: none; color: var(--muted); cursor: pointer; }
+  .iconbtn:hover, .iconbtn[aria-expanded="true"] { color: var(--ink); border-color: var(--line2); background: rgba(15,27,56,.6); }
+  .badge { position: absolute; top: 5px; right: 5px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 99px;
+    display: grid; place-items: center; background: var(--danger); color: #fff; font-size: 10px; font-weight: 800; }
+  .userbtn { display: flex; align-items: center; gap: 9px; padding: 4px 10px 4px 4px; border-radius: 999px; border: 1px solid transparent;
+    background: none; color: var(--ink); cursor: pointer; font-weight: 600; font-size: 13px; }
+  .userbtn:hover, .userbtn[aria-expanded="true"] { border-color: var(--line2); background: rgba(15,27,56,.6); }
+  .pop { position: absolute; top: calc(100% + 8px); right: 0; z-index: 40; min-width: 280px; padding: 6px; border-radius: 12px;
+    border: 1px solid var(--line2); background: #0d1a37; box-shadow: 0 18px 40px -12px rgba(0,0,0,.6); }
+  .search .pop { left: 0; right: 0; max-height: 60vh; overflow-y: auto; }
+  .pop-h { padding: 8px 10px 6px; font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--dim); }
+  .pop-i { display: flex; align-items: center; gap: 10px; width: 100%; padding: 9px 10px; border: 0; border-radius: 9px; background: none;
+    color: var(--ink); cursor: pointer; text-align: left; font-size: 13px; text-decoration: none; }
+  .pop-i:hover, .pop-i.sel { background: rgba(79,140,255,.14); }
+  .pop-i small { display: block; color: var(--muted); font-size: 11.5px; }
+  .pop-i .k { margin-left: auto; font-size: 11px; color: var(--dim); }
+  .pop-e { padding: 12px 10px; color: var(--muted); font-size: 12.5px; }
+  .rel { position: relative; }
+
+  .content { padding: 20px 24px 48px; max-width: 1560px; }
+  .view { animation: vin .18s ease-out; }
+  @keyframes vin { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+  /* ---------------------------------------------------------------- building blocks */
+  .banner { display: flex; align-items: center; gap: 18px; padding: 20px 24px; border-radius: var(--r); border: 1px solid var(--line);
+    background: linear-gradient(110deg, rgba(37,99,235,.30), rgba(15,26,54,.55) 55%, rgba(37,99,235,.20)); margin-bottom: 18px; }
+  .bico { width: 58px; height: 58px; border-radius: 50%; display: grid; place-items: center; flex: none;
+    background: rgba(79,140,255,.18); color: #a9c7ff; border: 1px solid var(--line2); }
+  .bico svg { width: 28px; height: 28px; }
+  .banner h2 { margin: 0; font-size: 20px; letter-spacing: -.01em; }
+  .banner p { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+  .card { border-radius: var(--r); border: 1px solid var(--line); background: var(--panel); padding: 18px 18px 16px; min-width: 0; }
+  .card + .card, .stack > * + * { margin-top: 18px; }
+  .card-h { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 16px; }
+  .cico { flex: none; width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center;
+    background: rgba(79,140,255,.16); color: #8db4ff; border: 1px solid var(--line); }
+  .cico svg { width: 20px; height: 20px; }
+  .card-h h2 { margin: 2px 0 0; font-size: 15.5px; }
+  .card-h p { margin: 3px 0 0; color: var(--muted); font-size: 12.5px; line-height: 1.5; max-width: 72ch; }
+  .card-h .act { margin-left: auto; display: flex; gap: 8px; align-items: center; flex: none; }
+  .sub-h { margin: 18px 0 8px; font-size: 13.5px; font-weight: 700; }
+  .sub-p { margin: -4px 0 10px; color: var(--muted); font-size: 12px; }
+
+  .fgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 14px; }
+  .fgrid.wide { grid-template-columns: 2fr 1.4fr 1fr; }
+  .fgrid.wide > .f:first-child { grid-column: auto !important; }
+  .rsel { height: 32px; padding: 0 8px; border-radius: 8px; border: 1px solid var(--line2); background: rgba(9,16,34,.65); color: var(--ink); }
+  .rsel option { background: #0d1a37; }
+  .search input::-webkit-search-cancel-button { display: none; }
+  .f label { display: block; margin: 0 0 6px; font-size: 12px; color: var(--muted); }
+  .f label em { color: var(--danger); font-style: normal; }
+  .f input, .f select, .fixed { width: 100%; height: 40px; padding: 0 12px; border-radius: 9px; border: 1px solid var(--line2);
+    background: rgba(9,16,34,.65); color: var(--ink); outline: none; }
+  .f input:focus, .f select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(79,140,255,.18); }
+  .f select option { background: #0d1a37; }
+  /* A value that is set for you, shown as one: the organisation an org-admin's new user joins. */
+  .fixed { display: flex; align-items: center; gap: 9px; color: var(--ink); background: rgba(9,16,34,.35); border-style: dashed; cursor: default; }
+  .fixed svg { width: 16px; height: 16px; color: var(--muted); }
+  .fixed .lock { margin-left: auto; color: var(--dim); }
+  .f .hint { margin: 6px 0 0; font-size: 11.5px; color: var(--dim); }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 0 16px; height: 40px; border: 0; border-radius: 10px;
+    color: #fff; font-weight: 600; background: var(--grad); cursor: pointer; box-shadow: 0 10px 24px -14px rgba(79,140,255,.9); }
+  .btn:hover { filter: brightness(1.08); }
+  .btn:disabled { opacity: .55; cursor: default; filter: none; }
+  .btn.block { width: 100%; margin-top: 16px; }
+  .btn-ghost { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border-radius: 9px;
+    border: 1px solid var(--line2); background: rgba(15,27,56,.5); color: var(--ink); font-size: 12.5px; cursor: pointer; white-space: nowrap; }
+  .btn-ghost:hover { border-color: var(--accent); color: #fff; }
+  .btn-ghost:disabled { opacity: .45; cursor: default; }
+  .btn-ghost svg { width: 14px; height: 14px; }
+  .btn-x { color: #ffb4b4; border-color: rgba(248,113,113,.45); }
+  .btn-x:hover { color: #fff; border-color: var(--danger); background: rgba(248,113,113,.14); }
+  .msg { margin-top: 12px; padding: 9px 12px; border-radius: 9px; font-size: 12.5px; line-height: 1.5; display: none; }
+  .msg.show { display: block; }
+  .msg.ok { border: 1px solid rgba(52,211,153,.35); background: rgba(52,211,153,.10); color: #c9fff0; }
+  .msg.err { border: 1px solid rgba(248,113,113,.4); background: rgba(248,113,113,.10); color: #ffd5d5; }
+  .empty { padding: 14px 4px; color: var(--muted); font-size: 12.5px; }
+
+  .tbl-wrap { border: 1px solid var(--line); border-radius: 12px; overflow-x: auto; background: rgba(8,15,32,.45); }
+  table.t { width: 100%; border-collapse: collapse; font-size: 12.8px; }
+  table.t th { padding: 10px 14px; text-align: left; font-weight: 600; font-size: 12px; color: var(--muted);
+    background: rgba(9,17,36,.7); border-bottom: 1px solid var(--line); white-space: nowrap; }
+  table.t td { padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+  table.t tr:last-child td { border-bottom: 0; }
+  table.t td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  table.t td.mut { color: var(--muted); }
+  table.t td.acts { white-space: nowrap; text-align: right; }
+  table.t td.acts > * + * { margin-left: 6px; }
+  table.t tr.flash td { background: rgba(79,140,255,.14); transition: background 1.6s; }
+  .who { display: flex; align-items: center; gap: 9px; min-width: 0; }
+  .who span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .tagpill { display: inline-flex; align-items: center; gap: 7px; padding: 3px 11px; border-radius: 999px; font-size: 12px; font-weight: 600;
+    white-space: nowrap; color: var(--ink); background: var(--tint); border: 1px solid var(--tintline); }
+  .tagpill .td { width: 8px; height: 8px; border-radius: 50%; background: var(--tc); }
+  .tagpill .n { margin-left: 3px; padding-left: 8px; border-left: 1px solid var(--tintline); color: var(--muted); font-weight: 500; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip-btn { cursor: pointer; }
+  .chip-btn:hover { filter: brightness(1.15); }
+  .pill { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; font-size: 11.5px; font-weight: 600;
+    white-space: nowrap; border: 1px solid var(--line2); color: var(--muted); }
+  .pill .dot { width: 7px; height: 7px; }
+  .pill.ok { color: #a7f3d0; border-color: rgba(52,211,153,.4); background: rgba(52,211,153,.10); }
+  .pill.warn { color: #fde68a; border-color: rgba(251,191,36,.45); background: rgba(251,191,36,.10); }
+  .pill.lock { color: #fdba74; border-color: rgba(251,146,60,.45); background: rgba(251,146,60,.10); }
+  .pill.accent { color: #c7d7ff; border-color: rgba(79,140,255,.45); background: rgba(79,140,255,.12); }
+
+  .addline { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+  .addline .f { flex: 1; min-width: 0; }
+  .inbox { position: relative; }
+  .inbox > svg { position: absolute; left: 12px; top: 0; bottom: 0; margin: auto 0; width: 16px; height: 16px; color: var(--muted); }
+  .inbox input { padding-left: 38px; }
+
+  /* ---------------------------------------------------------------- overview */
+  .ov { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 18px; align-items: start; }
+  .forms { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .forms > .card + .card { margin-top: 0; }
+  .forms.solo { grid-template-columns: 1fr; }
+  .stats { display: grid; gap: 10px; }
+  .stat { display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px;
+    background: rgba(9,17,36,.55); color: inherit; cursor: pointer; text-align: left; }
+  .stat:hover { border-color: var(--line2); background: rgba(79,140,255,.08); }
+  .stat .sico { width: 38px; height: 38px; border-radius: 10px; display: grid; place-items: center; flex: none;
+    background: rgba(79,140,255,.14); color: #8db4ff; }
+  .stat small { display: block; color: var(--muted); font-size: 12px; }
+  .stat b { display: block; font-size: 18px; line-height: 1.25; font-variant-numeric: tabular-nums; }
+  .stat .chev { margin-left: auto; color: var(--dim); }
+  .stat.health b { font-size: 14px; }
+  .stat.health.ok b { color: #a7f3d0; }
+  .stat.health.warn b { color: #fde68a; }
+  .agents-mini { display: grid; gap: 8px; margin-top: 12px; }
+  .amini { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 11px;
+    background: rgba(9,17,36,.55); min-width: 0; }
+  .amini > div { min-width: 0; flex: 1; }
+  .amini b { display: block; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .amini small { color: var(--muted); font-size: 11.5px; }
+  .amini small.on { color: #a7f3d0; }
+
+  /* ---------------------------------------------------------------- tag management */
+  .trow { display: grid; grid-template-columns: minmax(130px, auto) minmax(180px, 1fr) auto auto auto auto; gap: 12px; align-items: center;
+    padding: 10px 12px; border: 1px solid var(--line); border-radius: 11px; background: rgba(9,17,36,.45); }
+  .trow + .trow { margin-top: 8px; }
+  .trow.on { border-color: rgba(251,146,60,.45); }
+  .trow > .tagpill { justify-self: start; }
+  .trow.flash { box-shadow: 0 0 0 2px var(--accent); }
+  .trow .desc { height: 34px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--line); background: rgba(9,16,34,.5); color: var(--ink); min-width: 0; }
+  .trow .desc:focus { border-color: var(--accent); outline: none; }
+  .trow .cnt { color: var(--muted); font-size: 12px; white-space: nowrap; }
+  .tres { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); cursor: pointer; white-space: nowrap; }
+  .tres input { accent-color: #fb923c; cursor: pointer; }
+  .trow.on .tres { color: #fdba74; }
+  .swatches { display: flex; gap: 5px; }
+  .sw { width: 17px; height: 17px; padding: 0; border-radius: 50%; border: 2px solid transparent; cursor: pointer; box-shadow: 0 0 0 1px rgba(255,255,255,.22) inset; }
+  .sw:hover { transform: scale(1.12); }
+  .sw.on { border-color: var(--ink); }
+  .sw.auto { background: repeating-conic-gradient(#8899bb 0 25%, #5b6b8a 0 50%); }
+  .savebar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 16px; }
+  .savebar .f { flex: 0 1 380px; }
+  .dirty { color: #fde68a; font-size: 12px; }
+  .grow { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 11px; background: rgba(9,17,36,.45); flex-wrap: wrap; }
+  .grow + .grow { margin-top: 8px; }
+  .grow .who { flex: 0 0 260px; }
+  .grantchip { font-size: 12px; padding: 4px 11px; border: 1px solid var(--line2); border-radius: 999px; background: transparent; color: var(--muted); cursor: pointer; }
+  .grantchip:hover { color: var(--ink); }
+  .grantchip.on { color: #0b1020; background: #8db4ff; border-color: #8db4ff; font-weight: 700; }
+  .grantchip:disabled { opacity: .4; cursor: default; }
+
+  /* ---------------------------------------------------------------- agents */
+  .arow { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 11px 13px; border: 1px solid var(--line);
+    border-radius: 11px; background: rgba(9,17,36,.45); }
+  .arow + .arow { margin-top: 8px; }
+  .arow.flash { box-shadow: 0 0 0 2px var(--accent); }
+  .arow .aname { flex: 1; min-width: 140px; font-weight: 600; font-size: 13px; }
+  .arow .aid { font-size: 11.5px; color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .atoken { position: relative; margin-top: 12px; padding: 12px 44px 12px 14px; border: 1px solid rgba(52,211,153,.35); border-radius: 11px;
+    background: rgba(52,211,153,.07); font-size: 12.8px; line-height: 1.6; }
+  .ax { position: absolute; top: 9px; right: 10px; width: 24px; height: 24px; padding: 0; border-radius: 6px; border: 1px solid var(--line2);
+    background: transparent; color: var(--muted); cursor: pointer; }
+  .ax:hover { color: var(--ink); }
+  .atoken .ah { font-weight: 700; margin-top: 13px; }
+  .atoken .ah:first-child { margin-top: 0; }
+  .atoken .ali { margin-top: 5px; padding-left: 16px; text-indent: -16px; }
+  .atoken .afine { font-size: 12.3px; color: var(--muted); margin-top: 8px; }
+  .atoken code { display: block; margin: 6px 0 6px 16px; padding: 8px 10px; border-radius: 7px; background: rgba(3,8,20,.6);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; word-break: break-all; color: #c9fff4; }
+
+  .kv { display: grid; grid-template-columns: 180px minmax(0, 1fr); gap: 0; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  .kv > div { padding: 11px 14px; border-bottom: 1px solid var(--line); }
+  .kv > div:nth-last-child(-n+2) { border-bottom: 0; }
+  .kv > div:nth-child(odd) { color: var(--muted); background: rgba(9,17,36,.6); font-size: 12.5px; }
+  .toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+  .toolbar .f { flex: 0 1 280px; }
+  .toolbar .f select { height: 34px; }
+
+  #denied, #loading { max-width: 520px; margin: 18vh auto; text-align: center; color: var(--muted); }
+  #denied h1 { color: var(--ink); }
+
+  @media (max-width: 1240px) { .ov { grid-template-columns: 1fr; } .ov .rail { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+    .ov .rail > .card + .card { margin-top: 0; } }
+  @media (max-width: 1080px) { .forms { grid-template-columns: 1fr; } .trow { grid-template-columns: 1fr 1fr; } .fgrid.wide { grid-template-columns: 1fr; } }
+  @media (max-width: 860px) {
+    .shell { grid-template-columns: 1fr; }
+    .sb { position: fixed; z-index: 50; left: 0; width: 260px; transform: translateX(-100%); transition: transform .2s; }
+    .shell.open .sb { transform: none; box-shadow: 20px 0 40px rgba(0,0,0,.5); }
+    .iconbtn.menu-btn { display: grid; }
+    .ov .rail { grid-template-columns: 1fr; }
+    .fgrid { grid-template-columns: 1fr; }
+    .kv { grid-template-columns: 1fr; }
+  }
 </style>
 </head>
 <body>
-  <div id="loading" style="display:block">Loading…</div>
+  <div id="loading">Loading…</div>
 
-  <div id="denied" style="display:none">
+  <div id="denied" hidden>
     <h1>Admin access required</h1>
     <p>You're signed in as <span id="deniedWho"></span>, but this page is for administrators.
        <br><a href="#" id="deniedLogout">Log out</a></p>
   </div>
 
-  <div id="app" style="display:none">
-    <header>
-      <div class="dot"></div>
-      <div class="t">Differentia<small>DQ PORTAL · ADMIN</small></div>
-      <div class="spacer"></div>
-      <span class="who" id="who"></span>
-      <button class="btn btn-ghost" id="logout">Log out</button>
-    </header>
-    <div class="wrap">
-      <h1>User &amp; org administration</h1>
-      <p class="sub" id="subLine">Create an organisation (its own isolated tenant), then create users who can log in to the portal.</p>
-      <div class="grid">
+  <div class="shell" id="app" hidden>
+    <aside class="sb" id="sb">
+      <div class="brand"><span class="logo" id="brandLogo">D</span><div><b id="brandOrg">Data Assurance</b><small>Data Assurance</small></div></div>
+      <div class="sb-title"><h1>Admin Portal</h1><p id="sbSub">Manage your organisation, users and access.</p></div>
+      <nav class="nav" aria-label="Admin sections">
+        <button type="button" data-view="overview" aria-current="page"><svg class="i" data-i="home"></svg>Overview</button>
+        <button type="button" data-view="orgs"><svg class="i" data-i="building"></svg><span id="navOrgs">Organisation</span></button>
+        <button type="button" data-view="users"><svg class="i" data-i="users"></svg>Users</button>
+        <button type="button" data-view="tags"><svg class="i" data-i="tag"></svg>Tag Management</button>
+        <button type="button" data-view="agents"><svg class="i" data-i="cloud"></svg>On-premises Agents</button>
+        <button type="button" data-view="activity"><svg class="i" data-i="clock"></svg>Activity</button>
+      </nav>
+      <a class="sb-back" id="backToApp" href="/dq-portal"><svg class="i" data-i="back"></svg>Back to Data Assurance</a>
+      <div class="sb-foot">
+        <div class="me"><span class="avatar" id="meAvatar">A</span><div><b id="meEmail"></b><small id="meRole">Administrator</small></div></div>
+        <div class="health"><span class="dot" id="healthDot"></span><span id="healthText">Checking…</span></div>
+      </div>
+    </aside>
 
-        <div class="card" id="orgCard">
-          <h2>Create organisation</h2>
-          <p class="hint">Each org gets its own isolated tenant folder. Use a <strong>distinct</strong> tenant URL
-             (e.g. your domain) - <em>not</em> a Qlik <code>*.qlikcloud.com</code> value.</p>
-          <label>Org ID (slug)</label>
-          <input id="oId" placeholder="acme" autocomplete="off">
-          <label>Display name</label>
-          <input id="oName" placeholder="Acme Corp" autocomplete="off">
-          <label>Tenant URL</label>
-          <input id="oTenant" placeholder="acme.com" autocomplete="off">
-          <label>Workspace name (optional)</label>
-          <input id="oWs" placeholder="defaults to the display name" autocomplete="off">
-          <button class="btn" id="createOrg">Create organisation</button>
-          <div class="msg" id="orgMsg"></div>
-          <div class="orgcount" id="orgCount"></div>
+    <main>
+      <header class="top">
+        <button type="button" class="iconbtn menu-btn" id="menuBtn" aria-label="Menu"><svg class="i" data-i="menu"></svg></button>
+        <div class="search" id="searchBox">
+          <svg class="i" data-i="search"></svg>
+          <input id="q" type="search" placeholder="Search users, tags, agents…" autocomplete="off" aria-label="Search" aria-controls="qres">
+          <kbd>Ctrl K</kbd>
+          <div class="pop" id="qres" hidden role="listbox"></div>
         </div>
-
-        <div class="card">
-          <h2>Create user</h2>
-          <p class="hint">Creates the user and emails them a secure link to <strong>set their own password</strong>,
-             then provisions them for the chosen org.</p>
-          <label>Email</label>
-          <input id="uEmail" type="email" placeholder="person@acme.com" autocomplete="off">
-          <div class="row">
-            <div><label>Org</label><select id="uOrg"></select></div>
-            <div><label>Role</label><select id="uRole"><option value="member">member</option><option value="admin">admin</option></select></div>
+        <div class="top-r">
+          <div class="rel">
+            <button type="button" class="iconbtn" id="bellBtn" aria-label="Needs attention" aria-expanded="false"><svg class="i" data-i="bell"></svg><span class="badge" id="bellN" hidden></span></button>
+            <div class="pop" id="bellPop" hidden></div>
           </div>
-          <button class="btn" id="createUser">Create user</button>
-          <div class="msg" id="userMsg"></div>
+          <div class="rel">
+            <button type="button" class="userbtn" id="userBtn" aria-expanded="false"><span class="avatar sm" id="userAvatar">A</span><span id="userName">Admin</span><svg class="i" data-i="down" style="width:14px;height:14px"></svg></button>
+            <div class="pop" id="userPop" hidden>
+              <div class="pop-h" id="userPopWho"></div>
+              <a class="pop-i" id="userPopApp" href="/dq-portal"><svg class="i" data-i="back"></svg>Back to Data Assurance</a>
+              <button type="button" class="pop-i" id="logout"><svg class="i" data-i="logout"></svg>Log out</button>
+            </div>
+          </div>
         </div>
+      </header>
 
-      </div>
+      <div class="content">
+        <!-- ======================================================== OVERVIEW -->
+        <section class="view" data-view="overview">
+          <div class="ov">
+            <div>
+              <div class="banner"><span class="bico"><svg class="i" data-i="users"></svg></span>
+                <div><h2 id="ovTitle">User &amp; Organisation Administration</h2><p id="ovSub">Create organisations and users, manage access and on-premises agents.</p></div></div>
 
-      <div class="card" id="tagCard" style="margin-top:18px">
-        <h2>Tag access</h2>
-        <p class="hint">Restrict who can see a dataset by its tags. A tag is ordinary metadata
-          until you list it here, so nothing changes until you do - and tags you already use for
-          grouping keep working as they are.</p>
-        <label>Your organisation's tags</label>
-        <div class="tagadd">
-          <input id="tNew" placeholder="Add a tag, e.g. finance" autocomplete="off" maxlength="40">
-          <span class="swatches" id="tNewSw"></span>
-          <button class="btn-sm" id="tAdd" type="button">Add</button>
-        </div>
-        <div id="tList" class="taglist"></div>
-        <p class="hint">Pick a colour and the tag wears it everywhere it appears - the picker, the
-          dataset rows and the Assess-by-tag page. Leave it on <em>auto</em> and it keeps the
-          colour generated from its name, which is already distinct per tag; choosing one only
-          matters when you want a specific tag to read a specific way.</p>
-        <p class="hint">This is the list people choose from when tagging a dataset, so a tag can
-          never be declared here under a spelling the data does not use. Tick <em>restricts</em>
-          to turn one into an access control: a dataset carrying it is then visible only to
-          members granted it. Admins always see everything.</p>
-        <label>Datasets with none of the restricting tags</label>
-        <select id="tPolicy">
-          <option value="open">are visible to everyone (recommended)</option>
-          <option value="closed">are visible to nobody (deny by default)</option>
-        </select>
-        <button class="btn" id="saveOrgTags">Save</button>
-        <div class="msg" id="tagMsg"></div>
-        <h2 style="margin-top:22px;font-size:15px;">Who holds what</h2>
-        <p class="hint">Grant each member the tags they may see. Leave empty for a member who
-          should see only unrestricted datasets.</p>
-        <div id="tagMembers" class="userstable"></div>
-      </div>
+              <div class="forms" id="forms">
+                <div class="card" id="orgCard">
+                  <div class="card-h"><span class="cico"><svg class="i" data-i="building"></svg></span>
+                    <div><h2>Create Organisation</h2><p>Each organisation gets its own isolated tenant, folder and data. Use a tenant value of your own, such as the organisation's domain, not a Qlik <code>*.qlikcloud.com</code> one.</p></div></div>
+                  <div class="fgrid">
+                    <div class="f"><label for="oId">Organisation ID <em>*</em></label><input id="oId" placeholder="e.g. acme" autocomplete="off"></div>
+                    <div class="f"><label for="oName">Display name <em>*</em></label><input id="oName" placeholder="e.g. Acme Ltd" autocomplete="off"></div>
+                    <div class="f"><label for="oTenant">Tenant URL <em>*</em></label><input id="oTenant" placeholder="e.g. acme.com" autocomplete="off"></div>
+                    <div class="f"><label for="oWs">Workspace name (optional)</label><input id="oWs" placeholder="defaults to the display name" autocomplete="off"></div>
+                  </div>
+                  <button type="button" class="btn block" id="createOrg"><svg class="i" data-i="plus"></svg>Create organisation</button>
+                  <div class="msg" id="orgMsg"></div>
+                </div>
 
-      <div class="card" id="usersCard" style="margin-top:18px">
-        <h2>Users</h2>
-        <p class="hint">Everyone provisioned for <span id="usersScopeLabel">your organisation</span>.
-           Deleting a user removes their Auth0 login and their portal access - this can't be undone.</p>
-        <div id="usersOrgWrap" style="display:none">
-          <label>Organisation</label>
-          <select id="usersOrgSel"></select>
-        </div>
-        <div id="usersTable" class="userstable"></div>
-        <div class="msg" id="usersMsg"></div>
-      </div>
+                <div class="card" id="userCard">
+                  <div class="card-h"><span class="cico"><svg class="i" data-i="userplus"></svg></span>
+                    <div><h2>Create User</h2><p>Creates the user and emails them a secure link to set their own password, then gives them the role and organisation below.</p></div></div>
+                  <div class="fgrid" id="userGrid">
+                    <div class="f" style="grid-column:1/-1"><label for="uEmail">Email <em>*</em></label><input id="uEmail" type="email" placeholder="person@acme.com" autocomplete="off"></div>
+                    <div class="f"><label for="uOrg" id="uOrgLabel">Organisation</label>
+                      <select id="uOrg" hidden></select>
+                      <div class="fixed" id="uOrgFixed" hidden><svg class="i" data-i="building"></svg><span id="uOrgFixedName"></span><svg class="i lock" data-i="lock"></svg></div>
+                    </div>
+                    <div class="f"><label for="uRole">Role</label><select id="uRole"><option value="member">Member</option><option value="admin">Admin</option></select></div>
+                  </div>
+                  <button type="button" class="btn block" id="createUser"><svg class="i" data-i="userplus"></svg>Create user</button>
+                  <div class="msg" id="userMsg"></div>
+                </div>
+              </div>
 
-      <div class="card" id="agentCard" style="margin-top:18px">
-        <h2>On-premises agents</h2>
-        <p class="hint">An agent lets Data Assurance assess a database that is not reachable from
-          the internet. You run it inside your own network; it polls us for work and opens nothing
-          inbound, and the database password stays on that machine rather than with us. See
-          docs/ONPREM_AGENT_INSTALL.md.</p>
-        <div class="agentadd">
-          <input id="agName" placeholder="Name this machine, e.g. Acme DC1" autocomplete="off" maxlength="120">
-          <button class="btn-sm" id="agAdd" type="button">Register</button>
-        </div>
-        <div id="agToken"></div>
-        <div id="agList" class="userstable"></div>
-        <div class="msg" id="agMsg"></div>
+              <div class="card" style="margin-top:18px">
+                <div class="card-h"><span class="cico"><svg class="i" data-i="tag"></svg></span>
+                  <div><h2>Tag Access</h2><p>Tags group datasets, and a tag marked <b>restricts</b> limits who can see them: only members granted it, and every admin.</p></div>
+                  <div class="act"><button type="button" class="btn-ghost" data-go="tags">View all tags <svg class="i" data-i="right"></svg></button></div></div>
+                <div class="addline">
+                  <div class="f inbox"><svg class="i" data-i="search"></svg><input id="ovTagNew" placeholder="Add a tag, e.g. finance" maxlength="40" autocomplete="off" aria-label="Add a tag"></div>
+                  <button type="button" class="btn-ghost" id="ovTagAdd" style="height:40px"><svg class="i" data-i="plus"></svg>Add</button>
+                </div>
+                <div class="chips" id="ovChips"></div>
+                <div class="msg" id="ovTagMsg"></div>
+                <div class="sub-h">Tag Usage &amp; Assignments</div>
+                <p class="sub-p">How many datasets carry each tag, who is granted it, and whether it restricts access.</p>
+                <div class="tbl-wrap"><table class="t"><thead><tr><th>Tag</th><th>Datasets</th><th>Users</th><th>Description</th><th>Access</th><th style="text-align:right">Actions</th></tr></thead>
+                  <tbody id="ovTagRows"></tbody></table></div>
+              </div>
+
+              <div class="card">
+                <div class="card-h"><span class="cico"><svg class="i" data-i="clock"></svg></span>
+                  <div><h2>Recent Activity</h2><p id="ovActSub">The latest changes in your organisation.</p></div>
+                  <div class="act"><button type="button" class="btn-ghost" data-go="activity">View all activity <svg class="i" data-i="right"></svg></button></div></div>
+                <div id="ovActivity"></div>
+              </div>
+            </div>
+
+            <div class="rail">
+              <div class="card">
+                <div class="card-h" style="margin-bottom:12px"><span class="cico"><svg class="i" data-i="shield"></svg></span><div><h2>Quick Stats</h2></div></div>
+                <div class="stats" id="stats"></div>
+              </div>
+              <div class="card">
+                <div class="card-h"><span class="cico"><svg class="i" data-i="cloud"></svg></span>
+                  <div><h2>On-premises Agents</h2><p>Assess databases inside a customer's own network, with nothing opened inbound.</p></div></div>
+                <button type="button" class="btn" id="ovAgentAdd" style="width:100%"><svg class="i" data-i="plus"></svg>Register new agent</button>
+                <div class="agents-mini" id="ovAgents"></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ======================================================== ORGANISATION(S) -->
+        <section class="view" data-view="orgs" hidden>
+          <div class="banner"><span class="bico"><svg class="i" data-i="building"></svg></span>
+            <div><h2 id="orgsTitle">Organisation</h2><p id="orgsSub">Your organisation's details.</p></div></div>
+          <div class="card">
+            <div class="card-h"><span class="cico"><svg class="i" data-i="building"></svg></span>
+              <div><h2 id="orgsCardTitle">Details</h2><p id="orgsCardSub"></p></div>
+              <div class="act" id="orgsAct"></div></div>
+            <div id="orgsBody"></div>
+          </div>
+        </section>
+
+        <!-- ======================================================== USERS -->
+        <section class="view" data-view="users" hidden>
+          <div class="banner"><span class="bico"><svg class="i" data-i="users"></svg></span>
+            <div><h2>Users</h2><p id="usersSub">Everyone in your organisation, their role and their access.</p></div></div>
+          <div class="card">
+            <div class="card-h"><span class="cico"><svg class="i" data-i="users"></svg></span>
+              <div><h2>People</h2><p>Changing a role takes effect at once. Deleting a user removes their login and their access, and cannot be undone.</p></div>
+              <div class="act"><button type="button" class="btn-ghost" id="usersInvite"><svg class="i" data-i="userplus"></svg>Create user</button></div></div>
+            <div class="toolbar" id="usersToolbar" hidden>
+              <div class="f"><select id="usersOrgSel" aria-label="Organisation"></select></div>
+            </div>
+            <div class="tbl-wrap"><table class="t"><thead id="usersHead"></thead><tbody id="usersRows"></tbody></table></div>
+            <div class="msg" id="usersMsg"></div>
+          </div>
+        </section>
+
+        <!-- ======================================================== TAG MANAGEMENT -->
+        <section class="view" data-view="tags" hidden>
+          <div class="banner"><span class="bico"><svg class="i" data-i="tag"></svg></span>
+            <div><h2>Tag Management</h2><p id="tagsSub">Your organisation's tags, what each is for, and who may see what.</p></div></div>
+          <div class="card">
+            <div class="card-h"><span class="cico"><svg class="i" data-i="tag"></svg></span>
+              <div><h2>Your organisation's tags</h2><p>This is the list people choose from when tagging a dataset. Tick <b>restricts</b> to make a tag an access control: a dataset carrying it is then visible only to members granted it. Admins always see everything. A colour is worn everywhere the tag appears; <i>auto</i> keeps the colour made from its name.</p></div></div>
+            <div class="addline">
+              <div class="f"><input id="tNew" placeholder="Add a tag, e.g. finance" autocomplete="off" maxlength="40" aria-label="New tag"></div>
+              <span class="swatches" id="tNewSw"></span>
+              <button type="button" class="btn-ghost" id="tAdd" style="height:40px"><svg class="i" data-i="plus"></svg>Add</button>
+            </div>
+            <div id="tList"></div>
+            <div class="savebar">
+              <div class="f"><label for="tPolicy">Datasets with none of the restricting tags</label>
+                <select id="tPolicy"><option value="open">are visible to everyone (recommended)</option><option value="closed">are visible to nobody (deny by default)</option></select></div>
+              <button type="button" class="btn" id="saveOrgTags" style="align-self:flex-end">Save tags</button>
+              <span class="dirty" id="tagDirty" hidden>Unsaved changes</span>
+            </div>
+            <div class="msg" id="tagMsg"></div>
+          </div>
+          <div class="card">
+            <div class="card-h"><span class="cico"><svg class="i" data-i="key"></svg></span>
+              <div><h2>Who holds what</h2><p>Grant each member the restricting tags they may see. Saved as you click. A member granted none sees only datasets that no restricting tag covers.</p></div></div>
+            <div id="tagMembers"></div>
+          </div>
+        </section>
+
+        <!-- ======================================================== AGENTS -->
+        <section class="view" data-view="agents" hidden>
+          <div class="banner"><span class="bico"><svg class="i" data-i="cloud"></svg></span>
+            <div><h2>On-premises Agents</h2><p>A small Windows service inside the customer's network: it polls for work, runs the assessment there, and keeps the database password on that machine.</p></div></div>
+          <div class="card">
+            <div class="card-h"><span class="cico"><svg class="i" data-i="cloud"></svg></span>
+              <div><h2>Register an agent</h2><p>Registering names the machine. Its <b>config</b>, downloaded from its row, is what lets it work. See docs/ONPREM_AGENT_INSTALL.md.</p></div></div>
+            <div class="addline">
+              <div class="f"><input id="agName" placeholder="Name this machine, e.g. Acme DC1" autocomplete="off" maxlength="120" aria-label="Agent name"></div>
+              <button type="button" class="btn" id="agAdd"><svg class="i" data-i="plus"></svg>Register</button>
+            </div>
+            <div id="agToken"></div>
+            <div class="msg" id="agMsg"></div>
+          </div>
+          <div class="card">
+            <div class="card-h"><span class="cico"><svg class="i" data-i="server"></svg></span>
+              <div><h2>Agents</h2><p>A dot shows each machine's health: green online, amber not heard from lately, red offline or revoked.</p></div></div>
+            <div id="agList"></div>
+          </div>
+        </section>
+
+        <!-- ======================================================== ACTIVITY -->
+        <section class="view" data-view="activity" hidden>
+          <div class="banner"><span class="bico"><svg class="i" data-i="clock"></svg></span>
+            <div><h2>Activity</h2><p id="actSub">Every administrative change in your organisation, newest first.</p></div></div>
+          <div class="card">
+            <div class="toolbar" id="actToolbar" hidden>
+              <div class="f"><select id="actOrgSel" aria-label="Organisation"></select></div>
+            </div>
+            <div id="actFull"></div>
+            <p class="sub-p" style="margin:12px 0 0">Recorded since this log was switched on. Invites, removals, role and tag changes, organisations, agents and API keys.</p>
+          </div>
+        </section>
       </div>
-    </div>
+    </main>
   </div>
 
 <script>
@@ -245,417 +519,94 @@
   /* ======================================================================= */
 
   const $ = s => document.querySelector(s);
+  const $$ = s => [...document.querySelectorAll(s)];
   async function api(path, opts) {
     const res = await fetch(API_BASE + path, Object.assign({ credentials: 'include',
       headers: { 'Content-Type': 'application/json' } }, opts || {}));
     let body; try { body = await res.json(); } catch { body = {}; }
-    if (!res.ok) throw new Error(body.detail || ('HTTP ' + res.status));
+    if (!res.ok) {
+      const err = new Error((body && typeof body.detail === 'string' && body.detail) || ('HTTP ' + res.status));
+      err.status = res.status;
+      throw err;
+    }
     return body;
   }
-  function show(el, kind, text) { el.className = 'msg show ' + kind; el.textContent = text; }
-
-  let orgs = [];
-  let ME = null, IS_SUPER = false, MY_ORG_ID = '';
-
+  function show(elm, kind, text) { elm.className = 'msg show ' + kind; elm.textContent = text; }
   function el(tag, cls, text) {
     const n = document.createElement(tag);
     if (cls) n.className = cls;
-    if (text != null) n.textContent = text;   // textContent → XSS-safe
+    if (text != null) n.textContent = text;   // textContent: nothing anybody typed becomes markup
     return n;
   }
-  function fillOrgSelect(sel, list) {
-    if (!sel) return;
-    sel.innerHTML = '';
-    if (!list.length) { sel.appendChild(el('option', null, '(no orgs yet - create one first)')); return; }
-    list.forEach(o => {
-      const opt = el('option', null, (o.name || o.org_id) + ' - ' + o.tenant_url);
-      opt.value = o.org_id;                    // value, never HTML
-      sel.appendChild(opt);
+
+  // Icons: fixed strings, drawn into every <svg data-i>. Nothing here comes from data.
+  const ICONS = {
+    home: '<path d="M3.5 11 12 4l8.5 7"/><path d="M5.5 9.5V20h13V9.5"/><path d="M10 20v-5.5h4V20"/>',
+    building: '<rect x="4.5" y="3.5" width="15" height="17" rx="1.6"/><path d="M8.5 7.5h1.5M8.5 11h1.5M8.5 14.5h1.5M14 7.5h1.5M14 11h1.5M14 14.5h1.5M10.5 20.5v-3h3v3"/>',
+    users: '<circle cx="9" cy="8.3" r="3.3"/><path d="M3 19.5c.6-3.3 3-5.2 6-5.2s5.4 1.9 6 5.2"/><path d="M15.8 5.4a3.1 3.1 0 0 1 0 5.8M18 14.6c1.6.7 2.6 2.4 3 4.9"/>',
+    user: '<circle cx="12" cy="8.2" r="3.7"/><path d="M4.6 20.2c.9-3.8 3.8-5.8 7.4-5.8s6.5 2 7.4 5.8"/>',
+    userplus: '<circle cx="10" cy="8.2" r="3.5"/><path d="M3.5 19.8c.8-3.6 3.4-5.5 6.5-5.5 1.7 0 3.2.5 4.4 1.6"/><path d="M18 13.5v6M15 16.5h6"/>',
+    tag: '<path d="M3.5 12.2V4.5a1 1 0 0 1 1-1h7.7l8.3 8.3a1.4 1.4 0 0 1 0 2l-6.2 6.2a1.4 1.4 0 0 1-2 0z"/><circle cx="8" cy="8" r="1.4"/>',
+    cloud: '<path d="M7 18.5h10a4 4 0 0 0 .6-7.95A5.5 5.5 0 0 0 7 10a4.3 4.3 0 0 0 0 8.5z"/><path d="M12 11v5M9.8 13.8 12 16l2.2-2.2"/>',
+    server: '<rect x="3.6" y="3.8" width="16.8" height="7" rx="1.8"/><rect x="3.6" y="13.2" width="16.8" height="7" rx="1.8"/><path d="M7.4 7.3h.01M7.4 16.7h.01M11 7.3h5.6M11 16.7h5.6"/>',
+    clock: '<circle cx="12" cy="12" r="8.4"/><path d="M12 7.5V12l3 2"/>',
+    shield: '<path d="M12 3.2 19.5 6v5.6c0 4.4-3.1 7.9-7.5 9.2-4.4-1.3-7.5-4.8-7.5-9.2V6z"/><path d="m8.8 12 2.2 2.2 4.4-4.4"/>',
+    search: '<circle cx="10.8" cy="10.8" r="6.6"/><path d="M15.6 15.6l4.8 4.8"/>',
+    bell: '<path d="M6.2 16.5V11a5.8 5.8 0 0 1 11.6 0v5.5l1.7 1.8H4.5z"/><path d="M10 20.5a2.2 2.2 0 0 0 4 0"/>',
+    down: '<path d="m6.5 9.5 5.5 5.5 5.5-5.5"/>',
+    right: '<path d="m9.5 6.5 5.5 5.5-5.5 5.5"/>',
+    back: '<path d="M14.5 6.5 9 12l5.5 5.5"/>',
+    plus: '<path d="M12 5.5v13M5.5 12h13"/>',
+    lock: '<rect x="5" y="10.5" width="14" height="10" rx="2"/><path d="M8 10.5V7.8a4 4 0 0 1 8 0v2.7"/>',
+    logout: '<path d="M14 4.5H6.5a1 1 0 0 0-1 1v13a1 1 0 0 0 1 1H14"/><path d="M17 8.5 20.5 12 17 15.5M10 12h10.5"/>',
+    menu: '<path d="M4.5 7h15M4.5 12h15M4.5 17h15"/>',
+    key: '<circle cx="8" cy="15.6" r="4.4"/><path d="M11.2 12.4 20.4 3.2M17.2 6.4l2.8 2.8M14.8 8.8l2 2"/>',
+    check: '<circle cx="12" cy="12" r="8.4"/><path d="m8.6 12.2 2.3 2.3 4.6-4.8"/>',
+    alert: '<path d="M12 4 3 19.5h18z"/><path d="M12 10v4.5M12 17.2h.01"/>',
+    edit: '<path d="M14.5 5.5 18.5 9.5 9 19H5v-4z"/><path d="m12.5 7.5 4 4"/>',
+    mail: '<rect x="3.5" y="5.5" width="17" height="13" rx="2"/><path d="m4 7 8 6 8-6"/>',
+  };
+  function paintIcons(root) {
+    (root || document).querySelectorAll('svg[data-i]').forEach(s => {
+      if (s.dataset.done) return;
+      s.setAttribute('viewBox', '0 0 24 24'); s.setAttribute('fill', 'none'); s.setAttribute('stroke', 'currentColor');
+      s.setAttribute('stroke-width', '1.8'); s.setAttribute('stroke-linecap', 'round'); s.setAttribute('stroke-linejoin', 'round');
+      s.setAttribute('aria-hidden', 'true');
+      s.innerHTML = ICONS[s.dataset.i] || '';
+      s.dataset.done = '1';
     });
   }
-  async function loadOrgs() {
-    const r = await api('/portal/admin/orgs');
-    orgs = r.orgs || [];                        // server returns only YOUR org unless you're super-admin
-    fillOrgSelect($('#uOrg'), orgs);
-    if (IS_SUPER) {                             // org-admins have a single fixed org → no selector
-      fillOrgSelect($('#usersOrgSel'), orgs);
-      $('#usersOrgWrap').style.display = orgs.length ? 'block' : 'none';
-    }
-    $('#orgCount').textContent = orgs.length + ' organisation' + (orgs.length === 1 ? '' : 's');
+  function ico(name, cls) {
+    const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    s.setAttribute('class', 'i' + (cls ? ' ' + cls : ''));
+    s.dataset.i = name;
+    paintIcons({ querySelectorAll: () => [s] });
+    return s;
   }
 
-  async function loadUsers() {
-    const wrap = $('#usersTable'); const m = $('#usersMsg'); m.className = 'msg';
-    const orgId = IS_SUPER ? (($('#usersOrgSel') || {}).value || '') : MY_ORG_ID;
-    wrap.innerHTML = '';
-    if (!orgId) { wrap.appendChild(el('div', 'uempty', 'Select an organisation to view its users.')); return; }
-    wrap.appendChild(el('div', 'uempty', 'Loading…'));
-    try {
-      const r = await api('/portal/admin/users?org_id=' + encodeURIComponent(orgId));
-      renderUsers(r.users || []);
-    } catch (e) { wrap.innerHTML = ''; show(m, 'err', e.message); }
+  // ------------------------------------------------------------------ state
+  let ME = null, IS_SUPER = false, MY_ORG_ID = '';
+  let ORGS = [];                    // the server returns only your own unless you are a super-admin
+  const USERS = {};                 // org_id -> [user rows]
+  let TAGS = { tags: [], restricted_tags: [], policy: 'open', members: [] };
+  let CAT = [];                     // the tag catalogue being edited: [{name, restricts, color, description}]
+  let TAG_DIRTY = false;
+  let COUNTS = null;                // tag -> datasets carrying it, or null when it could not be read
+  let AGENTS = [], AGENTS_CONFIGURED = true;
+  let ACTIVITY = [], ACT_RECORDING = true;
+  let KEYS = null;                  // the organisation's API keys, for the attention list
+  const FAILED = new Map();         // what could not load, and why: the health line says so
+
+  const orgName = id => { const o = ORGS.find(x => x.org_id === id); return o ? (o.name || o.org_id) : id; };
+  const allUsers = () => Object.entries(USERS).flatMap(([oid, us]) => us.map(u => Object.assign({ org_id: oid }, u)));
+  const initial = s => (String(s || '?').trim()[0] || '?').toUpperCase();
+  const pad = n => String(n).padStart(2, '0');
+  function when(sec) {
+    if (!sec) return '';
+    const d = new Date(sec * 1000);
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
   }
-  function renderUsers(users) {
-    const wrap = $('#usersTable'); wrap.innerHTML = '';
-    if (!users.length) { wrap.appendChild(el('div', 'uempty', 'No users yet.')); return; }
-    users.forEach(u => {
-      const row = el('div', 'urow');
-      row.appendChild(el('span', 'uemail', u.email));
-      if (u.is_super) {
-        row.appendChild(el('span', 'utag admin', 'super admin'));        // env-managed, not editable
-      } else if (u.is_self) {
-        row.appendChild(el('span', 'utag' + (u.role === 'admin' ? ' admin' : ''), u.role));  // can't edit your own role
-      } else {
-        const sel = el('select', 'urole');
-        ['member', 'admin'].forEach(rv => {
-          const o = el('option', null, rv); o.value = rv; if (rv === u.role) o.selected = true; sel.appendChild(o);
-        });
-        sel.addEventListener('change', () => setRole(u.email, sel.value, sel, u.role));
-        row.appendChild(sel);
-      }
-      if (u.status && u.status !== 'active') row.appendChild(el('span', 'utag', u.status));
-      // Invited but never signed in. The Auth0 login already exists (it is created when the
-      // invite is sent), so the same Delete removes it: for a pending user that IS revoking the
-      // invite, and the button says so rather than leaving an admin to guess.
-      if (u.pending) {
-        const t = el('span', 'utag pending', 'pending invite');
-        t.title = 'Invited but has not signed in yet. They were emailed a set-password link.';
-        row.appendChild(t);
-      }
-      const del = el('button', 'udel', u.pending ? 'Revoke invite' : 'Delete');
-      if (u.is_self) { del.disabled = true; del.title = "You can't delete your own account."; }
-      else if (u.is_super) { del.disabled = true; del.title = "Platform super-admin - can't be removed here."; }
-      else {
-        if (u.pending) del.title = 'Remove the invite and their login. They will not be able to sign in.';
-        del.addEventListener('click', () => deleteUser(u.email, del, u.pending));
-      }
-      row.appendChild(del);
-      wrap.appendChild(row);
-    });
-  }
-  // --- Tag access ------------------------------------------------------------------- //
-  // CAT is the org's tag catalogue: [{name, restricts}]. It is the authoring list and the only
-  // thing this card edits; `restricted_tags` is derived from it server-side. Two independently
-  // typed lists were the previous shape, and they drifted - a tag could be declared restricting
-  // under a spelling no dataset used, and would then gate nothing at all.
-  let TAGS = { restricted_tags: [], policy: 'open', members: [] };
-  let CAT = [];
-
-  // The palette an admin picks from. Chosen for separation at pill size on both the dark admin
-  // surface and the portal's lighter cards; '' is "auto", which keeps the per-name hue.
-  const TAG_COLOURS = ['', '#5b8cff', '#37e0c8', '#7bd88f', '#f4c56b', '#ff8f6b', '#ff6b7d',
-                       '#c98bff', '#8fa3c8'];
-  let NEWCOLOR = '';
-
-  const normTag = v => String(v || '').trim().toLowerCase().slice(0, 40);
-  // A colour the SERVER would keep. Anything else is treated as auto rather than sent and
-  // silently dropped, so the row shows what will actually be stored.
-  const normColor = v => /^#[0-9a-f]{6}$/.test(String(v || '').trim().toLowerCase())
-    ? String(v).trim().toLowerCase() : '';
-  // The fallback when no colour is set: the same stable per-name hue the portal uses, so a tag
-  // left on auto looks identical in both places instead of grey here and coloured there.
-  function autoTint(name) {
-    let h = 0;
-    for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
-    return 'hsl(' + (h % 360) + ' 62% 68%)';
-  }
-  const tagTint = t => normColor(t.color) || autoTint(t.name);
-
-  // One swatch row, reused by the add line and every tag row.
-  function swatchRow(host, current, onPick) {
-    host.innerHTML = '';
-    TAG_COLOURS.forEach(c => {
-      const b = el('button', 'sw' + (c ? '' : ' auto') + (normColor(current) === c ? ' on' : ''));
-      b.type = 'button';
-      if (c) b.style.background = c;
-      b.title = c ? 'Use ' + c : 'Auto - colour generated from the tag name';
-      b.addEventListener('click', e => { e.preventDefault(); onPick(c); });
-      host.appendChild(b);
-    });
-  }
-  const restrictingNow = () => CAT.filter(t => t.restricts).map(t => t.name).sort();
-
-  async function loadTagSettings() {
-    const wrap = $('#tagMembers');
-    wrap.innerHTML = ''; wrap.appendChild(el('div', 'uempty', 'Loading…'));
-    try {
-      TAGS = await api('/portal/admin/tags');
-      CAT = (TAGS.tags || []).map(t => ({ name: t.name, restricts: !!t.restricts,
-                                          color: normColor(t.color) }));
-      $('#tPolicy').value = TAGS.policy || 'open';
-      drawNewSwatches();
-      renderTagList();
-      renderTagMembers();
-    } catch (e) { wrap.innerHTML = ''; show($('#tagMsg'), 'err', e.message); }
-  }
-
-  function drawNewSwatches() {
-    swatchRow($('#tNewSw'), NEWCOLOR, c => { NEWCOLOR = c; drawNewSwatches(); });
-  }
-
-  function renderTagList() {
-    const wrap = $('#tList'); wrap.innerHTML = '';
-    if (!CAT.length) {
-      wrap.appendChild(el('div', 'uempty',
-        'No tags yet. Add one above, then it can be applied to a dataset.'));
-      return;
-    }
-    CAT.slice().sort((a, b) => a.name.localeCompare(b.name)).forEach(t => {
-      const row = el('div', 'tagrow' + (t.restricts ? ' on' : ''));
-      // The name is shown wearing its own colour: the point of setting one is to see it, and a
-      // swatch beside grey text does not tell you what the tag will look like in the portal.
-      const nameCell = el('span', 'tname');
-      const pill = el('span', 'tagname-pill');
-      const tint = tagTint(t);
-      pill.style.setProperty('--tint', 'color-mix(in srgb, ' + tint + ' 22%, transparent)');
-      pill.style.setProperty('--tintline', 'color-mix(in srgb, ' + tint + ' 50%, transparent)');
-      const dot = el('span', 'tdot'); dot.style.background = tint;
-      pill.appendChild(dot);
-      pill.appendChild(document.createTextNode(t.name));
-      nameCell.appendChild(pill);
-      row.appendChild(nameCell);
-
-      const sws = el('span', 'swatches');
-      swatchRow(sws, t.color, c => { t.color = c; renderTagList(); });
-      row.appendChild(sws);
-
-      const lab = el('label', 'tres');
-      const cb = el('input'); cb.type = 'checkbox'; cb.checked = t.restricts;
-      cb.addEventListener('change', () => {
-        t.restricts = cb.checked;
-        row.classList.toggle('on', t.restricts);
-        renderTagMembers();      // a grant can only name a RESTRICTING tag, so the chips change
-      });
-      lab.appendChild(cb); lab.appendChild(document.createTextNode('restricts'));
-      lab.title = 'Only members granted this tag can see a dataset carrying it.';
-      row.appendChild(lab);
-
-      const del = el('button', 'tdel', 'Remove'); del.type = 'button';
-      del.addEventListener('click', () => {
-        // Removing a RESTRICTING tag is the dangerous direction: those datasets stop being
-        // restricted by it, and under `open` that hands them to everybody. Say so before doing it.
-        if (t.restricts && !confirm('"' + t.name + '" currently restricts access.\n\nRemoving it '
-            + 'from the list stops it restricting anything, so datasets carrying it become visible '
-            + 'to every member' + ((TAGS.policy || 'open') === 'open' ? '' : ' holding another of their tags')
-            + '.\n\nRemove it?')) return;
-        CAT = CAT.filter(x => x.name !== t.name);
-        renderTagList(); renderTagMembers();
-      });
-      row.appendChild(del);
-      wrap.appendChild(row);
-    });
-    wrap.appendChild(el('div', 'uempty', 'Changes here are saved when you press Save below.'));
-  }
-
-  function addTagToCatalogue() {
-    const inp = $('#tNew'), name = normTag(inp.value);
-    const msg = $('#tagMsg'); msg.className = 'msg';
-    if (!name) return;
-    if (CAT.some(t => t.name === name)) { show(msg, 'err', '"' + name + '" is already in the list.'); return; }
-    // New tags never restrict on creation. A tag that started restricting the moment it was typed
-    // would hide those datasets from everyone before anybody could be granted it.
-    CAT.push({ name: name, restricts: false, color: NEWCOLOR });
-    inp.value = '';
-    renderTagList();
-    inp.focus();
-  }
-
-  function renderTagMembers() {
-    const wrap = $('#tagMembers'); wrap.innerHTML = '';
-    const members = (TAGS.members || []).filter(m => m.role !== 'admin');
-    if (!(TAGS.members || []).length) {
-      wrap.appendChild(el('div', 'uempty', 'No users yet.')); return;
-    }
-    (TAGS.members || []).forEach(m => {
-      const row = el('div', 'urow');
-      row.appendChild(el('span', 'uemail', m.email));
-      if (m.role === 'admin') {
-        // Stating this is worth a line: an admin seeing everything regardless is the single most
-        // common surprise when somebody tests a restriction with their own account.
-        const t = el('span', 'utag admin', 'admin - sees everything');
-        t.title = 'Admins are never restricted by tags.';
-        row.appendChild(t);
-        wrap.appendChild(row);
-        return;
-      }
-      // Only a RESTRICTING tag can be granted: granting a tag that gates nothing does nothing,
-      // and offering it invites an admin to think they have secured something. Tags the member
-      // already holds are shown even if they no longer restrict, so a stale grant is visible
-      // rather than silently dropped the next time anyone touches this row.
-      const held = new Set(m.tags || []);
-      const offer = [...new Set(restrictingNow().concat([...held]))].sort();
-      if (!offer.length) {
-        row.appendChild(el('span', 'utag', 'nothing restricts yet'));
-        wrap.appendChild(row);
-        return;
-      }
-      const chips = el('div', 'grantchips');
-      offer.forEach(t => {
-        const b = el('button', 'grantchip' + (held.has(t) ? ' on' : ''), t);
-        b.type = 'button';
-        b.title = restrictingNow().includes(t)
-          ? 'Click to ' + (held.has(t) ? 'revoke' : 'grant') + ' "' + t + '".'
-          : '"' + t + '" no longer restricts anything. Click to remove this leftover grant.';
-        b.addEventListener('click', () => {
-          if (held.has(t)) held.delete(t); else held.add(t);
-          b.classList.toggle('on', held.has(t));
-          saveUserTags(m, [...held].sort(), chips);   // saved on click: no second button to forget
-        });
-        chips.appendChild(b);
-      });
-      row.appendChild(chips);
-      wrap.appendChild(row);
-    });
-    if (!members.length) {
-      wrap.appendChild(el('div', 'uempty',
-        'Every user here is an admin, so nothing is restricted for anyone yet.'));
-    }
-  }
-
-  // The Users card and the Tag access card show the same people from one fetched list, so a role
-  // changed or a user deleted in the card below has to be reflected up here. Otherwise the admin
-  // is looking at a grant row for a role that no longer exists - chips for someone who is now an
-  // admin and unrestricted, or a row for someone who has been removed entirely.
-  //
-  // Patched LOCALLY rather than by refetching: /portal/admin/tags also returns the stored
-  // catalogue, so a refetch would overwrite CAT and silently discard tag rows the admin has added
-  // but not yet saved. The card says those changes are pending until Save, and it has to mean it.
-  function syncTagMember(email, patch) {
-    const list = TAGS.members || [];
-    const i = list.findIndex(m => m.email === email);
-    if (i === -1) return;                 // not in this org's list (super-admin viewing another)
-    if (patch === null) list.splice(i, 1); else Object.assign(list[i], patch);
-    renderTagMembers();
-  }
-
-  async function saveUserTags(m, tags, chips) {
-    const msg = $('#tagMsg'); msg.className = 'msg';
-    const btns = [...chips.querySelectorAll('.grantchip')];
-    btns.forEach(b => { b.disabled = true; });
-    try {
-      await api('/portal/admin/users/tags',
-                { method: 'POST', body: JSON.stringify({ email: m.email, tags: tags }) });
-      m.tags = tags;
-      show(msg, 'ok', tags.length
-        ? 'Granted ' + m.email + ': ' + tags.join(', ') + '.'
-        : m.email + ' now sees only unrestricted datasets.');
-    } catch (e) {
-      show(msg, 'err', e.message);
-      renderTagMembers();      // the write failed, so redraw from what is actually stored
-    }
-    btns.forEach(b => { b.disabled = false; });
-  }
-
-  async function saveOrgTags() {
-    const btn = $('#saveOrgTags'); const msg = $('#tagMsg'); msg.className = 'msg';
-    const restricted = restrictingNow();
-    const policy = $('#tPolicy').value;
-
-    // Who would lose access the moment this is saved? Declaring a tag restricting before anyone
-    // has been granted it locks every member out of those datasets. The card knows both halves,
-    // so it names them rather than leaving an admin to find out from a support call.
-    const added = restricted.filter(t => !(TAGS.restricted_tags || []).includes(t));
-    if (added.length) {
-      const exposed = (TAGS.members || [])
-        .filter(m => m.role !== 'admin' && !added.some(t => (m.tags || []).includes(t)))
-        .map(m => m.email);
-      if (exposed.length) {
-        const who = exposed.slice(0, 6).join(', ') + (exposed.length > 6
-          ? ' and ' + (exposed.length - 6) + ' more' : '');
-        if (!confirm('Restricting ' + added.join(', ') + ' will hide those datasets from '
-                     + exposed.length + ' member' + (exposed.length === 1 ? '' : 's') + ':\n\n'
-                     + who + '\n\nGrant the tag first if they should keep access. Continue?')) {
-          return;
-        }
-      }
-    }
-    btn.disabled = true;
-    try {
-      // The catalogue is what is sent; the server derives restricted_tags from it, so the two
-      // cannot disagree. Sending both would create a second source of truth for the same fact.
-      const r = await api('/portal/admin/org/tags',
-                          { method: 'POST', body: JSON.stringify({ tags: CAT, policy: policy }) });
-      CAT = (r.tags || []).map(t => ({ name: t.name, restricts: !!t.restricts,
-                                       color: normColor(t.color) }));
-      TAGS.tags = r.tags || [];
-      TAGS.restricted_tags = r.restricted_tags || [];
-      TAGS.policy = r.policy || 'open';
-      renderTagList(); renderTagMembers();
-      show(msg, 'ok', 'Saved ' + CAT.length + ' tag' + (CAT.length === 1 ? '' : 's') + '. '
-        + (TAGS.restricted_tags.length
-           ? 'Restricting: ' + TAGS.restricted_tags.join(', ') + '.'
-           : 'None of them restrict, so every dataset is visible to every member.')
-        + (TAGS.policy === 'closed'
-           ? ' Datasets with none of these tags are hidden from members.' : ''));
-    } catch (e) { show(msg, 'err', e.message); }
-    btn.disabled = false;
-  }
-
-  async function setRole(email, role, sel, prev) {
-    sel.disabled = true; const m = $('#usersMsg'); m.className = 'msg';
-    try {
-      await api('/portal/admin/users/role', { method: 'POST', body: JSON.stringify({ email: email, role: role }) });
-      show(m, 'ok', 'Set ' + email + ' to ' + role + '.');
-      syncTagMember(email, { role: role });
-      sel.disabled = false;
-    } catch (e) { show(m, 'err', e.message); sel.value = prev; sel.disabled = false; }
-  }
-  async function deleteUser(email, btn, pending) {
-    // One endpoint, two readings: for someone who never signed in this is revoking an invite, and
-    // the wording should match what the admin thinks they are doing.
-    const ask = pending
-      ? 'Revoke the invite for ' + email + '?\n\nTheir set-password link stops working and their '
-        + 'login is removed. You can invite them again later.'
-      : 'Delete ' + email + '?\n\nThis removes their Auth0 login and their portal access. '
-        + 'Anything they were assigned becomes unassigned. This cannot be undone.';
-    if (!confirm(ask)) return;
-    btn.disabled = true; const m = $('#usersMsg'); m.className = 'msg';
-    try {
-      await api('/portal/admin/users/delete', { method: 'POST', body: JSON.stringify({ email: email }) });
-      show(m, 'ok', (pending ? 'Revoked the invite for ' : 'Deleted ') + email + '.');
-      syncTagMember(email, null);      // same list: a deleted user must not leave a grant row
-      await loadUsers();
-    } catch (e) { show(m, 'err', e.message); btn.disabled = false; }
-  }
-
-  $('#createOrg').addEventListener('click', async () => {
-    const b = $('#createOrg'); const m = $('#orgMsg'); b.disabled = true;
-    try {
-      const org = await api('/portal/admin/orgs', { method: 'POST', body: JSON.stringify({
-        org_id: $('#oId').value.trim(), name: $('#oName').value.trim(),
-        tenant_url: $('#oTenant').value.trim(), workspace_name: $('#oWs').value.trim() }) });
-      show(m, 'ok', 'Created org "' + org.org.org_id + '".');
-      $('#oId').value = $('#oName').value = $('#oTenant').value = $('#oWs').value = '';
-      await loadOrgs();
-    } catch (e) { show(m, 'err', e.message); } finally { b.disabled = false; }
-  });
-
-  $('#createUser').addEventListener('click', async () => {
-    const b = $('#createUser'); const m = $('#userMsg'); b.disabled = true;
-    try {
-      const r = await api('/portal/admin/users', { method: 'POST', body: JSON.stringify({
-        email: $('#uEmail').value.trim(),
-        org_id: $('#uOrg').value, role: $('#uRole').value }) });
-      show(m, 'ok', 'User ' + r.email + ' → ' + r.org_id + ' (' + r.role + '). ' + r.note);
-      $('#uEmail').value = '';
-      try { await loadUsers(); } catch (_) {}
-    } catch (e) { show(m, 'err', e.message); } finally { b.disabled = false; }
-  });
-
-  const _uos = $('#usersOrgSel'); if (_uos) _uos.addEventListener('change', () => loadUsers());
-  $('#saveOrgTags').addEventListener('click', saveOrgTags);
-  $('#tAdd').addEventListener('click', addTagToCatalogue);
-  // Enter adds, so a run of tags can be typed without reaching for the mouse each time.
-  $('#tNew').addEventListener('keydown', e => {
-    if (e.key === 'Enter') { e.preventDefault(); addTagToCatalogue(); }
-  });
-
-  /* ------------------------------------------------------------------ on-premises agents */
-  /* Registering an agent is an administrative act in the same class as adding a member: it
-     authorises a machine to run this organisation's assessments and to be handed credentials
-     scoped to its data. The API enforces that; this panel just has to not pretend otherwise. */
-
-  function agentAgo(seconds) {
+  function ago(seconds) {
     if (!seconds) return 'never';
     const d = Math.max(0, Math.floor(Date.now() / 1000 - seconds));
     if (d < 60) return d + 's ago';
@@ -664,241 +615,979 @@
     return Math.floor(d / 86400) + 'd ago';
   }
 
+  // ------------------------------------------------------------------ views
+  const VIEWS = ['overview', 'orgs', 'users', 'tags', 'agents', 'activity'];
+  function go(view, opts) {
+    opts = opts || {};
+    if (!VIEWS.includes(view)) view = 'overview';
+    $$('.view').forEach(v => { v.hidden = v.dataset.view !== view; });
+    $$('.nav [data-view]').forEach(b => { if (b.dataset.view === view) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
+    if (location.hash.slice(1) !== view) history.replaceState(null, '', '#' + view);
+    $('#app').classList.remove('open');
+    window.scrollTo({ top: 0 });
+    if (opts.focus) { const f = $(opts.focus); if (f) { f.scrollIntoView({ block: 'center' }); f.focus({ preventScroll: true }); } }
+    if (opts.flash) flash(opts.flash);
+  }
+  function flash(sel) {
+    const t = typeof sel === 'string' ? $(sel) : sel;
+    if (!t) return;
+    t.scrollIntoView({ block: 'center' });
+    t.classList.add('flash');
+    setTimeout(() => t.classList.remove('flash'), 1800);
+  }
+
+  // ------------------------------------------------------------------ loading
+  async function loadOrgs() {
+    const r = await api('/portal/admin/orgs');
+    ORGS = (r.orgs || []).slice().sort((a, b) => String(a.name || a.org_id).localeCompare(String(b.name || b.org_id)));
+  }
+  async function loadUsers(orgId) {
+    const r = await api('/portal/admin/users?org_id=' + encodeURIComponent(orgId));
+    USERS[orgId] = r.users || [];
+  }
+  async function loadAllUsers() {
+    const ids = IS_SUPER ? ORGS.map(o => o.org_id) : [MY_ORG_ID];
+    await Promise.all(ids.map(loadUsers));
+  }
+  async function loadTags() {
+    TAGS = await api('/portal/admin/tags');
+    CAT = (TAGS.tags || []).map(t => ({ name: t.name, restricts: !!t.restricts, color: normColor(t.color),
+                                        description: t.description || '' }));
+    TAG_DIRTY = false;
+  }
+  // How many datasets carry each tag. Read from the workspace's own dataset tags; for a
+  // super-admin looking at another organisation in the app the counts would describe that one,
+  // so they are left out rather than shown against the wrong tags.
+  async function loadCounts() {
+    COUNTS = null;
+    const ws = ME.workspace_id;
+    if (!ws || (IS_SUPER && ME.active_org_id && ME.home_org_id && ME.active_org_id !== ME.home_org_id)) return;
+    const r = await api('/data-quality/dataset-tags', { method: 'POST', body: JSON.stringify({ app_id: ws, action: 'get' }) });
+    const m = new Map();
+    Object.values(r.entries || {}).forEach(e => (e && e.tags || []).forEach(t => {
+      const k = normTag(t); if (k) m.set(k, (m.get(k) || 0) + 1);
+    }));
+    COUNTS = m;
+  }
   async function agentsApi(payload) {
     return api('/data-quality/agents', { method: 'POST', body: JSON.stringify(payload) });
   }
-
-  function renderAgents(agents, configured) {
-    const wrap = $('#agList'); wrap.innerHTML = '';
-    if (!configured) {
-      wrap.appendChild(el('div', 'uempty',
-        'Agents are not enabled on this deployment yet (the API is missing DQ_AGENT_UPLOAD_ROLE_ARN).'));
+  async function loadAgents() {
+    const r = await agentsApi({ action: 'list' });
+    AGENTS = r.agents || [];
+    AGENTS_CONFIGURED = r.configured !== false;
+  }
+  async function loadActivity(orgId) {
+    const q = '/portal/admin/activity?limit=200' + (orgId ? '&org_id=' + encodeURIComponent(orgId) : '');
+    let r;
+    try { r = await api(q); }
+    catch (e) {
+      // An API from before the log has no such route: that is "not switched on yet", not a fault.
+      if (e.status === 404) { ACTIVITY = []; ACT_RECORDING = false; return; }
+      throw e;
     }
-    if (!agents.length) { wrap.appendChild(el('div', 'uempty', 'No agents registered.')); return; }
-    agents.forEach(a => {
-      const row = el('div', 'urow arow');
-      const dot = el('span', 'adot ' + (a.health || ''));
-      dot.title = a.health;
-      row.appendChild(dot);
+    ACTIVITY = r.items || [];
+    ACT_RECORDING = r.recording !== false;
+  }
+  async function loadKeys() {
+    const r = await api('/portal/api-keys');
+    KEYS = Array.isArray(r.org) ? r.org : (r.keys || []);
+  }
+  // One load, its failure remembered by name for the health line, and never fatal to the rest.
+  async function attempt(name, fn) {
+    try { await fn(); FAILED.delete(name); return true; }
+    catch (e) { FAILED.set(name, e.message || String(e)); return false; }
+  }
+
+  // ------------------------------------------------------------------ rendering: overview
+  function renderAll() {
+    renderStats(); renderHealth(); renderOverviewTags(); renderOverviewActivity(); renderOverviewAgents();
+    renderUserOrgField(); renderOrgs(); renderUsers(); renderTagEditor(); renderAgents(); renderActivity(); renderBell();
+  }
+
+  function statTile(icon, label, value, view, cls) {
+    const b = el('button', 'stat' + (cls ? ' ' + cls : '')); b.type = 'button';
+    const s = el('span', 'sico'); s.appendChild(ico(icon)); b.appendChild(s);
+    const d = el('div'); d.appendChild(el('small', null, label)); d.appendChild(el('b', null, value)); b.appendChild(d);
+    b.appendChild(ico('right', 'chev'));
+    if (view) b.addEventListener('click', () => go(view));
+    return b;
+  }
+  function renderStats() {
+    const box = $('#stats'); box.textContent = '';
+    const us = allUsers();
+    const pending = us.filter(u => u.pending).length;
+    if (IS_SUPER) box.appendChild(statTile('building', 'Organisations', String(ORGS.length), 'orgs'));
+    box.appendChild(statTile('user', 'Users', FAILED.has('users') ? '-' : String(us.length), 'users'));
+    if (!IS_SUPER) box.appendChild(statTile('tag', 'Tags', String(CAT.length), 'tags'));
+    box.appendChild(statTile('cloud', 'On-premises Agents', FAILED.has('agents') ? '-' : String(AGENTS.filter(a => !a.revoked).length), 'agents'));
+    box.appendChild(statTile('mail', 'Pending invites', FAILED.has('users') ? '-' : String(pending), 'users'));
+    const ok = !FAILED.size;
+    const h = statTile(ok ? 'check' : 'alert', 'System status',
+                       ok ? 'All services reachable' : 'Some data could not load', null, 'health ' + (ok ? 'ok' : 'warn'));
+    h.title = ok ? 'Every part of this page loaded.' : [...FAILED].map(([k, v]) => k + ': ' + v).join('\n');
+    h.addEventListener('click', () => { if (!ok) openBell(); });
+    box.appendChild(h);
+  }
+  function renderHealth() {
+    const ok = !FAILED.size;
+    $('#healthDot').className = 'dot ' + (ok ? 'ok' : 'warn');
+    $('#healthText').textContent = ok ? 'All services reachable' : 'Some data could not load';
+    $('#healthText').title = ok ? '' : [...FAILED].map(([k, v]) => k + ': ' + v).join('\n');
+  }
+
+  // A tag pill wearing its colour. The colour is validated hex or a generated hue, never free text.
+  function tagPill(t, count) {
+    const tint = tagTint(t);
+    const p = el('span', 'tagpill');
+    p.style.setProperty('--tc', tint);
+    p.style.setProperty('--tint', 'color-mix(in srgb, ' + tint + ' 20%, transparent)');
+    p.style.setProperty('--tintline', 'color-mix(in srgb, ' + tint + ' 50%, transparent)');
+    p.appendChild(el('span', 'td'));
+    p.appendChild(document.createTextNode(t.name));
+    if (count != null) p.appendChild(el('span', 'n', String(count)));
+    return p;
+  }
+  const grantedCount = name => (TAGS.members || []).filter(m => m.role !== 'admin' && (m.tags || []).includes(name)).length;
+  const countOf = name => COUNTS ? (COUNTS.get(name) || 0) : null;
+
+  function renderOverviewTags() {
+    const chips = $('#ovChips'); chips.textContent = '';
+    const rows = $('#ovTagRows'); rows.textContent = '';
+    const list = CAT.slice().sort((a, b) => ((countOf(b.name) || 0) - (countOf(a.name) || 0)) || a.name.localeCompare(b.name));
+    if (!list.length) {
+      chips.appendChild(el('div', 'empty', 'No tags yet. Add one above, then it can be put on a dataset.'));
+      const tr = el('tr'); const td = el('td', 'mut', 'No tags yet.'); td.colSpan = 6; tr.appendChild(td); rows.appendChild(tr);
+      return;
+    }
+    list.slice(0, 6).forEach(t => {
+      const p = tagPill(t, countOf(t.name)); p.classList.add('chip-btn'); p.tabIndex = 0;
+      p.title = 'Open ' + t.name + ' in Tag Management';
+      p.addEventListener('click', () => editTag(t.name));
+      chips.appendChild(p);
+    });
+    if (list.length > 6) {
+      const more = el('button', 'btn-ghost', '+ ' + (list.length - 6) + ' more'); more.type = 'button';
+      more.addEventListener('click', () => go('tags')); chips.appendChild(more);
+    }
+    list.forEach(t => {
+      const tr = el('tr');
+      const c1 = el('td'); c1.appendChild(tagPill(t)); tr.appendChild(c1);
+      const n = countOf(t.name);
+      const c2 = el('td', 'num', n == null ? '-' : String(n));
+      if (n == null) c2.title = 'Counts are shown for your own organisation\'s workspace.';
+      tr.appendChild(c2);
+      tr.appendChild(el('td', 'num', t.restricts ? String(grantedCount(t.name)) : 'Everyone'));
+      tr.appendChild(el('td', 'mut', t.description || ''));
+      const c5 = el('td');
+      c5.appendChild(t.restricts ? accessPill('Restricts', 'lock') : accessPill('Open', 'ok'));
+      tr.appendChild(c5);
+      const c6 = el('td', 'acts');
+      const ed = el('button', 'btn-ghost'); ed.type = 'button'; ed.appendChild(ico('edit')); ed.appendChild(document.createTextNode('Edit'));
+      ed.addEventListener('click', () => editTag(t.name));
+      const rm = el('button', 'btn-ghost btn-x', 'Remove'); rm.type = 'button';
+      rm.addEventListener('click', () => removeTagNow(t.name));
+      c6.appendChild(ed); c6.appendChild(rm); tr.appendChild(c6);
+      rows.appendChild(tr);
+    });
+  }
+  function accessPill(text, kind) {
+    const p = el('span', 'pill ' + kind);
+    const d = el('span', 'dot ' + (kind === 'ok' ? 'ok' : 'warn')); p.appendChild(d);
+    p.appendChild(document.createTextNode(text));
+    p.title = kind === 'ok' ? 'Grouping only: everyone who can see the dataset otherwise still can.'
+                            : 'Only members granted this tag, and admins, can see datasets carrying it.';
+    return p;
+  }
+
+  // What an entry's details say, in words. Built from the stored fields, so nothing is shown that
+  // the log does not hold.
+  function actDetails(it) {
+    const d = it.details || {};
+    const list = v => (v || []).join(', ');
+    switch (it.action) {
+      case 'user.invited': return 'Role: ' + (d.role || 'member') + (d.org ? ' · Org: ' + d.org : '') + (d.existing_login ? ' · had a login already' : '');
+      case 'user.role': return (d.from || '?') + ' → ' + (d.to || '?');
+      case 'user.tags': return (d.to || []).length ? 'Granted: ' + list(d.to) : 'Granted none: sees unrestricted datasets only';
+      case 'user.removed': return d.role ? 'Was ' + d.role : '';
+      case 'tags.saved': return [(d.added || []).length ? 'Added ' + list(d.added) : '', (d.removed || []).length ? 'Removed ' + list(d.removed) : '',
+                                 'Restricting: ' + ((d.restricting || []).length ? list(d.restricting) : 'none'), d.policy === 'closed' ? 'Untagged hidden' : '']
+                                .filter(Boolean).join(' · ');
+      case 'org.created': return d.org_id ? 'ID: ' + d.org_id : '';
+      case 'apikey.created': return (d.id ? 'Key ' + d.id : '') + (d.expires_in_days ? ' · expires in ' + d.expires_in_days + ' days' : '');
+      case 'apikey.revoked': return (d.id ? 'Key ' + d.id : '') + (d.owner ? ' · owner ' + d.owner : '');
+      default: return d.id ? 'ID: ' + d.id : '';
+    }
+  }
+  function activityTable(items, withOrg) {
+    const wrap = el('div', 'tbl-wrap');
+    const t = el('table', 't'); wrap.appendChild(t);
+    const hr = el('tr');
+    ['Date & Time', 'User'].concat(withOrg ? ['Organisation'] : []).concat(['Action', 'Target', 'Details'])
+      .forEach(h => hr.appendChild(el('th', null, h)));
+    const th = el('thead'); th.appendChild(hr); t.appendChild(th);
+    const tb = el('tbody'); t.appendChild(tb);
+    items.forEach(it => {
+      const tr = el('tr');
+      tr.appendChild(el('td', 'num mut', when(it.at)));
+      const who = el('td'); const w = el('div', 'who'); w.appendChild(el('span', 'avatar sm', initial(it.actor)));
+      w.appendChild(el('span', null, it.actor || 'unknown')); who.appendChild(w); tr.appendChild(who);
+      if (withOrg) tr.appendChild(el('td', 'mut', it.org || ''));
+      tr.appendChild(el('td', null, it.label || it.action));
+      tr.appendChild(el('td', null, it.target || ''));
+      tr.appendChild(el('td', 'mut', actDetails(it)));
+      tb.appendChild(tr);
+    });
+    return wrap;
+  }
+  function activityEmpty() {
+    if (FAILED.has('activity')) return el('div', 'empty', 'Could not load the activity log: ' + FAILED.get('activity'));
+    if (!ACT_RECORDING) return el('div', 'empty', 'The activity log is not switched on for this deployment yet.');
+    return el('div', 'empty', 'Nothing recorded yet. Changes made from now on appear here.');
+  }
+  function renderOverviewActivity() {
+    const box = $('#ovActivity'); box.textContent = '';
+    $('#ovActSub').textContent = IS_SUPER ? 'The latest changes across every organisation.' : 'The latest changes in your organisation.';
+    const items = ACTIVITY.slice(0, 6);
+    box.appendChild(items.length ? activityTable(items, IS_SUPER) : activityEmpty());
+  }
+  function agentState(a) {
+    return a.revoked ? 'revoked' : (a.health === 'never' ? 'awaiting its config' : a.health + ' · ' + ago(a.lastSeen));
+  }
+  function healthDot(a) {
+    return el('span', 'dot ' + (a.revoked ? 'bad' : a.health === 'online' ? 'ok' : (a.health === 'stale' || a.health === 'never') ? 'warn' : 'bad'));
+  }
+  function renderOverviewAgents() {
+    const box = $('#ovAgents'); box.textContent = '';
+    if (FAILED.has('agents')) { box.appendChild(el('div', 'empty', 'Could not load agents.')); return; }
+    const live = AGENTS.filter(a => !a.revoked);
+    if (!live.length) { box.appendChild(el('div', 'empty', 'No agents registered yet.')); return; }
+    live.slice(0, 5).forEach(a => {
+      const row = el('div', 'amini');
+      row.appendChild(healthDot(a));
+      const d = el('div'); d.appendChild(el('b', null, a.name || a.id));
+      d.appendChild(el('small', a.health === 'online' ? 'on' : null, agentState(a) + (a.version ? ' · v' + a.version : '')));
+      row.appendChild(d);
+      const m = el('button', 'btn-ghost', 'Manage'); m.type = 'button';
+      m.addEventListener('click', () => { go('agents'); flash($('#agList [data-agent="' + CSS.escape(a.id) + '"]')); });
+      row.appendChild(m);
+      box.appendChild(row);
+    });
+    if (live.length > 5) {
+      const more = el('button', 'btn-ghost', 'All ' + live.length + ' agents'); more.type = 'button';
+      more.addEventListener('click', () => go('agents')); box.appendChild(more);
+    }
+  }
+
+  // ------------------------------------------------------------------ create user / organisation
+  // A super-admin chooses the organisation; an org-admin's new user always joins theirs, so the
+  // field is shown as the fact it is rather than a list with one entry. (The API enforces it too.)
+  function renderUserOrgField() {
+    const sel = $('#uOrg'), fixed = $('#uOrgFixed');
+    if (IS_SUPER) {
+      const keep = sel.value;
+      sel.textContent = '';
+      if (!ORGS.length) sel.appendChild(el('option', null, '(no organisations yet: create one first)'));
+      ORGS.forEach(o => { const opt = el('option', null, o.name || o.org_id); opt.value = o.org_id; sel.appendChild(opt); });
+      if (keep && ORGS.some(o => o.org_id === keep)) sel.value = keep;
+      else if (ORGS.some(o => o.org_id === MY_ORG_ID)) sel.value = MY_ORG_ID;
+      sel.hidden = false; fixed.hidden = true;
+      $('#uOrgLabel').setAttribute('for', 'uOrg');
+    } else {
+      $('#uOrgFixedName').textContent = ME.org_name || ME.home_org_name || orgName(MY_ORG_ID) || MY_ORG_ID;
+      fixed.title = 'New users join your organisation.';
+      sel.hidden = true; fixed.hidden = false;
+      $('#uOrgLabel').removeAttribute('for');
+    }
+  }
+  async function createUser() {
+    const b = $('#createUser'), m = $('#userMsg'); b.disabled = true;
+    const orgId = IS_SUPER ? $('#uOrg').value : MY_ORG_ID;
+    try {
+      const r = await api('/portal/admin/users', { method: 'POST', body: JSON.stringify({
+        email: $('#uEmail').value.trim(), org_id: orgId, role: $('#uRole').value }) });
+      show(m, 'ok', 'Created ' + r.email + ' in ' + orgName(r.org_id) + ' as ' + r.role + '. ' + (r.note || ''));
+      $('#uEmail').value = '';
+      await attempt('users', () => loadUsers(r.org_id));
+      await refreshActivity();
+      renderStats(); renderUsers(); renderOrgs(); renderBell();
+    } catch (e) { show(m, 'err', e.message); } finally { b.disabled = false; }
+  }
+  async function createOrg() {
+    const b = $('#createOrg'), m = $('#orgMsg'); b.disabled = true;
+    try {
+      const r = await api('/portal/admin/orgs', { method: 'POST', body: JSON.stringify({
+        org_id: $('#oId').value.trim(), name: $('#oName').value.trim(),
+        tenant_url: $('#oTenant').value.trim(), workspace_name: $('#oWs').value.trim() }) });
+      show(m, 'ok', 'Created organisation "' + (r.org.name || r.org.org_id) + '".');
+      ['#oId', '#oName', '#oTenant', '#oWs'].forEach(s => { $(s).value = ''; });
+      await attempt('organisations', loadOrgs);
+      USERS[r.org.org_id] = [];
+      await refreshActivity();
+      renderUserOrgField(); renderStats(); renderOrgs(); renderUsers();
+    } catch (e) { show(m, 'err', e.message); } finally { b.disabled = false; }
+  }
+
+  // ------------------------------------------------------------------ organisation(s)
+  function renderOrgs() {
+    const body = $('#orgsBody'); body.textContent = '';
+    const act = $('#orgsAct'); act.textContent = '';
+    if (IS_SUPER) {
+      $('#orgsTitle').textContent = 'Organisations';
+      $('#orgsSub').textContent = 'Every organisation on the platform, each with its own isolated tenant.';
+      $('#orgsCardTitle').textContent = 'All organisations';
+      $('#orgsCardSub').textContent = ORGS.length + ' organisation' + (ORGS.length === 1 ? '' : 's') + '.';
+      const nb = el('button', 'btn-ghost'); nb.type = 'button'; nb.appendChild(ico('plus')); nb.appendChild(document.createTextNode('Create organisation'));
+      nb.addEventListener('click', () => go('overview', { focus: '#oId' })); act.appendChild(nb);
+      const wrap = el('div', 'tbl-wrap'), t = el('table', 't'); wrap.appendChild(t);
+      const hr = el('tr'); ['Organisation', 'ID', 'Tenant', 'Users', 'Pending invites', ''].forEach(h => hr.appendChild(el('th', null, h)));
+      const th = el('thead'); th.appendChild(hr); t.appendChild(th);
+      const tb = el('tbody'); t.appendChild(tb);
+      if (!ORGS.length) { const tr = el('tr'), td = el('td', 'mut', 'No organisations yet.'); td.colSpan = 6; tr.appendChild(td); tb.appendChild(tr); }
+      ORGS.forEach(o => {
+        const us = USERS[o.org_id] || [];
+        const tr = el('tr');
+        const c1 = el('td'); const w = el('div', 'who'); w.appendChild(el('span', 'avatar sm', initial(o.name || o.org_id)));
+        w.appendChild(el('span', null, o.name || o.org_id)); c1.appendChild(w); tr.appendChild(c1);
+        tr.appendChild(el('td', 'mut', o.org_id));
+        tr.appendChild(el('td', 'mut', o.tenant_url || ''));
+        tr.appendChild(el('td', 'num', String(us.length)));
+        tr.appendChild(el('td', 'num', String(us.filter(u => u.pending).length)));
+        const c6 = el('td', 'acts'); const v = el('button', 'btn-ghost', 'Users'); v.type = 'button';
+        v.addEventListener('click', () => { $('#usersOrgSel').value = o.org_id; go('users'); renderUsers(); });
+        c6.appendChild(v); tr.appendChild(c6);
+        tb.appendChild(tr);
+      });
+      body.appendChild(wrap);
+    } else {
+      const o = ORGS.find(x => x.org_id === MY_ORG_ID) || { org_id: MY_ORG_ID, name: ME.org_name };
+      const us = USERS[MY_ORG_ID] || [];
+      $('#orgsTitle').textContent = 'Organisation';
+      $('#orgsSub').textContent = 'Your organisation\'s details. A platform administrator changes these.';
+      $('#orgsCardTitle').textContent = o.name || o.org_id;
+      $('#orgsCardSub').textContent = '';
+      const kv = el('div', 'kv');
+      [['Name', o.name || o.org_id], ['Organisation ID', o.org_id], ['Tenant', o.tenant_url || ''],
+       ['Workspace', ME.workspace_id || ''], ['Users', String(us.length)],
+       ['Admins', String(us.filter(u => u.role === 'admin').length)], ['Pending invites', String(us.filter(u => u.pending).length)],
+       ['Tags', String(CAT.length) + ' (' + CAT.filter(t => t.restricts).length + ' restricting)']]
+        .forEach(([k, v]) => { kv.appendChild(el('div', null, k)); kv.appendChild(el('div', null, v)); });
+      body.appendChild(kv);
+    }
+  }
+
+  // ------------------------------------------------------------------ users
+  function renderUsers() {
+    const head = $('#usersHead'), rows = $('#usersRows'); head.textContent = ''; rows.textContent = '';
+    const tb = $('#usersToolbar'), sel = $('#usersOrgSel');
+    if (IS_SUPER) {
+      tb.hidden = false;
+      const keep = sel.value || '';
+      sel.textContent = '';
+      const all = el('option', null, 'All organisations'); all.value = ''; sel.appendChild(all);
+      ORGS.forEach(o => { const opt = el('option', null, o.name || o.org_id); opt.value = o.org_id; sel.appendChild(opt); });
+      sel.value = ORGS.some(o => o.org_id === keep) ? keep : '';
+      $('#usersSub').textContent = 'Everyone on the platform, by organisation: their role, their access and whether they have signed in.';
+    } else {
+      $('#usersSub').textContent = 'Everyone in ' + (ME.org_name || 'your organisation') + ': their role, their access and whether they have signed in.';
+    }
+    const hr = el('tr');
+    ['User'].concat(IS_SUPER ? ['Organisation'] : []).concat(['Role', 'Tags', 'Status', ''])
+      .forEach(h => hr.appendChild(el('th', null, h)));
+    head.appendChild(hr);
+    if (FAILED.has('users')) { const tr = el('tr'), td = el('td', 'mut', 'Could not load users: ' + FAILED.get('users')); td.colSpan = 6; tr.appendChild(td); rows.appendChild(tr); return; }
+    const want = IS_SUPER ? sel.value : MY_ORG_ID;
+    const list = allUsers().filter(u => !want || u.org_id === want).sort((a, b) => a.email.localeCompare(b.email));
+    if (!list.length) { const tr = el('tr'), td = el('td', 'mut', 'No users yet.'); td.colSpan = 6; tr.appendChild(td); rows.appendChild(tr); return; }
+    const grants = new Map((TAGS.members || []).map(m => [m.email, m.tags || []]));
+    list.forEach(u => {
+      const tr = el('tr'); tr.dataset.user = u.email;
+      const c1 = el('td'); const w = el('div', 'who'); w.appendChild(el('span', 'avatar sm', initial(u.email))); w.appendChild(el('span', null, u.email));
+      c1.appendChild(w); tr.appendChild(c1);
+      if (IS_SUPER) tr.appendChild(el('td', 'mut', orgName(u.org_id)));
+      const c2 = el('td');
+      if (u.is_super) c2.appendChild(el('span', 'pill accent', 'Super admin'));
+      else if (u.is_self) c2.appendChild(el('span', 'pill' + (u.role === 'admin' ? ' accent' : ''), u.role === 'admin' ? 'Admin (you)' : 'Member (you)'));
+      else {
+        const s = el('select', 'rsel');
+        s.setAttribute('aria-label', 'Role for ' + u.email);
+        [['member', 'Member'], ['admin', 'Admin']].forEach(([v, l]) => { const o = el('option', null, l); o.value = v; if (v === u.role) o.selected = true; s.appendChild(o); });
+        s.addEventListener('change', () => setRole(u, s));
+        c2.appendChild(s);
+      }
+      tr.appendChild(c2);
+      const c3 = el('td', 'mut');
+      if (u.role === 'admin' || u.is_super) c3.textContent = 'Sees everything';
+      else if (u.org_id !== MY_ORG_ID) c3.textContent = '-';
+      else {
+        const g = grants.get(u.email) || [];
+        if (!g.length) c3.textContent = 'Unrestricted only';
+        else { const ch = el('div', 'chips'); g.forEach(n => ch.appendChild(tagPill(CAT.find(t => t.name === n) || { name: n }))); c3.appendChild(ch); }
+      }
+      tr.appendChild(c3);
+      const c4 = el('td');
+      if (u.pending) { const p = el('span', 'pill warn', 'Invite pending'); p.title = 'Invited but has not signed in yet. They were emailed a set-password link.'; c4.appendChild(p); }
+      else if (u.status && u.status !== 'active') c4.appendChild(el('span', 'pill', u.status));
+      else c4.appendChild(el('span', 'pill ok', 'Active'));
+      tr.appendChild(c4);
+      const c5 = el('td', 'acts');
+      const del = el('button', 'btn-ghost btn-x', u.pending ? 'Revoke invite' : 'Delete'); del.type = 'button';
+      if (u.is_self) { del.disabled = true; del.title = "You can't delete your own account."; }
+      else if (u.is_super) { del.disabled = true; del.title = 'Platform super-admin: managed by configuration.'; }
+      else del.addEventListener('click', () => deleteUser(u, del));
+      c5.appendChild(del); tr.appendChild(c5);
+      rows.appendChild(tr);
+    });
+  }
+  async function setRole(u, sel) {
+    const m = $('#usersMsg'); m.className = 'msg'; sel.disabled = true;
+    const role = sel.value, prev = u.role;
+    try {
+      await api('/portal/admin/users/role', { method: 'POST', body: JSON.stringify({ email: u.email, role: role }) });
+      show(m, 'ok', 'Set ' + u.email + ' to ' + role + '.');
+      const row = (USERS[u.org_id] || []).find(x => x.email === u.email); if (row) row.role = role;
+      const mem = (TAGS.members || []).find(x => x.email === u.email); if (mem) mem.role = role;
+      await refreshActivity();
+      renderUsers(); renderTagMembers(); renderOverviewTags();
+    } catch (e) { show(m, 'err', e.message); sel.value = prev; sel.disabled = false; }
+  }
+  async function deleteUser(u, btn) {
+    const ask = u.pending
+      ? 'Revoke the invite for ' + u.email + '?\n\nTheir set-password link stops working and their login is removed. You can invite them again later.'
+      : 'Delete ' + u.email + '?\n\nThis removes their login and their portal access. Anything they were assigned becomes unassigned. This cannot be undone.';
+    if (!confirm(ask)) return;
+    btn.disabled = true; const m = $('#usersMsg'); m.className = 'msg';
+    try {
+      await api('/portal/admin/users/delete', { method: 'POST', body: JSON.stringify({ email: u.email }) });
+      show(m, 'ok', (u.pending ? 'Revoked the invite for ' : 'Deleted ') + u.email + '.');
+      USERS[u.org_id] = (USERS[u.org_id] || []).filter(x => x.email !== u.email);
+      TAGS.members = (TAGS.members || []).filter(x => x.email !== u.email);
+      await refreshActivity();
+      renderUsers(); renderStats(); renderOrgs(); renderTagMembers(); renderOverviewTags(); renderBell();
+    } catch (e) { show(m, 'err', e.message); btn.disabled = false; }
+  }
+
+  // ------------------------------------------------------------------ tags
+  // CAT is the catalogue being edited and the only thing the editor changes; restricted_tags is
+  // derived from it server-side. A tag is ordinary metadata until it is ticked as restricting.
+  const TAG_COLOURS = ['', '#5b8cff', '#37e0c8', '#7bd88f', '#f4c56b', '#ff8f6b', '#ff6b7d', '#c98bff', '#8fa3c8'];
+  let NEWCOLOR = '';
+  const normTag = v => String(v || '').trim().toLowerCase().slice(0, 40);
+  const normColor = v => /^#[0-9a-f]{6}$/.test(String(v || '').trim().toLowerCase()) ? String(v).trim().toLowerCase() : '';
+  function autoTint(name) {
+    let h = 0;
+    for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+    return 'hsl(' + (h % 360) + ' 62% 68%)';
+  }
+  const tagTint = t => normColor(t.color) || autoTint(t.name);
+  const restrictingNow = () => CAT.filter(t => t.restricts).map(t => t.name).sort();
+  function markDirty(on) { TAG_DIRTY = on; $('#tagDirty').hidden = !on; }
+
+  function swatchRow(host, current, onPick) {
+    host.textContent = '';
+    TAG_COLOURS.forEach(c => {
+      const b = el('button', 'sw' + (c ? '' : ' auto') + (normColor(current) === c ? ' on' : '')); b.type = 'button';
+      if (c) b.style.background = c;
+      b.title = c ? 'Use ' + c : 'Auto: colour made from the tag name';
+      b.addEventListener('click', e => { e.preventDefault(); onPick(c); });
+      host.appendChild(b);
+    });
+  }
+  function renderTagEditor() {
+    swatchRow($('#tNewSw'), NEWCOLOR, c => { NEWCOLOR = c; renderTagEditor(); });
+    $('#tPolicy').value = TAGS.policy || 'open';
+    renderTagList(); renderTagMembers(); markDirty(TAG_DIRTY);
+  }
+  function renderTagList() {
+    const wrap = $('#tList'); wrap.textContent = '';
+    if (FAILED.has('tags')) { wrap.appendChild(el('div', 'empty', 'Could not load tags: ' + FAILED.get('tags'))); return; }
+    if (!CAT.length) { wrap.appendChild(el('div', 'empty', 'No tags yet. Add one above, then it can be put on a dataset.')); return; }
+    CAT.slice().sort((a, b) => a.name.localeCompare(b.name)).forEach(t => {
+      const row = el('div', 'trow' + (t.restricts ? ' on' : '')); row.dataset.tag = t.name;
+      row.appendChild(tagPill(t));
+      const d = el('input', 'desc'); d.maxLength = 140; d.value = t.description || ''; d.placeholder = 'What this tag is for';
+      d.setAttribute('aria-label', 'Description of ' + t.name);
+      d.addEventListener('input', () => { t.description = d.value; markDirty(true); });
+      row.appendChild(d);
+      const n = countOf(t.name);
+      row.appendChild(el('span', 'cnt', n == null ? '' : n + ' dataset' + (n === 1 ? '' : 's')));
+      const sws = el('span', 'swatches');
+      swatchRow(sws, t.color, c => { t.color = c; markDirty(true); renderTagList(); });
+      row.appendChild(sws);
+      const lab = el('label', 'tres');
+      const cb = el('input'); cb.type = 'checkbox'; cb.checked = t.restricts;
+      cb.addEventListener('change', () => { t.restricts = cb.checked; row.classList.toggle('on', t.restricts); markDirty(true); renderTagMembers(); });
+      lab.appendChild(cb); lab.appendChild(document.createTextNode('restricts'));
+      lab.title = 'Only members granted this tag can see a dataset carrying it.';
+      row.appendChild(lab);
+      const del = el('button', 'btn-ghost btn-x', 'Remove'); del.type = 'button';
+      del.addEventListener('click', () => {
+        if (t.restricts && !confirm(removeWarning(t.name))) return;
+        CAT = CAT.filter(x => x.name !== t.name); markDirty(true); renderTagList(); renderTagMembers();
+      });
+      row.appendChild(del);
+      wrap.appendChild(row);
+    });
+  }
+  // Removing a RESTRICTING tag is the dangerous direction: those datasets stop being restricted by
+  // it, and under `open` that hands them to everybody. Said before it is done.
+  function removeWarning(name) {
+    return '"' + name + '" currently restricts access.\n\nRemoving it stops it restricting anything, so datasets carrying it '
+      + 'become visible to every member' + ((TAGS.policy || 'open') === 'open' ? '' : ' holding another of their tags') + '.\n\nRemove it?';
+  }
+  function addTagToEditor() {
+    const inp = $('#tNew'), name = normTag(inp.value), msg = $('#tagMsg'); msg.className = 'msg';
+    if (!name) return;
+    if (CAT.some(t => t.name === name)) { show(msg, 'err', '"' + name + '" is already in the list.'); return; }
+    // New tags never restrict on creation: one that did would hide those datasets from everyone
+    // before anybody could be granted it.
+    CAT.push({ name: name, restricts: false, color: NEWCOLOR, description: '' });
+    inp.value = ''; markDirty(true); renderTagList(); inp.focus();
+  }
+  function renderTagMembers() {
+    const wrap = $('#tagMembers'); wrap.textContent = '';
+    const all = TAGS.members || [];
+    if (!all.length) { wrap.appendChild(el('div', 'empty', 'No users yet.')); return; }
+    all.forEach(m => {
+      const row = el('div', 'grow');
+      const w = el('div', 'who'); w.appendChild(el('span', 'avatar sm', initial(m.email))); w.appendChild(el('span', null, m.email)); row.appendChild(w);
+      if (m.role === 'admin') {
+        const p = el('span', 'pill accent', 'Admin: sees everything'); p.title = 'Admins are never restricted by tags.';
+        row.appendChild(p); wrap.appendChild(row); return;
+      }
+      // Only a RESTRICTING tag can be granted; a stale grant is shown so it can be removed.
+      const held = new Set(m.tags || []);
+      const offer = [...new Set(restrictingNow().concat([...held]))].sort();
+      if (!offer.length) { row.appendChild(el('span', 'pill', 'Nothing restricts yet')); wrap.appendChild(row); return; }
+      const chips = el('div', 'chips');
+      offer.forEach(t => {
+        const b = el('button', 'grantchip' + (held.has(t) ? ' on' : ''), t); b.type = 'button';
+        b.title = restrictingNow().includes(t) ? 'Click to ' + (held.has(t) ? 'revoke' : 'grant') + ' "' + t + '".'
+                                               : '"' + t + '" no longer restricts anything. Click to remove this leftover grant.';
+        b.addEventListener('click', () => {
+          if (held.has(t)) held.delete(t); else held.add(t);
+          b.classList.toggle('on', held.has(t));
+          saveUserTags(m, [...held].sort(), chips);
+        });
+        chips.appendChild(b);
+      });
+      row.appendChild(chips);
+      wrap.appendChild(row);
+    });
+    if (!all.some(m => m.role !== 'admin')) wrap.appendChild(el('div', 'empty', 'Everyone here is an admin, so nothing is restricted for anyone yet.'));
+  }
+  async function saveUserTags(m, tags, chips) {
+    const msg = $('#tagMsg'); msg.className = 'msg';
+    const btns = [...chips.querySelectorAll('.grantchip')]; btns.forEach(b => { b.disabled = true; });
+    try {
+      await api('/portal/admin/users/tags', { method: 'POST', body: JSON.stringify({ email: m.email, tags: tags }) });
+      m.tags = tags;
+      show(msg, 'ok', tags.length ? 'Granted ' + m.email + ': ' + tags.join(', ') + '.' : m.email + ' now sees only unrestricted datasets.');
+      await refreshActivity();
+      renderUsers(); renderOverviewTags();
+    } catch (e) { show(msg, 'err', e.message); renderTagMembers(); }
+    btns.forEach(b => { b.disabled = false; });
+  }
+  // Save a catalogue. Shared by the editor's Save and the overview's add and remove, so the
+  // warnings about members losing access are asked whichever way the change is made.
+  async function saveCatalogue(cat, policy, msg) {
+    const restricted = cat.filter(t => t.restricts).map(t => t.name).sort();
+    const added = restricted.filter(t => !(TAGS.restricted_tags || []).includes(t));
+    if (added.length) {
+      const exposed = (TAGS.members || []).filter(m => m.role !== 'admin' && !added.some(t => (m.tags || []).includes(t))).map(m => m.email);
+      if (exposed.length) {
+        const who = exposed.slice(0, 6).join(', ') + (exposed.length > 6 ? ' and ' + (exposed.length - 6) + ' more' : '');
+        if (!confirm('Restricting ' + added.join(', ') + ' will hide those datasets from ' + exposed.length + ' member'
+                     + (exposed.length === 1 ? '' : 's') + ':\n\n' + who + '\n\nGrant the tag first if they should keep access. Continue?')) return false;
+      }
+    }
+    const r = await api('/portal/admin/org/tags', { method: 'POST', body: JSON.stringify({ tags: cat, policy: policy }) });
+    TAGS.tags = r.tags || []; TAGS.restricted_tags = r.restricted_tags || []; TAGS.policy = r.policy || 'open';
+    CAT = TAGS.tags.map(t => ({ name: t.name, restricts: !!t.restricts, color: normColor(t.color), description: t.description || '' }));
+    markDirty(false);
+    show(msg, 'ok', 'Saved ' + CAT.length + ' tag' + (CAT.length === 1 ? '' : 's') + '. '
+      + (TAGS.restricted_tags.length ? 'Restricting: ' + TAGS.restricted_tags.join(', ') + '.' : 'None of them restrict, so every dataset is visible to every member.')
+      + (TAGS.policy === 'closed' ? ' Datasets with none of these tags are hidden from members.' : ''));
+    await refreshActivity();
+    renderTagEditor(); renderOverviewTags(); renderUsers(); renderOrgs(); renderStats();
+    return true;
+  }
+  async function saveFromEditor() {
+    const btn = $('#saveOrgTags'), msg = $('#tagMsg'); msg.className = 'msg'; btn.disabled = true;
+    try { await saveCatalogue(CAT, $('#tPolicy').value, msg); } catch (e) { show(msg, 'err', e.message); }
+    btn.disabled = false;
+  }
+  // The overview's add and remove save at once, as their buttons suggest. If the editor holds
+  // unsaved changes they are not overwritten: the change goes into the editor instead.
+  async function addTagNow() {
+    const inp = $('#ovTagNew'), name = normTag(inp.value), msg = $('#ovTagMsg'); msg.className = 'msg';
+    if (!name) return;
+    if (CAT.some(t => t.name === name)) { show(msg, 'err', '"' + name + '" is already a tag.'); return; }
+    if (TAG_DIRTY) {
+      CAT.push({ name: name, restricts: false, color: '', description: '' }); inp.value = '';
+      renderTagList(); go('tags', { flash: '#tList [data-tag="' + CSS.escape(name) + '"]' });
+      show($('#tagMsg'), 'ok', 'Added "' + name + '" to your unsaved changes. Press Save tags to keep them.');
+      return;
+    }
+    try {
+      const stored = (TAGS.tags || []).concat([{ name: name, restricts: false, color: '' }]);
+      if (await saveCatalogue(stored, TAGS.policy || 'open', msg)) { inp.value = ''; show(msg, 'ok', 'Added "' + name + '". It can now be put on a dataset.'); }
+    } catch (e) { show(msg, 'err', e.message); }
+  }
+  async function removeTagNow(name) {
+    const msg = $('#ovTagMsg'); msg.className = 'msg';
+    const t = CAT.find(x => x.name === name); if (!t) return;
+    if (!confirm(t.restricts ? removeWarning(name) : 'Remove the tag "' + name + '" from your organisation\'s list?')) return;
+    if (TAG_DIRTY) {
+      CAT = CAT.filter(x => x.name !== name); renderTagList(); renderTagMembers(); go('tags');
+      show($('#tagMsg'), 'ok', 'Removed "' + name + '" in your unsaved changes. Press Save tags to keep them.');
+      return;
+    }
+    try {
+      if (await saveCatalogue((TAGS.tags || []).filter(x => x.name !== name), TAGS.policy || 'open', msg)) show(msg, 'ok', 'Removed "' + name + '".');
+    } catch (e) { show(msg, 'err', e.message); }
+  }
+  function editTag(name) {
+    go('tags');
+    const row = $('#tList [data-tag="' + CSS.escape(name) + '"]');
+    if (row) { flash(row); const d = row.querySelector('.desc'); if (d) d.focus({ preventScroll: true }); }
+  }
+
+  // ------------------------------------------------------------------ agents
+  /* Registering an agent is an administrative act in the same class as adding a member: it
+     authorises a machine to run this organisation's assessments and to be handed credentials
+     scoped to its data. The API enforces that; this panel just has to not pretend otherwise. */
+  function renderAgents() {
+    const wrap = $('#agList'); wrap.textContent = '';
+    if (FAILED.has('agents')) { wrap.appendChild(el('div', 'empty', 'Could not load agents: ' + FAILED.get('agents'))); return; }
+    if (!AGENTS_CONFIGURED) wrap.appendChild(el('div', 'empty', 'Agents are not enabled on this deployment yet (the API is missing DQ_AGENT_UPLOAD_ROLE_ARN).'));
+    if (!AGENTS.length) { wrap.appendChild(el('div', 'empty', 'No agents registered.')); return; }
+    AGENTS.forEach(a => {
+      const row = el('div', 'arow'); row.dataset.agent = a.id;
+      const dot = healthDot(a); dot.title = a.health || ''; row.appendChild(dot);
       row.appendChild(el('span', 'aname', a.name || a.id));
       row.appendChild(el('span', 'aid', a.id));
-      /* Health is the headline, but "queued 3" is what tells an operator the machine being down
-         is actually holding something up rather than merely being idle. */
-      const state = a.revoked ? 'revoked'
-        : (a.health === 'never' ? 'awaiting its config' : a.health + ' \u00b7 ' + agentAgo(a.lastSeen));
-      row.appendChild(el('span', 'utag' + (a.health === 'online' ? ' admin' : ''), state));
-      if (a.version) row.appendChild(el('span', 'utag', 'v' + a.version));
-      if (a.queued) row.appendChild(el('span', 'utag pending', a.queued + ' queued'));
-      if (a.running) row.appendChild(el('span', 'utag', 'running'));
-
+      row.appendChild(el('span', 'pill' + (a.health === 'online' ? ' ok' : ''), agentState(a)));
+      if (a.version) row.appendChild(el('span', 'pill', 'v' + a.version));
+      // "3 queued" is what tells an operator a machine being down is holding something up.
+      if (a.queued) row.appendChild(el('span', 'pill warn', a.queued + ' queued'));
+      if (a.running) row.appendChild(el('span', 'pill', 'running'));
       if (!a.revoked) {
-        const info = el('button', 'udel ai', 'i');
-        info.style.borderColor = 'var(--line)'; info.style.color = 'var(--muted)';
+        const info = el('button', 'btn-ghost', 'Install steps'); info.type = 'button';
         info.title = 'How to install this agent. Shows the steps and issues nothing.';
-        info.setAttribute('aria-label', 'Installation instructions for ' + (a.name || a.id));
         info.addEventListener('click', () => showInstructions(a, false));
         row.appendChild(info);
-        const cfg = el('button', 'udel', 'Download config');
-        cfg.style.borderColor = 'var(--line)'; cfg.style.color = 'var(--muted)';
-        cfg.title = 'agent.config for this machine. Issuing one REPLACES any config already out '
-                  + 'there, so the previous file stops working.';
+        const cfg = el('button', 'btn-ghost', 'Download config'); cfg.type = 'button';
+        cfg.title = 'agent.config for this machine. Issuing one REPLACES any config already out there, so the previous file stops working.';
         cfg.addEventListener('click', () => downloadConfig(a));
         row.appendChild(cfg);
-        const rev = el('button', 'udel', 'Revoke');
+        const rev = el('button', 'btn-ghost btn-x', 'Revoke'); rev.type = 'button';
         rev.title = 'Stop this machine claiming any more work, within seconds.';
         rev.addEventListener('click', () => revokeAgent(a, rev));
         row.appendChild(rev);
       } else {
-        const del = el('button', 'udel', 'Delete');
+        const del = el('button', 'btn-ghost btn-x', 'Delete'); del.type = 'button';
         del.addEventListener('click', () => deleteAgent(a, del));
         row.appendChild(del);
       }
       wrap.appendChild(row);
     });
   }
-
   function showNext(agent) {
     /* Registering names a machine; it does not yet trust one. The config is the only remaining
        step, so it is offered right here rather than left to be found on a row below. */
-    const box = $('#agToken'); box.innerHTML = '';
+    const box = $('#agToken'); box.textContent = '';
     const label = agent.name || agent.id;
     const card = el('div', 'atoken');
-    card.appendChild(el('div', null,
-      'Registered ' + label + ' as ' + agent.id + '. It has no credential yet.'));
-    const btn = el('button', 'udel', 'Download config for ' + label);
-    btn.style.borderColor = 'var(--line)'; btn.style.color = 'var(--muted)';
+    card.appendChild(el('div', null, 'Registered ' + label + ' as ' + agent.id + '. It has no credential yet.'));
+    const btn = el('button', 'btn-ghost', 'Download config for ' + label); btn.type = 'button'; btn.style.margin = '8px 0';
     btn.addEventListener('click', () => downloadConfig(agent));
     card.appendChild(btn);
-    card.appendChild(el('div', null,
-      'Put that file beside dq-agent.exe on the machine and start the service. Then point a '
-      + 'credential profile at agent id "' + agent.id + '".'));
+    card.appendChild(el('div', null, 'Put that file beside dq-agent.exe on the machine and start the service. Then point a credential profile at agent id "' + agent.id + '".'));
     box.appendChild(card);
   }
-
   /* One builder, two ways in. Reading the steps used to require pressing Download config, which
-     RETIRES the file somebody may already be installing from - a destructive act for a reason as
-     ordinary as "what was step 3 again". The info button opens the same text and mints nothing,
-     and says so, because an identical-looking card would leave that in doubt. */
+     RETIRES the file somebody may already be installing from. The Install steps button opens the
+     same text and mints nothing, and says so. */
   function showInstructions(agent, issued) {
-    const box = $('#agToken'); box.innerHTML = '';
+    const box = $('#agToken'); box.textContent = '';
     const label = agent.name || agent.id;
     const card = el('div', 'atoken');
-    const add = (cls, text) => card.appendChild(
-      el(cls === 'code' ? 'code' : 'div', cls === 'code' ? null : cls, text));
-
+    const add = (cls, text) => card.appendChild(el(cls === 'code' ? 'code' : 'div', cls === 'code' ? null : cls, text));
     if (issued) {
       add('ah', 'agent.config downloaded for ' + label);
-      add(null, 'Any config issued for this agent before now has stopped working, so this file is '
-              + 'the one that has to reach the machine.');
+      add(null, 'Any config issued for this agent before now has stopped working, so this file is the one that has to reach the machine.');
     } else {
       add('ah', 'Installing ' + label);
-      add(null, 'Nothing has been issued by opening this, and the config already out there still '
-              + 'works. To get a fresh one, press Download config on this row.');
+      add(null, 'Nothing has been issued by opening this, and the config already out there still works. To get a fresh one, press Download config on its row.');
     }
-
     add('ah', 'Getting it there');
-    add(null, 'Treat it like a password. Anyone holding this file can act as this agent until '
-            + 'it is revoked, so send it by encrypted mail, a password manager or a secure file '
-            + 'drop rather than in a ticket. On the machine, keep it readable only by '
-            + 'administrators.');
-
+    add(null, 'Treat it like a password. Anyone holding this file can act as this agent until it is revoked, so send it by encrypted mail, '
+            + 'a password manager or a secure file drop rather than in a ticket. On the machine, keep it readable only by administrators.');
     add('ah', 'On a machine that does not have the agent yet');
-    add('ali', '1. Download the agent zip from the Agents tab in the app, copy it to that '
-             + 'machine, and check it against the SHA-256 shown there before extracting it.');
-    add('ali', '2. Extract it somewhere permanent, for example '
-             + 'C:\\Program Files\\Viseon\\DataAssurance. Not the Downloads folder: the '
-             + 'service runs from wherever you leave it.');
+    add('ali', '1. Download the agent zip from the Agents tab in the app, copy it to that machine, and check it against the SHA-256 shown there before extracting it.');
+    add('ali', '2. Extract it somewhere permanent, for example C:\\Program Files\\Viseon\\DataAssurance. Not the Downloads folder: the service runs from wherever you leave it.');
     add('ali', '3. Put agent.config in that folder, beside dq-agent.exe.');
     add('ali', '4. Open Command Prompt as Administrator, change to that folder, and run:');
     add('code', 'dq-agent-service.cmd INSTALL');
     add('code', 'dq-agent-service.cmd START');
-    add('afine', 'To assess files on that machine or a share, list the folders it may read on '
-               + 'the INSTALL line instead. Left out, the agent reads no local file at all:');
+    add('afine', 'To assess files on that machine or a share, list the folders it may read on the INSTALL line instead. Left out, the agent reads no local file at all:');
     add('code', 'dq-agent-service.cmd INSTALL "D:\\qvd;\\\\fs01\\finance"');
-    add('ali', '5. For a database source, put the password in secrets.json in the same folder, '
-             + 'then run dq-agent-service.cmd RESTART. It never leaves that machine.');
+    add('ali', '5. For a database source, put the password in secrets.json in the same folder, then run dq-agent-service.cmd RESTART. It never leaves that machine.');
     add('ali', '6. Within a minute ' + label + ' shows online in the list below.');
-
     add('ah', 'On a machine that already has the agent');
     add('ali', '1. Put agent.config in the install folder, replacing the one already there.');
     add('ali', '2. Restart the service:');
     add('code', 'dq-agent-service.cmd RESTART');
-
     add('ah', 'Stopping and checking it');
     add('ali', 'Is it running:');
     add('code', 'dq-agent-service.cmd STATUS');
-    add('ali', 'Stop it. Anything queued for this agent waits until it is back rather than being '
-             + 'lost, so stopping it is safe at any time:');
+    add('ali', 'Stop it. Anything queued for this agent waits until it is back rather than being lost, so stopping it is safe at any time:');
     add('code', 'dq-agent-service.cmd STOP');
     add('ali', 'Stop it and unregister the service entirely:');
     add('code', 'dq-agent-service.cmd REMOVE');
-
-    add('afine', 'Network shares, proxies and what to do when something is wrong are in the '
-               + 'installation runbook.');
-
-    const close = el('button', 'ax', '\u00d7');
-    close.type = 'button';
-    close.title = 'Dismiss';
+    add('afine', 'Network shares, proxies and what to do when something is wrong are in the installation runbook.');
+    const close = el('button', 'ax', '\u00d7'); close.type = 'button'; close.title = 'Dismiss';
     close.setAttribute('aria-label', 'Dismiss these instructions');
-    close.addEventListener('click', () => { box.innerHTML = ''; });
+    close.addEventListener('click', () => { box.textContent = ''; });
     card.appendChild(close);
-
     box.appendChild(card);
-    if (box.scrollIntoView) box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
-
   async function downloadConfig(agent) {
     try {
       const r = await agentsApi({ action: 'config', agent_id: agent.id });
-      /* A Blob and a synthetic click: the payload is minted by a POST, so there is no URL to link
-         to, and putting a credential in a query string to make one would be worse. */
+      // A Blob and a synthetic click: the payload is minted by a POST, so there is no URL to link
+      // to, and putting a credential in a query string to make one would be worse.
       const url = URL.createObjectURL(new Blob([r.config], { type: 'application/octet-stream' }));
-      const link = document.createElement('a');
-      link.href = url; link.download = r.filename || 'agent.config';
+      const link = document.createElement('a'); link.href = url; link.download = r.filename || 'agent.config';
       document.body.appendChild(link); link.click(); link.remove();
-      /* Revoked on a timer: Firefox cancels an in-flight download when the object URL goes away
-         in the same tick. */
-      setTimeout(() => URL.revokeObjectURL(url), 10000);
+      setTimeout(() => URL.revokeObjectURL(url), 10000);   // a timer: Firefox cancels a download whose URL goes at once
       showInstructions(agent, true);
-      loadAgents();
+      await refreshAgents();
     } catch (e) { show($('#agMsg'), 'err', e.message); }
   }
-
   async function revokeAgent(agent, btn) {
-    if (!confirm('Revoke ' + (agent.name || agent.id) + '? It stops claiming work within seconds, '
-                 + 'and the config on that machine stops working for good.')) return;
+    if (!confirm('Revoke ' + (agent.name || agent.id) + '? It stops claiming work within seconds, and the config on that machine stops working for good.')) return;
     btn.disabled = true;
-    try { await agentsApi({ action: 'revoke', agent_id: agent.id }); await loadAgents(); }
+    try { await agentsApi({ action: 'revoke', agent_id: agent.id }); await refreshAgents(); }
     catch (e) { btn.disabled = false; show($('#agMsg'), 'err', e.message); }
   }
-
   async function deleteAgent(agent, btn) {
     if (!confirm('Delete ' + (agent.name || agent.id) + ' for good?')) return;
     btn.disabled = true;
-    try { await agentsApi({ action: 'delete', agent_id: agent.id }); await loadAgents(); }
+    try { await agentsApi({ action: 'delete', agent_id: agent.id }); await refreshAgents(); }
     catch (e) { btn.disabled = false; show($('#agMsg'), 'err', e.message); }
   }
-
-  async function loadAgents() {
+  async function registerAgent() {
+    const name = ($('#agName').value || '').trim();
+    if (!name) { show($('#agMsg'), 'err', 'Name the machine first.'); $('#agName').focus(); return; }
+    $('#agAdd').disabled = true;
     try {
-      const r = await agentsApi({ action: 'list' });
-      renderAgents(r.agents || [], r.configured !== false);
-    } catch (e) {
-      $('#agList').innerHTML = '';
-      $('#agList').appendChild(el('div', 'uempty', 'Could not load agents: ' + e.message));
+      const r = await agentsApi({ action: 'create', name: name });
+      $('#agName').value = '';
+      showNext({ id: r.id, name: r.name });
+      show($('#agMsg'), 'ok', 'Registered as ' + r.id + '.');
+      await refreshAgents();
+    } catch (e) { show($('#agMsg'), 'err', e.message); }
+    finally { $('#agAdd').disabled = false; }
+  }
+  async function refreshAgents() {
+    await attempt('agents', loadAgents);
+    await refreshActivity();
+    renderAgents(); renderOverviewAgents(); renderStats(); renderHealth(); renderBell();
+  }
+
+  // ------------------------------------------------------------------ activity
+  async function refreshActivity() {
+    const want = IS_SUPER ? ($('#actOrgSel').value || '') : '';
+    await attempt('activity', () => loadActivity(want));
+    renderActivity(); renderOverviewActivity(); renderHealth();
+  }
+  function renderActivity() {
+    const box = $('#actFull'); box.textContent = '';
+    if (IS_SUPER) {
+      $('#actToolbar').hidden = false;
+      const sel = $('#actOrgSel'), keep = sel.value || '';
+      sel.textContent = '';
+      const all = el('option', null, 'All organisations'); all.value = ''; sel.appendChild(all);
+      ORGS.forEach(o => { const opt = el('option', null, o.name || o.org_id); opt.value = o.org_id; sel.appendChild(opt); });
+      sel.value = ORGS.some(o => o.org_id === keep) ? keep : '';
+      $('#actSub').textContent = 'Every administrative change, newest first, across the organisations you choose.';
     }
+    box.appendChild(ACTIVITY.length ? activityTable(ACTIVITY, IS_SUPER) : activityEmpty());
   }
 
-  function wireAgents() {
-    $('#agAdd').addEventListener('click', async () => {
-      const name = ($('#agName').value || '').trim();
-      if (!name) { show($('#agMsg'), 'err', 'Name the machine first.'); return; }
-      $('#agAdd').disabled = true;
-      try {
-        const r = await agentsApi({ action: 'create', name: name });
-        $('#agName').value = '';
-        showNext({ id: r.id, name: r.name });
-        show($('#agMsg'), 'ok', 'Registered as ' + r.id + '.');
-        await loadAgents();
-      } catch (e) { show($('#agMsg'), 'err', e.message); }
-      finally { $('#agAdd').disabled = false; }
+  // ------------------------------------------------------------------ needs attention (the bell)
+  // Things an admin can act on, worked out from what this page has already loaded. Nothing is
+  // invented: each item is a fact with a place to go and do something about it.
+  function attention() {
+    const out = [];
+    const pend = allUsers().filter(u => u.pending);
+    if (pend.length) out.push({ icon: 'mail', text: pend.length + ' invite' + (pend.length === 1 ? '' : 's') + ' not accepted yet',
+                                sub: pend.slice(0, 3).map(u => u.email).join(', ') + (pend.length > 3 ? '…' : ''), go: () => go('users') });
+    AGENTS.filter(a => !a.revoked && (a.health === 'offline' || a.health === 'stale')).forEach(a =>
+      out.push({ icon: 'cloud', text: (a.name || a.id) + ' is ' + a.health, sub: 'Last heard from ' + ago(a.lastSeen),
+                 go: () => { go('agents'); flash($('#agList [data-agent="' + CSS.escape(a.id) + '"]')); } }));
+    AGENTS.filter(a => !a.revoked && a.health === 'never').forEach(a =>
+      out.push({ icon: 'cloud', text: (a.name || a.id) + ' has no config yet', sub: 'Download its config to bring it online',
+                 go: () => { go('agents'); flash($('#agList [data-agent="' + CSS.escape(a.id) + '"]')); } }));
+    if (KEYS) {
+      const soon = KEYS.filter(k => k.status === 'active' && k.expiresAt && k.expiresAt - Date.now() / 1000 < 7 * 86400);
+      if (soon.length) out.push({ icon: 'key', text: soon.length + ' API key' + (soon.length === 1 ? '' : 's') + ' expire within a week',
+                                  sub: soon.slice(0, 3).map(k => k.name + (k.owner ? ' (' + k.owner + ')' : '')).join(', '),
+                                  href: '/dq-portal' });
+    }
+    if (FAILED.size) out.push({ icon: 'alert', text: 'Some data could not load', sub: [...FAILED.keys()].join(', ') });
+    return out;
+  }
+  function renderBell() {
+    const items = attention();
+    const n = $('#bellN'); n.hidden = !items.length; n.textContent = items.length > 9 ? '9+' : String(items.length);
+    $('#bellBtn').setAttribute('aria-label', items.length ? items.length + ' things need attention' : 'Nothing needs attention');
+    const pop = $('#bellPop'); pop.textContent = '';
+    pop.appendChild(el('div', 'pop-h', 'Needs attention'));
+    if (!items.length) { pop.appendChild(el('div', 'pop-e', 'Nothing needs attention right now.')); return; }
+    items.forEach(it => {
+      const b = it.href ? el('a', 'pop-i') : el('button', 'pop-i');
+      if (it.href) b.href = it.href; else b.type = 'button';
+      b.appendChild(ico(it.icon));
+      const d = el('div'); d.appendChild(document.createTextNode(it.text)); if (it.sub) d.appendChild(el('small', null, it.sub)); b.appendChild(d);
+      if (it.go) b.addEventListener('click', () => { closePops(); it.go(); });
+      pop.appendChild(b);
     });
-    $('#agName').addEventListener('keydown', e => { if (e.key === 'Enter') $('#agAdd').click(); });
+  }
+  function openBell() { closePops(); $('#bellPop').hidden = false; $('#bellBtn').setAttribute('aria-expanded', 'true'); }
+
+  // ------------------------------------------------------------------ search
+  // Across what is loaded: sections, people, tags, agents and (for a super-admin) organisations.
+  function searchIndex() {
+    const out = [];
+    [['overview', 'Overview'], ['orgs', IS_SUPER ? 'Organisations' : 'Organisation'], ['users', 'Users'], ['tags', 'Tag Management'],
+     ['agents', 'On-premises Agents'], ['activity', 'Activity']].forEach(([v, l]) => out.push({ kind: 'Section', icon: 'right', label: l, go: () => go(v) }));
+    allUsers().forEach(u => out.push({ kind: 'User', icon: 'user', label: u.email, sub: (IS_SUPER ? orgName(u.org_id) + ' · ' : '') + (u.pending ? 'invite pending' : u.role),
+      go: () => { if (IS_SUPER) $('#usersOrgSel').value = ''; go('users'); renderUsers(); flash($('#usersRows [data-user="' + CSS.escape(u.email) + '"]')); } }));
+    CAT.forEach(t => out.push({ kind: 'Tag', icon: 'tag', label: t.name, sub: (t.restricts ? 'restricts' : 'open') + (t.description ? ' · ' + t.description : ''), go: () => editTag(t.name) }));
+    AGENTS.forEach(a => out.push({ kind: 'Agent', icon: 'cloud', label: a.name || a.id, sub: agentState(a),
+      go: () => { go('agents'); flash($('#agList [data-agent="' + CSS.escape(a.id) + '"]')); } }));
+    if (IS_SUPER) ORGS.forEach(o => out.push({ kind: 'Organisation', icon: 'building', label: o.name || o.org_id, sub: o.org_id, go: () => go('orgs') }));
+    return out;
+  }
+  let QSEL = 0, QHITS = [];
+  function runSearch() {
+    const q = $('#q').value.trim().toLowerCase(), pop = $('#qres');
+    if (!q) { pop.hidden = true; return; }
+    QHITS = searchIndex().filter(x => (x.label + ' ' + (x.sub || '') + ' ' + x.kind).toLowerCase().includes(q)).slice(0, 12);
+    QSEL = 0;
+    pop.textContent = '';
+    if (!QHITS.length) pop.appendChild(el('div', 'pop-e', 'Nothing matches "' + q + '".'));
+    QHITS.forEach((h, i) => {
+      const b = el('button', 'pop-i' + (i === QSEL ? ' sel' : '')); b.type = 'button'; b.setAttribute('role', 'option');
+      b.appendChild(ico(h.icon));
+      const d = el('div'); d.appendChild(document.createTextNode(h.label)); if (h.sub) d.appendChild(el('small', null, h.sub)); b.appendChild(d);
+      b.appendChild(el('span', 'k', h.kind));
+      b.addEventListener('mousedown', e => { e.preventDefault(); pick(i); });
+      pop.appendChild(b);
+    });
+    pop.hidden = false;
+  }
+  function pick(i) {
+    const h = QHITS[i]; if (!h) return;
+    $('#q').value = ''; $('#qres').hidden = true; $('#q').blur();
+    h.go();
+  }
+  function closePops() {
+    ['#bellPop', '#userPop'].forEach(s => { $(s).hidden = true; });
+    ['#bellBtn', '#userBtn'].forEach(s => $(s).setAttribute('aria-expanded', 'false'));
   }
 
-  function wireLogout(el) { el.addEventListener('click', e => { e.preventDefault(); location.href = API_BASE + '/portal/auth/logout'; }); }
-  wireLogout($('#logout')); wireLogout($('#deniedLogout'));
+  // ------------------------------------------------------------------ wiring
+  function wire() {
+    paintIcons();
+    $$('.nav [data-view]').forEach(b => b.addEventListener('click', () => go(b.dataset.view)));
+    document.addEventListener('click', e => {
+      const g = e.target.closest('[data-go]'); if (g) go(g.dataset.go);
+      if (!e.target.closest('.rel')) closePops();
+    });
+    $('#menuBtn').addEventListener('click', () => $('#app').classList.toggle('open'));
+    $('#bellBtn').addEventListener('click', () => { const open = $('#bellPop').hidden; closePops(); if (open) openBell(); });
+    $('#userBtn').addEventListener('click', () => { const open = $('#userPop').hidden; closePops();
+      if (open) { $('#userPop').hidden = false; $('#userBtn').setAttribute('aria-expanded', 'true'); } });
+    $('#q').addEventListener('input', runSearch);
+    $('#q').addEventListener('focus', runSearch);
+    $('#q').addEventListener('blur', () => setTimeout(() => { $('#qres').hidden = true; }, 120));
+    $('#q').addEventListener('keydown', e => {
+      const items = [...$('#qres').querySelectorAll('.pop-i')];
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault(); if (!items.length) return;
+        QSEL = (QSEL + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length;
+        items.forEach((b, i) => b.classList.toggle('sel', i === QSEL));
+      } else if (e.key === 'Enter') { e.preventDefault(); pick(QSEL); }
+      else if (e.key === 'Escape') { $('#q').value = ''; $('#qres').hidden = true; $('#q').blur(); }
+    });
+    document.addEventListener('keydown', e => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); $('#q').focus(); $('#q').select(); }
+      else if (e.key === 'Escape') closePops();
+    });
+    $('#createOrg').addEventListener('click', createOrg);
+    $('#createUser').addEventListener('click', createUser);
+    $('#uEmail').addEventListener('keydown', e => { if (e.key === 'Enter') createUser(); });
+    $('#usersInvite').addEventListener('click', () => go('overview', { focus: '#uEmail' }));
+    $('#usersOrgSel').addEventListener('change', renderUsers);
+    $('#actOrgSel').addEventListener('change', () => refreshActivity());
+    $('#ovTagAdd').addEventListener('click', addTagNow);
+    $('#ovTagNew').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); addTagNow(); } });
+    $('#tAdd').addEventListener('click', addTagToEditor);
+    $('#tNew').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); addTagToEditor(); } });
+    $('#tPolicy').addEventListener('change', () => markDirty(true));
+    $('#saveOrgTags').addEventListener('click', saveFromEditor);
+    $('#agAdd').addEventListener('click', registerAgent);
+    $('#agName').addEventListener('keydown', e => { if (e.key === 'Enter') registerAgent(); });
+    $('#ovAgentAdd').addEventListener('click', () => go('agents', { focus: '#agName' }));
+    // Unsaved tag edits are the one thing on this page a click can lose.
+    window.addEventListener('beforeunload', e => { if (TAG_DIRTY) { e.preventDefault(); e.returnValue = ''; } });
+    window.addEventListener('hashchange', () => go(location.hash.slice(1)));
+    const logout = e => { e.preventDefault(); location.href = API_BASE + '/portal/auth/logout'; };
+    $('#logout').addEventListener('click', logout); $('#deniedLogout').addEventListener('click', logout);
+  }
 
   (async function init() {
     let me = null;
     try { me = await api('/portal/auth/me'); } catch { me = null; }
     if (!me || !me.ok || !me.user) { location.href = API_BASE + '/portal/auth/login'; return; }
-    ME = me.user; IS_SUPER = !!ME.is_super; MY_ORG_ID = (ME.org_id || '').toLowerCase();
-    $('#loading').style.display = 'none';
-    const isAdmin = IS_SUPER || (ME.role || '').toLowerCase() === 'admin';
-    if (!isAdmin) {
-      $('#deniedWho').textContent = ME.email || '';
-      $('#denied').style.display = 'block';
-      return;
-    }
-    $('#who').textContent = (ME.email || '') + (IS_SUPER ? ' · super-admin' : '');
-    $('#app').style.display = 'block';
+    ME = me.user; IS_SUPER = !!ME.is_super; MY_ORG_ID = String(ME.home_org_id || ME.org_id || '').toLowerCase();
+    $('#loading').hidden = true;
+    const isAdmin = IS_SUPER || String(ME.role || '').toLowerCase() === 'admin';
+    if (!isAdmin) { $('#deniedWho').textContent = ME.email || ''; $('#denied').hidden = false; return; }
+    wire();
+    const home = ME.home_org_name || ME.org_name || 'Data Assurance';
+    $('#brandOrg').textContent = home; $('#brandLogo').textContent = initial(home);
+    $('#meEmail').textContent = ME.email || ''; $('#meAvatar').textContent = initial(ME.email);
+    $('#meRole').textContent = IS_SUPER ? 'Super admin' : 'Administrator';
+    $('#userAvatar').textContent = initial(ME.email); $('#userName').textContent = (ME.email || '').split('@')[0] || 'Admin';
+    $('#userPopWho').textContent = ME.email || '';
+    $('#backToApp').href = $('#userPopApp').href = location.origin + '/dq-portal';
+    $('#navOrgs').textContent = IS_SUPER ? 'Organisations' : 'Organisation';
+    const domain = String(ME.email || '').split('@')[1];
+    if (domain && !IS_SUPER) $('#uEmail').placeholder = 'person@' + domain;
     if (!IS_SUPER) {
-      // Org-admin: no org creation; the users list is pinned to their own org.
-      const oc = $('#orgCard'); if (oc) oc.style.display = 'none';
-      const sl = $('#subLine'); if (sl) sl.textContent = 'Manage the users in your organisation.';
-      const usl = $('#usersScopeLabel'); if (usl) usl.textContent = ME.org_name || 'your organisation';
+      // Org-admin: no organisation creation, and a new user always joins their own organisation.
+      $('#orgCard').hidden = true;
+      $('#forms').classList.add('solo');
+      $('#userGrid').classList.add('wide');
+      $('#ovTitle').textContent = 'User Administration';
+      $('#ovSub').textContent = 'Create users, manage access and on-premises agents for ' + (ME.org_name || 'your organisation') + '.';
+      $('#sbSub').textContent = 'Manage ' + (ME.org_name || 'your organisation') + '\'s users, tags and agents.';
     } else {
-      const usl = $('#usersScopeLabel'); if (usl) usl.textContent = 'the selected organisation';
+      $('#sbSub').textContent = 'Manage organisations, users and platform access.';
     }
-    try { await loadOrgs(); } catch (e) { show($('#orgMsg'), 'err', 'Could not load orgs: ' + e.message); }
-    try { await loadUsers(); } catch (e) { /* surfaced in usersMsg */ }
-    // Last, and independently: a failure here must not stop the rest of the page working.
-    try { await loadTagSettings(); } catch (e) { /* surfaced in tagMsg */ }
-    // Same again for agents. Most organisations have none, and a deployment without the upload
-    // role configured cannot have any - neither is a reason for the rest of the page to break.
-    wireAgents();
-    try { await loadAgents(); } catch (e) { /* surfaced in agList */ }
+    $('#app').hidden = false;
+    go(location.hash.slice(1) || 'overview');
+    await attempt('organisations', loadOrgs);
+    await Promise.all([attempt('users', loadAllUsers), attempt('tags', loadTags), attempt('agents', loadAgents),
+                       attempt('activity', () => loadActivity('')), attempt('keys', loadKeys)]);
+    await attempt('tag counts', loadCounts);
+    renderAll();
   })();
 </script>
 </body>

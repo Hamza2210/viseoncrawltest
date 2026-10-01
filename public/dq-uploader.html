@@ -15467,10 +15467,11 @@ function gdSvg(name) {
 // guides/ beside this page, and none of them loads until a guide that uses it is opened.
 /* GD_SHOTS:BEGIN (written by scripts/guide_shots/capture.py; do not edit by hand) */
 const GD_SHOTS = {
-  "admin-create-user": [898, 660, "3b53492cd1"],
-  "admin-grants": [1600, 903, "8e59fef812"],
-  "admin-tags": [1600, 1086, "36d96cb12a"],
-  "admin-users": [1600, 807, "01b73f8c7a"],
+  "admin-create-user": [1412, 538, "1d875058f3"],
+  "admin-grants": [1600, 878, "5aba4aa5f7"],
+  "admin-overview": [1600, 1251, "9f72949263"],
+  "admin-tags": [1600, 1095, "db660355f0"],
+  "admin-users": [1600, 792, "5fe189e3d0"],
   "agents": [1600, 809, "68e531d6b9"],
   "ai-review": [1600, 1123, "783bd2f3d7"],
   "alert-channels": [1600, 707, "da6beb721b"],
@@ -17107,32 +17108,38 @@ dq-agent-service.cmd RESTART`) +
   // ================================================================ Administration
   if (ADMIN) G.push({
     id: 'admin-portal', cat: 'Administration', icon: 'cog', tint: '#f59e0b', only: 'admin',
-    title: 'Run your organisation in the admin portal', sub: 'Users and roles, tag access and on-premises agents',
-    keywords: 'admin portal users invite role member admin delete revoke pending tag access restrict grant colour organisation agents',
+    title: 'Run your organisation in the admin portal', sub: 'Users and roles, tag access, on-premises agents and the activity log',
+    keywords: 'admin portal users invite role member admin delete revoke pending tag access restrict grant colour description organisation agents activity log audit search bell attention',
     open: { href: location.origin + '/dq-portal-admin', label: 'Open the admin portal' },
     sections: [
       { h: 'Getting there', body:
           p(`Press ${ui('Admin portal')} at the top right of the portal. Only admins can open it; anyone else is told admin access is required.`) +
-          p(`From there you manage your organisation's users and roles, its tag access, and its on-premises agents.`) },
+          p(`Its sidebar has a part for each job: ${ui('Overview')}, ${ui('Organisation')}, ${ui('Users')}, ${ui('Tag Management')}, ${ui('On-premises Agents')} and ${ui('Activity')}. The Overview puts the everyday ones on one screen: creating a user, your tags at a glance, recent activity, a count of users, agents and pending invites, and your agents' health.`) +
+          tip(`Press ${ui('Ctrl')} ${ui('K')} to search for a person, a tag or an agent and go straight to it. The bell at the top lists what needs doing: invitations not yet accepted, agents that are offline, and API keys about to expire.`) +
+          shot('admin-overview', `The Overview: ${n(1)} create a user, ${n(2)} your tags at a glance, and ${n(3)} the counts that matter, each opening its own part.`) },
       { h: 'Users and roles', body:
-          steps(`Under ${ui('Create user')}, enter their email, choose a role (${ui('member')} or ${ui('admin')}), and press ${ui('Create user')}.`,
-                `They are emailed a secure link to set their own password, and show as ${ui('pending invite')} until they sign in.`,
-                `Change anyone's role from the users list. You cannot change your own.`,
+          steps(`On the Overview, under ${ui('Create user')}, enter their email, choose a role (${ui('Member')} or ${ui('Admin')}), and press ${ui('Create user')}. They join your organisation: the field shows it, and cannot be changed.`,
+                `They are emailed a secure link to set their own password, and show as ${ui('Invite pending')} until they sign in.`,
+                `Change anyone's role in ${ui('Users')}. You cannot change your own.`,
                 `${ui('Delete')} removes a user's login and portal access, and cannot be undone. For someone who has not signed in yet the button reads ${ui('Revoke invite')}.`) +
           shot('admin-create-user', `${n(1)} Their email, ${n(2)} their role, and ${n(3)} ${ui('Create user')}.`, { narrow: true }) +
           shot('admin-users', `The users list: ${n(1)} change a role, ${n(2)} an invitation not yet accepted, and ${n(3)} ${ui('Delete')}, which reads ${ui('Revoke invite')} for someone who has not signed in.`) +
           note(`Admins can set trust, owners and tags, decide approvals, manage agents and the failing-record policy, and are never restricted by tags. Members run assessments and read results, and put runs and compliance changes forward for approval.`) },
       { h: 'Tag access', body:
-          steps(`Under ${ui('Your organisation\'s tags')}, add each tag your datasets use. This is the list people choose from when tagging, so a tag can never be declared under a spelling the data does not use.`,
-                `Pick a colour, or leave it on auto. The tag wears it everywhere it appears.`,
+          steps(`In ${ui('Tag Management')}, under ${ui('Your organisation\'s tags')}, add each tag your datasets use. This is the list people choose from when tagging, so a tag can never be declared under a spelling the data does not use.`,
+                `Say what each is for in a line, and pick a colour or leave it on auto. The tag wears its colour everywhere it appears.`,
                 `Tick ${ui('restricts')} to turn a tag into an access control: a dataset carrying it becomes visible only to members granted it.`,
-                `Choose what happens to datasets with none of the restricting tags: visible to everyone (recommended) or to nobody (deny by default). Press ${ui('Save')}.`,
+                `Choose what happens to datasets with none of the restricting tags: visible to everyone (recommended) or to nobody (deny by default). Press ${ui('Save tags')}.`,
                 `Under ${ui('Who holds what')}, grant each member the tags they may see. Leave a member empty to show them only unrestricted datasets.`) +
+          p(`The Overview's ${ui('Tag Access')} shows each tag with how many datasets carry it, how many members are granted it, and whether it restricts. A tag added or removed there is saved at once.`) +
           shot('admin-tags', `${n(1)} Add a tag, ${n(2)} pick its colour, and ${n(3)} tick ${ui('restricts')} to make it an access control.`) +
           shot('admin-grants', `${n(1)} What happens to datasets with no restricting tag, ${n(2)} the tags a member holds, and ${n(3)} an admin, who always sees everything.`) +
           warn(`Admins always see everything, so test a restriction with a member account, not your own.`) },
       { h: 'On-premises agents', body:
-          p(`Register and manage your organisation's agents here as well as in the Agents tab. ${see('agents', 'Set up an on-premises agent')}`) },
+          p(`Register and manage your organisation's agents in ${ui('On-premises Agents')}, as well as in the Agents tab. ${see('agents', 'Set up an on-premises agent')}`) },
+      { h: 'The activity log', body:
+          p(`${ui('Activity')} lists every administrative change in your organisation, newest first: who invited or removed whom, role and tag changes, the tag list saved, agents registered, given a config or revoked, and personal API keys created or revoked. The latest are on the Overview too.`) +
+          note(`It records from the day it was switched on, so nothing earlier appears. It holds who did what to what, never a password or a key.`) },
     ],
   });
 
