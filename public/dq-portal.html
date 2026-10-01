@@ -1698,6 +1698,22 @@
     border: 1px solid var(--err); background: color-mix(in srgb, var(--err) 9%, var(--card)); }
   .agt-fail-h { font-weight: 600; color: var(--err); margin-bottom: 4px; }
   .agt-fail-hint { color: var(--muted); font-size: 12.5px; margin-top: 8px; }
+  /* ---- API keys (portal only). The rows and the once-shown box borrow the Agents tab's parts. */
+  .ak-sec + .ak-sec { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--border); }
+  .ak-h { display: flex; align-items: baseline; gap: 10px; font-weight: 600; font-size: 14px; margin: 0 0 4px; }
+  .ak-count { font-weight: 400; font-size: 12.5px; color: var(--muted); }
+  .ak-sub { font-size: 12.5px; color: var(--muted); margin: 0 0 12px; line-height: 1.55; max-width: 760px; }
+  .ak-add { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; max-width: 760px; }
+  .ak-add input { flex: 1 1 260px; min-width: 0; }
+  .ak-add select { flex: none; }
+  .ak-key { display: flex; gap: 8px; align-items: center; margin-top: 10px; }
+  .agt-token .ak-key code { flex: 1; min-width: 0; margin: 0; user-select: all; }
+  .ak-owner { font-size: 12.5px; }
+  .agt-tag.soon { color: var(--run); border-color: color-mix(in srgb, var(--run) 45%, transparent); }
+  .agt-row.ak-ended { opacity: .72; }
+  .agt-row.ak-ended .agt-name { font-weight: 500; }
+  .ak-link { background: none; border: 0; padding: 0; font: inherit; color: var(--accent);
+    cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
   /* A command inside a form hint. Small, but set apart: these are strings somebody retypes on
      another machine, and a path that blends into the sentence around it gets retyped wrong. */
   .hint code { padding: 1px 5px; border-radius: 5px; background: var(--idle-bg);
@@ -2863,6 +2879,7 @@
     <button class="side-item sub" id="approvalsNav" data-tab="approvals"><span class="si-ico">✅</span>Approvals <span class="tab-badge" id="approvalsBadge" style="display:none;"></span></button>
 
     <button class="side-item sub" data-tab="assistant"><span class="si-ico">🤖</span>AI Assistant</button>
+    <button class="side-item sub" data-tab="apikeys" id="apiKeysNav" style="display:none"><span class="si-ico">🔑</span>API keys</button>
 
 
     <button class="side-item" data-tab="profile" id="profileNav" style="display:none"><span class="si-ico">👤</span>Profile</button>
@@ -3457,6 +3474,47 @@
       <div id="agtToken"></div>
       <div id="agtList" class="agt-list"></div>
       <div id="agtMsg" class="prof-msg" style="display:none;"></div>
+    </div>
+  </div>
+
+  <!-- ============ API KEYS (portal only) ============ -->
+  <div id="apiKeysPanel" style="display:none;">
+    <div class="tab-intro">
+      <span class="tab-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="15.6" r="4.4"/><path d="M11.2 12.4 20.4 3.2M17.2 6.4l2.8 2.8M14.8 8.8l2 2"/></svg></span>
+      <h2>API keys</h2>
+      <p>A key lets a pipeline or a script call the API as you. It can see and do exactly what you
+         can, in your organisation only, and if your access changes, so does the key's. Every key
+         expires, and you can revoke one at any time.
+         <button type="button" class="ak-link" id="akGuide">How to use the API</button></p>
+    </div>
+    <div class="card">
+      <div class="ak-sec">
+        <div class="ak-h">Create a key</div>
+        <p class="ak-sub">Name it after what will use it, so you know which one to revoke later.
+           The key is shown once, when you create it.</p>
+        <div class="ak-add">
+          <input type="text" id="akName" placeholder="e.g. Nightly sales gate" maxlength="60" autocomplete="off" aria-label="Key name">
+          <select id="akExpiry" aria-label="Expires after">
+            <option value="7">Expires in 7 days</option>
+            <option value="30" selected>Expires in 30 days</option>
+            <option value="90">Expires in 90 days</option>
+            <option value="365">Expires in 1 year</option>
+          </select>
+          <button type="button" class="btn-sm" id="akCreate">Create key</button>
+        </div>
+        <div id="akNew"></div>
+        <div id="akMsg" class="prof-msg" style="display:none;"></div>
+      </div>
+      <div class="ak-sec">
+        <div class="ak-h">Your keys <span class="ak-count" id="akCount"></span></div>
+        <div id="akList" class="agt-list"></div>
+      </div>
+    </div>
+    <div class="card" id="akOrgCard" style="display:none;">
+      <div class="ak-h">Everyone's keys in your organisation</div>
+      <p class="ak-sub">As an admin you can see and revoke any key in your organisation. You never
+         see the key itself: nobody can, once it has been created.</p>
+      <div id="akOrgList" class="agt-list"></div>
     </div>
   </div>
 
@@ -12757,6 +12815,186 @@ function wireAgentsTab() {
   name.addEventListener('keydown', e => { if (e.key === 'Enter') add.click(); });
 }
 
+// ---- The API keys tab: a portal user's own keys (portal only) ---------------------------------
+// A key acts as its owner: the server resolves their role and tags live on every request it
+// carries, so a key can never do more than they can now. Each user makes, sees and revokes their
+// own; an admin also sees and revokes every key in the organisation. The key itself exists in ONE
+// answer, the create's, and is shown once: only its hash is stored. See portal/apikeys.py.
+//
+// A key's name is typed by a person and an owner is a person's address, so both go in through
+// agtEl (textContent), never as markup.
+const AK_SOON = 7 * 86400;       // an active key this close to its expiry is flagged
+
+function akDate(sec) {
+  return sec ? new Date(sec * 1000).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+}
+
+function akMsg(text, bad) {
+  const el = $('#akMsg');
+  if (!el) return;
+  el.style.display = text ? 'block' : 'none';
+  el.textContent = text || '';
+  el.style.color = bad ? 'var(--err)' : 'var(--muted)';
+}
+
+async function akGet() {
+  const res = await fetch(`${API_BASE}/portal/api-keys`, { credentials: 'include' });
+  let j = null;
+  try { j = await res.json(); } catch (e) { j = null; }
+  if (!res.ok) {
+    const err = new Error((j && typeof j.detail === 'string') ? j.detail : 'HTTP ' + res.status);
+    err.status = res.status;
+    throw err;
+  }
+  return j || {};
+}
+
+// The dot and the words for where a key is in its life. The dot reuses the agents' colours:
+// green while it works, amber in its last week, red once it has stopped.
+function akState(k) {
+  if (k.status === 'revoked') {
+    const by = k.revokedBy ? (k.revokedBy === EMAIL ? ' by you' : ' by ' + k.revokedBy) : '';
+    return { dot: 'revoked', text: 'Revoked ' + akDate(k.revokedAt) + by };
+  }
+  if (k.status === 'expired') return { dot: 'revoked', text: 'Expired ' + akDate(k.expiresAt) };
+  const left = (k.expiresAt || 0) - Date.now() / 1000;
+  if (left < AK_SOON) {
+    // Rounded up: a key with two days and twenty hours left has three days to go, not two.
+    const d = Math.ceil(left / 86400);
+    return { dot: 'stale', soon: true,
+             text: d <= 1 ? 'Expires within a day' : 'Expires in ' + d + ' days' };
+  }
+  return { dot: 'online', text: 'Expires ' + akDate(k.expiresAt) };
+}
+
+function akRow(k, withOwner) {
+  const st = akState(k);
+  const row = agtEl('div', 'agt-row' + (k.status === 'active' ? '' : ' ak-ended'));
+  const dot = agtEl('span', 'agt-dot ' + st.dot);
+  dot.title = st.text;
+  row.appendChild(dot);
+  row.appendChild(agtEl('span', 'agt-name', k.name || k.id));
+  if (withOwner) row.appendChild(agtEl('span', 'ak-owner', k.mine ? 'You' : (k.owner || '')));
+  row.appendChild(agtEl('span', 'agt-id', k.id));
+  row.appendChild(agtEl('span', 'agt-tag' + (st.soon ? ' soon' : ''), st.text));
+  row.appendChild(agtEl('span', 'agt-tag', k.lastUsedAt ? 'Used ' + agtAgo(k.lastUsedAt) : 'Never used'));
+  const actions = agtEl('span', 'actions');
+  if (k.status === 'active') {
+    const rev = agtEl('button', 'btn-sm btn-danger', 'Revoke');
+    rev.type = 'button';
+    rev.title = 'Stop this key working, within a minute. It cannot be undone.';
+    rev.addEventListener('click', () => akRevoke(k));
+    actions.appendChild(rev);
+  }
+  row.appendChild(actions);
+  return row;
+}
+
+// Paints both lists from one answer. Every call here (list, create, revoke) returns the lists, so
+// what is on screen is always what the server holds after the change, not a guess at it.
+function akPaint(r) {
+  const list = $('#akList');
+  if (!list) return;
+  const keys = (r && r.keys) || [];
+  list.textContent = '';
+  if (!keys.length) list.appendChild(agtEl('div', 'agt-empty', 'You have no API keys yet.'));
+  keys.forEach(k => list.appendChild(akRow(k, false)));
+  const cnt = $('#akCount');
+  if (cnt) cnt.textContent = (r && r.maxLive) ? (r.live || 0) + ' of ' + r.maxLive + ' live' : '';
+  const card = $('#akOrgCard'), org = $('#akOrgList');
+  // null means "not yours to see", an empty list means "nobody has one": only an admin gets a list.
+  const all = r && Array.isArray(r.org) ? r.org : null;
+  if (card) card.style.display = all ? '' : 'none';
+  if (org && all) {
+    org.textContent = '';
+    if (!all.length) org.appendChild(agtEl('div', 'agt-empty', 'Nobody in your organisation has an API key yet.'));
+    all.forEach(k => org.appendChild(akRow(k, true)));
+  }
+}
+
+async function renderApiKeysTab() {
+  const list = $('#akList'), btn = $('#akCreate');
+  if (!list) return;
+  try { akPaint(await akGet()); if (btn) btn.disabled = false; }
+  catch (e) {
+    list.textContent = '';
+    // 404: this page has reached a server that predates the routes. Said as what it is, with the
+    // create button off, rather than as an error the reader can do nothing about.
+    const off = e.status === 404;
+    if (btn) btn.disabled = off;
+    list.appendChild(agtEl('div', 'agt-empty', off
+      ? 'API keys are not switched on for your organisation yet. Ask your VISEON contact.'
+      : 'Could not load your keys: ' + e.message));
+  }
+}
+
+// The once-only view of a new key. It stays until dismissed or the page is left, rather than
+// vanishing on a tab switch: a reader who opens the API guide to see where it goes must still
+// find it when they come back.
+function akShowNew(key, item) {
+  const box = $('#akNew');
+  if (!box) return;
+  box.textContent = '';
+  if (!key) return;
+  const card = agtEl('div', 'agt-token ak-new');
+  card.appendChild(agtEl('div', 'agt-h', 'Copy your new key now'));
+  card.appendChild(agtEl('div', '', 'This is the only time it is shown. Only a fingerprint of it is '
+    + 'kept, so nobody can see it again, not even an admin. If you lose it, revoke it and create another.'));
+  const line = agtEl('div', 'ak-key');
+  line.appendChild(agtEl('code', 'ak-secret', key));
+  const copy = agtEl('button', 'btn-sm', 'Copy');
+  copy.type = 'button';
+  copy.addEventListener('click', async () => {
+    // Saying "copied" when it was not is worse than not offering it at all.
+    copy.textContent = (await agtCopyText(key)) ? 'Copied' : 'Select it and copy by hand';
+  });
+  line.appendChild(copy);
+  card.appendChild(line);
+  card.appendChild(agtEl('div', 'agt-fine', 'Send it in the x-api-key header of each request. It acts as you'
+    + (item && item.expiresAt ? ', and stops working on ' + akDate(item.expiresAt) + '.' : '.')));
+  const x = agtEl('button', 'agt-x', '\u00d7');
+  x.type = 'button';
+  x.title = 'Dismiss';
+  x.setAttribute('aria-label', 'Dismiss');
+  x.addEventListener('click', () => { box.textContent = ''; });
+  card.appendChild(x);
+  box.appendChild(card);
+}
+
+async function akCreate() {
+  const name = $('#akName'), exp = $('#akExpiry'), btn = $('#akCreate');
+  const value = (name.value || '').trim();
+  if (!value) { akMsg('Name the key first, after the pipeline or script that will use it.', true); name.focus(); return; }
+  btn.disabled = true;
+  try {
+    const r = await postJSON(`${API_BASE}/portal/api-keys`, {}, { name: value, expires_in_days: Number(exp.value) });
+    name.value = '';
+    akMsg('');
+    akShowNew(r.key, r.item);
+    akPaint(r);
+  } catch (e) { akMsg('Could not create the key: ' + e.message, true); }
+  finally { btn.disabled = false; }
+}
+
+async function akRevoke(k) {
+  const whose = k.mine ? 'your key' : (k.owner + "'s key");
+  if (!(await dqConfirm('Revoke ' + whose + ' "' + (k.name || k.id) + '"? Anything using it stops '
+                        + 'working within a minute. This cannot be undone.',
+                        { title: 'Revoke API key', danger: true }))) return;
+  try {
+    const r = await postJSON(`${API_BASE}/portal/api-keys/revoke`, {}, { id: k.id });
+    akMsg('');
+    akPaint(r);
+  } catch (e) { akMsg('Could not revoke: ' + e.message, true); }
+}
+
+function wireApiKeysTab() {
+  const btn = $('#akCreate'), name = $('#akName'), guide = $('#akGuide');
+  if (btn) btn.addEventListener('click', akCreate);
+  if (name) name.addEventListener('keydown', e => { if (e.key === 'Enter') akCreate(); });
+  if (guide) guide.addEventListener('click', () => { switchTab('guides'); openGuide('api'); });
+}
+
 // ---- On-premises agents: where an assessment EXECUTES ------------------------------------------
 // A source behind a customer's firewall is not a different connector, it is the same connector run
 // somewhere else - so this is a field on the existing form rather than a source of its own. The
@@ -15164,6 +15402,7 @@ const GD_SHOW = {
   'records-policy': { tab: 'compliance', sel: '#cmpOrgPolicy',
     tip: 'How much of a failing row is kept, for every dataset in the organisation.' },
   'agents': { tab: 'agents', sel: '#agtName', tip: 'Name the machine and press <b>Register</b>. The download is just above.' },
+  'apikeys': { tab: 'apikeys', sel: '#akName', tip: 'Name the key after what will use it, choose when it expires, and press <b>Create key</b>.' },
   'lineage': { tab: 'lineage', sel: '#linScopeToggle, #srcLinWrap',
     tip: 'Pick a dataset to see what it is built from and what is built on it.' },
   'model-strip': { tab: 'model', sel: '#modelIntegrity',
@@ -15789,17 +16028,17 @@ function buildGuides() {
 
   // ================================================================ The API
   // Every request is shown whole, with the real address and the reader's own word for the scope;
-  // what they fill in is an amber <placeholder>. Qlik users and portal admins, like the agents
-  // guide: a portal member has no key to use.
+  // what they fill in is an amber <placeholder>. Every reader gets it: on Qlik the key is the
+  // organisation's, in the portal each person makes their own on the API keys tab.
   const API = esc(API_BASE);
   const ph = t => `<span class="gd-ph">&lt;${t}&gt;</span>`;
   const APPPH = pk('app-id', 'workspace-id');
   const HDRS = `x-api-key: ${ph('your-api-key')}\nContent-Type: application/json`;
-  if (Q || ADMIN) G.push({
+  G.push({
     id: 'api', cat: 'Automate', icon: 'code', tint: '#f472b6',
     title: 'Use the API in a pipeline', sub: 'Start checks, read the verdict, and gate a Qlik Talend Cloud pipeline on it',
-    keywords: 'api rest http endpoint request integration pipeline quality gate qlik talend cloud automate automation call url loop sleep condition do reload talend studio job trestclient textractjsonfields tloop tsleep tdie management console plan curl postman key x-api-key dqt app id workspace id run by tag rerun result poll history failed records orchestrate',
-    open: { tab: 'tagrun', label: 'Open By tag' },
+    keywords: 'api rest http endpoint request integration pipeline quality gate qlik talend cloud automate automation call url loop sleep condition do reload talend studio job trestclient textractjsonfields tloop tsleep tdie management console plan curl postman key x-api-key dqt app id workspace id run by tag rerun result poll history failed records orchestrate personal key dqu expire expiry revoke',
+    open: pk({ tab: 'tagrun', label: 'Open By tag' }, { tab: 'apikeys', label: 'Open API keys' }),
     sections: [
       { h: 'What it is for', body:
           p(`Everything this page does goes through a REST API, so your own tools can run checks too. The commonest use is a <b>quality gate</b>: after a pipeline loads data, assess it, and only carry on, by reloading the dashboard or publishing the table, when it passes.`) +
@@ -15807,7 +16046,8 @@ function buildGuides() {
                `<b>Check when the data changes, not on a timer.</b> A schedule fires at fixed times; a pipeline step runs the moment new data lands.`,
                `<b>Take the results elsewhere.</b> Read scores and failing rows into a ticketing tool, a data catalogue or a report.`) },
       { h: 'Before you start', body:
-          list(`<b>Your organisation's API key.</b> It starts with <code>dqt_</code> and belongs to your organisation alone: the API takes your organisation from the key, so a request can never reach anyone else's data. ${pk(`It is the key in this extension's ${ui('API key')} setting. If that one does not start with <code>dqt_</code>, ask your VISEON contact for your organisation's own.`, `Ask your VISEON contact for it.`)} Keep it like a password.`,
+          list(pk(`<b>Your organisation's API key.</b> It starts with <code>dqt_</code> and belongs to your organisation alone: the API takes your organisation from the key, so a request can never reach anyone else's data. It is the key in this extension's ${ui('API key')} setting. If that one does not start with <code>dqt_</code>, ask your VISEON contact for your organisation's own. Keep it like a password.`,
+                  `<b>An API key of your own.</b> Create one in ${go('apikeys', 'API keys')}: name it after the pipeline that will use it, and choose when it expires. It starts with <code>dqu_</code> and acts as you, so it reaches your organisation's data and nobody else's, and can do exactly what you can. It is shown once, so copy it then, and keep it like a password. ${showme('apikeys')}`),
                `<b>The ${SC} id</b>, which the API calls <code>app_id</code>. ${APP_ID ? `This ${SC}'s is <code>${esc(APP_ID)}</code>.` : pk(`It is the id in the app's address, after <code>/app/</code>.`, `Ask your VISEON contact for it.`)}`,
                `<b>A saved credential profile</b> on each dataset the pipeline will check. Runs started over the API reconnect with it, so no password ever travels in a request. ${see('credential-profiles', 'Credential profiles')}`,
                `<b>A tag</b> on the datasets a pipeline should check together, such as <code>nightly-sales</code>. ${see('tags', 'Tags')}`) +
@@ -15891,10 +16131,11 @@ ${HDRS}
 { "app_id": "${ph(APPPH)}", "limit": 20 }`) +
           p(`Each entry in <code>runs</code> has its <code>dataset</code>, <code>resultPrefix</code>, <code>state</code> and <code>overallScore</code>.`) },
       { h: 'Good to know', body: list(
-          `<b>401</b> means the key is mistyped or has been revoked. <b>429</b> means too many runs are in progress already: wait 30 to 60 seconds and try again.`,
+          `<b>401</b> means the key is mistyped${pk(' or has been revoked', ', has expired or has been revoked')}.${pk('', ` <b>403</b> means its owner no longer has access: they have left the organisation or been deactivated.`)} <b>429</b> means too many runs are in progress already: wait 30 to 60 seconds and try again.`,
           `Give up on a run that has not finished within an hour, and report it, rather than waiting for ever.`,
-          P ? `Runs started over the API are not approved automatically, because no admin started them. They arrive as drafts for approval, which changes nothing about the verdict.` : null,
-          `The key reaches every ${SC} in your organisation, so give it only to pipelines you would trust with all of them, and store it where your tool keeps its secrets.`) },
+          P ? `Runs started with your key count as started by you. ${ADMIN ? `As an admin, yours are approved on arrival, as when you start one here; a member's arrive as drafts for approval.` : `They arrive as drafts for approval, as when you start one here, which changes nothing about the verdict.`}` : null,
+          pk(`The key reaches every ${SC} in your organisation, so give it only to pipelines you would trust with all of them, and store it where your tool keeps its secrets.`,
+             `The key can do anything you can, in every ${SC} of your organisation, so give it only to pipelines you would trust with your own access, and store it where your tool keeps its secrets. Give each pipeline its own key, so revoking one stops only that pipeline, and create a replacement before a key expires.`)) },
       { h: 'Example: stop a bad load reaching a dashboard', body:
           p(`Every night a pipeline loads the day's orders into Snowflake, and the Sales dashboard reloads in the morning. When a load brings in orders with no customer, nobody notices until a manager asks why revenue dropped.`) +
           steps(`Tag the orders datasets <code>nightly-sales</code>, and save their connection as a credential profile.`,
@@ -16439,6 +16680,8 @@ function switchTab(name) {
   // a deep link, a stray call, or a console would still open a panel every button on which 403s.
   // The API is the real boundary - this is so a member never lands on the wrong page at all.
   if (PORTAL && name === 'agents' && !IS_PORTAL_ADMIN) name = 'dashboard';
+  // API keys are personal keys to the portal's API: the extension has no account to tie one to.
+  if (!PORTAL && name === 'apikeys') name = 'dashboard';
   document.querySelectorAll('.side-item').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
   $('#uploadPanel').style.display = name === 'upload' ? 'block' : 'none';
   $('#historyPanel').style.display = name === 'history' ? 'block' : 'none';
@@ -16461,6 +16704,9 @@ function switchTab(name) {
   // Loaded on every visit rather than once: an agent goes offline while you are looking elsewhere,
   // and a health list that is stale is worse than one that is slow.
   if (name === 'agents') renderAgentsTab();
+  $('#apiKeysPanel').style.display = name === 'apikeys' ? 'block' : 'none';
+  // Fresh on every visit: an admin may have revoked a key, or one may have expired, meanwhile.
+  if (name === 'apikeys') renderApiKeysTab();
   $('#assistantPanel').style.display = name === 'assistant' ? 'block' : 'none';
   $('#aboutPanel').style.display = name === 'about' ? 'block' : 'none';
   $('#guidesPanel').style.display = name === 'guides' ? 'block' : 'none';
@@ -16505,6 +16751,7 @@ function switchTab(name) {
 }
 document.querySelectorAll('.side-item').forEach(t => t.addEventListener('click', () => switchTab(t.dataset.tab)));
 wireAgentsTab();
+wireApiKeysTab();
 // The On-premises FILE card starts hidden and is revealed only if this organisation has an
 // agent, because without one the source cannot work at all. It has to be decided at boot
 // rather than when the card is opened: the card IS the way in, so nothing else would ever
@@ -16535,6 +16782,7 @@ function applyMode() {
   const lo = $('#portalLogout');
   if (lo && !lo._wired) { lo._wired = true; lo.addEventListener('click', () => { location.href = `${API_BASE}/portal/auth/logout`; }); }
   const pn = $('#profileNav'); if (pn) pn.style.display = '';   // reveal the Profile tab
+  const kn = $('#apiKeysNav'); if (kn) kn.style.display = '';   // and API keys: everyone has their own
   const hi = $('#historyIntro'); if (hi) hi.textContent = "Every assessment you've run. Open any run to see its full report.";
   // "app" is the Qlik container; here it is a workspace. Static copy carries the noun in a span
   // so the Qlik markup still reads correctly as written.
