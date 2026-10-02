@@ -2839,7 +2839,6 @@
   .medal.bronze { background: rgba(217,169,120,.16); color: #e0b98a; border-color: rgba(217,169,120,.45); }
   .medal.silver { background: rgba(185,192,200,.16); color: #cdd4dc; border-color: rgba(185,192,200,.45); }
   .medal.gold   { background: rgba(224,198,90,.16); color: #ecd873; border-color: rgba(224,198,90,.5); }
-  .medal-menu { display: inline-flex; gap: 4px; align-items: center; }
   .dash-filtgrp { display: inline-flex; gap: 6px; align-items: center; flex-wrap: wrap; }
   /* Filter bar + the modal's grouped rows. The count badge is what makes a collapsed filter set
      legible at a glance; without it the button looks the same whether 0 or 4 filters are on. */
@@ -2922,12 +2921,7 @@
   /* Description: one line on what the dataset IS, above the notes, which are the running
      commentary on it. Same visual weight as notes because it is the same kind of thing - context
      a person typed - and it sits first because it answers the earlier question. */
-  .ds-actions { margin: 4px 0 14px; }
   .btn-ico { width: 14px; height: 14px; vertical-align: -2px; margin-right: 5px; }
-  .ds-desc { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border); }
-  .ds-desc-hd { font-size: 11px; font-weight: 700; letter-spacing: .04em; color: var(--muted); margin-bottom: 6px; }
-  .ds-desc-body { font-size: 12.5px; color: var(--text); line-height: 1.5; word-break: break-word; }
-  .ds-desc-edit { margin-top: 8px; }
   .ds-notes { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border); }
   .ds-notes-hd { font-size: 11px; font-weight: 700; letter-spacing: .04em; color: var(--muted); margin-bottom: 8px; }
   .ds-note { background: var(--card-2); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; margin-bottom: 6px; }
@@ -3060,8 +3054,6 @@
   .ds-stage-badge.silver { border-color: color-mix(in srgb, #c8d0dc 45%, transparent); color: #d6dde8; }
   .ds-stage-badge.gold   { border-color: color-mix(in srgb, #ffcf4d 45%, transparent); color: #ffcf4d; }
   /* Governance controls in the dataset detail header (Trust / Owner / Stage), tidy labelled groups */
-  .detail-gov { display: inline-flex; align-items: center; gap: 6px; margin: 0 18px 6px 0; }
-  .detail-gov .hint { margin-right: 1px; }
   /* Keep the Re-run action on one line */
   .dash-table td:last-child { white-space: nowrap; }
   /* Medallion comparison view */
@@ -3187,7 +3179,11 @@
   .overview-top.split.maxed > .galaxy-card {
     opacity: 0; pointer-events: none; overflow: hidden; padding-left: 0; padding-right: 0; }
   .overview-top > * { margin-bottom: 0; }
-  #dashDetail { max-height: 640px; overflow-y: auto; scroll-margin-top: 240px; }
+  /* The detail is as tall as what it shows and the PAGE scrolls, rather than the panel scrolling
+     inside a 640px box of its own: a long tab (failed records, rules, history) was read through a
+     slot, with a second scrollbar beside the page's. The galaxy card sticks beside it instead, and
+     the tab bar sticks to the top of the window (.dsx-bar). */
+  #dashDetail { scroll-margin-top: calc(var(--dq-stick-top, 0px) + 12px); }
   /* Charts carry a natural cap so they do not stretch absurdly wide on the full-width estate
      pages. Inside the detail panel that cap just wastes the room the 70/30 split bought us. */
   .chart-svg { max-width: 900px; }
@@ -3196,17 +3192,178 @@
   /* At 70% width the detail panel is wide enough for side-by-side charts again. */
   #dashDetail .trend-cols { grid-template-columns: 1fr 1fr; }
   @media (max-width: 1500px) { #dashDetail .trend-cols { grid-template-columns: 1fr; } }
-  /* The detail panel sets the height of the row; the galaxy card stretches to match it so the
-     30% column is not left with dead space between the canvas and the datasets list below.
-     min-height keeps the canvas a sensible shape when the detail panel is short. */
-  .overview-top.split { align-items: stretch; }
-  .overview-top.split .galaxy-card { display: flex; flex-direction: column; }
+  /* Beside a detail that can be several screens long, the galaxy card is the index: it sticks
+     below the top of the window, as tall as the window allows, while the detail scrolls past it.
+     It used to stretch to the detail's height, which was fine while that was capped at 640px and
+     would now be a canvas thousands of pixels tall. The detail is never shorter than the galaxy,
+     so the two cards still end on one line. --dq-stick-top is the blocker bar's height while it
+     shows (measured, see dsx_code), so neither tucks under it. */
+  .overview-top { --dsx-gx-h: clamp(440px, calc(100vh - var(--dq-stick-top, 0px) - 24px), 900px); }
+  .overview-top.split { align-items: start; }
+  .overview-top.split .galaxy-card { display: flex; flex-direction: column; box-sizing: border-box;
+    position: sticky; top: calc(var(--dq-stick-top, 0px) + 12px); height: var(--dsx-gx-h); }
+  .overview-top.split > #dashDetail { box-sizing: border-box; min-height: var(--dsx-gx-h); }
   .overview-top.split #galaxyWrap { flex: 1 1 auto; height: auto; min-height: 360px; }
   /* At 30% the 'drag to orbit...' hint collides with the tool buttons and wraps the heading.
      It is only needed before a dataset is picked, when the galaxy is full width. */
   .overview-top.split .galaxy-card h2 .hint { display: none; }
   .overview-top.split .galaxy-card h2 { white-space: nowrap; }
-  @media (max-width: 1100px) { .overview-top.split { grid-template-columns: 1fr; } #dashDetail { max-height: none; } }
+  @media (max-width: 1100px) {
+    .overview-top.split { grid-template-columns: 1fr; }
+    /* One column: the galaxy sits above the detail at its own height, and nothing sticks. */
+    .overview-top.split .galaxy-card { position: static; height: auto; }
+    .overview-top.split > #dashDetail { min-height: 0; }
+    .overview-top.split #galaxyWrap { flex: none; height: 420px; }
+  }
+
+  /* ---- The open dataset: header, health strip, chips, latest note, tab bar ---------------- */
+  #dsxHead { margin: 0 0 18px; }
+  .dsx-top { display: flex; align-items: flex-start; gap: 14px; }
+  .dsx-ico { flex: none; width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center;
+    font-size: 21px; line-height: 1; border: 1px solid var(--border);
+    background: color-mix(in srgb, var(--accent) 12%, var(--card-2)); }
+  .dsx-ico svg { width: 24px; height: 24px; }
+  .dsx-id { flex: 1 1 auto; min-width: 0; }
+  #dashDetail h2.dsx-name { display: flex; align-items: center; gap: 10px; min-width: 0; margin: 1px 0 0;
+    font-size: 21px; font-weight: 800; line-height: 1.25; letter-spacing: -.01em; text-transform: none; color: var(--text); }
+  .dsx-nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .dsx-name .source-chip { flex: none; font-size: 11px; font-weight: 600; letter-spacing: 0; }
+  button.dsx-desc { display: flex; align-items: center; gap: 6px; max-width: 100%; margin: 3px 0 0 -6px; padding: 2px 6px;
+    border: 0; border-radius: 6px; background: none; box-shadow: none; font: inherit; font-size: 13px; font-weight: 400;
+    color: var(--muted); text-align: left; cursor: pointer; }
+  .dsx-desc > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .dsx-desc.empty > span:first-child { font-style: italic; }
+  .dsx-desc .dsx-pen { flex: none; opacity: 0; transition: opacity .15s; }
+  button.dsx-desc:hover, button.dsx-desc:focus-visible { color: var(--text); background: var(--idle-bg); }
+  .dsx-desc:hover .dsx-pen, .dsx-desc:focus-visible .dsx-pen, .dsx-desc.empty .dsx-pen { opacity: .75; }
+  .dsx-acts { flex: none; display: flex; align-items: center; gap: 8px; }
+  button.dsx-btn { display: inline-flex; align-items: center; gap: 7px; height: 34px; padding: 0 14px; border-radius: 10px;
+    border: 1px solid var(--border); background: var(--card-2); box-shadow: none; color: var(--text);
+    font: inherit; font-size: 13px; font-weight: 650; white-space: nowrap; cursor: pointer; }
+  button.dsx-btn:hover, button.dsx-btn[aria-expanded="true"] { border-color: color-mix(in srgb, var(--accent) 65%, var(--border));
+    background: color-mix(in srgb, var(--accent) 10%, var(--card-2)); }
+  button.dsx-btn.primary, button.dsx-btn.primary:hover { border-color: transparent; background: var(--grad); color: #fff; }
+  button.dsx-btn.primary:hover { filter: brightness(1.08); }
+  button.dsx-btn.icon { width: 34px; padding: 0; justify-content: center; font-size: 15px; }
+  button.dsx-btn:focus-visible, button.dsx-chip:focus-visible, button.dsx-kpi:focus-visible, button.dsx-mini:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 2px; }
+  .dsx-flash { font-size: 12px; font-weight: 600; color: var(--ok); opacity: 0; transition: opacity .2s; white-space: nowrap; }
+  .dsx-flash.on { opacity: 1; }
+  /* The Actions menu, and the Stage and Trust pickers */
+  .dsx-menu-wrap, .dsx-pw { position: relative; display: inline-flex; max-width: 100%; }
+  .dsx-menu { position: absolute; z-index: 70; top: calc(100% + 6px); right: 0; width: 300px; max-height: min(72vh, 600px);
+    overflow-y: auto; padding: 6px; border-radius: 12px; background: var(--card);
+    border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--border)); box-shadow: 0 22px 56px rgba(0,0,0,.5); }
+  .dsx-menu[hidden] { display: none; }
+  .dsx-menu.dsx-pop { left: 0; right: auto; width: 220px; }
+  .dsx-menu-in { animation: dsxMenuIn .16s var(--dq-ease) both; }
+  @keyframes dsxMenuIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+  .dsx-mh { margin: 9px 10px 3px; font-size: 10px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
+  .dsx-mh:first-child { margin-top: 4px; }
+  .dsx-sep { height: 1px; margin: 6px 4px; background: var(--border); }
+  button.dsx-mi { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 10px; border: 0; border-radius: 8px;
+    background: none; box-shadow: none; color: var(--text); font: inherit; font-size: 13px; font-weight: 500;
+    text-align: left; cursor: pointer; }
+  button.dsx-mi:hover, button.dsx-mi:focus { outline: none; background: color-mix(in srgb, var(--accent) 13%, var(--card-2)); }
+  button.dsx-mi[aria-disabled="true"] { cursor: default; color: var(--muted); background: none; }
+  .dsx-mi-ic { flex: none; width: 18px; text-align: center; }
+  .dsx-mi-ic svg { width: 15px; height: 15px; vertical-align: -2px; }
+  .dsx-mi-t { flex: 1 1 auto; min-width: 0; }
+  .dsx-mi-t small { display: block; margin-top: 1px; font-size: 11.5px; line-height: 1.35; color: var(--muted); }
+  .dsx-mi-r { flex: none; font-size: 11.5px; color: var(--muted); }
+  .dsx-mi-r.hot { color: var(--err); font-weight: 700; }
+  button.dsx-mi.danger { color: var(--err); }
+  button.dsx-mi.danger:hover, button.dsx-mi.danger:focus { background: color-mix(in srgb, var(--err) 12%, transparent); }
+  /* The health strip */
+  .dsx-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: 10px; margin: 16px 0 12px; }
+  .dsx-kpi { display: flex; flex-direction: column; gap: 2px; min-width: 0; padding: 10px 14px; border-radius: 12px;
+    border: 1px solid var(--border); background: var(--card-2); text-align: left; }
+  button.dsx-kpi { font: inherit; color: inherit; box-shadow: none; cursor: pointer; }
+  button.dsx-kpi:hover { border-color: color-mix(in srgb, var(--accent) 55%, var(--border)); }
+  .dsx-k { font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .dsx-v { display: flex; align-items: center; gap: 8px; min-width: 0; min-height: 28px; font-size: 20px; font-weight: 800;
+    font-variant-numeric: tabular-nums; color: var(--text); }
+  .dsx-v .tag { font-size: 11px; }
+  /* One line where there is room; two before anything is cut, in a narrow split. */
+  .dsx-s { min-height: 16px; font-size: 12px; line-height: 1.35; color: var(--muted); overflow: hidden;
+    display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+  .dsx-kpi.bad { border-color: color-mix(in srgb, var(--err) 45%, var(--border)); background: color-mix(in srgb, var(--err) 8%, var(--card-2)); }
+  .dsx-kpi.bad .dsx-v { color: var(--err); }
+  .dsx-kpi.warn .dsx-v { color: var(--run); }
+  .dsx-kpi.good .dsx-v { color: var(--ok); }
+  .dsx-spark { flex: 0 1 64px; min-width: 0; margin-left: auto; overflow: hidden; }
+  .dsx-spark svg { display: block; width: 100%; height: 20px; }
+  .sk.dsx-wait { width: 64px; height: 12px; }
+  /* The chips */
+  .dsx-gov { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .dsx-chip { display: inline-flex; align-items: center; gap: 7px; min-height: 30px; max-width: 100%; padding: 0 11px 0 10px;
+    border-radius: 999px; border: 1px solid var(--border); background: var(--card-2); box-shadow: none; color: var(--text);
+    font: inherit; font-size: 12.5px; font-weight: 500; white-space: nowrap; box-sizing: border-box; }
+  button.dsx-chip { cursor: pointer; }
+  button.dsx-chip:hover, button.dsx-chip[aria-expanded="true"] { border-color: color-mix(in srgb, var(--accent) 60%, var(--border)); }
+  .dsx-l { font-size: 11.5px; font-weight: 600; color: var(--muted); }
+  .dsx-c { display: inline-flex; align-items: center; gap: 5px; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .dsx-caret { font-size: 10px; color: var(--muted); }
+  .dsx-none { color: var(--muted); }
+  .dsx-chip .ds-tag { cursor: inherit; }
+  .dsx-chip .ds-tag:hover { background: color-mix(in srgb, var(--pill, var(--border)) 16%, transparent); }
+  .dsx-chip .trust-badge, .dsx-chip .ds-stage-badge, .dsx-chip .cmpx-pill { padding-top: 1px; padding-bottom: 1px; }
+  .dsx-more { font-size: 11px; color: var(--muted); }
+  .dsx-chip.hot { border-color: color-mix(in srgb, var(--err) 50%, var(--border)); }
+  .dsx-chip.hot .dsx-c { color: var(--err); font-weight: 650; }
+  .dsx-chip.warm { border-color: color-mix(in srgb, var(--run) 45%, var(--border)); }
+  .dsx-chip.warm .dsx-c { color: var(--run); font-weight: 650; }
+  .dsx-chip.info .dsx-c { color: var(--accent); font-weight: 650; }
+  /* The latest note */
+  .dsx-note { display: flex; align-items: center; gap: 10px; margin: 12px 0 0; padding: 8px 12px; border-radius: 10px;
+    border: 1px solid var(--border); background: color-mix(in srgb, var(--accent) 5%, var(--card-2)); font-size: 12.5px; }
+  .dsx-note-k { flex: none; font-weight: 700; white-space: nowrap; }
+  .dsx-note-t { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); }
+  .dsx-note-m { flex: none; font-size: 11.5px; color: var(--muted); white-space: nowrap; }
+  .dsx-note .linkbtn { flex: none; margin-left: 0; font-size: 12.5px; white-space: nowrap; }
+  .dsx-notes { margin-top: 8px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--card-2); }
+  .dsx-notes .ds-notes { margin: 0; padding: 0; border: 0; }
+  .dsx-notes .ds-notes-hd { display: none; }
+  .dsx-notes .ds-note { background: var(--card); }
+  /* The tab bar: sticks under the blocker bar, and names the dataset once the header has gone */
+  #dashDetail .dsx-bar { position: sticky; top: var(--dq-stick-top, 0px); z-index: 8; display: flex; align-items: center;
+    margin: 0 -22px 18px; padding: 0 22px; background: var(--card); border-bottom: 1px solid var(--border);
+    transition: box-shadow .2s var(--dq-ease); }
+  #dashDetail .dsx-bar .rd-tabs { flex: 1 1 auto; min-width: 0; margin: 0; border-bottom: 0; }
+  #dashDetail .dsx-bar.stuck { box-shadow: 0 12px 22px -14px rgba(0,0,0,.7); }
+  /* Whatever scrolls up between the blocker bar and the stuck tab bar is covered, across the card's
+     width, so the two read as one edge rather than a slot with the page showing through. */
+  #dashDetail .dsx-bar.stuck::before { content: ''; position: absolute; left: -1px; right: -1px; bottom: 100%;
+    height: var(--dq-stick-top, 0px); background: var(--bg); }
+  button.dsx-mini { flex: none; display: inline-flex; align-items: center; gap: 7px; max-width: 0; margin-right: 0; padding: 4px 0;
+    overflow: hidden; border: 0 solid var(--border); border-radius: 999px; background: var(--card-2); box-shadow: none;
+    color: var(--text); font: inherit; font-size: 12.5px; font-weight: 700; white-space: nowrap; cursor: pointer;
+    opacity: 0; pointer-events: none; transition: max-width .22s var(--dq-ease), padding .22s var(--dq-ease),
+      margin .22s var(--dq-ease), opacity .18s var(--dq-ease); }
+  .dsx-bar.stuck button.dsx-mini { max-width: 42%; margin-right: 12px; padding: 4px 10px; border-width: 1px; opacity: 1; pointer-events: auto; }
+  .dsx-mini-ic { display: inline-flex; }
+  .dsx-mini-ic svg { width: 15px; height: 15px; }
+  .dsx-mini-n { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .dsx-mini .tag { font-size: 10.5px; }
+  /* A narrow split has room for the six tabs or for a full name tag, not both: the tag keeps the
+     name and gives up its score and arrow, and the tabs close up a little. */
+  @media (max-width: 1500px) {
+    .overview-top.split:not(.maxed) #dashDetail .dsx-bar .rd-tab { padding-left: 10px; padding-right: 10px; }
+    .overview-top.split:not(.maxed) .dsx-bar.stuck button.dsx-mini { max-width: 26%; }
+    .overview-top.split:not(.maxed) .dsx-mini .tag, .overview-top.split:not(.maxed) .dsx-mini-up { display: none; }
+  }
+  .rd-tab .ra-dot { vertical-align: 1px; }
+  /* Brought into view under the stuck bars, not beneath them. */
+  #dsPanel * { scroll-margin-top: calc(var(--dq-stick-top, 0px) + 64px); }
+  /* One column (see the 1100px rule above): the tab bar stays where it is, like the galaxy. */
+  @media (max-width: 1100px) { #dashDetail .dsx-bar { position: static; } }
+  .dsx-hist-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+  #dsPanel h3.dsx-runs-h { margin: 22px 0 6px; font-size: 14px; }
+  .inc-miss { margin: -4px 0 12px; }
+  @media (prefers-reduced-motion: reduce) {
+    button.dsx-mini, #dashDetail .dsx-bar, .dsx-desc .dsx-pen, .dsx-flash { transition: none !important; }
+    .dsx-menu-in { animation: none !important; }
+  }
   #galaxyWrap.grabbing { cursor: grabbing; }
   #galaxyWrap canvas { display: block; width: 100%; height: 100%; }
   .galaxy-msg { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
@@ -4940,19 +5097,11 @@
       </div>
     </div>
 
-    <!-- Selected dataset detail sits right under the galaxy so clicking an orb barely scrolls. -->
+    <!-- The open dataset, beside the galaxy so that clicking an orb barely moves the page. Its
+         header (what it is, how it is doing, what is known about it, and everything that can be
+         done to it) is built by selectDataset; the tab bar and the tab go in #dashTrends. -->
     <div class="card" id="dashDetail" style="position:relative;">
-      <!-- Absolutely positioned rather than inside the h2: the title's text is replaced wholesale
-           by the selection handlers, which would take the button with it. -->
-      <button type="button" class="btn-sm" id="dashMaxBtn"
-              style="position:absolute;top:20px;right:22px;"
-              data-tip="Hide the galaxy and use the full width">⤢ Maximise</button>
-      <h2 id="dashDetailTitle" style="padding-right:120px;">Trends</h2>
-      <!-- Leaving the dataset and exporting it are actions on the WHOLE panel, so they sit at the
-           top of it. They used to be buried under the description and notes, which meant "back"
-           moved further down the page the more context somebody had written. -->
-      <div id="dashDetailActions"></div>
-      <p class="dash-muted" id="dashDetailHint">Click an orb above (or a dataset in the list below) to see its scores, trends, rules, failed records and history.</p>
+      <div id="dsxHead"></div>
       <div id="dashTrends"></div>
       <div id="dashRunDetail"></div>
     </div>
@@ -6326,9 +6475,15 @@ function renderAssessment(r, bodyEl, opts) {
   const tabbed = !!(opts && opts.tabbed);
   const headHtml = tabbed ? html : '';
   if (tabbed) html = '';
+  // The Overview's dataset detail shows all of this in its header, above every tab.
+  else if (opts && opts.noHead) html = '';
   // Explain a gate failure explicitly: a high score can still fail the gate because
   // the gate is a pass/fail safety check on blocker-severity issues, not an average.
-  if (!gatePass) html += gatePanel(st, { tabbed, canSee: !(opts && opts.noRecords) && !!r.resultPrefix });
+  // A caller with its records elsewhere (the dataset detail's own tab) takes "See records" itself;
+  // to the panel that is the same as a tabbed result, so its footer offers "See all" too.
+  const onSee = opts && opts.onSee;
+  if (!gatePass) html += gatePanel(st, { tabbed: tabbed || !!onSee,
+    canSee: (!(opts && opts.noRecords) && !!r.resultPrefix) || !!onSee });
   const rowsTxt = st.rows_assessed == null ? '' : st.sampled
     ? `Assessed a random sample of ${Number(st.rows_assessed).toLocaleString()} of ${Number(st.rows_in_source).toLocaleString()} rows.`
     : `Assessed all ${Number(st.rows_assessed).toLocaleString()} rows.`;
@@ -6521,8 +6676,12 @@ function renderAssessment(r, bodyEl, opts) {
   const gp = body.querySelector('.gate-why');
   if (gp) gp.addEventListener('click', e => {
     const see = e.target.closest('[data-gatesee]');
-    if (see) { _gateSee(body, see.dataset.gatesee, Number(see.dataset.failed) || 0); return; }
-    if (e.target.closest('[data-gateall]')) { _gateSee(body, '', 0); return; }
+    if (see) {
+      if (onSee) onSee(see.dataset.gatesee, Number(see.dataset.failed) || 0);
+      else _gateSee(body, see.dataset.gatesee, Number(see.dataset.failed) || 0);
+      return;
+    }
+    if (e.target.closest('[data-gateall]')) { if (onSee) onSee('', 0); else _gateSee(body, '', 0); return; }
     const more = e.target.closest('[data-gatemore]');
     if (more) {
       gp.querySelectorAll('[data-gatehidden]').forEach(li => { li.hidden = false; dqIn(li); });
@@ -8345,16 +8504,6 @@ function initAboutScene() {
 // or routing. A description changes neither - and the person who knows what a table holds is
 // usually the one using it, not the admin who provisioned the org. The server agrees (action
 // `describe` has no role guard), so this is not a hidden button over a rule that would refuse it.
-function descriptionSection(key) {
-  const d = entryFor(key).description;
-  return `<div class="ds-desc">` +
-    `<div class="ds-desc-hd">\u{1F4C4} Description</div>` +
-    (d ? `<div class="ds-desc-body">${esc(d)}</div>`
-       : `<p class="hint" style="margin:2px 0 0;">No description yet - one line on what this ` +
-         `dataset holds, shown wherever it is listed.</p>`) +
-    `<button type="button" class="btn-sm ds-desc-edit" data-desckey="${esc(key)}">` +
-    `${d ? '✎ Edit' : '＋ Add'} description</button></div>`;
-}
 async function setDescription(key) {
   const cur = entryFor(key).description;
   const v = await dqPrompt(
@@ -8407,6 +8556,7 @@ async function addNote(key, text) {
       { app_id: APP_ID, action: 'note-add', key, note_text: text, note_by: EMAIL || '' });
     if (r && r.entries) dashEntries = r.entries;
   } catch (e) { dqAlert('Could not save note: ' + e.message); return; }
+  const box = document.querySelector('#dsxNote .ds-note-input'); if (box) box.value = '';   // saved
   updateDetailTrust(key); refreshDatasetsTable();
 }
 async function delNote(key, id) {
@@ -8507,37 +8657,30 @@ function wireTrust(container, onChange) {
   container.querySelectorAll('[data-trustnote]').forEach(b =>
     b.addEventListener('click', async e => { e.stopPropagation(); await editTrustNote(b.dataset.key); onChange && onChange(b.dataset.key); }));
 }
-// The trust controls shown in the selected-dataset detail header; re-renders itself on change.
+// The parts of the open dataset's header that change when someone edits the dataset: the
+// description, the chips and the latest note. Every edit to one of them ends in
+// refreshDatasetsTable, which calls this, so the header follows the list.
 function updateDetailTrust(key) {
-  const el = $('#dashDetailHint'); if (!el) return;
-  const prefix = dashSelected && dashSelected.prefix;
-  // Admins (and Qlik) get the trust menu; portal members get a Submit-for-approval action.
-  const _tb = trustBadge(key);
-  const govPart = IS_PORTAL_ADMIN
-    ? `<span class="detail-gov"><span class="hint">Trust</span>${trustMenu(key)}${_tb ? ' ' + _tb : ''}</span>`
-    // Members: the verdict read-only (once an admin has ruled), plus their submit action. Seeing
-    // "Endorsed"/"Caution" here is how they learn their submitted run was responded to.
-    : (PORTAL ? `<span class="detail-gov">${_tb ? `<span class="hint">Trust</span>${_tb}` : ''}${
-        prefix ? submitApprovalBtn(key) : ''}</span>` : '');
-  el.innerHTML = govPart +
-    `<span class="detail-gov"><span class="hint">Owner</span>${ownerChip(key)}</span>` +
-    `<span class="detail-gov"><span class="hint">Stage</span>${medalCell(key)}</span>` +
-    descriptionSection(key) +
-    notesSection(key);
-  if (IS_PORTAL_ADMIN) wireTrust(el, () => updateDetailTrust(key));
-  const _sub = $('#dsSubmitApproval');
-  if (_sub && !_sub.disabled) _sub.addEventListener('click', () => submitForApproval(prefix, _sub));
-  el.querySelectorAll('[data-ownerset]').forEach(b =>
-    b.addEventListener('click', async e => { e.stopPropagation(); await setOwner(key); updateDetailTrust(key); refreshDatasetsTable(); }));
-  el.querySelectorAll('.medal[data-medal]').forEach(b =>
-    b.addEventListener('click', e => {
-      e.stopPropagation(); const m = b.dataset.medal;
-      setStage(key, entryFor(key).stage === m ? '' : m);
-      updateDetailTrust(key); refreshDatasetsTable();
-    }));
-  el.querySelectorAll('[data-desckey]').forEach(b =>
-    b.addEventListener('click', e => { e.stopPropagation(); setDescription(b.dataset.desckey); }));
-  wireNotes(el, key);
+  const gov = $('#dsxGov');
+  if (!gov || !dashSelected || dashSelected.key !== key) return;
+  if (dsxMenuOpen && gov.contains(dsxMenuOpen.menu)) dsxMenuHide(false);
+  // A half-written note survives the repaint (addNote empties the box once one is saved).
+  const inp = $('#dsxNote .ds-note-input');
+  const draft = inp ? inp.value : '', typing = !!inp && document.activeElement === inp;
+  // So does focus on a chip (a picker closing hands it back just before this redraws the chips).
+  const had = document.activeElement && gov.contains(document.activeElement) && document.activeElement.dataset.chip;
+  const desc = $('#dsxDesc');
+  if (desc) desc.innerHTML = dsxDescHtml(key);
+  gov.innerHTML = dsxGovHtml(key, dsxRow(key), dsxResNow());
+  if (had) { const c = gov.querySelector(`[data-chip="${had}"]`); if (c && c.focus) c.focus({ preventScroll: true }); }
+  const note = $('#dsxNote');
+  if (note) {
+    note.innerHTML = dsxNoteHtml(key);
+    wireNotes(note, key);
+    const again = note.querySelector('.ds-note-input');
+    if (again && draft) again.value = draft;
+    if (again && typing) again.focus({ preventScroll: true });
+  }
 }
 
 // The list, narrowed by search (name + tags) + source + stage + a clicked custom-tag.
@@ -8558,6 +8701,12 @@ function datasetsFiltered() {
 }
 
 function refreshDatasetsTable() {
+  _refreshDatasetsList();
+  // The open dataset's header shows the same owner, stage, trust, tags and notes, and every change
+  // to them ends here, so it follows the list instead of each change repainting it separately.
+  if (dashSelected) updateDetailTrust(dashSelected.key);
+}
+function _refreshDatasetsList() {
   const rows = datasetsFiltered();
   if (!rows.length) {
     // Two different nothings: a workspace with no data at all, and filters that exclude all of
@@ -9343,45 +9492,17 @@ function apprChip(status) {
   const m = _APPR_META[status]; if (!m) return '';
   return ` <span class="tag ${m.cls}" data-tip="Approval status">${m.label}</span>`;
 }
-// A RED run is too low to put forward for endorsement - it must be at least amber. The button
-// is disabled rather than hidden so the reason is visible; the API enforces the same rule, since
-// hiding a button is not enforcement (the approvals endpoint is also reachable via MCP).
-function submitApprovalBtn(key) {
-  // Only amber/green may be put forward. An allow-list, not "block red": a run can also come back
-  // `not_assessed` (nothing could be scored) or with no status at all (the run failed), and
-  // neither of those is "at least amber" either. The API enforces the same rule - this only makes
-  // the reason visible rather than making the user discover it by being refused.
-  const row = (typeof dashDatasets !== 'undefined' ? dashDatasets : []).find(x => x.key === key);
-  const status = String((row && (row.status || row.overallStatus)) || '').toLowerCase();
-  // Already decided or already queued: offering "Submit" here is a dead end, because the API
-  // refuses a second submit ("This run is already approved."). An admin's own runs are approved
-  // on arrival, so a member browsing the workspace WILL meet this state.
-  const appr = String((row && row.approvalStatus) || '').toLowerCase();
-  if (appr === 'approved' || appr === 'pending') {
-    const label = appr === 'approved' ? 'Approved' : 'Awaiting review';
-    const why = appr === 'approved'
-      ? 'This run is already approved, so there is nothing to submit.'
-      : 'This run has already been submitted and is waiting for an admin to review it.';
-    return `<button class="btn-sm" id="dsSubmitApproval" disabled data-tip="${why}">${label}</button>`;
-  }
-  if (status !== 'amber' && status !== 'green') {
-    const sc = (row && typeof row.score === 'number') ? ` (${num1(row.score)})` : '';
-    const why = status === 'red'
-      ? `This run scored red${sc} - too low to submit. A run must be at least amber to be put forward: fix the failing checks, re-run, then submit.`
-      : `This run has no overall score, so there is nothing to endorse. A run must be at least amber to be put forward - check the dataset has rules that can be evaluated, then re-run.`;
-    return `<button class="btn-sm" id="dsSubmitApproval" disabled data-tip="${why}">Submit for approval ⛔</button>`;
-  }
-  return `<button class="btn-sm" id="dsSubmitApproval" data-tip="Send this run to your admins for approval">Submit for approval</button>`;
-}
 async function submitForApproval(prefix, btn) {
   if (!prefix) return;
   if (btn) { btn.disabled = true; btn.textContent = 'Submitting…'; }
   try {
     await postJSON(`${API_BASE}/data-quality/approvals`, HEADERS, { action: 'submit', app_id: APP_ID, result_prefix: prefix });
     if (btn) btn.textContent = '✓ Submitted for approval';
+    return true;
   } catch (e) {
     alert('Could not submit for approval: ' + (e && e.message || e));
     if (btn) { btn.disabled = false; btn.textContent = 'Submit for approval'; }
+    return false;
   }
 }
 async function loadApprovals() {
@@ -9613,13 +9734,6 @@ function stageBadge(key) {
   const s = entryFor(key).stage; if (!s) return '';
   return `<span class="ds-stage-badge ${s}" data-tip="${esc(MEDAL_LABEL[s])} stage - change it in the dataset detail">${MEDAL_LABEL[s]}</span>`;
 }
-// The bronze/silver/gold picker for one row (click a stage to set; click the active one to clear).
-function medalCell(key) {
-  const cur = entryFor(key).stage;
-  return `<span class="medal-menu">` + MEDALLIONS.map(m =>
-    `<button type="button" class="medal ${m}" data-medal="${m}" data-key="${esc(key)}" data-tip="${esc(MEDAL_LABEL[m])} stage"${cur === m ? '' : ' style="opacity:.4;"'}>${MEDAL_LABEL[m].split(' ')[0]}</button>`
-  ).join('') + `</span>`;
-}
 // Custom-tag chips (+ an add button) for a row's name cell.
 // Editing is admin-only in the portal: once an org declares a tag restricting, that tag decides
 // who can see the dataset, so a member adding or removing one would be editing their own access.
@@ -9798,6 +9912,7 @@ function renderHealthTable(datasets) {
       $('#dashTableWrap').querySelectorAll('.dash-row').forEach(x => x.classList.remove('sel'));
       tr.classList.add('sel');
       selectDataset(tr.getAttribute('data-key'), tr.getAttribute('data-name'));
+      dsxReveal();                // it opens above the list, so bring it to where the reader is
     }));
   $('#dashTableWrap').querySelectorAll('button[data-rerun]').forEach(b =>
     b.addEventListener('click', e => { e.stopPropagation(); reRunTable(b.dataset.rerun, b.dataset.fmt, b.dataset.prefix); }));
@@ -9860,10 +9975,6 @@ function trendsIn() {
 function renderAppOverview(datasets) {
   dashSelected = null;
   $('#dashRunDetail').innerHTML = '';
-  const _acts = $('#dashDetailActions'); if (_acts) _acts.innerHTML = '';
-  $('#dashDetailTitle').textContent = `All tables - ${dashWindowDays}-day trend`;
-  $('#dashDetailHint').textContent =
-    'Every table\'s trend overlaid. Click a table above for its full breakdown.';
   const withData = (datasets || []).filter(d => (d.spark || []).length);
   if (!withData.length) {
     $('#dashTrends').innerHTML =
@@ -9894,17 +10005,20 @@ function renderAppOverview(datasets) {
     `compare on one axis (100% = first run). Click a table above for its full breakdown.</p>${more}`;
 }
 
-// ---- Dataset detail: ONE place with sub-tabs (Scores / Trends / Rules / Failed / History),
-// so rules and everything about a dataset live together instead of behind toggle buttons. ----
+// ---- Dataset detail: ONE place with sub-tabs (Scores / Failed records / Rules / History /
+// Compliance / Metadata), so everything about a dataset lives together. ----
 let dsTrends = null;         // cached trends for the selected dataset (window = dsWindowDays)
 // Trend window for the dataset detail. Defaults to the full 1-year retention window; the
-// Trends/History tabs offer a 1 year / 30 days toggle. Deliberately NOT persisted - it's a
+// History tab offers a 1 year / 30 days toggle. Deliberately NOT persisted - it's a
 // per-viewer view choice, so every dataset opens on the full year.
 let dsWindowDays = 365;
 const DS_WINDOWS = [[365, '1 year'], [30, '30 days']];
 let dsTab = 'scores';
-const DS_TABS = [['scores', 'Scores'], ['metadata', 'Metadata'], ['compliance', 'Compliance'],
-                 ['trends', 'Trends'], ['rules', 'Rules'], ['failed', 'Failed records'], ['history', 'History']];
+// In the order a reader works through a dataset: how it scored, what failed, the rules it was
+// held to, how it has moved over time, then the compliance and metadata views. Trends used to be a
+// tab of its own beside History; both drew the same runs, so its charts now head the History tab.
+const DS_TABS = [['scores', 'Scores'], ['failed', 'Failed records'], ['rules', 'Rules'],
+                 ['history', 'History'], ['compliance', 'Compliance'], ['metadata', 'Metadata']];
 
 // A run-completion email links to ?ds=<dataset key>, so the recipient lands on the dataset
 // rather than on the estate view and having to find it. Fired from the dashboard render, where
@@ -9945,6 +10059,554 @@ const DS_EXPORT_ICON =
   'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
   '<path d="M12 3v11m0 0 4-4m-4 4-4-4"/><path d="M4 16v2.5A2.5 2.5 0 0 0 6.5 21h11a2.5 2.5 0 0 0 2.5-2.5V16"/></svg>';
 
+// ---- The open dataset's header -------------------------------------------------------------
+// Everything about the open dataset, in the order a reader looks for it: what it is (its source,
+// name and description), how it is doing (five numbers that stay put on every tab), what is known
+// about it (labelled chips for owner, stage, trust, tags, compliance, incidents and rules), the
+// latest note, and one Actions menu for everything that can be done to it.
+//
+// It replaces three rows of unlabelled icons, a description card and a notes card, with Back and
+// Export above them and Re-run only on the list row. A reader had to know which unlabelled button
+// meant "trust", and that scheduling, monitoring, lineage and incidents for this dataset lived on
+// other tabs at all.
+let dsxRes = null;             // { prefix, p, r }: the latest run's result, shared with the Scores tab
+let dsxNotesOpen = false;      // every note, and the box to add one, open under the latest
+let dsFrWant = null;           // open the Failed records tab filtered to this check
+let dsWantGate = false;        // open the Scores tab at "Why the gate failed"
+
+function dsxRow(key) {
+  return (dashDatasets || []).find(x => x.key === key) || (dashDatasetsAll || []).find(x => x.key === key) || null;
+}
+const dsxIsUpload = d => !!(d && (d.isUpload || String(d.resultPrefix || '').includes('/_uploads/')));
+
+/** The latest run's result: fetched once and shared by the header and the Scores tab, so opening a
+ *  dataset still costs one call for it. `fresh` asks again (after rules are pinned, say). A failure
+ *  is not kept, so the next asker tries again. */
+function dsxResult(prefix, fresh) {
+  if (!prefix) return Promise.resolve(null);
+  if (!fresh && dsxRes && dsxRes.prefix === prefix) return dsxRes.p;
+  const ent = { prefix, r: null };
+  ent.p = postJSON(`${API_BASE}/data-quality/result`, HEADERS, { result_prefix: prefix })
+    .then(r => { ent.r = r; return r; });
+  ent.p.catch(() => { if (dsxRes === ent) dsxRes = null; });
+  dsxRes = ent;
+  return ent.p;
+}
+/** The open dataset's result if it is already in, else null. */
+function dsxResNow() {
+  return (dsxRes && dashSelected && dsxRes.prefix === dashSelected.prefix) ? dsxRes.r : null;
+}
+
+/** "Today", "Yesterday", "3 days ago" or a date, and the time of day. */
+function dsxDay(iso) {
+  const t = new Date(iso);
+  if (!iso || isNaN(t.getTime())) return { day: '-', time: '' };
+  const day0 = x => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const n = Math.round((day0(new Date()) - day0(t)) / 864e5);
+  return {
+    day: n <= 0 ? 'Today' : n === 1 ? 'Yesterday' : n < 7 ? `${n} days ago`
+      : t.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: n > 300 ? 'numeric' : undefined }),
+    time: t.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }),
+  };
+}
+
+function dsxHeadHtml(key, name, ds) {
+  const fmt = ds ? (isSourceDataset(ds) ? ds.sourceFormat : 'qlik') : '';
+  return `<div class="dsx-top">` +
+      `<span class="dsx-ico" aria-hidden="true">${srcIcon(fmt)}</span>` +
+      `<div class="dsx-id"><h2 class="dsx-name" id="dashDetailTitle"><span class="dsx-nm">${esc(name)}</span>${fmt ? sourceChip(fmt) : ''}</h2>` +
+        `<div id="dsxDesc"></div></div>` +
+      `<div class="dsx-acts"><span class="dsx-flash" id="dsxFlash" role="status" aria-live="polite"></span>` +
+        `<button type="button" class="dsx-btn primary lngb" id="dsRerun" data-dsx="rerun" data-tip="Assess this dataset again now">↻ Re-run</button>` +
+        `<span class="dsx-menu-wrap"><button type="button" class="dsx-btn lngb" id="dsActions" data-dsx="actions" ` +
+          `aria-haspopup="menu" aria-expanded="false" aria-controls="dsMenu">⋯ Actions</button>` +
+          `<div class="dsx-menu" id="dsMenu" role="menu" aria-label="Actions for ${esc(name)}" hidden></div></span>` +
+        `<button type="button" class="dsx-btn icon lngb" id="dashMaxBtn" data-dsx="max"></button>` +
+        `<button type="button" class="dsx-btn icon lngb" id="dsBack" data-dsx="close" aria-label="Close this dataset" ` +
+          `data-tip="Close it, and go back to every dataset">✕</button>` +
+      `</div></div>` +
+    `<div class="dsx-kpis" id="dsxKpis"></div>` +
+    `<div class="dsx-gov" id="dsxGov"></div>` +
+    `<div id="dsxNote"></div>`;
+}
+
+// ---- The health strip ----
+// The five numbers a reader opens a dataset to find, on every tab. What the dashboard row knows is
+// drawn at once; the failures and how much was read arrive with the latest run's result.
+const _DSX_SEV = ['blocker', 'major', 'minor'];
+function dsxKpisHtml(ds, r) {
+  const d = ds || {};
+  const st = (r && r.status) || {}, g = st.gate || {};
+  const wait = '<span class="sk dsx-wait" aria-hidden="true"></span>';
+  const none = !d.resultPrefix, lost = r === false;
+  const tile = (id, label, val, sub, o) => {
+    o = o || {};
+    const tag = o.go ? 'button' : 'div';
+    return `<${tag}${o.go ? ' type="button"' : ''} class="dsx-kpi${o.cls ? ' ' + o.cls : ''}${o.go ? ' lngb' : ''}" data-kpi="${id}"` +
+      `${o.go ? ` data-dsx="go" data-go="${o.go}"` : ''}${o.tip ? ` data-tip="${esc(o.tip)}"` : ''}>` +
+      `<span class="dsx-k">${label}</span><span class="dsx-v">${val}</span><span class="dsx-s">${sub || '&nbsp;'}</span></${tag}>`;
+  };
+  const status = String(d.status || '').toLowerCase();
+  const dimsN = Object.values(d.dims || {}).filter(v => typeof v === 'number' && isFinite(v)).length;
+  const score = tile('score', 'Score',
+    `<b>${esc(String(fmtScore(d.score)))}</b>` +
+      (tagClass(status) ? `<span class="tag ${tagClass(status)}">${esc(status.charAt(0).toUpperCase() + status.slice(1))}</span>` : ''),
+    dimsN ? `${dimsN} of ${DAMA_DIMS.length} dimensions scored` : 'Not scored yet',
+    { go: 'scores', tip: 'Open the Scores tab' });
+
+  const failing = d.gate === false;
+  let gsub;
+  if (d.gate == null) gsub = 'No completed run';
+  else if (!failing) gsub = 'No blocker check failed';
+  else if (lost) gsub = '';
+  else if (!r) gsub = wait;
+  else {
+    const parsed = (g.reasons || []).map(_gateParse), n = parsed.filter(p => p.type === 'check').length;
+    gsub = n ? `${n} blocker check${n === 1 ? '' : 's'} failed`
+      : parsed.some(p => p.type === 'score' || p.type === 'noscore') ? 'The score is under its threshold'
+      : parsed.some(p => p.type === 'cap') ? 'More failures than it allows' : 'A blocking check failed';
+  }
+  const gate = tile('gate', 'Quality gate', `<b>${d.gate == null ? '-' : failing ? 'Failing' : 'Passing'}</b>`, gsub,
+    { go: 'gate', cls: failing ? 'bad' : d.gate ? 'good' : '', tip: failing ? 'See why it failed' : 'Open the Scores tab' });
+
+  let fails;
+  if (none || lost) fails = tile('failures', 'Check failures', '<b>-</b>', none ? 'No completed run' : 'Could not be loaded');
+  else if (!r) fails = tile('failures', 'Check failures', wait, wait);
+  else {
+    const n = g.check_failures || g.failing_rows || 0;
+    const by = g.check_failures_by_severity || g.failing_rows_by_severity || {};
+    const sev = _DSX_SEV.filter(s => by[s]).map(s => `${Number(by[s]).toLocaleString()} ${s}`).join(' · ');
+    fails = tile('failures', 'Check failures', `<b>${n.toLocaleString()}</b>`, n ? (sev || 'across every check') : 'Every check passed',
+      { go: 'failed', cls: by.blocker ? 'bad' : n ? 'warn' : '',
+        tip: (sev ? sev + '.\n' : '') + 'Every failure across every check: a record that fails two checks counts twice. Open the failing records.' });
+  }
+
+  const ra = Number(st.rows_assessed);
+  const rowsSub = none || lost ? '' : !r ? wait
+    : st.sampled ? `a sample of ${ra.toLocaleString()} assessed` : (st.rows_assessed != null ? 'all assessed' : '');
+  const rows = tile('rows', 'Rows', `<b>${esc(numInt(d.rows))}</b>`, rowsSub);
+
+  const when = dsxDay(d.lastSeen);
+  const runs = typeof d.runsWindow === 'number' ? `${d.runsWindow} run${d.runsWindow === 1 ? '' : 's'} in ${dashWindowDays} days` : '';
+  const pts = (d.spark || []).map(p => p.score);
+  const last = tile('last', 'Last run',
+    `<b>${esc(when.day)}</b>${pts.length > 1 ? `<span class="dsx-spark" aria-hidden="true">${svgSpark(pts, 64, 20)}</span>` : ''}`,
+    [when.time, runs].filter(Boolean).map(esc).join(' · '), { go: 'history', tip: 'Open its History' });
+  return score + gate + fails + rows + last;
+}
+function dsxPaintKpis(ds, r) { const el = $('#dsxKpis'); if (el) el.innerHTML = dsxKpisHtml(ds, r); }
+
+// ---- The chips ----
+// Each says what it is before what it holds. Editable ones are buttons with a caret; for a reader
+// who cannot change one (a portal member, for owner, trust and tags) it is plain text.
+function dsxChip(id, label, body, o) {
+  o = o || {};
+  const tag = o.act ? 'button' : 'span';
+  const caret = o.act ? `<span class="dsx-caret" aria-hidden="true">${o.pop ? '▾' : o.go ? '›' : '✎'}</span>` : '';
+  return `<${tag}${o.act ? ' type="button"' : ''} class="dsx-chip${o.cls ? ' ' + o.cls : ''}${o.act ? ' lngb' : ' ro'}" data-chip="${id}"` +
+    `${o.act ? ` data-dsx="${o.act}"` : ''}${o.pop ? ' aria-haspopup="menu" aria-expanded="false"' : ''}` +
+    `${o.tip ? ` data-tip="${esc(o.tip)}"` : ''}><span class="dsx-l">${label}</span><span class="dsx-c">${body}</span>${caret}</${tag}>`;
+}
+function dsxPick(label, items) {
+  return `<div class="dsx-menu dsx-pop" role="menu" aria-label="${esc(label)}" hidden>` + items.map(it => it === '-'
+    ? '<div class="dsx-sep" role="separator"></div>'
+    : `<button type="button" role="${it.radio ? 'menuitemradio' : 'menuitem'}"${it.radio ? ` aria-checked="${!!it.on}"` : ''} ` +
+      `class="dsx-mi lngb" ${it.attr} tabindex="-1"><span class="dsx-mi-ic" aria-hidden="true">${it.on ? '✓' : (it.ic || '')}</span>` +
+      `<span class="dsx-mi-t">${it.label}</span></button>`).join('') + `</div>`;
+}
+function dsxGovHtml(key, ds, r) {
+  const e = entryFor(key), d = ds || {}, admin = IS_PORTAL_ADMIN;
+  const none = t => `<span class="dsx-none">${t}</span>`;
+  const owner = dsxChip('owner', 'Owner', e.owner ? `👤 ${esc(e.owner)}` : none('Unassigned'), admin
+    ? { act: 'owner', tip: 'Alerts for this dataset go to its owner. Click to change who.' }
+    : { tip: 'Alerts for this dataset go to its owner, who your admins choose.' });
+  const stage = `<span class="dsx-pw">` +
+    dsxChip('stage', 'Stage', e.stage ? `<span class="ds-stage-badge ${e.stage}">${esc(MEDAL_LABEL[e.stage])}</span>` : none('None'),
+      { act: 'stage', pop: true, tip: 'Its medallion stage: bronze, silver or gold' }) +
+    dsxPick('Stage', [{ v: '' }].concat(MEDALLIONS.map(v => ({ v }))).map(({ v }) => ({ radio: true, on: e.stage === v,
+      attr: `data-setstage="${v}"`, label: v ? esc(MEDAL_LABEL[v]) : 'No stage' }))) + `</span>`;
+  const tm = TRUST_META[e.trust];
+  const tBody = tm ? `<span class="trust-badge ${tm.cls}">${tm.icon} ${tm.label}${e.trustNote ? ' 📝' : ''}</span>` : none('Not rated');
+  const set = e.trustBy || e.trustAt ? `\n(set${e.trustBy ? ' by ' + e.trustBy : ''}${e.trustAt ? ' · ' + fmtWhen(e.trustAt) : ''})` : '';
+  const tTip = tm ? tm.tip + (e.trustNote ? ` - “${e.trustNote}”` : '') + set : 'Not rated: nobody has endorsed, cautioned or deprecated it';
+  const trust = admin
+    ? `<span class="dsx-pw">` + dsxChip('trust', 'Trust', tBody, { act: 'trust', pop: true, tip: tTip }) +
+      dsxPick('Trust', TRUST_LEVELS.map(t => ({ radio: true, on: e.trust === t, attr: `data-settrust="${t}"`,
+        ic: TRUST_META[t].icon, label: esc(TRUST_META[t].label) }))
+        .concat([{ radio: true, on: !e.trust, attr: 'data-settrust=""', label: 'Not rated' }, '-',
+                 { attr: 'data-settrust="note"', ic: '📝', label: e.trustNote ? 'Edit the note…' : 'Add a note…' }])) + `</span>`
+    : dsxChip('trust', 'Trust', tBody, { tip: tTip + (PORTAL ? '\nYour admins set this.' : '') });
+  const tags = e.tags || [], shown = tags.slice(0, 4);
+  const tagBody = tags.length ? shown.map(t => `<span class="ds-tag" style="--pill:${tagTint(t)}"><span class="ds-tag-dot"></span>${esc(t)}</span>`).join('') +
+      (tags.length > shown.length ? `<span class="dsx-more">+${tags.length - shown.length}</span>` : '') : none('None');
+  const tagChip = dsxChip('tags', 'Tags', tagBody, admin
+    ? { act: 'tags', tip: (tags.length ? tags.join(', ') + '\n' : '') + 'Click to change its tags' }
+    : { tip: tags.length ? tags.join(', ') : 'No tags yet. Your admins set them.' });
+  const cg = d.complianceGrade || '';
+  const cmp = dsxChip('compliance', 'Compliance', _cmpPill(cg), { act: 'compliance', go: true,
+    tip: (CMP_GRADE[cg] ? CMP_GRADE[cg].label + '. ' : '') + 'Open the Compliance tab' });
+  const inc = dsxIncOpen(key), blk = inc.some(i => String(i.severity || '').toLowerCase() === 'blocker');
+  const incChip = dsxChip('incidents', 'Incidents', inc.length ? `🚨 ${inc.length} open` : none('None open'), { act: 'incidents', go: true,
+    cls: inc.length ? (blk ? 'hot' : 'warm') : '', tip: inc.length ? 'Open its incidents' : 'Nothing open. Open its incident history.' });
+  let rules = '';
+  if (r && r.pendingPin) rules = dsxChip('rules', 'Rules', '✎ Changes queued', { act: 'rules', go: true, cls: 'info',
+    tip: 'Rule changes are pinned for this dataset and apply on its next run.' + (r.pendingPinRules ? ' Click to see them.' : '') });
+  else if (r && r.rulesetInferred === true) rules = dsxChip('rules', 'Rules', '⚠ Provisional', { act: 'rules', go: true, cls: 'warm',
+    tip: 'Inferred from the data and not reviewed by a person yet. Open the Rules tab to review and pin them.' });
+  return owner + stage + trust + tagChip + cmp + incChip + rules;
+}
+/** Open incidents for one dataset, from the list the blocker bar keeps. */
+function dsxIncOpen(key) {
+  return (incOpen || []).filter(i => (i.datasetKey || '') === key && String(i.status || 'OPEN').toUpperCase() === 'OPEN');
+}
+
+function dsxDescHtml(key) {
+  const t = entryFor(key).description;
+  return `<button type="button" class="dsx-desc lngb${t ? '' : ' empty'}" data-dsx="desc" data-desckey="${esc(key)}" ` +
+    `data-tip="${esc(t ? t + '\n(click to edit)' : 'One line on what this dataset holds, shown wherever it is listed')}">` +
+    `<span>${esc(t || 'Add a description')}</span><span class="dsx-pen" aria-hidden="true">✎</span></button>`;
+}
+
+// ---- The latest note ----
+// One line: notes are context for the team, and a pile of them should not push the numbers off the
+// screen. Every note, and the box to add one, open beneath it.
+function dsxNoteHtml(key) {
+  const notes = entryFor(key).notes || [];
+  if (!notes.length && !dsxNotesOpen) return '';
+  const latest = notes.reduce((a, n) => (!a || String(n.at || '') >= String(a.at || '')) ? n : a, null);
+  const meta = latest ? [String(latest.by || '').split('@')[0], dsxDay(latest.at).day].filter(x => x && x !== '-').join(' · ') : '';
+  const line = latest
+    ? `<span class="dsx-note-k">📝 Latest note</span><span class="dsx-note-t">${esc(latest.text)}</span>` +
+      (meta ? `<span class="dsx-note-m">${esc(meta)}</span>` : '')
+    : `<span class="dsx-note-k">📝 Notes</span><span class="dsx-note-t dsx-none">None yet</span>`;
+  const label = dsxNotesOpen ? 'Hide' : `All notes (${notes.length}) · Add`;
+  return `<div class="dsx-note">${line}<button type="button" class="linkbtn lngb dsx-note-all" data-dsx="notes" ` +
+      `aria-expanded="${dsxNotesOpen}">${label}</button></div>` +
+    (dsxNotesOpen ? `<div class="dsx-notes">${notesSection(key)}</div>` : '');
+}
+
+// ---- The Actions menu ----
+function dsxMi(act, ic, label, o) {
+  o = o || {};
+  return `<button type="button" role="menuitem" class="dsx-mi lngb${o.danger ? ' danger' : ''}" data-act="${act}" tabindex="-1"` +
+    `${o.off ? ' aria-disabled="true"' : ''}><span class="dsx-mi-ic" aria-hidden="true">${ic}</span>` +
+    `<span class="dsx-mi-t">${label}${o.sub ? `<small>${esc(o.sub)}</small>` : ''}</span>` +
+    `${o.side ? `<span class="dsx-mi-r${o.hot ? ' hot' : ''}">${esc(o.side)}</span>` : ''}</button>`;
+}
+/** What scheduling this dataset means: the Schedules form's kind, and the fields its name can fill.
+ *  The saved connection a run used is not recorded on it, so that is left for the reader to pick. */
+function dsxSchedPlan(d) {
+  if (dsxIsUpload(d)) return { why: 'An uploaded file has no source to assess on a timer' };
+  if (!isSourceDataset(d)) return PORTAL ? { why: 'App tables are scheduled from the Qlik extension' } : { kind: 'qlik' };
+  const fmt = String(d.sourceFormat || '').toLowerCase();
+  // Read as Re-run reads it: a connector records its own name, and a file on S3 records its type.
+  const kind = (fmt === 'athena' || fmt === 'iceberg') ? 'athena' : (_SRC_CARD_BY_FMT[fmt] || 's3');
+  const opt = document.querySelector(`#schSourceKind option[value="${kind}"]`);
+  if (!opt || opt.hidden) return { why: `${sourceLabel(fmt) || 'This source'} cannot be scheduled from here` };
+  const has = f => (SCHED_SOURCE_FIELDS[kind] || []).some(x => x.f === f);
+  const fields = {};
+  if (has('table')) {
+    const parts = String(d.name || '').split('.');
+    fields.table = parts[parts.length - 1];
+    if (parts.length > 1) fields[kind === 'bigquery' ? 'dataset' : 'schema'] = parts[parts.length - 2];
+    if (parts.length > 2) fields[kind === 'bigquery' ? 'project' : kind === 'databricks' ? 'catalog' : 'database'] = parts[parts.length - 3];
+    return { kind, fields };
+  }
+  // A file: its type, where the form asks for one, and its name; where it is has to be typed in.
+  if (has('format') && fmt !== kind) fields.format = fmt;
+  if (has('dataset')) fields.dataset = d.name;
+  return { kind, fields, where: true };
+}
+function dsxLineagePlan(d) {
+  if (!isSourceDataset(d)) return PORTAL ? { why: 'Not available for app tables here' } : { scope: 'app', side: 'whole app' };
+  const fmt = String(d.sourceFormat || '').toLowerCase();
+  if (!LINEAGE_ENGINES.has(fmt)) return { why: `${sourceLabel(fmt) || 'This source'} does not publish dependency metadata` };
+  if (!d.resultPrefix) return { why: 'No completed run yet' };
+  return { scope: 'source' };
+}
+// Only amber or green may be put forward, and not twice. An allow-list rather than "not red": a run
+// can also be not_assessed or have no status at all (it failed), and neither is "at least amber".
+// The API refuses the same things; the menu says why first, rather than letting it be refused.
+function dsxApproval(d) {
+  const appr = String(d.approvalStatus || '').toLowerCase(), status = String(d.status || '').toLowerCase();
+  if (appr === 'approved') return { label: 'Approved', off: true, sub: 'This run is already approved' };
+  if (appr === 'pending') return { label: 'Awaiting review', off: true, sub: 'Submitted, and waiting for an admin' };
+  if (!d.resultPrefix) return { label: 'Submit for approval', off: true, sub: 'No completed run yet' };
+  if (status !== 'amber' && status !== 'green') return { label: 'Submit for approval', off: true,
+    sub: status === 'red' ? 'It scored red: a run must be at least amber' : 'It has no overall score to put forward' };
+  return { label: 'Submit for approval', sub: 'Send this run to your admins to endorse' };
+}
+function dsxMenuHtml(key, ds) {
+  const d = ds || { key }, prefix = d.resultPrefix || '';
+  const h = t => `<div class="dsx-mh" role="presentation">${t}</div>`;
+  const sep = '<div class="dsx-sep" role="separator"></div>';
+  const sch = dsxSchedPlan(d), lin = dsxLineagePlan(d), n = dsxIncOpen(key).length;
+  const mon = !isSourceDataset(d) ? 'App tables are read by the app, not polled at a source'
+    : dsxIsUpload(d) ? 'An uploaded file has no live source to poll' : '';
+  let html = h('Run') +
+    dsxMi('rerun', '↻', 'Re-run now', dsxIsUpload(d) ? { sub: 'Upload the file again to assess it' } : null) +
+    dsxMi('schedule', '⏰', 'Schedule…', sch.why ? { off: true, sub: sch.why } : { sub: 'Fills in the Schedules form for it' }) +
+    dsxMi('monitor', '📡', 'Monitor at source', mon ? { off: true, sub: mon } : { sub: 'Row counts and freshness, between runs' }) +
+    sep + h('Explore') +
+    dsxMi('lineage', '🔗', 'Lineage', lin.why ? { off: true, sub: lin.why } : { side: lin.side }) +
+    dsxMi('incidents', '🚨', 'Incidents', { side: n ? `${n} open` : 'none open', hot: !!n }) +
+    dsxMi('history', '📜', 'Latest run in History', prefix ? null : { off: true, sub: 'No completed run yet' }) +
+    sep + h('Share') +
+    dsxMi('export', DS_EXPORT_ICON, 'Export summary (parquet)') +
+    (PORTAL ? dsxMi('link', '📋', 'Copy a link to this dataset') : '') +
+    sep + h('Describe') +
+    dsxMi('desc', '✎', entryFor(key).description ? 'Edit the description' : 'Add a description') +
+    dsxMi('note', '📝', 'Add a note');
+  if (PORTAL && !IS_PORTAL_ADMIN) { const a = dsxApproval(d); html += dsxMi('approve', '📤', esc(a.label), a); }
+  if (IS_PORTAL_ADMIN) html += sep + dsxMi('delete', '🗑', 'Delete dataset…', { danger: true });
+  return html;
+}
+
+// One small controller for the Actions menu and the Stage and Trust pickers: it opens below its
+// button, moves with the arrow keys, closes on Escape, Tab, a pick or a click elsewhere, and hands
+// focus back to the button it came from.
+let dsxMenuOpen = null;          // { btn, menu }
+function dsxMenuShow(btn, menu) {
+  dsxMenuHide();
+  menu.hidden = false;
+  btn.setAttribute('aria-expanded', 'true');
+  dsxMenuOpen = { btn, menu };
+  dqIn(menu, 'dsx-menu-in');
+  const first = menu.querySelector('[role^="menuitem"]:not([aria-disabled="true"])');
+  if (first) first.focus({ preventScroll: true });
+}
+function dsxMenuHide(refocus) {
+  const m = dsxMenuOpen;
+  if (!m) return;
+  dsxMenuOpen = null;
+  m.menu.hidden = true;
+  m.btn.setAttribute('aria-expanded', 'false');
+  if (refocus && m.btn.isConnected) m.btn.focus({ preventScroll: true });
+}
+document.addEventListener('keydown', e => {
+  const m = dsxMenuOpen;
+  if (!m) return;
+  if (e.key === 'Escape') { e.preventDefault(); dsxMenuHide(true); return; }
+  if (e.key === 'Tab') { dsxMenuHide(false); return; }
+  if (!m.menu.contains(document.activeElement)) return;
+  const items = [...m.menu.querySelectorAll('[role^="menuitem"]:not([aria-disabled="true"])')];
+  if (!items.length) return;
+  const i = items.indexOf(document.activeElement);
+  const go = j => { e.preventDefault(); items[(j + items.length) % items.length].focus({ preventScroll: true }); };
+  if (e.key === 'ArrowDown') go(i + 1);
+  else if (e.key === 'ArrowUp') go(i - 1);
+  else if (e.key === 'Home') go(0);
+  else if (e.key === 'End') go(items.length - 1);
+});
+document.addEventListener('click', e => {
+  const m = dsxMenuOpen;
+  if (m && !m.menu.contains(e.target) && !m.btn.contains(e.target)) dsxMenuHide(false);
+}, true);
+
+function dsxFlash(text) {
+  const el = $('#dsxFlash');
+  if (!el) return;
+  el.textContent = text;
+  el.classList.add('on');
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.remove('on'), 2400);
+}
+
+// ---- Where the menu goes ----
+// Each lands on its tab with this dataset already chosen there, rather than on the tab's front page.
+function dsxSchedule(d) {
+  const plan = dsxSchedPlan(d);
+  if (plan.why) return;
+  switchTab('schedules');                          // which resets the form, so fill it in after
+  const sel = $('#schSourceKind');
+  if (sel && sel.value !== plan.kind) { sel.value = plan.kind; schSourceUI(); }
+  const lab = $('#schLabel'); if (lab) lab.value = d.name || '';
+  if (plan.kind === 'qlik') { schSelected = [d.name]; updateTablesSummary(); }
+  const wrap = $('#schedSourceFields');
+  if (wrap && plan.fields) Object.keys(plan.fields).forEach(f => {
+    const el = wrap.querySelector(`[data-f="${f}"]`);
+    if (!el || !plan.fields[f]) return;
+    // A list keeps its own value unless it offers this one (a file type the form does not list).
+    if (el.tagName === 'SELECT' && ![...el.options].some(o => o.value === plan.fields[f])) return;
+    el.value = plan.fields[f];
+  });
+  renderSchedulePreview();
+  schBanner('info', plan.kind === 'qlik'
+    ? `Scheduling ${d.name}: choose when it runs, then save.`
+    : plan.where
+      ? `Scheduling ${d.name}: enter where the file is, choose the saved connection it uses, then choose when it runs.`
+      : `Scheduling ${d.name}: choose the saved connection it uses, check the details, then choose when it runs.`);
+}
+function dsxMonitor(d) {
+  Object.assign(swView, { want: d.key, q: '', src: '', health: '' });
+  const q = $('#swxQ'); if (q) q.value = '';
+  switchTab('sourcewatch');
+}
+function dsxLineage(d) {
+  const plan = dsxLineagePlan(d);
+  if (plan.why) return;
+  if (plan.scope === 'source') { linPick.sel = d.resultPrefix; linPick.selKey = d.key; }
+  linScope = plan.scope;
+  switchTab('lineage');
+}
+function dsxIncidents(d) {
+  incScope = (PORTAL || isSourceDataset(d)) ? 'source' : 'app';
+  incSearch = ''; const s = $('#incSearch'); if (s) s.value = '';
+  incStatusFilter = 'all';
+  incWant = { key: d.key, name: d.name || '' };
+  switchTab('incidents');
+}
+async function dsxCopyLink(key) {
+  const url = location.href.split('#')[0].split('?')[0] + '?ds=' + encodeURIComponent(key);
+  dsxFlash(await agtCopyText(url) ? 'Link copied' : 'Could not copy the link');
+}
+
+// Tab switches made by the reader start the new tab at its top: from deep in a long tab, the
+// first lines of the next one would otherwise be above the window.
+function dsxStickTop() {
+  return parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--dq-stick-top')) || 0;
+}
+function dsxToTabs() {
+  const t = $('#dashTrends');
+  if (!t || !t.offsetParent) return;
+  const y = t.getBoundingClientRect().top + window.scrollY - dsxStickTop();
+  if (window.scrollY > y + 1) window.scrollTo({ top: y, behavior: dqReduced() ? 'auto' : 'smooth' });
+}
+function dsxGoTab(tab) {
+  if (dsTab !== tab) { dsTab = tab; selectDsTab(); }
+  dsxToTabs();
+}
+function dsxOpenFailed(check, failed) {
+  dsFrWant = check ? { check, failed } : {};
+  dsTab = 'failed';
+  selectDsTab();
+  dsxToTabs();
+}
+/** Bring the opened dataset into view, if it is not: from the list below the galaxy it opens
+ *  above the reader, off the top of the window. */
+function dsxReveal() {
+  const det = $('#dashDetail');
+  if (!det) return;
+  const top = det.getBoundingClientRect().top;
+  if (top >= dsxStickTop() && top < window.innerHeight * 0.6) return;
+  det.scrollIntoView({ behavior: dqReduced() ? 'auto' : 'smooth', block: 'start' });
+}
+
+// The tab bar sticks to the top of the window. Once it has, the header saying which dataset this
+// is has gone off the top, so the bar names it instead (and takes the reader back up when pressed).
+let _dsxStuckRaf = 0;
+function dsxStuckCheck() {
+  cancelAnimationFrame(_dsxStuckRaf);
+  _dsxStuckRaf = requestAnimationFrame(() => {
+    const bar = $('#dsxBar');
+    if (!bar || !bar.offsetParent) return;
+    const cs = getComputedStyle(bar);
+    const stuck = cs.position === 'sticky' && bar.getBoundingClientRect().top <= (parseFloat(cs.top) || 0) + 1;
+    if (stuck === bar.classList.contains('stuck')) return;
+    bar.classList.toggle('stuck', stuck);
+    const mini = bar.querySelector('.dsx-mini');
+    if (mini) { mini.tabIndex = stuck ? 0 : -1; mini.setAttribute('aria-hidden', String(!stuck)); }
+  });
+}
+document.addEventListener('scroll', dsxStuckCheck, { passive: true, capture: true });
+window.addEventListener('resize', dsxStuckCheck);
+
+// Every control in the header and the tab bar, in one place.
+async function dsxClick(e) {
+  const t = e.target.closest('[data-dsx], .dsx-mi[data-act], [data-setstage], [data-settrust]');
+  if (!t || !dashSelected || !$('#dashDetail').contains(t)) return;
+  if (t.getAttribute('aria-disabled') === 'true') return;
+  const key = dashSelected.key, d = dsxRow(key) || { key, name: dashSelected.name };
+  const name = d.name || dashSelected.name || '';
+  if (t.hasAttribute('data-setstage')) {
+    dsxMenuHide(true);
+    setStage(key, t.dataset.setstage);
+    refreshDatasetsTable();
+    return;
+  }
+  if (t.hasAttribute('data-settrust')) {
+    const v = t.dataset.settrust;
+    dsxMenuHide(true);
+    if (v === 'note') await editTrustNote(key); else setTrust(key, v);
+    refreshDatasetsTable();
+    return;
+  }
+  if (t.dataset.act) {
+    // Focus goes back to the menu's button only for what stays on this page with nothing to type.
+    dsxMenuHide(['export', 'link', 'approve'].includes(t.dataset.act));
+    switch (t.dataset.act) {
+      case 'rerun': reRunTable(name, d.sourceFormat || '', d.resultPrefix || ''); break;
+      case 'schedule': dsxSchedule(d); break;
+      case 'monitor': dsxMonitor(d); break;
+      case 'lineage': dsxLineage(d); break;
+      case 'incidents': dsxIncidents(d); break;
+      case 'history': cmpOpenReport(d.resultPrefix); break;
+      case 'export': exportParquet('dataset', key, $('#dsActions')); break;
+      case 'link': dsxCopyLink(key); break;
+      case 'desc': setDescription(key); break;
+      case 'note': dsxNotes(key, true); break;
+      case 'approve':
+        if (await submitForApproval(d.resultPrefix, null)) { d.approvalStatus = 'pending'; dsxFlash('Submitted for approval'); }
+        break;
+      case 'delete': deleteDataset(key, name, d.runsWindow == null ? '' : String(d.runsWindow)); break;
+    }
+    return;
+  }
+  switch (t.dataset.dsx) {
+    case 'rerun': reRunTable(name, d.sourceFormat || '', d.resultPrefix || ''); break;
+    case 'actions': {
+      const menu = $('#dsMenu');
+      if (dsxMenuOpen && dsxMenuOpen.menu === menu) { dsxMenuHide(true); break; }
+      menu.innerHTML = dsxMenuHtml(key, dsxRow(key));
+      dsxMenuShow(t, menu);
+      break;
+    }
+    case 'stage': case 'trust': {
+      const menu = t.parentElement.querySelector('.dsx-pop');
+      if (dsxMenuOpen && dsxMenuOpen.menu === menu) dsxMenuHide(true); else if (menu) dsxMenuShow(t, menu);
+      break;
+    }
+    case 'max': dashMaxed = !dashMaxed; applyDashMax(); break;
+    case 'close': deselectDataset(); break;
+    case 'desc': setDescription(key); break;
+    case 'owner': await setOwner(key); refreshDatasetsTable(); break;
+    case 'tags': addTagTo(key); break;
+    case 'compliance': dsxGoTab('compliance'); break;
+    case 'incidents': dsxIncidents(d); break;
+    case 'rules': {
+      const r = dsxResNow();
+      if (r && r.pendingPin && r.pendingPinRules) openPinRulesModal(r.pendingPinRules, { by: r.pendingPinBy, at: r.pendingPinAt });
+      else dsxGoTab('rules');
+      break;
+    }
+    case 'notes': dsxNotes(key, !dsxNotesOpen); break;
+    case 'top': $('#dashDetail').scrollIntoView({ behavior: dqReduced() ? 'auto' : 'smooth', block: 'start' }); break;
+    case 'go': {
+      const go = t.dataset.go;
+      if (go === 'gate') {
+        if (d.gate !== false) { dsxGoTab('scores'); break; }
+        const why = dsTab === 'scores' && $('#dsPanel .gate-why');
+        if (why) { why.scrollIntoView({ behavior: dqReduced() ? 'auto' : 'smooth', block: 'start' }); break; }
+        dsWantGate = true;
+        dsxGoTab('scores');
+      } else dsxGoTab(go);
+      break;
+    }
+  }
+}
+function dsxNotes(key, open) {
+  dsxNotesOpen = open;
+  updateDetailTrust(key);
+  const box = $('#dsxNote .dsx-notes');
+  if (!box) return;
+  dqIn(box);
+  if (open) {
+    const inp = box.querySelector('.ds-note-input');
+    if (inp) inp.focus({ preventScroll: true });
+    box.scrollIntoView({ behavior: dqReduced() ? 'auto' : 'smooth', block: 'nearest' });
+  }
+}
+
 async function selectDataset(key, name, initialTab) {
   const ds = dashDatasets.find(x => x.key === key);
   dashSelected = { key, name, prefix: ds && ds.resultPrefix };
@@ -9953,31 +10615,57 @@ async function selectDataset(key, name, initialTab) {
   // galaxy column narrows, and the panel's own opacity/transform transition rides along with it.
   setOverviewSplit(true);
   // Open the requested sub-tab from the START so only ONE panel render happens - otherwise a later
-  // 'scores' fetch can resolve after and clobber a drill-in that wanted the Compliance tab.
+  // 'scores' fetch can resolve after and clobber a drill-in that wanted the Compliance tab. Trends
+  // is part of History now, so anything still asking for it lands there.
+  if (initialTab === 'trends') initialTab = 'history';
   dsTrends = null; dsTab = (initialTab && DS_TABS.some(([k]) => k === initialTab)) ? initialTab : 'scores';
-  // Source marker lives here (not in the list): the actual source chip for source datasets,
-  // or a "Qlik app" chip for every app table (regardless of whether its run recorded the format).
-  const srcChip = ds ? (isSourceDataset(ds) ? sourceChip(ds.sourceFormat) : sourceChip('qlik')) : '';
-  $('#dashDetailTitle').innerHTML = `${esc(name)}${srcChip ? ` <span style="vertical-align:middle;margin-left:6px;">${srcChip}</span>` : ''}`;
+  dsxNotesOpen = false; dsFrWant = null; dsWantGate = false;
+  dsxMenuHide();
+  const fmt = ds ? (isSourceDataset(ds) ? ds.sourceFormat : 'qlik') : '';
+  $('#dsxHead').innerHTML = dsxHeadHtml(key, name, ds);
+  applyDashMax();                                  // the Maximise button is new: label it for the layout
+  dsxPaintKpis(ds, null);
   updateDetailTrust(key);
-  const bar = DS_TABS.map(([k, l]) => `<button type="button" class="rd-tab${k === dsTab ? ' active' : ''}" data-dstab="${k}">${l}</button>`).join('');
-  $('#dashDetailActions').innerHTML =
-    `<div class="actions ds-actions"><button class="btn-sm" id="dsBack">← All datasets</button>` +
-    `<button class="btn-sm" id="dsExport" data-tip="Export this dataset's summary as parquet">` +
-      DS_EXPORT_ICON + ` Export (parquet)</button></div>`;
+  // A failed gate puts a dot on Failed records, so the tab to open next says so before it is opened.
+  const gateDot = ds && ds.gate === false;
+  const bar = DS_TABS.map(([k, l]) => `<button type="button" role="tab" aria-selected="${k === dsTab}" ` +
+    `class="rd-tab${k === dsTab ? ' active' : ''}" data-dstab="${k}">${l}` +
+    `${k === 'failed' && gateDot ? '<span class="ra-dot" aria-hidden="true"></span><span class="sr-only"> (the quality gate failed)</span>' : ''}</button>`).join('');
+  // The name rides on the LEFT of the stuck bar: in the portal the admin button floats over its
+  // right end.
   $('#dashTrends').innerHTML =
-    `<div class="rd-tabs" id="dsSubtabs">${bar}</div>` +
-    `<div id="dsPanel">${dqSkeleton('Loading dataset', 4)}</div>`;
+    `<div class="dsx-bar" id="dsxBar">` +
+      `<button type="button" class="dsx-mini lngb" data-dsx="top" tabindex="-1" aria-hidden="true" data-tip="Back to the top of ${esc(name)}">` +
+        `<span class="dsx-mini-ic" aria-hidden="true">${srcIcon(fmt)}</span><span class="dsx-mini-n">${esc(name)}</span>` +
+        (ds && ds.score != null ? `<span class="tag ${tagClass(ds.status)}">${esc(String(fmtScore(ds.score)))}</span>` : '') +
+        `<span class="dsx-mini-up" aria-hidden="true">↑</span></button>` +
+      `<div class="rd-tabs" id="dsSubtabs" role="tablist" aria-label="${esc(name)}">${bar}</div></div>` +
+    `<div id="dsPanel" role="tabpanel">${dqSkeleton('Loading dataset', 4)}</div>`;
   $('#dashRunDetail').innerHTML = '';
-  const back = $('#dsBack');
-  if (back) back.addEventListener('click', () => deselectDataset());   // collapse back to the full-width galaxy
-  const dsExp = $('#dsExport');
-  if (dsExp) dsExp.addEventListener('click', () => exportParquet('dataset', key, dsExp));
   $('#dsSubtabs').querySelectorAll('[data-dstab]').forEach(b =>
-    b.addEventListener('click', () => { dsTab = b.dataset.dstab; selectDsTab(); }));
+    b.addEventListener('click', () => { dsTab = b.dataset.dstab; selectDsTab(); dsxToTabs(); }));
+  dsxStuckCheck();
+  // The latest run's result completes the strip and the Rules chip; the Scores tab shares it.
+  if (ds && ds.resultPrefix) dsxResult(ds.resultPrefix).then(r => dsxFill(key, r), () => dsxFill(key, false));
   await loadDsTrends(key);
   selectDsTab();
 }
+function dsxFill(key, r) {
+  if (!dashSelected || dashSelected.key !== key) return;          // the reader has moved on
+  dsxPaintKpis(dsxRow(key), r);
+  if (r) updateDetailTrust(key);                                  // the Rules chip comes with it
+}
+
+// The blocker bar sticks to the very top of the window on every tab. What else sticks (the tab bar
+// above, the galaxy beside it) sits below it, and its height changes as it appears, wraps and goes,
+// so it is measured rather than assumed.
+(() => {
+  const bb = $('#blockerBar');
+  if (!bb || !window.ResizeObserver) return;
+  const set = () => document.documentElement.style.setProperty('--dq-stick-top', (bb.offsetParent ? bb.offsetHeight : 0) + 'px');
+  new ResizeObserver(set).observe(bb);
+  set();
+})();
 
 // Fetch (or re-fetch) the selected dataset's trend series for the current window.
 // dsTrends is a shared global, so every fetch carries a generation token: a slow response for a
@@ -9995,8 +10683,8 @@ async function loadDsTrends(key) {
   return true;
 }
 
-// The 1 year / 30 days segmented control shared by the Trends and History tabs. Re-fetches and
-// re-renders ONLY #dsPanel (via selectDsTab) so the sub-tab bar and Back/Export buttons survive.
+// The 1 year / 30 days segmented control at the top of the History tab. Re-fetches and re-renders
+// ONLY #dsPanel (via selectDsTab), so the header and the tab bar survive.
 // Label the ACTUAL window the server answered with (falls back to the requested one).
 function dsWindowLabel(d) {
   const days = d || (dsTrends && dsTrends.windowDays) || dsWindowDays;
@@ -10030,21 +10718,18 @@ function wireDsWindowToggle(panel) {
 }
 
 function selectDsTab() {
+  if (dsTab === 'trends') dsTab = 'history';         // Trends is the top of History now
   const bar = $('#dsSubtabs');
-  if (bar) bar.querySelectorAll('[data-dstab]').forEach(b => b.classList.toggle('active', b.dataset.dstab === dsTab));
+  if (bar) bar.querySelectorAll('[data-dstab]').forEach(b => {
+    const on = b.dataset.dstab === dsTab;
+    b.classList.toggle('active', on);
+    b.setAttribute('aria-selected', String(on));
+  });
   const panel = $('#dsPanel'); if (!panel) return;
   // One hook for all six sub-tabs. Every branch below either renders straight into this panel or
   // puts a loader in it first, so animating the container here covers both without six calls.
   dqIn(panel);
   const prefix = dashSelected && dashSelected.prefix;
-  if (dsTab === 'trends') {
-    const head = `<div style="margin-bottom:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-        <span class="hint">Trend window</span>${dsWindowToggleHtml()}${dsTrendsNote()}</div>`;
-    panel.innerHTML = head + ((dsTrends && !dsTrends.err) ? renderTrendCharts(dsTrends)
-      : `<p class="dash-muted"${dsTrends && dsTrends.err ? ' style="color:var(--err)"' : ''}>${dsTrends && dsTrends.err ? esc(dsTrends.err) : `No assessments for this dataset in the last ${dsWindowLabel()}.`}</p>`);
-    wireDsWindowToggle(panel);
-    return;
-  }
   if (dsTab === 'history') { renderDatasetHistory(panel); return; }
   if (!prefix) { panel.innerHTML = `<p class="dash-muted">No completed run yet for this dataset - run an assessment to populate this.</p>`; return; }
   if (dsTab === 'scores') { panel.innerHTML = dqSkeleton('Loading run'); loadDsScores(panel, prefix); }
@@ -10056,10 +10741,20 @@ function selectDsTab() {
 
 async function loadDsScores(panel, prefix) {
   // Scores tab shows ONLY the quality scores - metadata lives in the Metadata tab and the
-  // compliance lens in the Compliance tab (noMetadata + noCompliance suppress them here).
+  // compliance lens in the Compliance tab (noMetadata + noCompliance suppress them here). The
+  // name, score, gate and failure count are in the header above every tab, so not again here
+  // (noHead). The result is the one the header already asked for.
   try {
-    const r = await postJSON(`${API_BASE}/data-quality/result`, HEADERS, { result_prefix: prefix });
-    renderAssessment(r, panel, { context: 'app', noRecords: true, noMetadata: true, noCompliance: true });
+    const r = await dsxResult(prefix);
+    if (dsTab !== 'scores' || !dashSelected || dashSelected.prefix !== prefix) return;   // moved on meanwhile
+    renderAssessment(r, panel, { context: 'app', noRecords: true, noMetadata: true, noCompliance: true, noHead: true,
+      // "See records" in Why the gate failed opens the Failed records tab at that check.
+      onSee: (check, failed) => dsxOpenFailed(check, failed) });
+    if (dsWantGate) {
+      dsWantGate = false;
+      const why = panel.querySelector('.gate-why');
+      if (why) why.scrollIntoView({ behavior: dqReduced() ? 'auto' : 'smooth', block: 'start' });
+    }
   } catch (e) { panel.innerHTML = `<p class="dash-muted" style="color:var(--err)">${esc(e.message)}</p>`; }
 }
 
@@ -10079,15 +10774,24 @@ async function loadDsRules(panel, prefix) {
 async function loadDsFailed(panel, prefix) {
   try {
     const fr = await postJSON(`${API_BASE}/data-quality/failed-records`, HEADERS, { result_prefix: prefix, limit: 500, app_id: APP_ID });
+    if (dsTab !== 'failed' || !dashSelected || dashSelected.prefix !== prefix) return;   // moved on meanwhile
     showFailedRecords(panel, fr);
+    // Arriving from "See records" in Why the gate failed: open at that check's records.
+    if (dsFrWant && panel._frApply && dsFrWant.check) panel._frApply(dsFrWant, false);
+    dsFrWant = null;
   } catch (e) { panel.innerHTML = `<p class="dash-muted" style="color:var(--err)">${esc(e.message)}</p>`; }
 }
 
+// The History tab: how the dataset has moved over the window (what changed, the score, the gate
+// and every dimension), then the runs themselves. The charts were a Trends tab of their own, drawn
+// from the same runs as this table.
 function renderDatasetHistory(panel) {
   const runs = (dsTrends && dsTrends.runs) || [];
-  // Shares the trend series, so it shares the window toggle.
-  const head = `<div style="margin-bottom:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-      <span class="hint">Window</span>${dsWindowToggleHtml()}</div>`;
+  const head = `<div class="dsx-hist-head"><span class="hint">Window</span>${dsWindowToggleHtml()}${dsTrendsNote()}</div>`;
+  if (dsTrends && dsTrends.err) {
+    panel.innerHTML = head + `<p class="dash-muted" style="color:var(--err)">${esc(dsTrends.err)}</p>`;
+    wireDsWindowToggle(panel); return;
+  }
   if (!runs.length) {
     panel.innerHTML = head + `<p class="dash-muted">No runs for this dataset in the last ${dsWindowLabel()}.</p>`;
     wireDsWindowToggle(panel); return;
@@ -10100,13 +10804,13 @@ function renderDatasetHistory(panel) {
   const intro = (dsTrends && dsTrends.sampled)
     ? `${Number(dsTrends.returnedRuns).toLocaleString()} of ${Number(dsTrends.totalRuns).toLocaleString()} assessments in the last ${dsWindowLabel()} (evenly sampled, newest first).`
     : `Every assessment of this dataset in the last ${dsWindowLabel()} (newest first).`;
-  panel.innerHTML = head +
-    `<p class="dash-muted" style="margin:0 0 10px;">${esc(intro)}</p>` +
+  panel.innerHTML = head + renderTrendCharts(dsTrends) +
+    `<h3 class="dsx-runs-h">Runs</h3><p class="dash-muted" style="margin:0 0 10px;">${esc(intro)}</p>` +
     `<table class="dash-table"><tr><th>When</th><th>Score</th><th>Gate</th><th>Rows</th></tr>${rows}</table>`;
   wireDsWindowToggle(panel);
 }
 
-// Just the trend charts (no action buttons) - used by the dataset detail's Trends sub-tab.
+// Just the trend charts (no action buttons) - the top of the dataset detail's History tab.
 function renderTrendCharts(d) {
   const runs = d.runs || [];
   if (runs.length < 1) return `<p class="dash-muted">No runs for this dataset in the last ${dsWindowLabel(d.windowDays)}.</p>`;
@@ -12435,8 +13139,9 @@ async function refreshDatasetQueued(prefix) {
   if (!el || !prefix) return;
   el.style.display = 'none'; el.innerHTML = '';
   let r;
-  try { r = await postJSON(`${API_BASE}/data-quality/result`, HEADERS, { result_prefix: prefix }); }
+  try { r = await dsxResult(prefix, true); }        // fresh: rules may have been pinned since
   catch (e) { return; }
+  if (dashSelected && dashSelected.prefix === prefix) updateDetailTrust(dashSelected.key);   // its Rules chip
   if (!r || !r.pendingPin) return;
   el.style.display = 'inline-flex';
   el.innerHTML = `<span class="tag info-tag" data-tip="Rules are pinned for this dataset and apply on its next run">✎ Queued rules</span>` +
@@ -12723,7 +13428,11 @@ async function mcpGenerateCode(btn) {
 
 // ---- Global blocker bar: always-visible summary of open blockers/incidents ---- //
 const _BB_SEV = { blocker: 3, major: 2, warning: 1, minor: 1 };
+// Open incidents as the bar last saw them, kept so the open dataset's header can count its own.
+let incOpen = [];
 function renderBlockerBar(open) {
+  incOpen = open || [];
+  if (dashSelected) updateDetailTrust(dashSelected.key);
   const bar = $('#blockerBar');
   if (!bar) return;
   if (!APP_ID || !open || !open.length) { bar.style.display = 'none'; bar.innerHTML = ''; return; }
@@ -12947,12 +13656,16 @@ function incCard(it) {
 // real job, it just should not be the only view. The per-dataset rows are what the tab is for.
 let INC_GROUPS = [];
 let incSelected = 'all';            // 'all' | gid
+// A dataset the Overview asked to open here ({ key, name }), and the name of one that turned out
+// to have no incidents in the window, so "All open" can say why it is showing instead.
+let incWant = null, incWantMiss = '';
 let incStatusFilter = 'all';        // 'all' | 'open'
 const INC_SEV_RANK = { blocker: 3, major: 2, warning: 1 };
 
 function renderIncidents(r) {
   const list = r.incidents || [];
   if (!list.length) {
+    incWant = null;
     $('#incList').innerHTML = dqEmpty({ icon: '✅', title: 'No incidents',
       body: 'Every dataset is within its expected range. An incident opens when one breaches it and closes when it returns.' });
     return;
@@ -12960,7 +13673,7 @@ function renderIncidents(r) {
   const groups = new Map();
   list.forEach(it => {
     const k = it.datasetKey || it.dataset;
-    if (!groups.has(k)) groups.set(k, { name: it.dataset, items: [] });
+    if (!groups.has(k)) groups.set(k, { name: it.dataset, key: k, items: [] });
     groups.get(k).items.push(it);
   });
   INC_GROUPS = [...groups.values()];
@@ -12976,6 +13689,12 @@ function renderIncidents(r) {
   INC_GROUPS.sort((a, b) => (b.worst - a.worst) || (b.open.length - a.open.length)
     || a.name.localeCompare(b.name));
 
+  if (incWant) {
+    const w = INC_GROUPS.find(g => g.key === incWant.key);
+    incSelected = w ? w.gid : 'all';
+    incWantMiss = w ? '' : incWant.name;
+    incWant = null;
+  }
   if (incSelected !== 'all' && !INC_GROUPS.some(g => g.gid === incSelected)) incSelected = 'all';
 
   $('#incList').innerHTML =
@@ -13016,6 +13735,7 @@ function renderIncRail() {
     }).join('');
   rail.querySelectorAll('.inc-rail-row').forEach(row => row.addEventListener('click', () => {
     incSelected = row.dataset.gid;
+    incWantMiss = '';
     renderIncRail();
     renderIncPane();
   }));
@@ -13052,6 +13772,7 @@ function renderIncPane() {
        <span class="inc-detail-name">${esc(all ? 'All open incidents' : (g ? g.name : ''))}</span>
        <span class="inc-detail-meta">${esc(meta)}</span>${filter}
      </div>` +
+    (all && incWantMiss ? `<p class="hint inc-miss">${esc(incWantMiss)} has had no incidents in the last 30 days, so every open one is shown.</p>` : '') +
     (items.length
       ? `<div class="inc-detail dq-stagger">${items.map(incCard).join('')}</div>`
       : dqEmpty({ icon: '✅', title: all ? 'Nothing open' : 'Nothing matches',
@@ -13214,12 +13935,21 @@ function aiInView(el, anchor) {
     const oy = getComputedStyle(p).overflowY;
     if ((oy === 'auto' || oy === 'scroll') && p.scrollHeight > p.clientHeight + 1) { sc = p; break; }
   }
-  const box = sc ? sc.getBoundingClientRect() : { top: 0, bottom: window.innerHeight };
+  const box = sc ? sc.getBoundingClientRect() : { top: dqStuckTop(), bottom: window.innerHeight };
   const r = el.getBoundingClientRect();
   const a = anchor && anchor.isConnected ? anchor.getBoundingClientRect() : r;
   if (anchor && (a.bottom < box.top || a.top > box.bottom)) return;
   const dy = Math.min(r.bottom - (box.bottom - 16), a.top - (box.top + 16));
   if (dy > 1) (sc || window).scrollBy({ top: dy, behavior: dqReduced() ? 'auto' : 'smooth' });
+}
+// How far down the window the things stuck to its top reach (the blocker bar, and an open
+// dataset's tab bar once it has stuck): something brought "into view" has to land below them.
+function dqStuckTop() {
+  let y = 0;
+  document.querySelectorAll('#blockerBar, #dsxBar.stuck').forEach(el => {
+    if (el.offsetParent) y = Math.max(y, el.getBoundingClientRect().bottom);
+  });
+  return Math.max(0, y);
 }
 /** A press: open the panel (asking only the first time), or fold it away if it is open. */
 function aiToggle(btn, out, ask) {
@@ -17635,17 +18365,17 @@ function applyDashMax() {
   if (top) top.classList.toggle('maxed', dashMaxed);
   const b = $('#dashMaxBtn');
   if (b) {
-    b.textContent = dashMaxed ? '⤡ Restore' : '⤢ Maximise';
+    b.textContent = dashMaxed ? '⤡' : '⤢';
+    b.setAttribute('aria-label', dashMaxed ? 'Restore the quality space' : 'Maximise');
     b.dataset.tip = dashMaxed ? 'Show the quality space again' : 'Hide the galaxy and use the full width';
   }
   // The canvas is sized from its wrapper, which just changed (or went to display:none), so refit
   // on the next frame. Restoring from maximised is the case that needs this.
   requestAnimationFrame(() => { if (GALAXY.onResize) GALAXY.onResize(); });
 }
-if ($('#dashMaxBtn')) $('#dashMaxBtn').addEventListener('click', () => {
-  dashMaxed = !dashMaxed;
-  applyDashMax();
-});
+// The header is rebuilt for every dataset, so its controls (Maximise among them) are handled here,
+// once, rather than wired again on every open.
+if ($('#dashDetail')) $('#dashDetail').addEventListener('click', dsxClick);
 
 // Split the Overview (galaxy | detail) when a dataset is picked; full-width galaxy otherwise.
 //
@@ -17658,15 +18388,22 @@ function setOverviewSplit(on) {
   const top = document.querySelector('.overview-top');
   if (top) {
     clearTimeout(top._animT);
+    const det = $('#dashDetail');
     if (on) {
+      if (det) det.style.maxHeight = '';          // a close still easing out gives way
       top.classList.add('anim');
       void top.offsetWidth;                       // flush, or the two changes land in one frame
       top.classList.add('split');
     } else if (top.classList.contains('split')) {
+      // The open panel has no height cap (the page scrolls, not the panel), and `none` cannot be
+      // eased to 0, so it would vanish on the first frame of the close. Pin it to the height it
+      // has, then let that ease to 0 with everything else.
+      if (det) { det.style.maxHeight = det.offsetHeight + 'px'; void det.offsetHeight; }
       top.classList.remove('split');
+      if (det) det.style.maxHeight = '0px';
       // A timeout rather than transitionend: several properties transition here, reduced motion
       // suppresses the event entirely, and this only has to outlast the .42s move.
-      top._animT = setTimeout(() => top.classList.remove('anim'), 480);
+      top._animT = setTimeout(() => { top.classList.remove('anim'); if (det) det.style.maxHeight = ''; }, 480);
     } else {
       top.classList.remove('anim');
     }
@@ -17687,7 +18424,7 @@ function selectGalaxyDataset(key, name) {
   const wrap = $('#dashTableWrap');
   if (wrap) wrap.querySelectorAll('.dash-row').forEach(x => x.classList.toggle('sel', x.getAttribute('data-key') === key));
   selectDataset(key, name);
-  const det = $('#dashDetail'); if (det) det.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  dsxReveal();
 }
 function openGalaxyDataset(key, name) {
   // Only a genuine re-click on the already-open orb closes it; programmatic opens use selectGalaxyDataset.
@@ -17881,7 +18618,7 @@ const GD_SHOTS = {
   "admin-tags": [1600, 1095, "db660355f0"],
   "admin-users": [1600, 792, "5fe189e3d0"],
   "agents": [1600, 809, "68e531d6b9"],
-  "ai-review": [1600, 1194, "d832672e7a"],
+  "ai-review": [1600, 1194, "4e7c30f5f3"],
   "alert-channels": [1600, 707, "da6beb721b"],
   "app-tables": [1600, 1377, "9eeda98170"],
   "approvals": [1600, 691, "e9fc97c6b8"],
@@ -17890,17 +18627,20 @@ const GD_SHOTS = {
   "compliance-estate-p": [1600, 1164, "f9a2be21d1"],
   "compliance-estate-pa": [1600, 1164, "0af27e24ec"],
   "compliance-estate-q": [1600, 1163, "1e44798857"],
-  "compliance-findings": [1600, 1014, "d70a50b804"],
-  "compliance-policy": [1600, 1328, "31cbb29604"],
+  "compliance-findings": [1600, 1016, "ef8974c6b2"],
+  "compliance-policy": [1600, 1328, "2197e8aeb5"],
   "data-model": [1600, 922, "3c87ef608c"],
-  "dataset-compliance": [1600, 437, "87cf47eebe"],
-  "dataset-header-p": [1600, 752, "a0d9832e45"],
-  "dataset-header-pa": [1600, 739, "4637fdc0dd"],
-  "dataset-header-q": [1600, 741, "8e38b65b1a"],
+  "dataset-actions-p": [1600, 1042, "2982ecfc03"],
+  "dataset-actions-pa": [1600, 1035, "911d327663"],
+  "dataset-actions-q": [1600, 979, "896bc8b000"],
+  "dataset-compliance": [1600, 438, "7b8e458376"],
+  "dataset-header-p": [1600, 630, "8cb3b42c65"],
+  "dataset-header-pa": [1600, 630, "eb25204a59"],
+  "dataset-header-q": [1600, 630, "87541c8ea4"],
   "dataset-list-p": [1600, 1025, "c097d44c9e"],
   "dataset-list-pa": [1600, 979, "494e75200f"],
   "dataset-list-q": [1600, 979, "b072872e90"],
-  "failed-records": [1600, 1026, "1a27ffcddb"],
+  "failed-records": [1600, 1026, "2a98e4bd42"],
   "heatmap": [1124, 1282, "eaa67f551b"],
   "history-p": [1600, 1164, "cfca32980f"],
   "history-q": [1600, 979, "539a02e628"],
@@ -17914,7 +18654,7 @@ const GD_SHOTS = {
   "profile": [1600, 526, "104f28f43a"],
   "quality-space": [1600, 812, "7bfbdb7881"],
   "records-policy": [1600, 433, "0850fe5c47"],
-  "rules-tab": [1600, 898, "ceaeb3a64d"],
+  "rules-tab": [1600, 898, "5dcdb14320"],
   "run-result": [1600, 1381, "27d7222b2c"],
   "runs-on-agent": [1600, 1090, "167a7715e0"],
   "schedule-form-p": [1600, 1133, "b82b8c3aca"],
@@ -17929,7 +18669,7 @@ const GD_SHOTS = {
   "tag-edit-pa": [976, 1608, "8e3addbf3c"],
   "tag-edit-q": [976, 612, "9929794e2b"],
   "tagrun": [1600, 1378, "2630e79d1f"],
-  "trends": [1600, 1026, "4f6e1d8283"],
+  "trends": [1600, 1026, "4b3bb33411"],
 };
 /* GD_SHOTS:END */
 const GD_SHOT_DIR = 'guides/';
@@ -18020,8 +18760,10 @@ const GD_SHOW = {
     tip: 'One orb for every dataset. Drag to orbit, scroll to zoom, and click an orb to open it.' },
   'dataset-list': { tab: 'dashboard', sel: '#dashTableWrap', tip: 'Every dataset, lowest score first. Click one to open it.' },
   'heatmap': { tab: 'dashboard', sel: '#dashHeat', tip: 'Every dataset against the nine dimensions. A dash means not assessed.' },
-  'ds-header': { tab: 'dashboard', prep: gdOpenFirstDataset('scores'), sel: '#dashDetailHint', miss: GD_NO_DATASET,
-    tip: 'The open dataset\'s trust, owner, stage, description and notes.' },
+  'ds-header': { tab: 'dashboard', prep: gdOpenFirstDataset('scores'), sel: '#dsxHead', miss: GD_NO_DATASET,
+    tip: 'The open dataset: how it is doing, what is known about it, and <b>Actions</b> for everything you can do to it.' },
+  'ds-actions': { tab: 'dashboard', prep: gdOpenFirstDataset('scores'), sel: '#dsActions', miss: GD_NO_DATASET,
+    tip: 'Everything you can do to this dataset: run it, schedule it, see its lineage and incidents, export it, describe it.' },
   'ds-rules': { tab: 'dashboard', prep: gdOpenFirstDataset('rules'), sel: '#dsSubtabs [data-dstab="rules"]', miss: GD_NO_DATASET,
     tip: 'The Rules tab of the open dataset: every rule in effect, and <b>Review rules with AI</b>.' },
   'ds-failed': { tab: 'dashboard', prep: gdOpenFirstDataset('failed'), sel: '#dsSubtabs [data-dstab="failed"]', miss: GD_NO_DATASET,
@@ -18584,7 +19326,7 @@ function buildGuides() {
           note(`Scores are green from 95, amber from 85 and red below that. A dimension your data cannot evidence, such as Timeliness on a table with no date column, is marked <b>not assessed</b> and left out of the score rather than counted as a pass.`) },
       { h: 'Find it again', body:
           p(`Every run is saved. The dataset now appears on the ${go('dashboard', 'Overview')}, in the Quality Space and the dataset list, and each run is listed in ${go('history', 'Assessment history')}. Click the dataset anywhere to open its detail.`) +
-          (P ? note(`The Overview shows each dataset's latest <b>approved</b> run. Until an admin approves one, your latest run is shown and marked as unapproved.${ADMIN ? ' Runs you start as an admin are approved on arrival.' : ` Put yours forward with ${ui('Submit for approval')} in the dataset's header.`}`) : '') },
+          (P ? note(`The Overview shows each dataset's latest <b>approved</b> run. Until an admin approves one, your latest run is shown and marked as unapproved.${ADMIN ? ' Runs you start as an admin are approved on arrival.' : ` Put yours forward with ${ui('Submit for approval')}, under the dataset's ${ui('Actions')}.`}`) : '') },
       { h: 'What to do next', body: list(
           `<b>Save the connection</b> as a credential profile, so the dataset can be re-run, scheduled, run by tag and monitored without anyone retyping a password. ${see('credential-profiles', 'Credential profiles')}`,
           GOV ? `<b>Give it an owner</b>, so its alerts reach the right person. ${see('governance', 'Owners, trust and stages')}`
@@ -18797,39 +19539,50 @@ function buildGuides() {
 
   G.push({
     id: 'dataset-detail', cat: 'Results', icon: 'doc', tint: '#60a5fa',
-    title: 'Dig into a dataset', sub: 'Scores, metadata, trends, rules, failed records and history',
-    keywords: 'dataset detail scores metadata contract trends rules failed records history export parquet description notes provisional withheld',
+    title: 'Dig into a dataset', sub: 'Its numbers, what is known about it, everything you can do to it, and its tabs',
+    keywords: 'dataset detail header actions menu re-run schedule monitor lineage incidents copy link scores metadata contract trends rules failed records history export parquet description notes provisional withheld delete maximise',
     open: { tab: 'dashboard', label: 'Open Overview' },
     sections: [
       { h: 'Opening a dataset', body:
-          p(`Click it in the dataset list, or its orb in the Quality Space. The link in a run-completion email opens it directly. ${showme('ds-header')}`) },
-      { h: 'The header', body: list(
-          GOV ? `<b>Trust</b>: endorse it, flag it for caution, or deprecate it, with a note shown on hover.`
-              : `<b>Trust</b> shows an admin's verdict on the dataset. ${ui('Submit for approval')} puts your latest run forward.`,
+          p(`Click it in the dataset list, or its orb in the Quality Space. It opens beside the Quality Space, and the link in a run-completion email opens it directly. ${ui('⤢')} gives it the full width, and ${ui('✕')} closes it. ${showme('ds-header')}`) },
+      { h: 'At the top', body: list(
+          `<b>The numbers</b>: its score, whether the quality gate passes, its check failures by severity, how many rows were read, and when it last ran. They stay at the top on every tab, and each opens the tab that explains it.`,
           `<b>Owner</b>: who the dataset's alerts go to.${GOV ? '' : ' Set by an admin.'}`,
           `<b>Stage</b>: bronze, silver or gold.`,
-          `<b>Description</b>: one line on what the dataset holds, shown wherever it is listed.`,
-          `<b>Notes</b>: context for the team, such as why a red is acceptable, or a known issue.`,
-          `<b>${ui('Export (parquet)')}</b> downloads the dataset's scores run by run, ready to load into Qlik or any BI tool.`) +
-          shot('dataset-header', GOV
-            ? `${n(1)} Trust, ${n(2)} owner, ${n(3)} stage, ${n(4)} description, ${n(5)} notes, ${n(6)} ${ui('Export (parquet)')} and ${n(7)} the tabs.`
-            : `${n(1)} Trust, set by an admin, ${n(2)} owner, ${n(3)} description, ${n(4)} notes, ${n(5)} ${ui('Export (parquet)')} and ${n(6)} the tabs.`) },
+          GOV ? `<b>Trust</b>: endorse it, flag it for caution, or deprecate it, with a note shown on hover.`
+              : `<b>Trust</b>: an admin's verdict on the dataset.`,
+          `<b>Tags</b>: ${GOV ? 'group and search datasets by them.' : 'set by an admin, to group and search datasets.'}`,
+          `<b>Compliance</b> and <b>Incidents</b>: its compliance grade and its open incidents. Each opens its tab.`,
+          `<b>Rules</b>, when there is something to know: ${ui('⚠ Provisional')} when nobody has reviewed them yet, or ${ui('✎ Changes queued')} when pinned changes wait for the next run.`,
+          `<b>Description</b>: the line under its name, shown wherever it is listed. Click it to change it.`,
+          `<b>Notes</b>: the latest one, on a line of its own. ${ui('All notes')} opens every note and a box to add one.`) +
+          shot('dataset-header', `${n(1)} The numbers, ${n(2)} owner, stage, trust and tags, ${n(3)} compliance and incidents, ${n(4)} the latest note, ${n(5)} ${ui('Actions')} and ${n(6)} the tabs.`) },
+      { h: 'Everything you can do to it', body:
+          p(`${ui('Re-run')} assesses it again now. Everything else is under ${ui('Actions')}, which lands on the right tab with this dataset already chosen there. ${showme('ds-actions')}`) +
+          table(['Group', 'What is in it'], [
+            ['Run', `${ui('Re-run now')}, ${ui('Schedule…')} (fills in the Schedules form for it: you choose the saved connection and when it runs) and ${ui('Monitor at source')}.`],
+            ['Explore', `Its ${ui('Lineage')}, its ${ui('Incidents')}, and its latest run in ${ui('History')}.`],
+            ['Share', `${ui('Export summary (parquet)')} downloads its scores run by run, ready to load into Qlik or any BI tool.${P ? ` ${ui('Copy a link to this dataset')} for anyone in your workspace.` : ''}`],
+            ['Describe', `Edit its description, or add a note.${P && !ADMIN ? ` ${ui('Submit for approval')} puts your latest run forward to an admin.` : ''}`],
+          ].concat(GOV ? [['Delete', `${ui('Delete dataset…')} removes it and all of its history. It asks first.`]] : [])) +
+          shot('dataset-actions', `${n(1)} Run it, ${n(2)} explore it, ${n(3)} share it and ${n(4)} describe it.${GOV ? ` ${ui('Delete dataset…')} is last, apart from the rest.` : ''}`) +
+          note(`Something that does not apply to this dataset stays in the menu, greyed, saying why: an app table has no source to monitor, and a source that does not publish dependency metadata has no lineage.`) },
       { h: 'The tabs', body: table(['Tab', 'What it shows'], [
-          ['Scores', 'The overall score, each dimension, whether the gate passed and why it failed, and every failing check with its record count.'],
-          ['Metadata', 'The quality of the structure rather than the values: naming, typing and personal-data labelling. Set a <b>metadata contract</b> (a description on every column, a primary key, personal data labelled, required columns) and the dataset is scored against it.'],
-          ['Compliance', `Exposure and findings, the compliance policy, ISO/IEC 27701 readiness and attestations. ${see('compliance', 'Compliance guide')}`],
-          ['Trends', 'Score and row volume over the last year or 30 days, against the dataset\'s own learned baseline.'],
-          ['Rules', `The rules the dataset is scored against, and AI suggestions for more. ${see('rules', 'Rules guide')}`],
+          ['Scores', `Each dimension, why the gate failed with a way straight to each check's failing records, and AI's explanation of the score.`],
           ['Failed records', 'Blocker records to fix first, failing checks by severity, the most affected columns, and the offending records themselves.'],
-          ['History', 'Every run of this dataset, each with its full report.'],
+          ['Rules', `The rules the dataset is scored against, and AI suggestions for more. ${see('rules', 'Rules guide')}`],
+          ['History', `How it has moved over the last year or 30 days (what changed, the score against its own learned baseline, the gate and every dimension), then every run.`],
+          ['Compliance', `Exposure and findings, the compliance policy, ISO/IEC 27701 readiness and attestations. ${see('compliance', 'Compliance guide')}`],
+          ['Metadata', 'The quality of the structure rather than the values: naming, typing and personal-data labelling. Set a <b>metadata contract</b> (a description on every column, a primary key, personal data labelled, required columns) and the dataset is scored against it.'],
         ]) +
-          shot('trends', `The Trends tab: what changed since the previous run, the score against its expected range, and the gate on every run.`) },
+          shot('trends', `The History tab: what changed since the previous run, the score against its expected range, and the gate on every run, above the runs themselves.`) +
+          note(`The tabs stay at the top of the window as you scroll, and name the dataset once its header has scrolled away. Click the name to go back up.`) },
       { h: 'Reading failed records', body:
           p(`The top line says how many blocker records stand between the dataset and a passing gate. Each offending record shows its row or key, the dimension, the check that failed and its severity. ${showme('ds-failed')}`) +
           shot('failed-records', `${n(1)} How many blocker records stand in the gate's way, ${n(2)} failing checks by severity, ${n(3)} the most affected columns, and ${n(4)} the records themselves.`) +
           note(`Only the columns a check flagged are kept, plus the key that locates the row. The rest of the row reads as withheld, for example ${ui('+12 withheld')}. Detected personal data is always redacted.`) },
       { h: 'Provisional rules', body:
-          p(`${ui('⚠ Provisional - rules not yet reviewed')} means the rules were inferred automatically and nobody has reviewed them yet. The score is real, but look at the Rules tab before you rely on it. ${see('rules', 'Rules and AI review')}`) },
+          p(`${ui('⚠ Provisional')} beside Rules at the top of a dataset (${ui('⚠ Provisional - rules not yet reviewed')} on a run's report) means the rules were inferred automatically and nobody has reviewed them yet. The score is real, but look at the Rules tab before you rely on it. ${see('rules', 'Rules and AI review')}`) },
     ],
   });
 
@@ -18908,9 +19661,9 @@ function buildGuides() {
     open: { tab: 'medallion', label: 'Open Stages' },
     sections: [
       { h: 'Owners', body:
-          p(`Every dataset can have an owner, set with ${ui('＋ Owner')} in its header${GOV ? '' : ' by an admin'}. Incident and run emails go to the owner, or to whoever submitted the dataset when it has none. You can also assign an incident to someone from the Incidents tab.`) },
+          p(`Every dataset can have an owner, set from ${ui('Owner')} at the top of the open dataset${GOV ? '' : ' by an admin'}. Incident and run emails go to the owner, or to whoever submitted the dataset when it has none. You can also assign an incident to someone from the Incidents tab.`) },
       { h: 'Trust', body:
-          p(`Three flags say how far to rely on a dataset. Click one to set it, or click it again to clear it, and add a note that shows on hover.`) +
+          p(`Three flags say how far to rely on a dataset. ${GOV ? `Choose one from ${ui('Trust')} at the top of the open dataset, or click one in the dataset list (click it again to clear it), and add a note that shows on hover.` : 'Each can carry a note, shown on hover.'}`) +
           table(['Flag', 'Means'], [
             ['✓ Endorsed', 'Reviewed and trusted for use'],
             ['⚠ Caution', 'Usable, but has known caveats'],
@@ -18920,7 +19673,7 @@ function buildGuides() {
                ADMIN ? `In the portal, trust is set by admins, directly or by deciding runs that members submit. ${see('approvals', 'Approvals')}`
                      : `In the portal, trust is set by admins. You put a run forward with ${ui('Submit for approval')} and see the verdict here once they decide.`)) },
       { h: 'Stages', body:
-          p(`Mark each dataset as bronze, silver or gold in its header, following the medallion pattern: raw, cleaned, then business-ready.`) +
+          p(`Mark each dataset as bronze, silver or gold from ${ui('Stage')} at the top of the open dataset, following the medallion pattern: raw, cleaned, then business-ready.`) +
           steps(`Open ${go('medallion', 'Stages')}. ${showme('stages')}`,
                 `Pick a bronze, a silver and a gold dataset.`,
                 `Compare their scores side by side, and read the stage-to-stage progression to see where quality is gained or lost.`) +
@@ -19452,7 +20205,7 @@ dq-agent-service.cmd RESTART`) +
                `A source dataset reconnects with its saved credential profile.`,
                `An uploaded file cannot be replayed, because it is discarded after its run. Upload it again instead.`) },
       { h: 'Inside a dataset', body:
-          p(`A dataset's own ${ui('History')} tab lists just its runs, and ${ui('Trends')} plots them over the last year or 30 days.`) },
+          p(`A dataset's own ${ui('History')} tab charts just its runs over the last year or 30 days, then lists them.`) },
     ],
   });
 
@@ -21200,6 +21953,10 @@ async function loadSourceWatch() {
 function renderSourceWatch() {
   if (!swData) return;
   const items = swData.items;
+  // Arriving from a dataset's Actions menu: open on that dataset, scrolled to its row.
+  const want = swView.want || '';
+  swView.want = '';
+  if (want && items.some(i => i.key === want)) swView.sel = want;
   if (swView.src && !items.some(i => i.fmt === swView.src)) swView.src = '';
   if (swView.sel && !items.some(i => i.key === swView.sel)) swView.sel = '';
   // Last full check: when the last sweep built its target list, else the newest single reading.
@@ -21210,6 +21967,12 @@ function renderSourceWatch() {
   _swPaintFilters(items);
   _swPaintTable();
   _swRadarData();
+  if (want && swView.sel === want) {
+    const rowOf = () => [...document.querySelectorAll('#watchList .swx-row')].find(r => r.dataset.key === want);
+    if (!rowOf()) { swView.all = true; _swPaintTable(); }        // past the first page: show them all
+    const row = rowOf();
+    if (row) row.scrollIntoView({ block: 'center' });
+  }
 }
 
 function _swPaintKpis(items) {
