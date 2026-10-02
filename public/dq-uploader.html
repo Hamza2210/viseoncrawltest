@@ -1241,242 +1241,281 @@
                 0 2px 8px -2px color-mix(in srgb, var(--err) 70%, transparent); }
   .inc-pip.major   { color: #ffe6bd; background: color-mix(in srgb, var(--amber, #fbbf24) 30%, transparent); }
   .inc-pip.clear   { color: var(--muted); background: var(--idle-bg); }
-  /* ---- Incidents: one list, grouped by dataset ------------------------------------------------
-     A line across the top says how bad things are; a row of views, a search and two menus filter
-     the list; each dataset heads its own incidents; an incident opens where it is, the width of
-     the list. Nothing sits beside the list, so nothing is squeezed. */
-  #incidentsPanel { --sev-warn: #d3b867; }
-  .ist-card { padding: 18px 22px 20px; }
-  .isx-top { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; }
-  .isx-sum { flex: 1 1 auto; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; min-width: 0; }
-  .isx-sum b { font-size: 18px; font-weight: 800; letter-spacing: -.01em; }
-  .isx-sub { font-size: 13px; color: var(--muted); }
-  .ist-light { position: relative; flex: none; width: 24px; height: 24px; border-radius: 50%; color: var(--muted); }
-  .ist-light::before { content: ''; position: absolute; inset: 0; border-radius: 50%; border: 2px solid currentColor; opacity: .32; }
-  .ist-light::after { content: ''; position: absolute; inset: 0; border-radius: 50%; background: currentColor; opacity: 0;
-    animation: istPing 2.2s var(--dq-ease) infinite; }
-  .ist-light i { position: absolute; inset: 6px; border-radius: 50%; background: currentColor; box-shadow: 0 0 12px 2px currentColor; }
-  .ist-light.red { color: var(--err); }
-  .ist-light.amber { color: var(--run); }
-  .ist-light.amber::after { animation-duration: 3.4s; }
-  .ist-light.green { color: var(--ok); }
-  .ist-light.green::after { animation: none; }
-  .ist-light.small { width: 30px; height: 30px; }
-  .ist-light.small i { inset: 8px; }
-  @keyframes istPing { 0% { transform: scale(.5); opacity: .5; } 80%, 100% { transform: scale(1.4); opacity: 0; } }
-  .ist-live { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; font-size: 12px; color: var(--muted); }
-  button.ist-livebtn { display: inline-flex; align-items: center; gap: 7px; height: 28px; padding: 0 11px; border: 1px solid var(--border);
-    border-radius: 999px; background: var(--card-2); box-shadow: none; color: var(--muted); font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
-  button.ist-livebtn.on { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 40%, var(--border)); }
-  .ist-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
-  .ist-livebtn.on .ist-dot { animation: istBlink 2s ease-in-out infinite; }
-  .ist-livebtn:not(.on) .ist-dot { width: 3px; height: 9px; border-radius: 1px; box-shadow: 5px 0 0 currentColor; margin-right: 5px; }
-  @keyframes istBlink { 50% { opacity: .25; } }
-  /* The views, the search and the menus */
-  .isx-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 14px 0 4px; padding-bottom: 14px;
-    border-bottom: 1px solid var(--border); }
-  .isx-views { display: inline-flex; flex-wrap: wrap; gap: 6px; }
-  button.isx-view { display: inline-flex; align-items: center; gap: 7px; height: 30px; padding: 0 12px; border: 1px solid var(--border);
-    border-radius: 999px; background: none; box-shadow: none; color: var(--muted); font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer;
-    transition: color .15s, border-color .15s, background-color .15s; }
-  button.isx-view:hover { color: var(--text); border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); }
-  button.isx-view[aria-pressed="true"] { color: var(--text); border-color: color-mix(in srgb, var(--accent) 60%, var(--border));
-    background: color-mix(in srgb, var(--accent) 14%, transparent); }
-  button.isx-view:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-  .isx-view .n { min-width: 16px; padding: 0 6px; border-radius: 999px; background: var(--idle-bg); font-size: 11px; font-weight: 700;
-    text-align: center; font-variant-numeric: tabular-nums; }
-  .ist-search { display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 9px 0 12px; box-sizing: border-box;
-    border: 1px solid var(--border); border-radius: 10px; background: var(--card-2); color: var(--muted); }
-  /* The search and its menus wrap together, to the right, rather than one by one */
-  .isx-find { flex: 1 1 560px; max-width: 720px; display: flex; justify-content: flex-end; align-items: center; gap: 8px;
-    margin-left: auto; min-width: 0; }
-  .isx-find .ist-search { flex: 1 1 auto; min-width: 180px; max-width: 400px; }
-  .isx-filt { flex: none; }
-  @media (max-width: 760px) { .isx-find { flex-wrap: wrap; } }
+  /* ---- Incidents: the counts, the datasets, and the incident beside them ----------------------
+     Four tiles, a search and three menus, then a card per dataset that folds open to a table of
+     its incidents. Picking one slides its detail in from the right: beside the list where there
+     is room (the list makes way as it widens), over the page where there is not. */
+  #incidentsPanel { --sev-warn: #d3b867; --inc-amber: #f2b632; --inc-blue: #6f9bff; --inc-lav: #aeb6f2; }
+  .ipx-wrap { display: flex; align-items: flex-start; --ipx-w: clamp(440px, 27vw, 500px); }
+  .ipx-main { container-type: inline-size; flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 14px; }
+  /* The tiles */
+  .ipx-tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+  @container (max-width: 700px) { .ipx-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  button.ipk { --k: var(--accent); container-type: inline-size; position: relative; display: flex; align-items: center; gap: 14px;
+    min-height: 98px; padding: 16px 16px 16px 18px; border: 1px solid var(--border); border-radius: 14px; background: var(--card);
+    box-shadow: none; color: var(--text); font: inherit; text-align: left; cursor: pointer;
+    transition: border-color .15s, background-color .15s, box-shadow .2s; }
+  button.ipk:hover { border-color: color-mix(in srgb, var(--k) 45%, var(--border)); }
+  button.ipk[aria-pressed="true"] { border-color: color-mix(in srgb, var(--k) 65%, var(--border)); background: color-mix(in srgb, var(--k) 7%, var(--card));
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--k) 30%, transparent); }
+  button.ipk:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .ipk.open { --k: var(--err); }
+  .ipk.unack { --k: var(--inc-amber); }
+  .ipk.closed { --k: var(--inc-blue); }
+  .ipk.total { --k: var(--inc-lav); }
+  .ipk-ic { flex: none; display: grid; place-items: center; width: 50px; height: 50px; border-radius: 50%; color: var(--k);
+    background: color-mix(in srgb, var(--k) 15%, transparent); box-shadow: 0 0 26px -6px color-mix(in srgb, var(--k) 70%, transparent); }
+  .ipk-ic svg { width: 28px; height: 28px; }
+  .ipk-ic svg path { stroke: #fff; }
+  .ipk.unack .ipk-ic svg path { stroke: #2a1d00; }
+  .ipk.closed .ipk-ic svg path, .ipk.total .ipk-ic svg path { stroke: #0d1430; }
+  .ipk-txt { flex: 1 1 auto; display: flex; flex-direction: column; min-width: 0; }
+  .ipk-n { font-size: 25px; font-weight: 800; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .ipk-l { margin-top: 2px; font-size: 13px; font-weight: 650; }
+  .ipk.open .ipk-n, .ipk.open .ipk-l { color: var(--err); }
+  .ipk.closed .ipk-n, .ipk.closed .ipk-l { color: var(--inc-blue); }
+  .ipk-d { margin-top: 5px; font-size: 11.5px; color: var(--muted); }
+  .ipk-sp { flex: none; align-self: flex-start; width: 78px; height: 26px; margin-top: 4px; color: var(--k); }
+  .ipk-sp.bars rect { fill: currentColor; opacity: .5; }
+  .ipk-sp.bars rect:last-child { opacity: 1; }
+  .ipk-sp.bars rect.z { opacity: .2; }
+  /* A narrow tile keeps its number and its words, and lets the line go */
+  @container (max-width: 250px) {
+    .ipk-sp { display: none; }
+    button.ipk { gap: 10px; padding: 14px; }
+    .ipk-ic { width: 40px; height: 40px; }
+    .ipk-ic svg { width: 22px; height: 22px; }
+  }
+  /* The search and the menus */
+  .ipx-bar { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 10px; }
+  .ist-search { display: inline-flex; align-items: center; gap: 8px; height: 38px; padding: 0 10px 0 12px; box-sizing: border-box;
+    border: 1px solid var(--border); border-radius: 10px; background: var(--card); color: var(--muted); }
+  .ipx-bar .ist-search { flex: 1 1 200px; max-width: 340px; min-width: 180px; }
   .ist-search:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
   .ist-search svg { flex: none; width: 15px; height: 15px; }
   #incidentsPanel .ist-search input { flex: 1 1 auto; width: auto; min-width: 0; height: 100%; padding: 0; border: 0; outline: 0;
     background: none; box-shadow: none; color: var(--text); font: inherit; font-size: 13px; }
-  .ist-keys kbd, .ist-search kbd { display: inline-grid; place-items: center; min-width: 18px; height: 18px; margin: 0 2px; padding: 0 4px;
-    box-sizing: border-box; border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 5px; background: var(--card);
+  .ist-search kbd { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 4px; box-sizing: border-box;
+    border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 5px; background: var(--card-2);
     font: inherit; font-size: 10.5px; font-weight: 700; color: var(--text); }
-  .isx-filt { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-  button.isx-mbtn { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 11px; border: 1px solid var(--border);
-    border-radius: 9px; background: var(--card-2); box-shadow: none; color: var(--text); font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; }
+  .isx-filt { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+  button.isx-mbtn { display: inline-flex; align-items: center; justify-content: space-between; gap: 10px; min-width: 128px; height: 38px;
+    padding: 0 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--card); box-shadow: none; color: var(--text);
+    font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
   button.isx-mbtn:hover, button.isx-mbtn[aria-expanded="true"], button.isx-mbtn.on { border-color: color-mix(in srgb, var(--accent) 60%, var(--border)); }
-  #incidentsPanel .ist-pop { width: 230px; }
-  #incidentsPanel .isx-filt .ist-pop { left: auto; right: 0; }
-  .ist-fchip { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; height: 30px; padding: 0 3px 0 10px; box-sizing: border-box;
+  button.isx-mbtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .isx-mbtn .rx-caret svg, .dsx-btn .rx-caret svg { width: 14px; height: 14px; vertical-align: -2px; }
+  #incidentsPanel .ist-pop { width: 260px; }
+  .ist-fchip { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; height: 34px; padding: 0 4px 0 11px; box-sizing: border-box;
     border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--border)); border-radius: 999px;
     background: color-mix(in srgb, var(--accent) 10%, transparent); font-size: 12.5px; font-weight: 600; }
-  .ist-fchip button { display: grid; place-items: center; width: 22px; height: 22px; padding: 0; border: 0; border-radius: 50%; background: none;
+  .ist-fchip button { display: grid; place-items: center; width: 24px; height: 24px; padding: 0; border: 0; border-radius: 50%; background: none;
     box-shadow: none; color: var(--muted); font-size: 10px; cursor: pointer; }
   .ist-fchip button:hover, .ist-fchip button:focus-visible { color: var(--text); background: var(--idle-bg); }
   .ifr-dsi { flex: none; display: inline-grid; place-items: center; width: 18px; height: 18px; font-size: 12px; line-height: 1; }
   .ifr-dsi svg { width: 14px; height: 14px; }
-  /* The list */
-  .isx-list { display: flex; flex-direction: column; }
-  .isx-lh { display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 4px 0; font-size: 12.5px; color: var(--muted); }
-  .isx-lh .linkbtn { margin-left: auto; font-size: 12.5px; }
-  .ist-bulk { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 6px 0 8px; padding: 6px 10px 6px 0;
-    border: 1px solid color-mix(in srgb, var(--accent) 50%, var(--border)); border-radius: 12px;
-    background: color-mix(in srgb, var(--accent) 9%, var(--card-2)); animation: rxBarIn .2s var(--dq-ease) both; }
-  .ist-bulk b { margin-right: 4px; font-size: 13px; }
-  .ist-bulk .dsx-btn { height: 30px; padding: 0 11px; font-size: 12.5px; }
-  .ist-bulk .dsx-btn svg { width: 14px; height: 14px; }
-  .ist-bulk .linkbtn { margin-left: auto; font-size: 12.5px; }
-  .isx-grp { padding: 10px 0 14px; }
-  .isx-grp + .isx-grp { border-top: 1px solid color-mix(in srgb, var(--border) 70%, transparent); }
-  .isx-gh { display: flex; align-items: center; gap: 12px; padding: 0 0 8px; }
-  button.isx-gt { flex: 1 1 auto; display: flex; align-items: center; gap: 10px; min-width: 0; padding: 6px 8px 6px 2px; border: 0;
-    border-radius: 9px; background: none; box-shadow: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
-  button.isx-gt:hover { background: color-mix(in srgb, var(--accent) 5%, transparent); }
-  button.isx-gt:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
-  .isx-chev { flex: none; display: inline-grid; place-items: center; width: 18px; height: 18px; color: var(--muted); transition: transform .18s var(--dq-ease); }
-  .isx-chev svg { width: 16px; height: 16px; }
-  .isx-gt[aria-expanded="false"] .isx-chev { transform: rotate(-90deg); }
-  .isx-gico { flex: none; display: grid; place-items: center; width: 30px; height: 30px; border: 1px solid var(--border); border-radius: 8px;
-    background: var(--card); font-size: 15px; line-height: 1; }
-  .isx-gico svg { width: 16px; height: 16px; }
-  .isx-gname { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14.5px; font-weight: 750; }
-  .isx-gmeta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; min-width: 0; font-size: 12px; color: var(--muted); }
-  .isx-gn { font-size: 12px; color: var(--muted); }
-  .isx-gsev { flex: none; display: flex; align-items: center; gap: 12px; font-size: 12px; font-weight: 700; }
-  .isx-gs { display: inline-flex; align-items: center; gap: 6px; }
-  .isx-gs.blocker { color: var(--err); }
-  .isx-gs.major { color: var(--run); }
-  .isx-gs.warning { color: var(--sev-warn); }
-  .isx-gs.ok { color: var(--ok); }
-  .isx-gsn { display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 6px; box-sizing: border-box; border-radius: 7px;
-    font-size: 11px; font-weight: 800; font-variant-numeric: tabular-nums; }
-  .isx-gs.major .isx-gsn { background: var(--run-bg); }
-  .isx-gs.warning .isx-gsn { background: color-mix(in srgb, var(--sev-warn) 14%, transparent); }
-  .isx-gsev .inc-pip { min-width: 20px; height: 20px; padding: 0 6px; }
-  .isx-gopen { flex: none; margin-left: 0; font-size: 12.5px; }
-  .isx-rows { display: flex; flex-direction: column; gap: 6px; margin-left: 30px; }
-  @media (max-width: 900px) { .isx-rows { margin-left: 0; } .isx-gh { flex-wrap: wrap; } }
-  /* An incident */
-  .isx-item { border: 1px solid var(--border); border-left: 3px solid var(--border); border-radius: 11px; background: var(--card-2);
-    transition: border-color .15s, background-color .15s, box-shadow .2s; }
-  .isx-item.open.sev-blocker { border-left-color: var(--err); }
-  .isx-item.open.sev-major { border-left-color: var(--run); }
-  .isx-item.open.sev-warning { border-left-color: var(--sev-warn); }
-  .isx-item.recovered { border-left-color: var(--ok); }
-  .isx-item.dismissed { border-left-color: var(--muted); opacity: .86; }
-  .isx-item:hover { border-top-color: color-mix(in srgb, var(--accent) 40%, var(--border)); border-right-color: color-mix(in srgb, var(--accent) 40%, var(--border));
-    border-bottom-color: color-mix(in srgb, var(--accent) 40%, var(--border)); }
-  .isx-item.checked { background: color-mix(in srgb, var(--accent) 6%, var(--card-2)); }
-  .isx-item.sel { border-top-color: color-mix(in srgb, var(--accent) 55%, var(--border)); border-right-color: color-mix(in srgb, var(--accent) 55%, var(--border));
-    border-bottom-color: color-mix(in srgb, var(--accent) 55%, var(--border)); background: color-mix(in srgb, var(--accent) 4%, var(--card-2));
-    box-shadow: 0 18px 40px -20px rgba(0,0,0,.8); }
-  .isx-item.new { animation: istNew 1.6s ease-in-out 3; }
-  @keyframes istNew { 50% { box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent2) 60%, transparent), 0 0 24px -4px var(--accent2); } }
-  .isx-row { display: flex; align-items: center; }
-  .isx-ck { flex: none; display: grid; place-items: center; align-self: stretch; width: 30px; opacity: 0; transition: opacity .15s; }
-  .isx-item:hover .isx-ck, .isx-ck:focus-within, .isx-item.checked .isx-ck, .isx-list.picking .isx-ck, .isx-lh .isx-ck, .ist-bulk .isx-ck { opacity: 1; }
-  .isx-ck input { appearance: none; -webkit-appearance: none; display: grid; place-items: center; width: 16px; height: 16px; margin: 0; padding: 0;
-    border: 1.5px solid var(--muted); border-radius: 4px; background: var(--card); cursor: pointer; }
-  .isx-ck input:checked { border-color: var(--accent); background: var(--accent); }
-  .isx-ck input:checked::after { content: ''; width: 8px; height: 4px; margin-top: -2px; border-left: 2px solid #fff; border-bottom: 2px solid #fff;
-    transform: rotate(-45deg); }
-  .isx-ck input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-  button.isx-main { flex: 1 1 auto; display: flex; align-items: center; gap: 12px; min-width: 0; padding: 11px 14px 11px 0; border: 0;
-    border-radius: 0 11px 11px 0; background: none; box-shadow: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+  .ipx-rf { margin-left: auto; display: flex; flex-direction: column; align-items: flex-end; gap: 5px; }
+  button#incRefresh { display: inline-flex; align-items: center; gap: 6px; height: 32px; font-size: 12.5px; }
+  button#incRefresh svg { width: 14px; height: 14px; }
+  #incAge { font-size: 11px; color: var(--muted); white-space: nowrap; }
+  /* The datasets */
+  .ipx-ds { container-type: inline-size; padding: 18px 18px 20px; }
+  .idg-top h3 { margin: 0; font-size: 17px; font-weight: 750; }
+  .idg-top p { margin: 3px 0 0; font-size: 12.5px; color: var(--muted); }
+  .idg-list { display: flex; flex-direction: column; gap: 12px; margin-top: 16px; }
+  .idg { --ds-c: var(--accent); border: 1px solid var(--border); border-left: 3px solid color-mix(in srgb, var(--ds-c) 80%, var(--border));
+    border-radius: 12px; background: var(--card-2); }
+  button.idg-h { display: flex; align-items: center; gap: 16px; width: 100%; padding: 14px 16px; border: 0; border-radius: 0 12px 12px 0;
+    background: none; box-shadow: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+  button.idg-h:hover { background: color-mix(in srgb, var(--accent) 4%, transparent); }
+  button.idg-h:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .idg-ico { flex: none; display: grid; place-items: center; width: 42px; height: 42px; border: 1px solid var(--border); border-radius: 10px;
+    background: var(--card); font-size: 18px; line-height: 1; }
+  .idg-ico svg { width: 22px; height: 22px; }
+  .idg-id { flex: 1 1 auto; display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+  .idg-nm { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .idg-id b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14.5px; font-weight: 750; }
+  .idg-sub { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-size: 12.5px; color: var(--muted); }
+  .idg-n { flex: none; display: flex; align-items: center; gap: 10px; min-width: 140px; }
+  .idg-n .ir-dot { width: 30px; height: 30px; }
+  .idg-n b { display: block; font-size: 14px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .idg-n small { display: block; font-size: 12px; }
+  .idg-n.open { color: var(--err); }
+  .idg-n.open .ir-dot { color: var(--err); }
+  .idg-n.unack .ir-dot { color: var(--inc-amber); }
+  .idg-n.unack .ir-dot path { stroke: #2a1d00; }
+  .idg-n.zero { color: var(--muted); }
+  .idg-n.zero .ir-dot { color: #8d98c2; }
+  .idg-n.zero .ir-dot path { stroke: #141a33; }
+  .idg-chev { flex: none; display: grid; place-items: center; width: 40px; height: 40px; box-sizing: border-box; border: 1px solid transparent;
+    border-radius: 10px; color: var(--muted); transition: transform .22s var(--dq-ease), background-color .15s, border-color .15s; }
+  .idg-chev svg { width: 18px; height: 18px; }
+  .idg-h[aria-expanded="true"] .idg-chev { transform: rotate(180deg); color: var(--accent);
+    border-color: color-mix(in srgb, var(--accent) 60%, var(--border)); background: color-mix(in srgb, var(--accent) 12%, transparent); }
+  @container (max-width: 640px) { .idg-n { min-width: 0; } .idg-n small { display: none; } button.idg-h { gap: 12px; } }
+  /* A dataset's incidents */
+  .idg-body { border-top: 1px solid var(--border); }
+  .ir-grid { display: grid; grid-template-columns: 60px minmax(0, 1fr) 128px 104px 196px 122px; align-items: center; column-gap: 12px; }
+  .ir-head { padding: 11px 16px; border-bottom: 1px solid var(--border); font-size: 10.5px; font-weight: 700; letter-spacing: .07em;
+    text-transform: uppercase; color: var(--muted); }
+  .ir-head > span { display: block; font-size: inherit; }
+  .isx-rows { display: flex; flex-direction: column; }
+  .isx-item + .isx-item { border-top: 1px solid color-mix(in srgb, var(--border) 70%, transparent); }
+  button.isx-main { width: 100%; padding: 14px 16px; border: 0; background: none; box-shadow: none; color: var(--text); font: inherit;
+    text-align: left; cursor: pointer; transition: background-color .15s, box-shadow .15s; }
+  .isx-item:last-child button.isx-main { border-radius: 0 0 12px 0; }
+  button.isx-main:hover { background: color-mix(in srgb, var(--accent) 5%, transparent); }
   button.isx-main:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
-  .ifr-sev { flex: none; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 9px; }
-  .ifr-sev svg { width: 17px; height: 17px; }
-  .ifr-sev.blocker { color: var(--err); background: var(--err-bg); }
-  .ifr-sev.major { color: var(--run); background: var(--run-bg); }
-  .ifr-sev.warning { color: var(--sev-warn); background: color-mix(in srgb, var(--sev-warn) 14%, transparent); }
-  .isx-item.recovered .ifr-sev, .isx-item.dismissed .ifr-sev { filter: grayscale(.7); opacity: .75; }
-  .isx-txt { flex: 1 1 auto; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-  .isx-l1 { display: flex; align-items: center; gap: 8px; min-width: 0; }
-  .isx-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; font-weight: 700; }
-  .isx-msg { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; color: var(--muted); }
-  .isx-item.sel .isx-msg { visibility: hidden; height: 0; }
-  .ifr-kind, .ifr-new { flex: none; padding: 0 7px; border-radius: 5px; font-size: 10.5px; font-weight: 700; }
-  .ifr-kind.cmp { color: #c4b2f5; background: rgba(139,92,246,.14); border: 1px solid rgba(139,92,246,.35); }
-  .ifr-kind.src { color: #5eead4; background: rgba(45,212,191,.11); border: 1px solid rgba(45,212,191,.3); }
-  .ifr-new { color: #fff; background: var(--accent2); }
-  .isx-ind { flex: none; display: inline-flex; align-items: center; gap: 5px; }
-  .isx-i { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--idle-bg); color: var(--muted); }
-  .isx-i svg { width: 13px; height: 13px; }
-  .isx-i.ack { color: var(--ok); background: var(--ok-bg); }
-  .isx-i.av { background: color-mix(in srgb, var(--accent2) 42%, var(--card)); color: #fff; font-size: 8.5px; font-weight: 800; letter-spacing: .02em; }
-  .isx-i.ai .ai-ico { width: 13px; height: 13px; }
-  .isx-age { flex: none; min-width: 40px; font-size: 12px; color: var(--muted); text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
-  .isx-main > .isx-chev { transition: transform .2s var(--dq-ease); }
-  .isx-main[aria-expanded="true"] > .isx-chev { transform: rotate(180deg); color: var(--accent); }
-  button.isx-ack { flex: none; display: grid; place-items: center; width: 30px; height: 30px; margin-right: 10px; padding: 0; border: 1px solid var(--border);
-    border-radius: 8px; background: var(--card); box-shadow: none; color: var(--muted); cursor: pointer; opacity: 0; transition: opacity .15s; }
-  button.isx-ack svg { width: 15px; height: 15px; }
-  .isx-item:hover button.isx-ack, button.isx-ack:focus-visible { opacity: 1; }
-  button.isx-ack:hover, button.isx-ack:focus-visible { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 55%, var(--border)); }
-  .ist-st { display: inline-flex; align-items: center; gap: 5px; flex: none; padding: 1px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; }
-  .ist-st::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
-  .ist-st.open { color: var(--err); background: var(--err-bg); }
-  .ist-st.recovered { color: var(--ok); background: var(--ok-bg); }
-  .ist-st.dismissed { color: var(--muted); background: var(--idle-bg); }
-  .ist-sev { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px 3px 8px; border-radius: 999px; font-size: 12px; font-weight: 800; }
-  .ist-sev svg { width: 14px; height: 14px; }
-  .ist-sev.blocker { color: var(--err); background: var(--err-bg); }
-  .ist-sev.major { color: var(--run); background: var(--run-bg); }
-  .ist-sev.warning { color: var(--sev-warn); background: color-mix(in srgb, var(--sev-warn) 14%, transparent); }
-  .ist-score { display: inline-flex; align-items: center; gap: 4px; padding: 0 7px; border-radius: 999px; background: var(--idle-bg);
-    color: var(--muted); font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums; }
-  .ist-score::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .isx-item.sel button.isx-main { background: color-mix(in srgb, var(--accent) 11%, transparent); box-shadow: inset 3px 0 0 var(--accent); }
+  .isx-item.new button.isx-main { animation: istNew 1.6s ease-in-out 3; }
+  @keyframes istNew { 50% { background: color-mix(in srgb, var(--accent2) 16%, transparent); } }
+  .ir-dot { display: inline-grid; place-items: center; width: 28px; height: 28px; color: var(--err); }
+  .ir-dot svg { width: 100%; height: 100%; }
+  .ir-dot path { stroke: #fff; }
+  .ir-dot.major { color: var(--run); }
+  .ir-dot.warning { color: var(--sev-warn); }
+  .ir-dot.major path, .ir-dot.warning path { stroke: #2a1d00; }
+  .isx-item.closed .ir-sev .ir-dot { filter: grayscale(.75); opacity: .7; }
+  .ir-inc { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+  .ir-l1 { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .isx-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13.5px; font-weight: 700; }
+  .isx-msg { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; font-size: 12.5px; line-height: 1.4;
+    color: var(--muted); overflow-wrap: anywhere; }
+  .ifr-new { flex: none; padding: 0 7px; border-radius: 5px; background: var(--accent2); color: #fff; font-size: 10.5px; font-weight: 700; }
+  .ir-op, .ir-ls { display: flex; flex-direction: column; gap: 2px; font-size: 12.5px; }
+  .ir-op small, .ir-ls small { font-size: 11.5px; color: var(--muted); }
+  .ir-st { display: flex; flex-wrap: wrap; gap: 6px; }
+  .ir-pill { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 999px; font-size: 11.5px; font-weight: 700; white-space: nowrap;
+    color: var(--muted); background: var(--idle-bg); }
+  .ir-pill.open, .ir-pill.blocker { color: #ff8a8a; background: var(--err-bg); }
+  .ir-pill.major { color: var(--run); background: var(--run-bg); }
+  .ir-pill.warning { color: var(--sev-warn); background: color-mix(in srgb, var(--sev-warn) 14%, transparent); }
+  .ir-pill.ack { color: var(--inc-blue); background: color-mix(in srgb, var(--inc-blue) 15%, transparent); }
+  .ir-pill.recovered { color: var(--ok); background: var(--ok-bg); }
+  .ir-go { justify-self: end; }
+  .ir-vd { display: inline-flex; align-items: center; justify-content: center; gap: 4px; height: 32px; padding: 0 12px; box-sizing: border-box;
+    border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--border)); border-radius: 8px; color: var(--accent); font-size: 12px; font-weight: 600;
+    white-space: nowrap; transition: background-color .15s; }
+  button.isx-main:hover .ir-vd, .isx-item.sel .ir-vd { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+  @container (max-width: 960px) {
+    .ir-grid { grid-template-columns: 52px minmax(0, 1fr) 118px 184px 44px; }
+    .ir-ls { display: none; }
+    .ir-vd .t { display: none; }
+    .ir-vd { width: 34px; padding: 0; }
+  }
+  @container (max-width: 720px) {
+    .ir-grid { grid-template-columns: 40px minmax(0, 1fr) auto; }
+    .ir-op, .ir-go { display: none; }
+    .ir-st { flex-direction: column; align-items: flex-end; }
+  }
+  .ist-score { display: inline-flex; align-items: center; gap: 5px; padding: 1px 8px; border-radius: 999px; background: var(--idle-bg);
+    color: var(--muted); font-size: 11.5px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .ist-score::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
   .ist-score.green { color: var(--ok); background: var(--ok-bg); }
-  .ist-score.amber { color: var(--run); background: var(--run-bg); }
-  .ist-score.red { color: var(--err); background: var(--err-bg); }
-  .ist-who { display: inline-flex; align-items: center; gap: 5px; }
-  .ist-av { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%;
-    background: color-mix(in srgb, var(--accent2) 42%, var(--card)); color: #fff; font-size: 8.5px; font-weight: 800; letter-spacing: .02em; }
-  /* The incident opened, the width of the list */
-  .isx-det { padding: 0 20px 20px 30px; }
-  .isx-dh { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; padding: 14px 0; border-top: 1px solid var(--border); }
-  .isx-dage { font-size: 12.5px; color: var(--muted); }
-  .isx-acts { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-left: auto; }
-  .isx-acts .dsx-btn svg { width: 15px; height: 15px; }
-  #incidentsPanel .isx-more .ist-pop { left: auto; right: 0; width: 300px; }
-  .isx-dgrid { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(280px, 1fr); gap: 18px 32px; }
-  @media (max-width: 1150px) { .isx-dgrid { grid-template-columns: minmax(0, 1fr); } .isx-dside { padding-left: 0 !important; border-left: 0 !important; } }
-  .isx-what { margin: 0 0 16px; font-size: 13.5px; line-height: 1.6; }
-  .isx-det h4 { margin: 0 0 8px; font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
-  .isx-found p { margin: 0; padding: 11px 13px; border: 1px solid var(--border); border-radius: 10px; background: var(--card);
-    font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
-  .isx-next { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 16px; }
-  button.dsx-btn.ist-nextb { border-color: color-mix(in srgb, var(--accent) 55%, var(--border)); background: color-mix(in srgb, var(--accent) 9%, var(--card-2));
-    color: var(--accent); }
-  .isx-dmain .ai-out { margin-top: 16px; }
-  .isx-dside { padding-left: 28px; border-left: 1px solid var(--border); }
-  .isx-dside h4 { margin-top: 18px; }
-  .idet-facts { display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: 8px 12px; margin: 0; font-size: 12.5px; }
-  .idet-facts dt { color: var(--muted); }
-  .idet-facts dd { min-width: 0; margin: 0; overflow-wrap: anywhere; }
-  .idet-facts code { padding: 1px 6px; border: 1px solid var(--border); border-radius: 5px; background: var(--card); font-size: 11.5px; }
-  .idet-dim { color: var(--muted); }
-  .idet-tl { margin: 0; padding: 0 0 0 2px; list-style: none; }
-  .idet-tl li { position: relative; padding: 0 0 12px 22px; font-size: 12.5px; }
-  .idet-tl li::before { content: ''; position: absolute; left: 3px; top: 4px; width: 9px; height: 9px; border-radius: 50%;
-    background: var(--muted); box-shadow: 0 0 0 3px var(--card-2); }
-  .idet-tl li::after { content: ''; position: absolute; left: 7px; top: 16px; bottom: -1px; width: 1px; background: var(--border); }
-  .idet-tl li:last-child { padding-bottom: 0; }
-  .idet-tl li:last-child::after { display: none; }
-  .idet-tl li.blocker::before { background: var(--err); }
-  .idet-tl li.major::before { background: var(--run); }
-  .idet-tl li.warning::before { background: var(--sev-warn); }
-  .idet-tl li.ack::before, .idet-tl li.ok::before { background: var(--ok); }
-  .idet-tl li.ai::before { background: var(--accent2); }
-  .idet-tl li.seen::before { background: var(--accent); }
-  .idet-tlt { display: block; font-size: 11px; color: var(--muted); }
-  .ist-empty { display: flex; flex-direction: column; align-items: center; gap: 6px; margin-top: 10px; padding: 40px 20px; border: 1px dashed var(--border);
+  .ist-score.amber { color: var(--inc-amber); background: color-mix(in srgb, var(--inc-amber) 14%, transparent); }
+  .ist-score.red { color: #ff8a8a; background: var(--err-bg); }
+  .ist-who { display: inline-flex; align-items: center; gap: 6px; }
+  .ist-av { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%;
+    background: color-mix(in srgb, var(--accent2) 55%, var(--card)); color: #fff; font-size: 8.5px; font-weight: 800; letter-spacing: .02em; }
+  .ist-light { position: relative; flex: none; width: 30px; height: 30px; border-radius: 50%; color: var(--ok); }
+  .ist-light::before { content: ''; position: absolute; inset: 0; border-radius: 50%; border: 2px solid currentColor; opacity: .32; }
+  .ist-light i { position: absolute; inset: 8px; border-radius: 50%; background: currentColor; box-shadow: 0 0 12px 2px currentColor; }
+  .ist-empty { display: flex; flex-direction: column; align-items: center; gap: 6px; margin-top: 16px; padding: 40px 20px; border: 1px dashed var(--border);
     border-radius: 14px; text-align: center; font-size: 13px; color: var(--muted); }
   .ist-empty b { color: var(--text); font-size: 15px; }
   .ist-empty .dsx-btn { margin-top: 6px; }
-  .ist-keys { margin: 10px 0 0; font-size: 11.5px; color: var(--muted); }
-  .ist-keys kbd + kbd { margin-left: 0; }
-  .inc-miss { margin: 0 0 6px; }
-  .ist-toast { position: fixed; z-index: 95; left: 50%; bottom: 22px; max-width: min(560px, 90vw); padding: 10px 16px; border: 1px solid var(--border);
+  .inc-miss { margin: 12px 0 0; }
+  /* The incident, in the panel */
+  .ipx { flex: none; align-self: flex-start; position: sticky; top: calc(var(--dq-stick-top, 0px) + 12px); width: 0; margin-left: 0;
+    opacity: 0; visibility: hidden; overflow: hidden;
+    transition: width .36s var(--dq-ease), margin-left .36s var(--dq-ease), opacity .26s, visibility 0s .36s; }
+  .ipx.on { width: var(--ipx-w); margin-left: 18px; opacity: 1; visibility: visible;
+    transition: width .36s var(--dq-ease), margin-left .36s var(--dq-ease), opacity .26s, visibility 0s; }
+  .ipx-card { --sc: var(--err); container-type: inline-size; position: relative; width: var(--ipx-w); max-height: calc(100vh - var(--dq-stick-top, 0px) - 24px);
+    box-sizing: border-box; overflow-y: auto; overscroll-behavior: contain; padding: 22px 22px 24px; border: 1px solid var(--border);
+    border-radius: 14px; background: var(--card); transform: translateX(32px); transition: transform .36s var(--dq-ease); }
+  .ipx.on .ipx-card { transform: none; }
+  .ipx-card.sev-major { --sc: var(--run); }
+  .ipx-card.sev-warning { --sc: var(--sev-warn); }
+  .ipx-card.sev-recovered { --sc: var(--ok); }
+  .ipx-card.sev-dismissed { --sc: var(--muted); }
+  .ipx-card.swap > * { animation: ipxSwap .24s var(--dq-ease) both; }
+  @keyframes ipxSwap { from { opacity: 0; transform: translateY(6px); } }
+  /* Too narrow for it beside the list: it comes in over the page from the right edge */
+  /* stretch, not flex-start: an absolutely placed box that is aligned to the start takes its content's height */
+  .ipx-over .ipx { position: fixed; z-index: 96; top: 0; right: 0; bottom: 0; align-self: stretch; width: min(var(--ipx-w), 94vw); margin: 0; opacity: 1;
+    overflow: visible; transform: translateX(104%); transition: transform .34s var(--dq-ease), visibility 0s .34s; }
+  .ipx-over .ipx.on { width: min(var(--ipx-w), 94vw); margin: 0; transform: none; transition: transform .34s var(--dq-ease), visibility 0s; }
+  .ipx-over .ipx-card { width: 100%; height: 100%; max-height: none; border-radius: 14px 0 0 14px; transform: none;
+    box-shadow: -24px 0 60px rgba(0,0,0,.5); }
+  .ist-scrim { position: fixed; z-index: 95; inset: 0; background: rgba(4,8,20,.55); opacity: 0; transition: opacity .3s; }
+  .ist-scrim.on { opacity: 1; }
+  .ipx-x { position: absolute; z-index: 1; top: 14px; right: 14px; display: grid; place-items: center; width: 32px; height: 32px; padding: 0;
+    border: 0; border-radius: 8px; background: none; box-shadow: none; color: var(--muted); font-size: 15px; cursor: pointer; }
+  .ipx-x:hover, .ipx-x:focus-visible { color: var(--text); background: var(--idle-bg); }
+  .ipx-head { position: relative; padding: 2px 40px 2px 16px; }
+  .ipx-head::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; border-radius: 3px; background: var(--sc); }
+  .ipx-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+  .ipx-tag { padding: 2px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--card-2); color: var(--muted);
+    font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; }
+  .ipx-ref { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .ipx-meta .ir-pill { gap: 6px; }
+  .ipx-meta .ir-pill::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+  .ipx-title { display: flex; align-items: center; gap: 10px; margin: 12px 0 8px; font-size: 18px; font-weight: 800; line-height: 1.3; }
+  .ipx-title:focus { outline: none; }
+  .ipx-title:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
+  .ipx-title .ir-dot { flex: none; width: 26px; height: 26px; }
+  .ipx-what { margin: 0; padding-left: 36px; font-size: 13px; line-height: 1.55; color: var(--muted); }
+  .ipx-pills { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 18px 0 16px; }
+  .ipx-pills .ir-pill { padding: 5px 13px; font-size: 12.5px; }
+  .ipx-age { margin-left: 4px; font-size: 13px; color: var(--muted); }
+  .ipx-acts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .ipx-acts .dsx-btn { height: 38px; padding: 0 12px; }
+  .ipx-acts .dsx-btn svg { width: 15px; height: 15px; }
+  .ipx-acts .isx-more { margin-left: auto; }
+  @container (max-width: 470px) { .ipx-acts { gap: 6px; } .ipx-acts .dsx-btn { padding: 0 10px; } .ipx-acts .dsx-btn > svg { display: none; } }
+  #incidentsPanel .ipx-acts .ist-pop { left: auto; right: 0; }
+  #incidentsPanel .isx-more .ist-pop { width: 300px; }
+  .ipx-card h4 { margin: 22px 0 10px; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  .ipx-found { position: relative; padding: 12px 44px 12px 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--card-2); }
+  .ipx-found pre { margin: 0; padding: 0; border: 0; border-radius: 0; background: none; white-space: pre-wrap; overflow-wrap: anywhere;
+    font: 12px/1.65 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--text); }
+  .ipx-copy { position: absolute; top: 8px; right: 8px; display: grid; place-items: center; width: 30px; height: 30px; padding: 0; border: 0;
+    border-radius: 7px; background: none; box-shadow: none; color: var(--muted); cursor: pointer; }
+  .ipx-copy svg { width: 16px; height: 16px; }
+  .ipx-copy:hover, .ipx-copy:focus-visible { color: var(--text); background: var(--idle-bg); }
+  .ipx-facts { display: grid; grid-template-columns: auto minmax(0, 1fr) auto minmax(0, 1fr); align-items: baseline; gap: 11px 14px;
+    margin: 20px 0 0; padding-top: 18px; border-top: 1px solid var(--border); font-size: 12.5px; }
+  .ipx-facts dt:nth-child(4n+3) { padding-left: 10px; }
+  .ipx-facts dt { color: var(--muted); white-space: nowrap; }
+  .ipx-facts dd { min-width: 0; margin: 0; overflow-wrap: anywhere; }
+  .ipx-facts code { padding: 1px 7px; border: 1px solid var(--border); border-radius: 6px; background: var(--card-2); font-size: 11px; }
+  .ipx-dsl { padding: 0; font-size: 12.5px; text-align: left; overflow-wrap: anywhere; }
+  .idet-dim { color: var(--muted); }
+  @media (max-width: 560px) { .ipx-facts { grid-template-columns: auto minmax(0, 1fr); } .ipx-facts dt:nth-child(4n+3) { padding-left: 0; } }
+  .ipx-tl { margin: 0; padding: 0; list-style: none; }
+  .ipx-tl li { position: relative; padding: 0 0 18px 30px; }
+  .ipx-tl li::before { content: ''; position: absolute; z-index: 1; left: 3px; top: 3px; width: 11px; height: 11px; border-radius: 50%;
+    background: var(--muted); box-shadow: 0 0 0 4px var(--card); }
+  .ipx-tl li::after { content: ''; position: absolute; left: 8px; top: 16px; bottom: -2px; width: 2px; background: var(--border); }
+  .ipx-tl li:last-child { padding-bottom: 4px; }
+  .ipx-tl li:last-child::after { display: none; }
+  .ipx-tl li.blocker::before { background: var(--err); }
+  .ipx-tl li.major::before { background: var(--run); }
+  .ipx-tl li.warning::before { background: var(--sev-warn); }
+  .ipx-tl li.ack::before, .ipx-tl li.ok::before { background: var(--ok); }
+  .ipx-tl li.ai::before { background: #a78bfa; }
+  .ipx-tl li.seen::before { background: var(--inc-blue); }
+  .ipx-tlh { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; }
+  .ipx-tlh .ist-who { font-weight: 600; }
+  .ipx-tlt { display: block; margin-top: 3px; font-size: 12px; color: color-mix(in srgb, var(--inc-blue) 55%, var(--muted)); }
+  .ipx-tld { display: block; margin-top: 3px; font-size: 12.5px; color: var(--muted); }
+  .ipx-foot { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-top: 18px; }
+  .ipx-foot .dsx-btn, .ipx-foot .ai-btn { justify-content: center; width: 100%; height: 46px; font-size: 13px; }
+  button.dsx-btn.ist-nextb { border-color: color-mix(in srgb, var(--accent) 55%, var(--border)); background: color-mix(in srgb, var(--accent) 8%, var(--card));
+    color: var(--accent); }
+  #incAiOut { margin-top: 16px; }
+  .ist-toast { position: fixed; z-index: 99; left: 50%; bottom: 22px; max-width: min(560px, 90vw); padding: 10px 16px; border: 1px solid var(--border);
     border-radius: 12px; background: var(--card); box-shadow: 0 16px 40px rgba(0,0,0,.5); font-size: 13px; font-weight: 600;
     opacity: 0; pointer-events: none; transform: translate(-50%, 16px); transition: opacity .2s, transform .2s var(--dq-ease); }
   .ist-toast.on { opacity: 1; transform: translate(-50%, 0); }
@@ -1484,8 +1523,8 @@
   .ist-toast.ok::before { content: '✓  '; color: var(--ok); }
   .ist-toast.err { border-color: color-mix(in srgb, var(--err) 55%, var(--border)); color: #ffb4b4; }
   @media (prefers-reduced-motion: reduce) {
-    .ist-light::after, .ist-livebtn.on .ist-dot, .isx-item.new, .ist-bulk { animation: none !important; }
-    .ist-toast, .isx-item, .isx-chev, .isx-ck, button.isx-ack, button.isx-view, .isx-main > .isx-chev { transition: none !important; }
+    .isx-item.new button.isx-main, .ipx-card.swap > * { animation: none !important; }
+    .ipx, .ipx-card, .ist-scrim, .ist-toast, button.ipk, .idg-chev, button.isx-main, .ir-vd { transition: none !important; }
   }
   .inc-menu-wrap { position: relative; flex: none; }
   .inc-kebab { background: none; border: 1px solid var(--border); border-radius: 8px; padding: 1px 9px;
@@ -5245,31 +5284,32 @@
         </div>
       </div>
     </div>
-    <!-- The incidents: a line that says how things are, the views and the filters, then one list
-         grouped by dataset. Everything inside #incHero, #incKpis, #incFilt and #incList is drawn by
-         renderIncidents. -->
-    <div class="card ist-card" id="incStation">
-      <div class="isx-top">
-        <div class="isx-sum" id="incHero" role="status" aria-live="polite"></div>
-        <span class="ist-live"><span id="incCtx"></span>
-          <button type="button" class="ist-livebtn lngb on" id="incLive" data-ix="live" aria-pressed="true"><span class="ist-dot" aria-hidden="true"></span>Live</button>
-          <span id="incAge"></span>
-          <button type="button" class="btn-sm" id="incRefresh">↻ Refresh</button></span>
+    <!-- The incidents: four tiles, a search and three menus, a card per dataset, and the incident
+         picked in a panel that slides in beside them. Everything inside #incKpis, #incFilt, #incList
+         and #incDet is drawn by renderIncidents. -->
+    <div class="ipx-wrap" id="incStation">
+      <div class="ipx-main">
+        <div class="ipx-tiles" id="incKpis" role="group" aria-label="Show only"></div>
+        <div class="ipx-bar">
+          <span class="scope-toggle" id="incScopeToggle">
+            <button type="button" class="scope-btn active" data-scope="app">App data</button>
+            <button type="button" class="scope-btn" data-scope="source">Source data</button>
+          </span>
+          <label class="ist-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6"/></svg>
+            <input type="search" id="incSearch" placeholder="Search by dataset, rule, message or person…" autocomplete="off" aria-label="Search incidents"><kbd aria-hidden="true">/</kbd></label>
+          <div class="isx-filt" id="incFilt"></div>
+          <div class="ipx-rf"><button type="button" class="btn-sm" id="incRefresh"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4.5V11h-6.5"/></svg>Refresh</button>
+            <span id="incAge"></span></div>
+        </div>
+        <div class="card ipx-ds" id="incList"><p class="dash-muted">Loading…</p></div>
       </div>
-      <div class="isx-bar">
-        <span class="scope-toggle" id="incScopeToggle">
-          <button type="button" class="scope-btn active" data-scope="app">App data</button>
-          <button type="button" class="scope-btn" data-scope="source">Source data</button>
-        </span>
-        <div class="isx-views" id="incKpis" role="group" aria-label="Show only"></div>
-        <div class="isx-find">
-        <label class="ist-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6"/></svg>
-          <input type="search" id="incSearch" placeholder="Search by dataset, rule, message or person" autocomplete="off" aria-label="Search incidents"><kbd aria-hidden="true">/</kbd></label>
-        <div class="isx-filt" id="incFilt"></div></div>
-      </div>
-      <div id="incList"><p class="dash-muted">Loading…</p></div>
+      <aside class="ipx" id="incSide" aria-label="The incident picked" aria-hidden="true" inert>
+        <div class="ipx-card" id="incDet" role="region" aria-labelledby="incDetH"></div>
+      </aside>
     </div>
+    <div class="ist-scrim" id="incScrim" hidden></div>
     <div class="ist-toast" id="incToast" role="status" aria-live="polite"></div>
+    <div class="sr-only" id="incHero" role="status" aria-live="polite"></div>
   </div>
 
   <!-- ============ LINEAGE ============ -->
@@ -14271,30 +14311,33 @@ async function refreshBlockerBar() {
 }
 const refreshIncBadge = refreshBlockerBar;   // legacy name kept for existing callers
 // ---- The incidents list -----------------------------------------------------------------------
-// One list, the width of the page, grouped by dataset. Each group says what its dataset is (its
-// name, its source, its score and its owner) and what is open on it; under it, its incidents as
-// two-line rows. Clicking one opens it where it is, the width of the list, with what it means,
-// what to do about it and its history, and room to read all of that.
+// Four tiles say how things stand and how they have moved: open, unacknowledged, closed and the
+// total, each with its trend, each a filter. Under them a search and three menus (severity, status,
+// sort), then a card per dataset with what it is and what is open on it, folding open to a table
+// of its incidents. Picking one slides its detail in from the right: beside the list where there
+// is room, over it where there is not. Its ✕ (or Escape) slides it away again.
 //
-// A line across the top says how bad things are, and a row of views (Open, Unacknowledged, Mine,
-// Snoozed or muted, Closed, All) filters the list. It refreshes itself every minute while it is on
-// screen and nobody is in the middle of something, and marks what has arrived since it was looked at.
+// The list refreshes itself every minute while it is on screen and nobody is in the middle of
+// something, keeps its place and the incident open, and marks what has arrived since.
 let incAll = [];
 let incScope = PORTAL ? 'source' : 'app';      // 'app' (Qlik tables) | 'source' (Data-from-Source)
 let incSearch = '';                             // narrows the list: dataset, rule, message, people
 function isSourceIncident(it) { return it && it.sourceFormat && it.sourceFormat !== 'qlik'; }
-let INC_LIST = [];            // the incidents in scope, as drawn
+const INC_DAYS = 30;          // what the list shows; twice as much is fetched, to compare with
+let INC_SCOPED = [];          // the incidents in scope, as fetched (twice the window)
+let INC_LIST = [];            // the incidents in scope and in the window
 let INC_GROUPS = [];          // a group per dataset, worst first
 let incView = 'open';         // open | unack | mine | quiet | closed | all
 let incDsSel = '';            // one dataset's key, or '' for every dataset
 let incSevSel = [];           // the severities shown; none chosen shows them all
 let incSort = 'urgent';
-let incSel = '';              // the incident open in the list (incId), or ''
-const incFolded = new Set();  // datasets whose incidents are folded away
-const incChecked = new Set(); // ticked for an action on several at once
+let incSel = '';              // the incident in the panel (incId), or ''
+let incPanel = false;         // the panel is out
+let incOver = false;          // too narrow for it beside the list, so it comes out over the page
+const incFold = new Map();    // dataset key -> open (true) or shut (false), where somebody chose
 let incKnown = null;          // what was open at the previous load, to see what is new
 const incNew = new Set();
-let incLoadedAt = 0, incFetching = false, incLive = true, incBusy = false, incTouchedAt = 0;
+let incLoadedAt = 0, incFetching = false, incBusy = false, incTouchedAt = 0;
 // A dataset the Overview asked to open here ({ key, name }), and the name of one that turned out
 // to have no incidents in the window, so the list can say why it shows everything instead. An
 // incident the blocker bar asked for ({ dk, key }).
@@ -14305,18 +14348,16 @@ const incAiOpen = new Set();  // and whose explanation was open, to keep it open
 const INC_SEV_RANK = { blocker: 3, major: 2, warning: 1, minor: 1 };
 const INC_SEV = { blocker: 'Blocker', major: 'Major', warning: 'Warning', minor: 'Minor' };
 const _incIco = p => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${p}</svg>`;
-const INC_SEV_ICO = {
-  blocker: _incIco('<path d="M8 2.6h8l5.4 5.4v8L16 21.4H8L2.6 16V8z"/><path d="M12 7.6v5.2M12 16.4v.01"/>'),
-  major: _incIco('<path d="M12 3.4 21.6 20H2.4z"/><path d="M12 9.6v4.6M12 17v.01"/>'),
-  warning: _incIco('<circle cx="12" cy="12" r="8.6"/><path d="M12 7.8v4.8M12 16.2v.01"/>'),
-};
-INC_SEV_ICO.minor = INC_SEV_ICO.warning;
+// A filled disc with an exclamation mark: the severity of an incident, and the tiles' marks.
+const INC_DOT = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10.5" fill="currentColor"/>' +
+  '<path d="M12 6.6v6.6M12 17v.01" fill="none" stroke-width="2.6" stroke-linecap="round"/></svg>';
 const INC_ICO = {
   ack: _incIco('<path d="m5 12.5 4.2 4.2L19 7"/>'),
   person: _incIco('<circle cx="12" cy="8" r="3.6"/><path d="M5 20a7 7 0 0 1 14 0"/>'),
   snooze: _incIco('<path d="M4.5 13.5A8 8 0 1 0 12 5.5"/><path d="M4 4h4.5L4 9h4.5"/>'),
-  mute: _incIco('<path d="M11 5 6.5 9H3v6h3.5L11 19z"/><path d="m16 9.5 5 5m0-5-5 5"/>'),
   chev: _incIco('<path d="m6 9 6 6 6-6"/>'),
+  copy: _incIco('<rect x="8.5" y="8.5" width="11" height="11" rx="2"/><path d="M15.5 8.5V6a1.5 1.5 0 0 0-1.5-1.5H6A1.5 1.5 0 0 0 4.5 6v8A1.5 1.5 0 0 0 6 15.5h2.5"/>'),
+  refresh: _incIco('<path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4.5V11h-6.5"/>'),
 };
 const incId = it => `${it.datasetKey || it.dataset}|${it.key}`;
 const incIsOpen = it => String(it.status || '').toUpperCase() === 'OPEN';
@@ -14365,6 +14406,17 @@ function incDim(it) {
 }
 const incTitle = it => ruleLabel(it.rule) + (incDim(it) ? ' · ' + incDim(it) : '');
 const _incOrd = n => n + (n % 10 === 1 && n % 100 !== 11 ? 'st' : n % 10 === 2 && n % 100 !== 12 ? 'nd' : n % 10 === 3 && n % 100 !== 13 ? 'rd' : 'th');
+const incKind = it => isComplianceRule(it.rule) ? 'Compliance' : String(it.rule || '').indexOf('SOURCE_') === 0 ? 'Source monitoring' : 'Incident';
+/** A reference for an incident, the same for everyone: the month it opened and four characters of
+ *  its identity. It is not a number the API knows; it is there to be read out or pasted. */
+function incRef(it) {
+  const s = incId(it) + '|' + (it.openedAt || it.openedRun || '');
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+  const tail = ((h >>> 0) % 0x10000).toString(16).toUpperCase().padStart(4, '0');
+  const t = incOpenedT(it), d = isNaN(t) ? null : new Date(t);
+  return d ? `INC-${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${tail}` : `INC-${tail}`;
+}
 
 // ---- Time and people ----
 function incTs(v) {
@@ -14374,6 +14426,7 @@ function incTs(v) {
 }
 const incOpenedT = it => { const t = incTs(it.openedAt); return isNaN(t) ? incTs(it.openedRun) : t; };
 const incClosedT = it => { const t = incTs(it.resolvedAt); return isNaN(t) ? incTs(it.resolvedRun) : t; };
+const incSeenT = it => { const t = incTs(it.lastSeenAt); return isNaN(t) ? incTs(it.lastRun) : t; };
 function incSpan(ms) {
   if (!(ms >= 0)) return '';
   const m = ms / 60000;
@@ -14390,17 +14443,17 @@ function incDur(it) {
   const a = incOpenedT(it), b = incIsOpen(it) ? Date.now() : incClosedT(it);
   return isNaN(a) || isNaN(b) ? '' : incSpan(b - a);
 }
-function incWhen(v) {
-  const t = incTs(v);
-  if (isNaN(t)) return '';
+/** A moment as its day ("Today", "Yesterday", "9 Sep 2026") and its time. */
+function incDayTime(v) {
+  const t = typeof v === 'number' ? v : incTs(v);
+  if (isNaN(t)) return ['', ''];
   const d = new Date(t), now = new Date(), day = x => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
-  const time = d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
   const n = Math.round((day(now) - day(d)) / 864e5);
-  if (n === 0) return `Today, ${time}`;
-  if (n === 1) return `Yesterday, ${time}`;
-  if (n === -1) return `Tomorrow, ${time}`;
-  return `${d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: Math.abs(n) > 300 ? 'numeric' : undefined })}, ${time}`;
+  const time = d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+  return [n === 0 ? 'Today' : n === 1 ? 'Yesterday' : n === -1 ? 'Tomorrow'
+    : d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }), time];
 }
+function incWhen(v) { const [d, t] = incDayTime(v); return d ? `${d}, ${t}` : ''; }
 function incWho(email) {
   const e = String(email || '').trim();
   return e && e !== 'unknown' ? e : '';
@@ -14424,6 +14477,13 @@ function incDsRow(dk, it) {
 }
 function incGroupOf(it) { return INC_GROUPS.find(g => g.key === (it.datasetKey || it.dataset)) || null; }
 function incName(it) { const g = incGroupOf(it); return g ? g.name : (it.dataset || ''); }
+/** A source's own colour, taken from its mark, for the edge of its dataset's card. */
+function incBrand(fmt) {
+  const f = String(fmt || '').toLowerCase();
+  if (f === 'qlik') return '#009845';
+  const m = /#[0-9a-f]{6}/i.exec((typeof SOURCE_FMT_SVG !== 'undefined' && SOURCE_FMT_SVG[f]) || '');
+  return m ? m[0] : '';
+}
 function incGroups(list) {
   const m = new Map();
   list.forEach(it => {
@@ -14438,9 +14498,8 @@ function incGroups(list) {
   const gs = [...m.values()];
   gs.forEach(g => {
     g.open = g.items.filter(incIsOpen);
+    g.unack = g.open.filter(it => !it.ackBy).length;
     g.closed = g.items.length - g.open.length;
-    g.n = { blocker: 0, major: 0, warning: 0 };
-    g.open.forEach(it => { g.n[incSevOf(it)]++; });
     g.worst = Math.max(0, ...g.open.map(it => INC_SEV_RANK[incSevOf(it)]));
     g.owner = entryFor(g.key).owner;
   });
@@ -14450,21 +14509,21 @@ function incGroups(list) {
 
 // ---- What is in the list ----
 const INC_VIEWS = {
-  open: { t: 'Open', f: incIsOpen },
-  unack: { t: 'Unacknowledged', f: it => incIsOpen(it) && !it.ackBy },
-  mine: { t: 'Assigned to me', f: it => incIsOpen(it) && incMe(it.owner) },
-  quiet: { t: 'Snoozed or muted', f: it => incIsOpen(it) && (!!it.snoozeUntil || !!it.muted) },
-  closed: { t: 'Closed', f: it => !incIsOpen(it) },
-  all: { t: 'All', f: () => true },
+  open: { t: 'All status', m: 'Every open incident, whatever is being done about it', f: incIsOpen, w: 'open' },
+  unack: { t: 'Unacknowledged', m: 'Open, and nobody has said they are on it', f: it => incIsOpen(it) && !it.ackBy, w: 'unacknowledged' },
+  mine: { t: 'Assigned to me', f: it => incIsOpen(it) && incMe(it.owner), w: 'assigned to you' },
+  quiet: { t: 'Snoozed or muted', f: it => incIsOpen(it) && (!!it.snoozeUntil || !!it.muted), w: 'snoozed or muted' },
+  closed: { t: 'Closed', m: 'Recovered or dismissed in the last 30 days', f: it => !incIsOpen(it), w: 'closed' },
+  all: { t: 'Open and closed', m: 'Everything in the last 30 days', f: () => true, w: '' },
 };
 const INC_SORTS = [['urgent', 'Most urgent'], ['newest', 'Newest first'], ['oldest', 'Open longest'], ['dataset', 'By dataset name']];
 function incHay(it) {
   const g = incGroupOf(it);
   return [g && g.name, it.dataset, incTitle(it), it.rule, it.message, it.owner, it.ackBy, g && g.owner,
-          g && sourceLabel(g.fmt)].filter(Boolean).join(' ').toLowerCase();
+          g && sourceLabel(g.fmt), incRef(it)].filter(Boolean).join(' ').toLowerCase();
 }
 function incMatch(it) {
-  const words = incSearch.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const words = incSearch.trim().toLowerCase().split(/\s+/).map(w => w.replace(/^#/, '')).filter(Boolean);
   return (!incDsSel || (it.datasetKey || it.dataset) === incDsSel) && (!words.length || words.every(w => incHay(it).includes(w)));
 }
 /** The list before the severity filter, so the filter can count what each severity would show. */
@@ -14474,7 +14533,7 @@ function incFeedBase() {
 }
 function incSorted(list) {
   const t = it => incOpenedT(it) || 0;
-  const seen = it => incTs(it.lastSeenAt) || incClosedT(it) || t(it);
+  const seen = it => incSeenT(it) || incClosedT(it) || t(it);
   const urgent = (a, b) => (incIsOpen(b) - incIsOpen(a)) || (INC_SEV_RANK[incSevOf(b)] - INC_SEV_RANK[incSevOf(a)]) || (seen(b) - seen(a));
   const by = {
     urgent, newest: (a, b) => t(b) - t(a),
@@ -14487,26 +14546,88 @@ function incFeedItems() {
   const base = incFeedBase();
   return incSorted(incSevSel.length ? base.filter(it => incSevSel.includes(incSevOf(it))) : base);
 }
+/** The datasets in the list, in the order their first incident falls, so the sort decides. */
+function incOrder(items) {
+  const order = [], by = new Map();
+  items.forEach(it => {
+    const k = it.datasetKey || it.dataset;
+    if (!by.has(k)) { by.set(k, []); order.push(k); }
+    by.get(k).push(it);
+  });
+  return { order, by };
+}
+const incFiltering = () => !!(incSearch.trim() || incSevSel.length || incDsSel);
+/** Whether a dataset's incidents are showing: as somebody left it, else the first dataset open and
+ *  the rest folded; everything open while a search or a filter is narrowing the list. */
+function incIsExpanded(k, first) {
+  if (incFiltering()) return true;
+  return incFold.has(k) ? incFold.get(k) : k === first;
+}
 const incCur = () => INC_LIST.find(it => incId(it) === incSel) || null;
+/** What the panel shows of an incident, to tell whether it has to be drawn again. */
+const incSig = it => { const g = incGroupOf(it); return JSON.stringify([it, g && g.d ? [g.d.score, g.d.status] : null, g ? g.owner : null]); };
 
-// ---- The line across the top, and the views ----
-function incSumHtml() {
-  const open = INC_LIST.filter(incIsOpen), blk = open.filter(it => incSevOf(it) === 'blocker').length;
-  const ua = open.filter(it => !it.ackBy).length, cl = INC_LIST.length - open.length;
-  const cls = blk ? 'red' : open.length ? 'amber' : 'green';
-  const title = blk ? `${blk} blocker${blk === 1 ? '' : 's'} open` : open.length ? `${open.length} open` : 'All clear';
-  const bits = blk ? [`${open.length} open in all`] : [];
-  if (open.length) bits.push(ua ? `${ua} unacknowledged` : 'every one acknowledged');
-  else bits.push(`nothing is open in this ${SCOPE_NOUN}`);
-  if (cl) bits.push(`${cl} closed in the last 30 days`);
-  return { cls, html: `<span class="ist-light ${cls}" aria-hidden="true"><i></i></span><b>${esc(title)}</b><span class="isx-sub">${esc(bits.join(' · '))}</span>` };
+// ---- The tiles ----
+const INC_DAY = 864e5;
+/** What was open (or open and not acknowledged) at a moment, worked out from when each incident
+ *  opened, was acknowledged and closed. */
+function incOpenAt(t, unack) {
+  return INC_SCOPED.filter(it => {
+    const o = incOpenedT(it);
+    if (isNaN(o) || o > t) return false;
+    if (!incIsOpen(it) && incClosedT(it) <= t) return false;
+    return !unack || !(incTs(it.ackAt) <= t);
+  }).length;
 }
-function incViewsHtml() {
-  const n = v => INC_LIST.filter(it => INC_VIEWS[v].f(it) && (!incDsSel || (it.datasetKey || it.dataset) === incDsSel)).length;
-  const views = ['open', 'unack'].concat(EMAIL ? ['mine'] : [], ['quiet', 'closed', 'all']);
-  return views.map(v => `<button type="button" class="isx-view lngb" data-ix="view" data-v="${v}" aria-pressed="${incView === v}">` +
-    `${INC_VIEWS[v].t}<span class="n">${n(v)}</span></button>`).join('');
+function incSpark(vals, bars) {
+  const W = 78, H = 26, n = vals.length, max = Math.max(...vals), min = bars ? 0 : Math.min(...vals);
+  if (bars) {
+    const bw = W / n, top = Math.max(1, max);
+    return `<svg class="ipk-sp bars" viewBox="0 0 ${W} ${H}" aria-hidden="true">` + vals.map((v, i) => {
+      const h = Math.max(2, (v / top) * (H - 2));
+      return `<rect${v ? '' : ' class="z"'} x="${(i * bw + 1).toFixed(1)}" y="${(H - h).toFixed(1)}" width="${(bw - 2.4).toFixed(1)}" height="${h.toFixed(1)}" rx="1"/>`;
+    }).join('') + `</svg>`;
+  }
+  const y = v => max === min ? H / 2 : H - 3 - ((v - min) / (max - min)) * (H - 6);
+  const pts = vals.map((v, i) => [(i / (n - 1)) * (W - 5) + 2, y(v)]);
+  const last = pts[pts.length - 1];
+  return `<svg class="ipk-sp" viewBox="0 0 ${W} ${H}" aria-hidden="true"><polyline points="${pts.map(p => p.map(x => x.toFixed(1)).join(',')).join(' ')}" ` +
+    `fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>` +
+    `<circle cx="${last[0].toFixed(1)}" cy="${last[1].toFixed(1)}" r="2.4" fill="currentColor"/></svg>`;
 }
+const _incDelta = (d, than) => d > 0 ? `+${d} vs ${than}` : d < 0 ? `-${-d} vs ${than}` : `Same as ${than}`;
+function incTilesHtml() {
+  const now = Date.now(), from = now - INC_DAYS * INC_DAY;
+  const steps = (n, every) => Array.from({ length: n }, (_, i) => now - (n - 1 - i) * every);
+  const open = INC_LIST.filter(incIsOpen), unack = open.filter(it => !it.ackBy).length, closed = INC_LIST.length - open.length;
+  const openS = steps(15, 2 * INC_DAY).map(t => incOpenAt(t)), unackS = steps(15, 2 * INC_DAY).map(t => incOpenAt(t, true));
+  const buckets = (tsOf) => steps(10, 3 * INC_DAY).map(t => INC_SCOPED.filter(it => { const x = tsOf(it); return x > t - 3 * INC_DAY && x <= t; }).length);
+  const closedS = buckets(it => incIsOpen(it) ? NaN : incClosedT(it)), openedS = buckets(incOpenedT);
+  const prevClosed = INC_SCOPED.filter(it => { const x = incIsOpen(it) ? NaN : incClosedT(it); return x > from - INC_DAYS * INC_DAY && x <= from; }).length;
+  const wk = now - 7 * INC_DAY;
+  const tiles = [
+    { k: 'open', v: 'open', n: open.length, l: 'Open', d: _incDelta(open.length - incOpenAt(wk), '7 days ago'), sp: incSpark(openS),
+      tip: 'Open now. The line is how many were open on each of the last 30 days.' },
+    { k: 'unack', v: 'unack', n: unack, l: 'Unacknowledged', d: _incDelta(unack - incOpenAt(wk, true), '7 days ago'), sp: incSpark(unackS),
+      tip: 'Open, and nobody has said they are on it. The line is the last 30 days.' },
+    { k: 'closed', v: 'closed', n: closed, l: `Closed (${INC_DAYS} days)`, d: _incDelta(closed - prevClosed, `previous ${INC_DAYS} days`), sp: incSpark(closedS),
+      tip: 'Recovered or dismissed in the last 30 days. The line is how many closed in each 3 days.' },
+    { k: 'total', v: 'all', n: INC_LIST.length, l: `Total (${INC_DAYS} days)`, d: '', sp: incSpark(openedS, true),
+      tip: 'Every incident open now or closed in the last 30 days. The bars are how many opened in each 3 days.' },
+  ];
+  return tiles.map(x => `<button type="button" class="ipk ${x.k} lngb" data-ix="tile" data-v="${x.v}" aria-pressed="${incView === x.v}" data-tip="${esc(x.tip)}">` +
+    `<span class="ipk-ic" aria-hidden="true">${INC_DOT}</span>` +
+    `<span class="ipk-txt"><b class="ipk-n">${x.n}</b><span class="ipk-l">${esc(x.l)}</span>${x.d ? `<span class="ipk-d">${esc(x.d)}</span>` : ''}</span>` +
+    x.sp + `</button>`).join('');
+}
+/** Said to a screen reader when it changes: the tiles say it to everyone else. */
+function incSumText() {
+  const open = INC_LIST.filter(incIsOpen), blk = open.filter(it => incSevOf(it) === 'blocker').length, ua = open.filter(it => !it.ackBy).length;
+  if (!open.length) return 'All clear: nothing is open.';
+  return `${open.length} open${blk ? `, ${blk} of them blocker${blk === 1 ? '' : 's'}` : ''}. ${ua} unacknowledged.`;
+}
+
+// ---- The menus ----
 function incMenuHtml(label, items) {
   return `<div class="dsx-menu dsx-pop ist-pop" role="menu" aria-label="${esc(label)}" hidden>` + items.map(it => it === '-'
     ? '<div class="dsx-sep" role="separator"></div>'
@@ -14517,143 +14638,110 @@ function incMenuHtml(label, items) {
 }
 const INC_SNOOZE = [[1, 'For an hour'], [4, 'For 4 hours'], [24, 'For a day'], [168, 'For a week']];
 const _incSnoozeItems = attr => INC_SNOOZE.map(([h, l]) => ({ attr: `${attr} data-h="${h}"`, label: l, ic: '💤' }));
+const _incMenuBtn = (cls, label, menu) => `<span class="dsx-pw"><button type="button" class="isx-mbtn ${cls} lngb" data-ix="menu" aria-haspopup="menu" aria-expanded="false">` +
+  `<span>${esc(label)}</span><span class="rx-caret" aria-hidden="true">${INC_ICO.chev}</span></button>${menu}</span>`;
 function incFiltHtml() {
   const base = incFeedBase(), sevN = s => base.filter(it => incSevOf(it) === s).length;
   const sevL = !incSevSel.length ? 'All severities' : incSevSel.length === 1 ? INC_SEV[incSevSel[0]] : `${incSevSel.length} severities`;
-  const sev = `<span class="dsx-pw"><button type="button" class="isx-mbtn lngb${incSevSel.length ? ' on' : ''}" data-ix="menu" aria-haspopup="menu" aria-expanded="false">` +
-    `${esc(sevL)}<span class="rx-caret" aria-hidden="true">▾</span></button>` +
-    incMenuHtml('Severity', ['blocker', 'major', 'warning'].map(s => ({ check: true, on: incSevSel.includes(s), attr: `data-ix="sev" data-v="${s}"`,
-      label: INC_SEV[s], n: sevN(s) })).concat(incSevSel.length ? ['-', { attr: 'data-ix="sevall"', label: 'Every severity' }] : [])) + `</span>`;
+  const sev = _incMenuBtn('ist-sevm' + (incSevSel.length ? ' on' : ''), sevL, incMenuHtml('Severity', ['blocker', 'major', 'warning'].map(s => ({
+    check: true, on: incSevSel.includes(s), attr: `data-ix="sev" data-v="${s}"`, label: INC_SEV[s], n: sevN(s) }))
+    .concat(incSevSel.length ? ['-', { attr: 'data-ix="sevall"', label: 'All severities' }] : [])));
+  const inView = v => INC_LIST.filter(it => INC_VIEWS[v].f(it) && incMatch(it)).length;
+  const views = ['open', 'unack'].concat(EMAIL ? ['mine'] : [], ['quiet'], ['-'], ['closed', 'all']);
+  const st = _incMenuBtn('ist-stm' + (incView !== 'open' ? ' on' : ''), (INC_VIEWS[incView] || INC_VIEWS.open).t, incMenuHtml('Status', views.map(v => v === '-' ? '-' : ({
+    radio: true, on: incView === v, attr: `data-ix="view" data-v="${v}"`, label: INC_VIEWS[v].t, sub: INC_VIEWS[v].m, n: inView(v) }))));
   const sortL = (INC_SORTS.find(x => x[0] === incSort) || INC_SORTS[0])[1];
-  const sort = `<span class="dsx-pw"><button type="button" class="isx-mbtn ist-sort lngb" data-ix="menu" aria-haspopup="menu" aria-expanded="false">` +
-    `${esc(sortL)}<span class="rx-caret" aria-hidden="true">▾</span></button>` +
-    incMenuHtml('Sort', INC_SORTS.map(([v, l]) => ({ radio: true, on: incSort === v, attr: `data-ix="sort" data-v="${v}"`, label: l }))) + `</span>`;
+  const sort = _incMenuBtn('ist-sort', sortL, incMenuHtml('Sort', INC_SORTS.map(([v, l]) => ({ radio: true, on: incSort === v, attr: `data-ix="sort" data-v="${v}"`, label: l }))));
   const g = incDsSel ? INC_GROUPS.find(x => x.key === incDsSel) : null;
   const chip = g ? `<span class="ist-fchip ds"><span class="ifr-dsi" aria-hidden="true">${srcIcon(g.fmt)}</span><span class="ist-fchip-n">${esc(g.name)}</span>` +
     `<button type="button" class="lngb" data-ix="ds" data-ds="" aria-label="Show every dataset">&#10005;</button></span>` : '';
-  return chip + sev + sort;
+  return sev + st + sort + chip;
 }
 
 // ---- The list ----
-function incGroupHead(g, items) {
-  const d = g.d, folded = incFolded.has(g.key);
+function incPill(kind, label) { return `<span class="ir-pill ${kind}">${esc(label)}</span>`; }
+/** Where an incident stands, as the word on its pill: closed, else snoozed or muted, else whether
+ *  anybody has picked it up. */
+function incStateOf(it) {
+  if (!incIsOpen(it)) return it.dismissed ? ['dismissed', 'Dismissed'] : ['recovered', 'Recovered'];
+  if (it.snoozeUntil) return ['quiet', 'Snoozed'];
+  if (it.muted) return ['quiet', 'Muted'];
+  return it.ackBy ? ['ack', 'Acknowledged'] : ['open', 'Open'];
+}
+function incGroupHead(g, items, open) {
+  const d = g.d;
   const sc = d && d.score != null ? `<span class="ist-score ${tagClass(String(d.status || '').toLowerCase())}">${esc(String(fmtScore(d.score)))}</span>` : '';
-  const meta = [`<span>${esc(sourceLabel(g.fmt) || 'Source unknown')}</span>`, sc,
-    g.owner ? `<span>owner ${incPerson(g.owner)}</span>` : ''].filter(Boolean).join('');
-  const sev = g.open.length
-    ? ['blocker', 'major', 'warning'].filter(s => g.n[s]).map(s =>
-        `<span class="isx-gs ${s}">${s === 'blocker' ? `<span class="inc-pip blocker">${g.n[s]}</span>` : `<span class="isx-gsn">${g.n[s]}</span>`}${s}${g.n[s] === 1 ? '' : 's'}</span>`).join('')
-    : `<span class="isx-gs ok">&#10003; Nothing open</span>`;
-  return `<div class="isx-gh">` +
-    `<button type="button" class="isx-gt lngb" data-ix="fold" data-ds="${esc(g.key)}" aria-expanded="${!folded}" data-tip="${folded ? 'Show' : 'Hide'} its incidents">` +
-      `<span class="isx-chev" aria-hidden="true">${INC_ICO.chev}</span><span class="isx-gico" aria-hidden="true">${srcIcon(g.fmt)}</span>` +
-      `<span class="isx-gname">${esc(g.name)}</span><span class="isx-gmeta">${meta}</span>` +
-      (folded ? `<span class="isx-gn">${items.length} hidden</span>` : '') + `</button>` +
-    `<span class="isx-gsev">${sev}</span>` +
-    `<button type="button" class="linkbtn lngb isx-gopen" data-ix="opends" data-ds="${esc(g.key)}"${d ? '' : ' disabled data-tip="This dataset is no longer on the Overview"'}>Open dataset</button></div>`;
+  const nNew = g.items.filter(it => incNew.has(incId(it))).length;
+  const n = (cls, v, l) => `<span class="idg-n ${cls}${v ? '' : ' zero'}"><span class="ir-dot" aria-hidden="true">${INC_DOT}</span><span><b>${v}</b><small>${l}</small></span></span>`;
+  return `<button type="button" class="idg-h lngb" data-ix="fold" data-ds="${esc(g.key)}" aria-expanded="${open}" aria-controls="idg-${esc(g.key)}" ` +
+    `aria-label="${esc(g.name)}: ${g.open.length} open, ${g.unack} unacknowledged. ${open ? 'Hide' : 'Show'} its incidents">` +
+    `<span class="idg-ico" aria-hidden="true">${srcIcon(g.fmt)}</span>` +
+    `<span class="idg-id"><span class="idg-nm"><b class="isx-gname">${esc(g.name)}</b>${nNew ? `<span class="ifr-new">${nNew} new</span>` : ''}</span><span class="idg-sub"><span>${esc(sourceLabel(g.fmt) || 'Source unknown')}</span>${sc}` +
+      `</span></span>` +
+    n('open', g.open.length, 'Open') + n('unack', g.unack, 'Unacknowledged') +
+    `<span class="idg-chev" aria-hidden="true">${INC_ICO.chev}</span></button>`;
 }
 function incRowHtml(it) {
-  const id = incId(it), sev = incSevOf(it), open = incIsOpen(it), isSel = id === incSel, chk = incChecked.has(id);
-  const st = open ? 'open' : it.dismissed ? 'dismissed' : 'recovered';
-  const age = open ? incDur(it) : `${it.dismissed ? 'dismissed' : 'recovered'} ${incAgo(incClosedT(it))}`;
-  const ind = [
-    it.ackBy ? `<span class="isx-i ack" data-tip="Acknowledged${incWho(it.ackBy) ? ` by ${esc(incWho(it.ackBy))}` : ''}">${INC_ICO.ack}</span>` : '',
-    incWho(it.owner) ? `<span class="isx-i av" data-tip="Assigned to ${esc(incWho(it.owner))}">${esc(_incIni(incWho(it.owner)))}</span>` : '',
-    it.snoozeUntil ? `<span class="isx-i" data-tip="Snoozed until ${esc(incWhen(it.snoozeUntil))}">${INC_ICO.snooze}</span>` : '',
-    it.muted ? `<span class="isx-i" data-tip="Alerts muted">${INC_ICO.mute}</span>` : '',
-    it.explainedAt ? `<span class="isx-i ai" data-tip="Explained by AI">${aiIcon()}</span>` : '',
-  ].filter(Boolean).join('');
-  const kind = isComplianceRule(it.rule) ? '<span class="ifr-kind cmp">Compliance</span>'
-    : String(it.rule || '').indexOf('SOURCE_') === 0 ? '<span class="ifr-kind src">Source</span>' : '';
-  return `<div class="isx-row">` +
-    (open ? `<label class="isx-ck"><input type="checkbox" data-ix="check" data-id="${esc(id)}"${chk ? ' checked' : ''} ` +
-      `aria-label="Select ${esc(incTitle(it))} on ${esc(incName(it))}"></label>` : '<span class="isx-ck"></span>') +
-    `<button type="button" class="isx-main lngb" data-ix="pick" data-id="${esc(id)}" aria-expanded="${isSel}"${isSel ? ' aria-controls="incDet"' : ''}>` +
-      `<span class="ifr-sev ${sev}" data-tip="${INC_SEV[sev]}">${INC_SEV_ICO[sev]}</span>` +
-      `<span class="isx-txt"><span class="isx-l1"><span class="isx-title">${esc(incTitle(it))}</span>${kind}` +
-        `${incNew.has(id) ? '<span class="ifr-new">New</span>' : ''}${open ? '' : `<span class="ist-st ${st}">${it.dismissed ? 'Dismissed' : 'Recovered'}</span>`}</span>` +
+  const id = incId(it), sev = incSevOf(it), isSel = incPanel && id === incSel;
+  const [stc, stl] = incStateOf(it), [sd, stime] = incDayTime(incIsOpen(it) ? incSeenT(it) : incClosedT(it));
+  return `<div class="isx-item sev-${sev}${incIsOpen(it) ? ' open' : ' closed'}${isSel ? ' sel' : ''}${incNew.has(id) ? ' new' : ''}" role="listitem" data-id="${esc(id)}">` +
+    `<button type="button" class="isx-main ir-grid lngb" data-ix="pick" data-id="${esc(id)}" aria-current="${isSel}" ` +
+    `aria-label="${esc(incTitle(it))}, ${INC_SEV[sev]}, ${stl}, on ${esc(incName(it))}. Opened ${esc(incAgo(incOpenedT(it)))}.">` +
+      `<span class="ir-c ir-sev"><span class="ir-dot ${sev}" data-tip="${INC_SEV[sev]}">${INC_DOT}</span></span>` +
+      `<span class="ir-c ir-inc"><span class="ir-l1"><b class="isx-title">${esc(incTitle(it))}</b>${incNew.has(id) ? '<span class="ifr-new">New</span>' : ''}</span>` +
         (it.message ? `<span class="isx-msg">${esc(it.message)}</span>` : '') + `</span>` +
-      `<span class="isx-ind">${ind}</span><span class="isx-age">${esc(age)}</span>` +
-      `<span class="isx-chev" aria-hidden="true">${INC_ICO.chev}</span>` +
-    `</button>` +
-    (open && !it.ackBy ? `<button type="button" class="isx-ack lngb" data-ix="act" data-act="acknowledge" data-id="${esc(id)}" ` +
-      `aria-label="Acknowledge ${esc(incTitle(it))} on ${esc(incName(it))}" data-tip="Acknowledge: say someone is on it (A)">${INC_ICO.ack}</button>` : '') +
-    `</div>`;
-}
-function incItemHtml(it) {
-  const id = incId(it), sev = incSevOf(it), open = incIsOpen(it), isSel = id === incSel;
-  const st = open ? 'open' : it.dismissed ? 'dismissed' : 'recovered';
-  return `<div class="isx-item sev-${sev} ${st}${isSel ? ' sel' : ''}${incNew.has(id) ? ' new' : ''}${incChecked.has(id) ? ' checked' : ''}" ` +
-    `role="listitem" data-id="${esc(id)}">${incRowHtml(it)}` +
-    (isSel ? `<div class="isx-det" id="incDet" role="region" aria-label="${esc(incTitle(it))} on ${esc(incName(it))}"></div>` : '') + `</div>`;
-}
-/** "3 open incidents", "1 incident assigned to you": how many the view shows, in words that suit it. */
-function incCountText(n) {
-  const s = n === 1 ? '' : 's';
-  return { open: `${n} open incident${s}`, unack: `${n} unacknowledged incident${s}`, mine: `${n} incident${s} assigned to you`,
-           quiet: `${n} snoozed or muted incident${s}`, closed: `${n} closed incident${s}` }[incView] || `${n} incident${s}`;
+      `<span class="ir-c ir-op"><span>${esc(incAgo(incOpenedT(it)))}</span><small>${esc(incWhen(incOpenedT(it)))}</small></span>` +
+      `<span class="ir-c ir-ls"><span>${esc(sd)}</span><small>${esc(stime)}</small></span>` +
+      `<span class="ir-c ir-st">${incPill(stc, stl)}${incPill(sev, INC_SEV[sev])}</span>` +
+      `<span class="ir-c ir-go"><span class="ir-vd"><span class="t">View details</span> →</span></span>` +
+    `</button></div>`;
 }
 function incListHtml() {
-  const items = incFeedItems();
-  // Datasets in the order their first incident falls, so the sort decides which comes first.
-  const order = [], by = new Map();
-  items.forEach(it => {
-    const k = it.datasetKey || it.dataset;
-    if (!by.has(k)) { by.set(k, []); order.push(k); }
-    by.get(k).push(it);
-  });
-  const openIds = items.filter(incIsOpen).map(incId), nChk = openIds.filter(id => incChecked.has(id)).length;
+  const items = incFeedItems(), { order, by } = incOrder(items);
   const vw = INC_VIEWS[incView] || INC_VIEWS.open;
-  const head = incChecked.size
-    ? `<div class="ist-bulk" role="region" aria-label="The incidents selected">` +
-      `<label class="isx-ck on" data-tip="Select every open incident listed"><input type="checkbox" data-ix="checkall"${nChk && nChk === openIds.length ? ' checked' : ''} aria-label="Select every open incident listed"></label>` +
-      `<b>${incChecked.size} selected</b>` +
-      `<button type="button" class="dsx-btn lngb" data-ix="bulk" data-act="acknowledge">${INC_ICO.ack}Acknowledge</button>` +
-      `<button type="button" class="dsx-btn lngb" data-ix="bulk" data-act="assign">${INC_ICO.person}Assign…</button>` +
-      `<span class="dsx-pw"><button type="button" class="dsx-btn lngb" data-ix="menu" aria-haspopup="menu" aria-expanded="false">${INC_ICO.snooze}Snooze<span class="rx-caret" aria-hidden="true">▾</span></button>` +
-      incMenuHtml('Snooze the selected', _incSnoozeItems('data-ix="bulk" data-act="snooze"')) + `</span>` +
-      `<button type="button" class="dsx-btn lngb" data-ix="bulk" data-act="mute">${INC_ICO.mute}Mute</button>` +
-      `<button type="button" class="linkbtn lngb" data-ix="bulkclear">Clear</button></div>`
-    : `<div class="isx-lh">` + (openIds.length ? `<label class="isx-ck" data-tip="Select every open incident listed"><input type="checkbox" data-ix="checkall" aria-label="Select every open incident listed"></label>` : '') +
-      `<span>${items.length ? `${incCountText(items.length)} in ${order.length} dataset${order.length === 1 ? '' : 's'}` : ''}</span>` +
-      (order.length > 1 ? `<button type="button" class="linkbtn lngb" data-ix="foldall">${order.every(k => incFolded.has(k)) ? 'Show every dataset\'s incidents' : 'Hide them all'}</button>` : '') + `</div>`;
+  const sub = order.length
+    ? `${order.length} dataset${order.length === 1 ? '' : 's'} with ${vw.w ? `${vw.w} incidents` : `incidents in the last ${INC_DAYS} days`}`
+    : '';
+  const head = `<div class="idg-top"><h3>Datasets</h3>${sub ? `<p>${esc(sub)}</p>` : ''}</div>`;
+  const miss = !incDsSel && incWantMiss ? `<p class="hint inc-miss">${esc(incWantMiss)} has had no incidents in the last ${INC_DAYS} days, so every dataset is shown.</p>` : '';
   let body;
   if (items.length) {
-    body = order.map(k => {
-      const g = INC_GROUPS.find(x => x.key === k), its = by.get(k);
-      return `<section class="isx-grp sev-${g ? g.worst : 0}" data-ds="${esc(k)}">${incGroupHead(g, its)}` +
-        (incFolded.has(k) ? '' : `<div class="isx-rows" role="list">${its.map(incItemHtml).join('')}</div>`) + `</section>`;
-    }).join('');
+    body = `<div class="idg-list">` + order.map(k => {
+      const g = INC_GROUPS.find(x => x.key === k), its = by.get(k), open = incIsExpanded(k, order[0]);
+      return `<section class="idg isx-grp" data-ds="${esc(k)}" style="--ds-c:${incBrand(g && g.fmt) || 'var(--accent)'}">${incGroupHead(g, its, open)}` +
+        `<div class="idg-body" id="idg-${esc(k)}"${open ? '' : ' hidden'}>` +
+        (open ? `<div class="ir-grid ir-head" aria-hidden="true"><span class="ir-sev">Severity</span><span class="ir-inc">Incident</span><span class="ir-op">Opened</span>` +
+          `<span class="ir-ls">Last seen</span><span class="ir-st">Status</span><span class="ir-go"></span></div>` +
+          `<div class="isx-rows" role="list">${its.map(incRowHtml).join('')}</div>` : '') + `</div></section>`;
+    }).join('') + `</div>`;
   } else {
     const g = incDsSel ? INC_GROUPS.find(x => x.key === incDsSel) : null;
     const filtered = incSearch.trim() || incSevSel.length;
     body = `<div class="ist-empty"><span class="ist-light green small" aria-hidden="true"><i></i></span>` +
       `<b>${filtered ? 'Nothing matches' : incView === 'closed' ? 'Nothing closed' : 'Nothing here'}</b>` +
       `<span>${filtered ? 'No incident matches this search or filter.'
-        : incView === 'closed' ? 'Nothing has recovered or been dismissed in the last 30 days.'
-        : g ? `${esc(g.name)} has nothing ${esc(vw.t.toLowerCase())}.` : `No incident is ${esc(vw.t.toLowerCase())} right now.`}</span>` +
+        : incView === 'closed' ? `Nothing has recovered or been dismissed in the last ${INC_DAYS} days.`
+        : g ? `${esc(g.name)} has nothing ${esc(vw.w || 'here')}.` : `No incident is ${esc(vw.w || 'here')} right now.`}</span>` +
       (g && incView === 'open' && g.closed ? `<button type="button" class="dsx-btn lngb" data-ix="view" data-v="closed">Show its ${g.closed} closed</button>` : '') + `</div>`;
   }
-  const miss = !incDsSel && incWantMiss ? `<p class="hint inc-miss">${esc(incWantMiss)} has had no incidents in the last 30 days, so every dataset is shown.</p>` : '';
-  return head + miss + body +
-    `<p class="ist-keys"><kbd>J</kbd><kbd>K</kbd> move <kbd>Enter</kbd> open <kbd>A</kbd> acknowledge <kbd>E</kbd> explain <kbd>/</kbd> search <kbd>Esc</kbd> close</p>`;
+  return head + miss + body;
 }
 
-// ---- The incident opened ----
+// ---- The incident, in the panel ----
 function incDetHtml(it) {
-  const id = incId(it), g = incGroupOf(it), d = g && g.d, open = incIsOpen(it), sev = incSevOf(it);
+  const g = incGroupOf(it), d = g && g.d, open = incIsOpen(it), sev = incSevOf(it);
   const [what, nk] = incInfo(it), nx = INC_NEXT[nk];
-  const st = open ? ['open', 'Open'] : it.dismissed ? ['dismissed', 'Dismissed'] : ['recovered', 'Recovered'];
-  const acked = !!it.ackBy, who = incWho(it.owner);
+  const [stc, stl] = incStateOf(it), acked = !!it.ackBy, who = incWho(it.owner);
+  const report = { attr: 'data-ix="report"', ic: '📜', label: 'Open the run that raised it', sub: 'Its full report, in History' };
+  const ds = { attr: 'data-ix="opends"', ic: '📊', label: 'Open the dataset', sub: 'On the Overview' };
   const more = open
     ? [{ attr: `data-ix="act" data-act="${it.muted ? 'unmute' : 'mute'}"`, ic: it.muted ? '🔔' : '🔇', label: it.muted ? 'Unmute alerts' : 'Mute alerts',
          sub: it.muted ? 'Notify people about it again' : 'Stop its notifications while it stays open' }]
       .concat(String(it.rule || '').indexOf('BASELINE_') === 0 ? [{ attr: 'data-ix="act" data-act="accept_new_normal"', ic: '↺', label: 'Accept as the new normal',
          sub: 'The baseline learns again from now, which closes this' }] : [])
-      .concat([{ attr: 'data-ix="report"', ic: '📜', label: 'Open the run that raised it', sub: 'Its full report, in History' }, '-',
+      .concat([report].concat(d ? [ds] : []), ['-',
                { attr: 'data-ix="act" data-act="dismiss"', ic: '🗂', label: 'Not an incident…', sub: 'Dismiss it with a reason; it reopens if it happens again', danger: true }])
-    : [{ attr: 'data-ix="report"', ic: '📜', label: 'Open the run that raised it', sub: 'Its full report, in History' }, '-',
-       { attr: 'data-ix="act" data-act="archive"', ic: '✕', label: 'Remove from the list', sub: 'It stays in history', danger: true }];
+    : [report].concat(d ? [ds] : [], ['-', { attr: 'data-ix="act" data-act="archive"', ic: '✕', label: 'Remove from the list', sub: 'It stays in history', danger: true }]);
   const moreBtn = `<span class="dsx-pw isx-more"><button type="button" class="dsx-btn icon lngb" data-ix="menu" aria-haspopup="menu" aria-expanded="false" ` +
     `aria-label="More actions" data-tip="More actions">⋯</button>` + incMenuHtml('More actions', more) + `</span>`;
   const acts = open
@@ -14662,97 +14750,130 @@ function incDetHtml(it) {
       `<button type="button" class="dsx-btn lngb" data-ix="act" data-act="assign">${INC_ICO.person}${who ? 'Reassign…' : 'Assign…'}</button>` +
       (it.snoozeUntil
         ? `<button type="button" class="dsx-btn lngb" data-ix="act" data-act="unsnooze" data-tip="Snoozed until ${esc(incWhen(it.snoozeUntil))}">${INC_ICO.snooze}Wake now</button>`
-        : `<span class="dsx-pw"><button type="button" class="dsx-btn lngb" data-ix="menu" aria-haspopup="menu" aria-expanded="false">${INC_ICO.snooze}Snooze<span class="rx-caret" aria-hidden="true">▾</span></button>` +
+        : `<span class="dsx-pw"><button type="button" class="dsx-btn lngb" data-ix="menu" aria-haspopup="menu" aria-expanded="false">${INC_ICO.snooze}Snooze<span class="rx-caret" aria-hidden="true">${INC_ICO.chev}</span></button>` +
           incMenuHtml('Snooze', _incSnoozeItems('data-ix="act" data-act="snooze"')) + `</span>`)
     : (it.dismissed ? `<button type="button" class="dsx-btn primary lngb" data-ix="act" data-act="restore">↺ Reopen</button>` : '');
-  const head = `<div class="isx-dh"><span class="ist-sev ${sev}">${INC_SEV_ICO[sev]}${INC_SEV[sev]}</span><span class="ist-st ${st[0]}">${st[1]}</span>` +
-    `<span class="isx-dage">${esc(open ? `open ${incDur(it)}` : `${it.dismissed ? 'dismissed' : 'recovered'} ${incAgo(incClosedT(it))}, after ${incDur(it)}`)}</span>` +
-    `<span class="isx-acts">${acts}${moreBtn}</span></div>`;
-  const nextOk = nx && (nk === 'source' || d);
-  const main = (what ? `<p class="isx-what">${esc(what)}</p>` : '') +
-    (it.message ? `<div class="isx-found"><h4>What it found</h4><p>${esc(it.message)}</p></div>` : '') +
-    `<div class="isx-next">` + (nx ? `<button type="button" class="dsx-btn lngb ist-nextb" data-ix="next"${nextOk ? '' : ' disabled data-tip="This dataset is no longer on the Overview"'}>${esc(nx[0])} →</button>` : '') +
-      aiBtn(it.explainedAt ? 'See the AI explanation' : 'Explain with AI', 'data-ix="explain"', 'ai-sm') + `</div>` +
-    `<div class="ai-out" id="incAiOut" hidden></div>`;
-  const facts = [
-    ['Opened', `${esc(incWhen(it.openedAt || it.openedRun))} <span class="idet-dim">${esc(incAgo(incOpenedT(it)))}</span>`],
-    open ? ['Last seen', `${esc(incWhen(it.lastSeenAt || it.lastRun))} <span class="idet-dim">on the latest run</span>`]
-         : [it.dismissed ? 'Dismissed' : 'Recovered', `${esc(incWhen(it.resolvedAt || it.resolvedRun))}${it.dismissed && incWho(it.dismissedBy) ? ` by ${incPerson(it.dismissedBy)}` : ''}`],
+  const head = `<button type="button" class="ipx-x lngb" data-ix="close" aria-label="Close the incident" data-tip="Close (Esc)">&#10005;</button>` +
+    `<div class="ipx-head"><div class="ipx-meta"><span class="ipx-tag">${esc(incKind(it))}</span>` +
+      `<span class="ipx-ref" data-tip="A reference for this incident, the same for everyone">#${esc(incRef(it))}</span>${incPill(stc, stl)}</div>` +
+    `<h3 class="ipx-title" id="incDetH" tabindex="-1"><span class="ir-dot ${sev}" aria-hidden="true">${INC_DOT}</span>${esc(incTitle(it))}</h3>` +
+    (what ? `<p class="ipx-what">${esc(what)}</p>` : '') + `</div>` +
+    `<div class="ipx-pills">${incPill(sev, INC_SEV[sev])}${incPill(open ? 'open' : stc, open ? 'Open' : stl)}` +
+      `<span class="ipx-age">${esc(open ? `open ${incDur(it)}` : `${it.dismissed ? 'dismissed' : 'recovered'} ${incAgo(incClosedT(it))}, after ${incDur(it)}`)}</span></div>` +
+    `<div class="ipx-acts isx-acts">${acts}${moreBtn}</div>`;
+  const found = it.message ? `<h4>What it found</h4><div class="ipx-found"><pre>${esc(it.message)}</pre>` +
+    `<button type="button" class="ipx-copy lngb" data-ix="copy" aria-label="Copy what it found" data-tip="Copy">${INC_ICO.copy}</button></div>` : '';
+  const sc = d && d.score != null ? `<span class="ist-score ${tagClass(String(d.status || '').toLowerCase())}">${esc(String(fmtScore(d.score)))}</span>` : '<span class="idet-dim">Not scored</span>';
+  const fl = [
+    ['Dataset', d ? `<button type="button" class="linkbtn lngb ipx-dsl" data-ix="opends">${esc(incName(it))}</button>` : esc(incName(it))],
+    ['Source', esc(sourceLabel(g && g.fmt) || 'Unknown')],
+    ['Overall score', sc],
+    ['Rule', `<code>${esc(it.rule || '').replace(/_/g, '_<wbr>')}</code>`],
+    open ? ['Alerts', it.muted ? 'Muted' : it.snoozeUntil ? `Snoozed until ${esc(incWhen(it.snoozeUntil))}` : 'On']
+         : it.dismissed && it.dismissReason ? ['Reason', esc(it.dismissReason)] : null,
+  ];
+  const fr = [
+    ['Opened', esc(incWhen(incOpenedT(it)))],
+    open ? ['Last seen', esc(incWhen(incSeenT(it)))]
+         : [it.dismissed ? 'Dismissed' : 'Recovered', esc(incWhen(incClosedT(it)))],
     ['Runs', `${esc(String(it.occurrences || 1))} <span class="idet-dim">in a row raised it</span>`],
-    ['Assigned to', who ? incPerson(who) : `<span class="idet-dim">Nobody${g && g.owner ? '. Its alerts go to the dataset\'s owner.' : '.'}</span>`],
-    ['Acknowledged', acked ? `${incPerson(it.ackBy)} <span class="idet-dim">${esc(incAgo(it.ackAt))}</span>` : '<span class="idet-dim">Not yet</span>'],
-    open ? ['Alerts', it.muted ? 'Muted' : it.snoozeUntil ? `Snoozed until ${esc(incWhen(it.snoozeUntil))}` : 'On'] : null,
-    it.dismissed && it.dismissReason ? ['Reason', esc(it.dismissReason)] : null,
-    ['Rule', `<code>${esc(it.rule || '')}</code>`],
-  ].filter(Boolean).map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('');
+    ['Assigned to', who ? incPerson(who) : 'Nobody'],
+    ['Acknowledged', acked ? incPerson(it.ackBy) : 'Not yet'],
+  ];
+  const L = fl.filter(Boolean), R = fr.filter(Boolean), cell = p => p ? `<dt>${p[0]}</dt><dd>${p[1]}</dd>` : '<dt></dt><dd></dd>';
+  const facts = Array.from({ length: Math.max(L.length, R.length) }, (_, i) => cell(L[i]) + cell(R[i])).join('');
   const ev = [];
-  const add = (t, txt, cls) => { if (!isNaN(t)) ev.push([t, txt, cls]); };
-  add(incOpenedT(it), `Opened, ${esc(INC_SEV[sev].toLowerCase())}`, sev);
-  add(incTs(it.ackAt), `Acknowledged by ${incPerson(it.ackBy)}`, 'ack');
-  add(incTs(it.explainedAt), `Explained by AI${incWho(it.explainedBy) ? ` for ${incPerson(it.explainedBy)}` : ''}`, 'ai');
-  if (open) add(incTs(it.lastSeenAt) || incTs(it.lastRun), `Seen again on the latest run${it.occurrences > 1 ? `, the ${_incOrd(+it.occurrences)} in a row` : ''}`, 'seen');
-  else add(incClosedT(it), it.dismissed ? `Dismissed${incWho(it.dismissedBy) ? ` by ${incPerson(it.dismissedBy)}` : ''}` : 'Recovered', it.dismissed ? 'dis' : 'ok');
+  const add = (t, cls, h, txt) => { if (!isNaN(t)) ev.push([t, cls, h, txt]); };
+  const ai = incAiCache[incId(it)], aiLine = ai && String(ai.explanation || '').split(/\n+/)
+    .map(x => x.replace(/^#+\s*|^[-*]\s+/, '').replace(/\*\*|`/g, '').replace(/^summary\s*:\s*/i, '').trim())
+    .filter(x => x && !/^(summary|likely causes?|suggested next steps?)\s*:?$/i.test(x))[0];
+  add(incOpenedT(it), sev, 'Opened', 'Incident created when the rule first failed.');
+  add(incTs(it.ackAt), 'ack', `Acknowledged ${incPerson(it.ackBy)}`, 'Someone said they are on it.');
+  add(incTs(it.explainedAt), 'ai', `Explained by AI${incWho(it.explainedBy) ? ` ${incPerson(it.explainedBy)}` : ''}`,
+      aiLine ? esc(aiLine.length > 90 ? aiLine.slice(0, 88).replace(/\s+\S*$/, '') + '…' : aiLine) : 'The cause and a fix, from the run\'s own evidence.');
+  if (open) add(incSeenT(it), 'seen', 'Seen again', it.occurrences > 1 ? `Still failing on the latest run, the ${_incOrd(+it.occurrences)} in a row.` : 'Still failing on the latest run.');
+  else add(incClosedT(it), it.dismissed ? 'dis' : 'ok', it.dismissed ? `Dismissed${incWho(it.dismissedBy) ? ` ${incPerson(it.dismissedBy)}` : ''}` : 'Recovered',
+      it.dismissed ? (it.dismissReason ? esc(it.dismissReason) : 'Marked as not an incident.') : 'The rule passed again on a later run.');
   ev.sort((a, b) => a[0] - b[0]);
-  const side = `<dl class="idet-facts">${facts}</dl>` + (ev.length ? `<h4>Timeline</h4><ol class="idet-tl">` + ev.map(([t, txt, cls]) =>
-    `<li class="${cls}"><span class="idet-tlt">${esc(incWhen(t))}</span><span class="idet-tld">${txt}</span></li>`).join('') + `</ol>` : '');
-  return head + `<div class="isx-dgrid"><div class="isx-dmain">${main}</div><div class="isx-dside">${side}</div></div>`;
+  const tl = ev.length ? `<h4>Timeline</h4><ol class="ipx-tl">` + ev.map(([t, cls, h, txt]) =>
+    `<li class="${cls}"><span class="ipx-tlh">${h}</span><span class="ipx-tlt">${esc(incWhen(t))}</span><span class="ipx-tld">${txt}</span></li>`).join('') + `</ol>` : '';
+  const nextOk = nx && (nk === 'source' || d);
+  const foot = `<div class="ipx-foot">` + (nx ? `<button type="button" class="dsx-btn lngb ist-nextb" data-ix="next"${nextOk ? '' : ' disabled data-tip="This dataset is no longer on the Overview"'}>${esc(nx[0])} →</button>` : '') +
+    aiBtn(it.explainedAt ? 'See the AI explanation' : 'Explain with AI', 'data-ix="explain"', 'ipx-ai') + `</div>` +
+    `<div class="ai-out" id="incAiOut" hidden></div>`;
+  return head + found + `<dl class="ipx-facts">${facts}</dl>` + tl + foot;
 }
 
 // ---- Drawing ----
 function incPaintTop() {
-  const h = $('#incHero');
-  if (h) {
-    const { cls, html } = incSumHtml();
-    if (h._html !== html) { h.innerHTML = html; h._html = html; h.className = 'isx-sum ' + cls; }
+  // Drawn again on every change, so whichever tile or menu button had the focus gets it back.
+  const a = document.activeElement;
+  const k = $('#incKpis');
+  if (k) {
+    const v = a && k.contains(a) ? a.dataset.v : '';
+    k.innerHTML = incTilesHtml();
+    if (v) { const b = k.querySelector(`[data-v="${v}"]`); if (b) b.focus({ preventScroll: true }); }
   }
-  const v = $('#incKpis'); if (v) v.innerHTML = incViewsHtml();
-  const f = $('#incFilt'); if (f) f.innerHTML = incFiltHtml();
+  const f = $('#incFilt');
+  if (f) {
+    const c = a && f.contains(a) ? [...a.classList].find(x => /^ist-(sevm|stm|sort)$/.test(x)) || (a.dataset.ix === 'ds' ? 'ist-fchip' : '') : '';
+    f.innerHTML = incFiltHtml();
+    if (c) { const b = f.querySelector(c === 'ist-fchip' ? '.ist-fchip button' : '.' + c); if (b) b.focus({ preventScroll: true }); }
+  }
+  const h = $('#incHero'), t = incSumText();
+  if (h && h.textContent !== t) h.textContent = t;
 }
-/** Redraw the list. The incident open in it is kept as the very element it was when nothing about
- *  it has changed, so a refresh every minute does not fold away an explanation somebody is reading. */
+/** Redraw the list, giving the focus back to whatever had it. */
 function incPaintList() {
   const list = $('#incList');
   if (!list) return;
-  if (incSel && !incFeedItems().some(it => incId(it) === incSel)) incSel = '';
-  const old = $('#incDet'), it = incCur();
-  const sig = it ? JSON.stringify([it, (incGroupOf(it) || {}).owner]) : '';
-  const keep = old && it && old._sig === sig && old.dataset.id === incSel ? old : null;
-  const a = document.activeElement, back = a && list.contains(a) && !(keep && keep.contains(a))
-    ? { ix: a.dataset.ix, id: a.dataset.id, v: a.dataset.v, ds: a.dataset.ds } : null;
-  list.innerHTML = `<div class="isx-list" id="incFeed">${incListHtml()}</div>`;
-  const slot = $('#incDet');
-  if (slot && keep) slot.replaceWith(keep);
-  else if (slot && it) {
-    slot.innerHTML = incDetHtml(it); slot._sig = sig; slot.dataset.id = incSel;
-    // Drawn again because something about it changed: an explanation that was open stays open.
-    const r = incAiCache[incSel], b = slot.querySelector('[data-ix="explain"]');
-    if (r && incAiOpen.has(incSel)) {
-      aiAnswer($('#incAiOut'), aiMd(r.explanation), aiFoot(r, 'inc-regen'), { title: 'Why it was raised', instant: true });
-      if (b) { b.setAttribute('aria-expanded', 'true'); b.classList.add('active'); }
-    }
-  }
+  const a = document.activeElement, back = a && list.contains(a) ? { ix: a.dataset.ix, id: a.dataset.id, v: a.dataset.v, ds: a.dataset.ds } : null;
+  list.innerHTML = `<div class="idg-feed" id="incFeed">${incListHtml()}</div>`;
   if (back) {
     const el = [...list.querySelectorAll('[data-ix]')].find(x => x.dataset.ix === back.ix && (x.dataset.id || '') === (back.id || '') &&
       (x.dataset.v || '') === (back.v || '') && (x.dataset.ds || '') === (back.ds || ''));
     if (el) el.focus({ preventScroll: true });
   }
 }
-function incPaintAll() { incPaintTop(); incPaintList(); }
+/** The panel, drawn again only when its incident changed, so a refresh every minute does not fold
+ *  away an explanation somebody is reading. */
+function incPaintSide(swap) {
+  const det = $('#incDet');
+  if (!det) return;
+  const it = incCur();
+  if (!it) { if (incPanel) incHide(); return; }
+  const sig = incSig(it);
+  if (det._sig === sig && det.dataset.id === incSel) return;
+  const keepScroll = det.dataset.id === incSel ? det.scrollTop : 0;
+  det._sig = sig; det.dataset.id = incSel;
+  det.className = `ipx-card sev-${incIsOpen(it) ? incSevOf(it) : it.dismissed ? 'dismissed' : 'recovered'}`;
+  det.innerHTML = incDetHtml(it);
+  det.scrollTop = keepScroll;
+  if (swap && !dqReduced()) { det.classList.add('swap'); setTimeout(() => det.classList.remove('swap'), 260); }
+  const r = incAiCache[incSel], b = det.querySelector('[data-ix="explain"]');
+  if (r && incAiOpen.has(incSel)) {
+    aiAnswer($('#incAiOut'), aiMd(r.explanation), aiFoot(r, 'inc-regen'), { title: 'Why it was raised', instant: true });
+    if (b) { b.setAttribute('aria-expanded', 'true'); b.classList.add('active'); }
+  }
+}
+function incPaintAll() { incPaintTop(); incPaintList(); incPaintSide(); }
 
 function renderIncidents(r) {
-  INC_LIST = (r && r.incidents) || [];
+  const from = Date.now() - INC_DAYS * INC_DAY;
+  INC_SCOPED = (r && r.incidents) || [];
+  // Fetched for twice the window, so Closed can be compared with the 30 days before; shown for one.
+  INC_LIST = INC_SCOPED.filter(it => incIsOpen(it) || !(incClosedT(it) < from));
   INC_GROUPS = incGroups(INC_LIST);
   if (incWant) {
     const w = INC_GROUPS.find(g => g.key === incWant.key);
     incDsSel = w ? w.key : '';
-    if (w) incFolded.delete(w.key);                         // asked for, so not folded away
+    if (w) incFold.set(w.key, true);                    // asked for, so open
     incWantMiss = w ? '' : incWant.name;
-    if (w && incView === 'open') incView = 'all';           // one dataset's whole story, open and closed
+    if (w && incView === 'open') incView = 'all';       // one dataset's whole story, open and closed
     incWant = null;
   }
   if (incDsSel && !INC_GROUPS.some(g => g.key === incDsSel)) incDsSel = '';
   if (incView === 'mine' && !EMAIL) incView = 'open';
-  [...incChecked].forEach(id => { const it = INC_LIST.find(x => incId(x) === id); if (!it || !incIsOpen(it)) incChecked.delete(id); });
   incPaintAll();
 }
 function applyIncScope() {
@@ -14761,7 +14882,7 @@ function applyIncScope() {
   renderIncidents({ incidents: incAll.filter(it => incScope === 'source' ? isSourceIncident(it) : !isSourceIncident(it)) });
 }
 document.querySelectorAll('#incScopeToggle .scope-btn').forEach(b =>
-  b.addEventListener('click', () => { incScope = b.dataset.scope; incDsSel = ''; incSel = ''; incWantMiss = ''; applyIncScope(); }));
+  b.addEventListener('click', () => { incScope = b.dataset.scope; incDsSel = ''; incWantMiss = ''; if (incPanel) incHide(); applyIncScope(); }));
 { const s = $('#incSearch'); if (s) s.addEventListener('input', () => { incSearch = s.value || ''; incPaintTop(); incPaintList(); }); }
 { const b = $('#acToggle'); if (b) b.addEventListener('click', () => {
     const c = $('#alertChannelsCard'); if (!c) return;
@@ -14770,43 +14891,68 @@ document.querySelectorAll('#incScopeToggle .scope-btn').forEach(b =>
     if (show) { loadAlertChannels(); c.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
   }); }
 
-// ---- Opening one ----
-/** Open an incident in the list (or close it again), and bring it into view. */
-function incExpand(id, o) {
-  o = o || {};
-  const was = incSel;
-  incSel = was === id && !o.keep ? '' : id;
-  incNew.delete(id);
-  const item = $(`#incFeed .isx-item[data-id="${CSS.escape(id)}"]`);
-  if (!incSel && item) {
-    // Folding up: ease it shut, then draw the list without it.
-    const det = $('#incDet');
-    if (det && !dqReduced()) { dqReveal(det, false, 260, () => { incPaintList(); incFocusRow(id); }); return; }
-    incPaintList(); incFocusRow(id);
-    return;
+// ---- The panel ----
+/** Slide the panel out (or back). Beside the list it widens from nothing, so the list makes room;
+ *  over the page it comes in from the right edge, over a dimmed page. */
+function incSlide(on, then) {
+  const side = $('#incSide'), scrim = $('#incScrim');
+  if (!side) return;
+  incPanel = on;
+  side.classList.toggle('on', on);
+  side.inert = !on;
+  side.setAttribute('aria-hidden', String(!on));
+  if (scrim) {
+    clearTimeout(scrim._t);
+    if (on && incOver) { scrim.hidden = false; void scrim.offsetWidth; scrim.classList.add('on'); }
+    else { scrim.classList.remove('on'); scrim._t = setTimeout(() => { if (!(incPanel && incOver)) scrim.hidden = true; }, dqReduced() ? 0 : 320); }
   }
+  clearTimeout(side._t);
+  if (then) side._t = setTimeout(then, dqReduced() ? 0 : 360);
+}
+/** Show an incident in the panel, sliding it out if it is not already. */
+function incShow(id, o) {
+  o = o || {};
+  const swap = incPanel && incSel && incSel !== id;
+  incSel = id;
+  incNew.delete(id);
+  const it = incCur();
+  if (!it) return;
+  // Its dataset is open in the list, so its row is there to come back to.
+  const k = it.datasetKey || it.dataset, { order } = incOrder(incFeedItems());
+  if (!incIsExpanded(k, order[0])) incFold.set(k, true);
+  incPaintSide(swap);
+  if (!incPanel) incSlide(true);
   incPaintList();
-  const det = $('#incDet'), row = det && det.closest('.isx-item');
-  if (det && !dqReduced() && o.animate !== false) dqReveal(det, true, 320);
-  if (o.focus !== false) incFocusRow(incSel);
-  if (row) setTimeout(() => aiInView(det, row.querySelector('.isx-main')), o.animate === false || dqReduced() ? 0 : 340);
+  if (o.focus === 'panel' || (incOver && o.focus !== false)) setTimeout(() => { const h = $('#incDetH'); if (h && incPanel) h.focus({ preventScroll: true }); }, 60);
+  else if (o.focus !== false) incFocusRow(id);
+}
+/** Slide the panel away, and give the focus back to the incident's row. */
+function incHide() {
+  if (!incPanel) return;
+  const id = incSel, inPanel = $('#incSide') && $('#incSide').contains(document.activeElement);
+  if (dsxMenuOpen) dsxMenuHide();
+  incSlide(false, () => { if (!incPanel) { incSel = ''; const d = $('#incDet'); if (d) { d.innerHTML = ''; d._sig = ''; d.dataset.id = ''; } } });
+  incPaintList();
+  if (inPanel || incOver) incFocusRow(id);
 }
 function incFocusRow(id) {
-  const m = $(`#incFeed .isx-item[data-id="${CSS.escape(id)}"] .isx-main`);
+  const m = id && $(`#incFeed .isx-item[data-id="${CSS.escape(id)}"] .isx-main`);
   if (m) { m.focus({ preventScroll: true }); m.closest('.isx-item').scrollIntoView({ block: 'nearest' }); }
 }
 function incMove(step) {
   const btns = [...document.querySelectorAll('#incFeed .isx-main')];
   if (!btns.length) return;
   const a = document.activeElement, i = btns.indexOf(a);
-  const cur = i >= 0 ? i : Math.max(0, btns.findIndex(b => b.dataset.id === incSel));
-  const j = Math.max(0, Math.min(btns.length - 1, (i < 0 && !incSel ? -1 : cur) + step));
-  btns[j].focus({ preventScroll: false });
+  const cur = i >= 0 ? i : btns.findIndex(b => b.dataset.id === incSel);
+  const j = Math.max(0, Math.min(btns.length - 1, cur < 0 ? (step > 0 ? 0 : btns.length - 1) : cur + step));
+  // With the panel out beside the list, it follows the focus; over the page it would hide the list.
+  if (incPanel && !incOver) incShow(btns[j].dataset.id);
+  else btns[j].focus({ preventScroll: false });
 }
-/** The incident a key or a press is about: the row focused, else the one open. */
+/** The incident a key or a press is about: the row focused, else the one in the panel. */
 function incFocused() {
   const a = document.activeElement, item = a && a.closest && a.closest('#incFeed .isx-item');
-  return item ? INC_LIST.find(x => incId(x) === item.dataset.id) || null : incCur();
+  return item ? INC_LIST.find(x => incId(x) === item.dataset.id) || null : incPanel ? incCur() : null;
 }
 function incToast(msg, kind) {
   const t = $('#incToast');
@@ -14816,6 +14962,18 @@ function incToast(msg, kind) {
   clearTimeout(t._t);
   t._t = setTimeout(() => { t.className = 'ist-toast'; }, kind === 'err' ? 6000 : 3200);
 }
+// Too narrow to sit beside the list, the panel comes out over the page instead.
+function incSizeCheck() {
+  const p = $('#incidentsPanel'), st = $('#incStation');
+  if (!p || !st || !p.offsetParent) return;
+  const over = p.clientWidth < 1200;
+  if (over === incOver) return;
+  incOver = over;
+  st.classList.toggle('ipx-over', over);
+  const scrim = $('#incScrim');
+  if (scrim) { scrim.hidden = !(over && incPanel); scrim.classList.toggle('on', over && incPanel); }
+}
+if (window.ResizeObserver && $('#incidentsPanel')) new ResizeObserver(incSizeCheck).observe($('#incidentsPanel'));
 
 // ---- Acting ----
 // What each action changes, applied at once so the screen answers the press; the refresh that
@@ -14832,21 +14990,21 @@ function incLocal(it, action, extra) {
   else if (action === 'dismiss' || action === 'accept_new_normal') {
     Object.assign(it, { status: 'DISMISSED', dismissed: true, resolvedAt: now, dismissedBy: EMAIL || '', dismissReason: (extra && extra.reason) || it.dismissReason });
   } else if (action === 'restore') Object.assign(it, { status: 'OPEN', dismissed: false, resolvedAt: null });
-  else if (action === 'archive') { incAll = incAll.filter(x => x !== it); INC_LIST = INC_LIST.filter(x => x !== it); }
+  else if (action === 'archive') {
+    incAll = incAll.filter(x => x !== it); INC_SCOPED = INC_SCOPED.filter(x => x !== it); INC_LIST = INC_LIST.filter(x => x !== it);
+  }
 }
 const INC_DONE = {
-  acknowledge: n => `Acknowledged${n > 1 ? ` ${n} incidents` : ''}`, unack: () => 'Acknowledgement taken back',
-  assign: (n, x) => x && x.owner ? `Assigned to ${x.owner.split('@')[0]}${n > 1 ? ` (${n} incidents)` : ''}` : 'Unassigned',
-  snooze: (n, x) => `Snoozed${n > 1 ? ` ${n} incidents` : ''} for ${incSpan(x.snooze_hours * 3600000)}`, unsnooze: () => 'Woken up',
-  mute: n => `Muted${n > 1 ? ` ${n} incidents` : ''}`, unmute: () => 'Unmuted', dismiss: () => 'Dismissed as not an incident',
+  acknowledge: () => 'Acknowledged', unack: () => 'Acknowledgement taken back',
+  assign: x => x && x.owner ? `Assigned to ${x.owner.split('@')[0]}` : 'Unassigned',
+  snooze: x => `Snoozed for ${incSpan(x.snooze_hours * 3600000)}`, unsnooze: () => 'Woken up',
+  mute: () => 'Muted', unmute: () => 'Unmuted', dismiss: () => 'Dismissed as not an incident',
   restore: () => 'Reopened', archive: () => 'Removed from the list', accept_new_normal: () => 'Accepted as the new normal',
 };
 /** What has to be asked before an action is taken; null means it was cancelled. */
-async function incAsk(action, items) {
-  const one = items.length === 1 ? items[0] : null;
+async function incAsk(action, it) {
   if (action === 'assign') {
-    const v = await pickAssignee('Assign owner', items.length > 1 ? `Who should own these ${items.length} incidents?` : 'Who should own this incident?',
-      one ? (incWho(one.owner) || '') : '');
+    const v = await pickAssignee('Assign owner', 'Who should own this incident?', incWho(it.owner) || '');
     return v === null ? null : { owner: (v || '').trim() };
   }
   if (action === 'dismiss') {
@@ -14860,58 +15018,53 @@ async function incAsk(action, items) {
   if (action === 'archive' && !await dqConfirm('Remove this closed incident from the list?\n\nIt stays in history but won\'t show here. If the same issue recurs and reopens, it will reappear.', { title: 'Remove incident', danger: true })) return null;
   return {};
 }
-async function incAct(items, action, extra) {
-  items = items.filter(Boolean);
-  if (!items.length || incBusy) return;
-  if (extra == null) { extra = await incAsk(action, items); if (extra === null) return; }
+async function incAct(it, action, extra) {
+  if (!it || incBusy) return;
+  if (extra == null) { extra = await incAsk(action, it); if (extra === null) return; }
   incBusy = true;
-  let ok = 0;
-  const fail = [];
-  for (const it of items) {
-    try {
-      await postJSON(`${API_BASE}/data-quality/incidents/action`, HEADERS,
-        Object.assign({ dataset_key: it.datasetKey, incident_key: it.key, action, actor: EMAIL || undefined }, extra));
-      incLocal(it, action, extra);
-      ok++;
-    } catch (e) { fail.push(e.message); }
-  }
+  let err = '';
+  try {
+    await postJSON(`${API_BASE}/data-quality/incidents/action`, HEADERS,
+      Object.assign({ dataset_key: it.datasetKey, incident_key: it.key, action, actor: EMAIL || undefined }, extra));
+    incLocal(it, action, extra);
+  } catch (e) { err = e.message; }
   incBusy = false;
   // An incident somebody reopened here is not news to them: it is known, so it is not marked New.
-  if (incKnown) items.forEach(it => { if (incIsOpen(it)) incKnown.add(incId(it)); });
-  if (items.length > 1) incChecked.clear();
+  if (incKnown && incIsOpen(it)) incKnown.add(incId(it));
   INC_GROUPS = incGroups(INC_LIST);
   incPaintAll();
-  if (fail.length) incToast(ok ? `${ok} done, ${fail.length} not: ${fail[0]}` : `That did not work: ${fail[0]}`, 'err');
-  else incToast((INC_DONE[action] || (() => 'Done'))(ok, extra), 'ok');
+  if (err) incToast(`That did not work: ${err}`, 'err');
+  else incToast((INC_DONE[action] || (() => 'Done'))(extra), 'ok');
   loadIncidents({ silent: true });
 }
 
-// The list's buttons, in one place: it is redrawn constantly, so nothing is wired per draw.
+// Everything on the tab, in one place: it is redrawn constantly, so nothing is wired per draw.
 async function incClick(e) {
   const regen = e.target.closest('.inc-regen');
   if (regen) { e.preventDefault(); const it = incCur(); if (it) incExplain(it, true); return; }
   const t = e.target.closest('[data-ix]');
   if (!t || !$('#incStation').contains(t) || t.disabled) return;
   const ix = t.dataset.ix;
-  if (t.closest('.dsx-pop') && ix !== 'menu') dsxMenuHide(['sort', 'sev', 'sevall'].includes(ix));
+  if (t.closest('.dsx-pop') && ix !== 'menu') dsxMenuHide(['sort', 'sev', 'sevall', 'view'].includes(ix));
   const it = t.dataset.id ? INC_LIST.find(x => incId(x) === t.dataset.id) : incCur();
   const groupOf = k => INC_GROUPS.find(g => g.key === k) || null;
   switch (ix) {
-    case 'pick': incExpand(t.dataset.id); break;
+    case 'pick': incShow(t.dataset.id); break;
+    case 'close': incHide(); break;
     case 'fold': {
-      const k = t.dataset.ds;
-      if (incFolded.has(k)) incFolded.delete(k); else incFolded.add(k);
-      incPaintList();
-      break;
-    }
-    case 'foldall': {
-      const keys = [...new Set(incFeedItems().map(x => x.datasetKey || x.dataset))];
-      const all = keys.every(k => incFolded.has(k));
-      keys.forEach(k => { if (all) incFolded.delete(k); else incFolded.add(k); });
-      incPaintList();
+      const k = t.dataset.ds, { order } = incOrder(incFeedItems()), was = incIsExpanded(k, order[0]);
+      incFold.set(k, !was);
+      const body = $(`#incFeed .isx-grp[data-ds="${CSS.escape(k)}"] .idg-body`);
+      if (was && body && !dqReduced()) { t.setAttribute('aria-expanded', 'false'); dqReveal(body, false, 240, () => incPaintList()); }
+      else {
+        incPaintList();
+        const nb = $(`#incFeed .isx-grp[data-ds="${CSS.escape(k)}"] .idg-body`);
+        if (!was && nb && !dqReduced()) dqReveal(nb, true, 300);
+      }
       break;
     }
     case 'ds': incDsSel = t.dataset.ds || ''; incWantMiss = ''; if (!incDsSel && incView === 'all') incView = 'open'; incPaintAll(); break;
+    case 'tile': incView = incView === t.dataset.v && t.dataset.v !== 'open' ? 'open' : t.dataset.v; incWantMiss = ''; incPaintAll(); break;
     case 'view': incView = t.dataset.v; incWantMiss = ''; incPaintAll(); break;
     case 'sev': {
       const v = t.dataset.v, i = incSevSel.indexOf(v);
@@ -14926,34 +15079,22 @@ async function incClick(e) {
       if (dsxMenuOpen && dsxMenuOpen.menu === menu) dsxMenuHide(true); else if (menu) dsxMenuShow(t, menu);
       break;
     }
-    case 'check': if (t.checked) incChecked.add(t.dataset.id); else incChecked.delete(t.dataset.id); incPaintList(); break;
-    case 'checkall': {
-      const ids = incFeedItems().filter(incIsOpen).map(incId), on = t.checked;
-      ids.forEach(id => { if (on) incChecked.add(id); else incChecked.delete(id); });
-      incPaintList();
-      break;
-    }
-    case 'bulkclear': incChecked.clear(); incPaintList(); break;
-    case 'bulk': {
-      const sel = INC_LIST.filter(x => incChecked.has(incId(x)) && incIsOpen(x));
-      incAct(sel, t.dataset.act, t.dataset.h ? { snooze_hours: Number(t.dataset.h) } : null);
-      break;
-    }
     case 'act': {
       const a = t.dataset.act;
-      incAct([it], a, a === 'snooze' ? { snooze_hours: Number(t.dataset.h) } : null);
+      incAct(it, a, a === 'snooze' ? { snooze_hours: Number(t.dataset.h) } : null);
       break;
     }
-    case 'opends': { const g = groupOf(t.dataset.ds) || (it && incGroupOf(it)); if (g && g.d) incOpenDataset(g, 'scores'); break; }
+    case 'opends': { const g = it && incGroupOf(it); if (g && g.d) { incHide(); incOpenDataset(g, 'scores'); } break; }
     case 'next': {
       const g = it && incGroupOf(it), nk = it && incInfo(it)[1];
       if (!g) break;
-      if (nk === 'source') dsxMonitor({ key: g.key });
+      if (nk === 'source') { incHide(); dsxMonitor({ key: g.key }); }
       else if (nk === 'rerun') { if (g.d) reRunTable(g.d.name, g.d.sourceFormat || '', g.d.resultPrefix || ''); }
-      else if (g.d) incOpenDataset(g, INC_NEXT[nk][1]);
+      else if (g.d) { incHide(); incOpenDataset(g, INC_NEXT[nk][1]); }
       break;
     }
-    case 'report': if (it && it.resultPrefix) cmpOpenReport(it.resultPrefix); break;
+    case 'report': if (it && it.resultPrefix) { incHide(); cmpOpenReport(it.resultPrefix); } break;
+    case 'copy': if (it) { const ok = await agtCopyText(it.message || ''); incToast(ok ? 'Copied' : 'Could not copy it', ok ? 'ok' : 'err'); } break;
     case 'explain': {
       if (!it) break;
       const out = $('#incAiOut'), shown = out && !out.hidden && !!out.innerHTML.trim();
@@ -14961,7 +15102,6 @@ async function incClick(e) {
       if (shown) incAiOpen.delete(incId(it)); else incAiOpen.add(incId(it));
       break;
     }
-    case 'live': incLive = !incLive; incLivePaint(); if (incLive && Date.now() - incLoadedAt > 60000) loadIncidents({ silent: true }); break;
   }
 }
 async function incOpenDataset(g, tab) {
@@ -14981,10 +15121,14 @@ async function incExplain(it, regenerate) {
     if (!it.explainedAt) {
       it.explainedAt = r.generatedAt || new Date().toISOString();
       it.explainedBy = r.generatedBy || EMAIL || '';
-      // The row says so straight away; the open incident keeps its answer where it is.
-      const ind = $(`#incFeed .isx-item[data-id="${CSS.escape(id)}"] .isx-ind`);
-      if (ind && !ind.querySelector('.ai')) ind.insertAdjacentHTML('beforeend', `<span class="isx-i ai" data-tip="Explained by AI">${aiIcon()}</span>`);
-      const det = $('#incDet'); if (det) det._sig = JSON.stringify([it, (incGroupOf(it) || {}).owner]);
+      // The timeline says so straight away; the answer stays where it is.
+      const det = $('#incDet'), tl = det && det.querySelector('.ipx-tl');
+      if (tl) {
+        const html = incDetHtml(it), tmp = document.createElement('div');
+        tmp.innerHTML = html;
+        const ntl = tmp.querySelector('.ipx-tl'); if (ntl) tl.replaceWith(ntl);
+      }
+      if (det) det._sig = incSig(it);
     }
   };
   if (!regenerate && incAiCache[id]) { show(incAiCache[id]); return; }
@@ -14996,23 +15140,20 @@ async function incExplain(it, regenerate) {
     incAiCache[id] = r;
     if (incSel === id && out.isConnected) show(r);
   } catch (e) { if (out.isConnected) aiFail(out, e.message); }
-  if (btn.isConnected) aiBusy(btn, false);
+  if (btn.isConnected) {
+    aiBusy(btn, false);
+    const l = btn.querySelector('.ai-lbl'); if (l && it.explainedAt) l.textContent = 'See the AI explanation';
+  }
 }
 
-// ---- Live ----
-function incLivePaint() {
-  const b = $('#incLive'), a = $('#incAge');
-  if (b) {
-    b.classList.toggle('on', incLive);
-    b.setAttribute('aria-pressed', String(incLive));
-    b.innerHTML = `<span class="ist-dot" aria-hidden="true"></span>${incLive ? 'Live' : 'Paused'}`;
-    b.dataset.tip = incLive ? 'Refreshes itself every minute while you are here. Click to pause.' : 'Paused. Click to refresh every minute again.';
-  }
-  if (a) a.textContent = incFetching ? 'Updating…' : incLoadedAt ? `updated ${incAgo(incLoadedAt)}` : '';
+// ---- Keeping up ----
+function incAgePaint() {
+  const a = $('#incAge');
+  if (a) a.textContent = incFetching ? 'Updating…' : incLoadedAt ? `Last updated ${incAgo(incLoadedAt)}` : '';
 }
 setInterval(() => {
-  incLivePaint();
-  if (!incLive || incFetching || incBusy || !incLoadedAt) return;
+  incAgePaint();
+  if (incFetching || incBusy || !incLoadedAt) return;
   if (Date.now() - incLoadedAt < 60000 || Date.now() - incTouchedAt < 8000) return;
   const p = $('#incidentsPanel');
   if (!p || p.style.display === 'none' || document.hidden || document.querySelector('.dq-ov') || dsxMenuOpen) return;
@@ -15022,9 +15163,10 @@ setInterval(() => {
 if ($('#incStation')) {
   $('#incStation').addEventListener('click', incClick);
   ['pointerdown', 'keydown', 'input'].forEach(ev => $('#incidentsPanel').addEventListener(ev, () => { incTouchedAt = Date.now(); }, true));
+  const s = $('#incScrim'); if (s) s.addEventListener('click', () => incHide());
 }
-// The keyboard: J and K (or the arrows, in the list) move from row to row, Enter opens one and
-// Escape closes it, A acknowledges, E explains and / searches.
+// The keyboard: J and K (or the arrows, in the list) move from row to row, Enter opens one,
+// Escape closes the panel, A acknowledges, E explains and / searches.
 document.addEventListener('keydown', e => {
   const p = $('#incidentsPanel');
   // A key a menu has already taken (Escape closing it) is not also a shortcut here.
@@ -15039,11 +15181,11 @@ document.addEventListener('keydown', e => {
   if (k === '/') { e.preventDefault(); const s = $('#incSearch'); if (s) s.focus(); }
   else if (k === 'j' || (k === 'ArrowDown' && inList)) { e.preventDefault(); incMove(1); }
   else if (k === 'k' || (k === 'ArrowUp' && inList)) { e.preventDefault(); incMove(-1); }
-  else if (k === 'Escape' && incSel) { e.preventDefault(); incExpand(incSel); }
+  else if (k === 'Escape' && incPanel) { e.preventDefault(); incHide(); }
   else if (k === 'a') {
     const it = incFocused();
-    if (it && incIsOpen(it)) { e.preventDefault(); incAct([it], it.ackBy ? 'unack' : 'acknowledge', {}); }
-  } else if (k === 'e' && incSel) {
+    if (it && incIsOpen(it)) { e.preventDefault(); incAct(it, it.ackBy ? 'unack' : 'acknowledge', {}); }
+  } else if (k === 'e' && incPanel) {
     const b = $('#incDet [data-ix="explain"]');
     if (b) { e.preventDefault(); b.click(); }
   }
@@ -15054,19 +15196,18 @@ async function loadIncidents(o) {
   if (!configOK) return;
   const list = $('#incList');
   if (!APP_ID) {
-    $('#incCtx').textContent = '';
     list.innerHTML = '<p class="dash-muted">Open this from inside a Qlik app to see that app\'s incidents.</p>';
     return;
   }
-  $('#incCtx').textContent = scopeCtxLabel();
+  incSizeCheck();
   const built = !!$('#incFeed');
   if (!built) list.innerHTML = dqSkeleton('Loading incidents', 5);
   incFetching = true;
-  incLivePaint();
+  incAgePaint();
   try {
     const [r] = await Promise.all([
-      postJSON(`${API_BASE}/data-quality/incidents/list`, HEADERS, { app_id: APP_ID, window_days: 30 }),
-      // A dataset's name, source, score and owner are the Overview's; without them every group would
+      postJSON(`${API_BASE}/data-quality/incidents/list`, HEADERS, { app_id: APP_ID, window_days: INC_DAYS * 2 }),
+      // A dataset's name, source, score and owner are the Overview's; without them every card would
       // name its dataset by its key.
       (dashDatasetsAll || []).length ? null : loadDashboard().catch(() => null),
     ]);
@@ -15084,19 +15225,19 @@ async function loadIncidents(o) {
         if (!PORTAL) incScope = isSourceIncident(w) ? 'source' : 'app';
         incView = incIsOpen(w) ? 'open' : 'all'; incDsSel = ''; incSevSel = [];
         incSearch = ''; const s = $('#incSearch'); if (s) s.value = '';
-        incFolded.delete(w.datasetKey || w.dataset);
+        incFold.set(w.datasetKey || w.dataset, true);
         want = incId(w);
       }
       incWantInc = null;
     }
     applyIncScope();                                  // list filtered to the active scope
-    if (want) incExpand(want, { keep: true });
+    if (want) incShow(want, { focus: false });
   } catch (e) {
     if (!built) list.innerHTML = `<p class="dash-muted" style="color:var(--err)">${esc(e.message)}</p>`;
     else if (!o.silent) incToast('Could not refresh: ' + e.message, 'err');
   } finally {
     incFetching = false;
-    incLivePaint();
+    incAgePaint();
   }
 }
 
@@ -19847,8 +19988,8 @@ const GD_SHOTS = {
   "heatmap": [1124, 1282, "eaa67f551b"],
   "history-p": [1600, 1164, "cfca32980f"],
   "history-q": [1600, 979, "539a02e628"],
-  "incidents-p": [1600, 1638, "b9c28d8ca6"],
-  "incidents-q": [1600, 1637, "055bea2ae5"],
+  "incidents-p": [1600, 1107, "7afba110c2"],
+  "incidents-q": [1600, 1107, "d7c78ac125"],
   "lineage-app": [1600, 1141, "8605e85254"],
   "lineage-source": [1600, 1129, "cc5e81a146"],
   "onprem-file": [1600, 1156, "244201089c"],
@@ -19936,11 +20077,11 @@ function gdOpenFirstDataset(tab) {
   };
 }
 // The incident tab draws itself once its list arrives; then the first incident is opened in the
-// list, so its buttons are there to point at.
+// panel (and the panel given time to slide in), so its buttons are there to point at.
 async function gdOpenFirstIncident() {
   for (let i = 0; i < 40 && !document.querySelector('#incFeed .isx-item'); i++) await new Promise(r => setTimeout(r, 100));
   const f = incFeedItems()[0];
-  if (f) incExpand(incId(f), { keep: true, animate: false });
+  if (f && !(incPanel && incSel === incId(f))) { incShow(incId(f), { focus: false }); await new Promise(r => setTimeout(r, 420)); }
 }
 function gdPickSource(key) {
   return () => {
@@ -19983,9 +20124,9 @@ const GD_SHOW = {
   'tagrun': { tab: 'tagrun', sel: '#tagrunSearch', tip: 'Search for a tag, or pick one of the popular ones below.' },
   'stages': { tab: 'medallion', sel: '#medallionPanel .medal-combo-btn',
     tip: 'Pick a bronze, a silver and a gold dataset to compare them.' },
-  'inc-board': { tab: 'incidents', sel: '#incKpis', tip: 'The views, each with its count. Press one to show only those incidents.' },
+  'inc-board': { tab: 'incidents', sel: '#incKpis', tip: 'How many, and how that has moved. Press a tile to show only those incidents.' },
   'inc-actions': { tab: 'incidents', prep: gdOpenFirstIncident, sel: '#incDet .isx-acts', miss: 'No incident is open right now, so there is nothing to act on.',
-    tip: 'Everything you can do about the incident opened: acknowledge it, assign it and snooze it here, and more under <b>⋯</b>.' },
+    tip: 'Everything you can do about the incident picked: acknowledge it, assign it and snooze it here, and more under <b>⋯</b>.' },
   'alert-channels': { tab: 'incidents', sel: '#acToggle', tip: 'Opens the Slack and Teams settings.' },
   'watch-table': { tab: 'sourcewatch', sel: '#watchList',
     tip: 'Every source, whether it is monitored, and if not, why not.' },
@@ -20904,7 +21045,7 @@ function buildGuides() {
   G.push({
     id: 'incidents', cat: 'Monitor', icon: 'bell', tint: '#fb7185',
     title: 'Track incidents', sub: 'What raises one, how alerts reach people, and how to work them',
-    keywords: 'incidents alerts grouped by dataset fold slack teams email webhook acknowledge assign snooze mute dismiss accept new normal baseline gate volume schema drift stale explain live refresh unacknowledged unassigned bulk keyboard',
+    keywords: 'incidents alerts datasets detail panel trend slack teams email webhook acknowledge assign snooze mute dismiss accept new normal baseline gate volume schema drift stale explain live refresh unacknowledged unassigned bulk keyboard',
     open: { tab: 'incidents', label: 'Open Incidents' },
     sections: [
       { h: 'What an incident is', body:
@@ -20921,17 +21062,17 @@ function buildGuides() {
           ['Source signals', 'Warning or Major', `Found by source monitoring between runs. ${see('source-monitoring', 'Source monitoring')}`],
         ]) },
       { h: 'The list', body:
-          p(`Incidents opens on one line that says how things are: a light that is red while a blocker is open, how many are open and how many nobody has acknowledged. Under it are the views, each with its count: ${ui('Open')}, ${ui('Unacknowledged')}, ${ui('Assigned to me')}, ${ui('Snoozed or muted')}, ${ui('Closed')} and ${ui('All')}. ${showme('inc-board')}`) +
-          shot('incidents', `${n(1)} How things are. ${n(2)} The views: press one to show only those. ${n(3)} Each dataset heads its own incidents, with its source, its score, its owner and what is open on it. ${n(4)} An incident, opened where it is. ${n(5)} What you can do about it.`) +
+          p(`Incidents opens on four tiles: what is ${ui('Open')}, what is ${ui('Unacknowledged')}, what has closed in the last 30 days, and the total. Each says how that has moved, with a line of the last 30 days. Press a tile to show only those. ${showme('inc-board')}`) +
+          shot('incidents', `${n(1)} How many, and how that has moved: press a tile to show only those. ${n(2)} Search, and narrow by severity and status. ${n(3)} Each dataset, with its source, its score and how many of its incidents are open and unacknowledged: press it to show or hide them. ${n(4)} The incident picked, beside the list. ${n(5)} What you can do about it.`) +
           list(
-            `<b>Grouped by dataset</b>, worst first. The arrow on a dataset folds its incidents away, and ${ui('Open dataset')} opens it on the Overview.`,
-            `<b>Each incident</b> is a row: how severe, what it is, what the run found, who is on it and how long it has been open. Filter by severity, sort it, or search by dataset, rule, message or person.`,
-            `<b>Click an incident</b> and it opens where it is, the width of the list: what the rule means, what the run found, the next step, its details and timeline, and the buttons to act on it. Click it again, or press ${ui('Esc')}, to close it.`,
-            `It refreshes itself every minute while you are on it, and marks anything new. ${ui('Live')} pauses that.`) },
+            `<b>A card per dataset</b>, worst first, says where it comes from, how it is scoring, and how many of its incidents are open and unacknowledged. The first one starts open; press any to show or hide its incidents.`,
+            `<b>Each incident</b> is a row: how severe, what it is and what the run found, when it opened, when it was last seen, and where it stands. Search by dataset, rule, message or person, narrow it by severity and status, or sort it.`,
+            `<b>Click an incident</b> and its detail slides in on the right: what the rule means, what the run found, its details and timeline, and the buttons to act on it. Its ✕, or ${ui('Esc')}, slides it away again. In a narrow window it comes in over the page.`,
+            `It refreshes itself every minute while you are on it, and marks anything new.`) },
       { h: 'Working an incident', body:
           p(`Click an incident to open it. ${showme('inc-actions')}`) +
           table(['Action', 'What it does'], [
-            ['Acknowledge', 'Tells everyone someone is on it. The ✓ on a row does the same.'],
+            ['Acknowledge', 'Tells everyone someone is on it'],
             ['Assign…', 'Hands it to an owner'],
             ['Snooze', 'Quietens it for an hour, 4 hours, a day or a week. Wake now ends a snooze early.'],
             ['See the failing records, See its history…', 'Opens the evidence for that kind of incident: its dataset on the Overview at the right tab, or Source monitoring'],
@@ -20939,10 +21080,11 @@ function buildGuides() {
             ['⋯ Mute alerts', 'Stops its notifications while it stays open'],
             ['⋯ Accept as the new normal', 'For an expected-range incident: the baseline re-learns from now, which closes it'],
             ['⋯ Open the run that raised it', 'Its full report, in Assessment history'],
+            ['⋯ Open the dataset', 'The dataset on the Overview. Its name in the incident\'s details does the same.'],
             ['⋯ Not an incident…', 'Dismisses it with a reason, and sends an audit email. If it happens again, it reopens as a new incident.'],
             ['Reopen, Remove from the list', 'For closed incidents'],
           ]) +
-          tip(`Tick several incidents to acknowledge, assign, snooze or mute them together. On the keyboard, ${ui('J')} and ${ui('K')} move through the list, ${ui('Enter')} opens an incident and ${ui('Esc')} closes it, ${ui('A')} acknowledges, ${ui('E')} explains and ${ui('/')} searches.`) },
+          tip(`On the keyboard, ${ui('J')} and ${ui('K')} move through the incidents (with the detail out, it shows each in turn), ${ui('Enter')} opens one and ${ui('Esc')} closes it, ${ui('A')} acknowledges, ${ui('E')} explains and ${ui('/')} searches.`) },
       { h: 'Alerts in Slack or Teams', body:
           steps(`Open ${go('incidents', 'Incidents')} and expand ${ui('Alert channels')}. ${showme('alert-channels')}`,
                 `Paste an incoming-webhook URL for a Slack workspace, a Microsoft Teams channel, or both.`,
