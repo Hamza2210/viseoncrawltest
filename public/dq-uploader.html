@@ -1241,75 +1241,30 @@
                 0 2px 8px -2px color-mix(in srgb, var(--err) 70%, transparent); }
   .inc-pip.major   { color: #ffe6bd; background: color-mix(in srgb, var(--amber, #fbbf24) 30%, transparent); }
   .inc-pip.clear   { color: var(--muted); background: var(--idle-bg); }
-  /* ---- Incidents: an alert station --------------------------------------------------------
-     A status light and the counts that matter across the top, the datasets with something wrong
-     down the left, every incident as a row that names its dataset, and the one picked beside them
-     (or, where there is no room, over the page from the right). */
+  /* ---- Incidents: one list, grouped by dataset ------------------------------------------------
+     A line across the top says how bad things are; a row of views, a search and two menus filter
+     the list; each dataset heads its own incidents; an incident opens where it is, the width of
+     the list. Nothing sits beside the list, so nothing is squeezed. */
   #incidentsPanel { --sev-warn: #d3b867; }
-  .ist-card { padding: 20px 22px 22px; }
-  .ist-top { display: grid; grid-template-columns: minmax(270px, 370px) minmax(0, 1fr); gap: 14px; align-items: stretch; }
-  @media (max-width: 1250px) { .ist-top { grid-template-columns: minmax(0, 1fr); } }
-  .ist-hero { display: flex; align-items: center; gap: 16px; min-width: 0; padding: 16px 18px; border-radius: 14px;
-    border: 1px solid var(--border); background: var(--card-2); }
-  .ist-hero.red { border-color: color-mix(in srgb, var(--err) 45%, var(--border));
-    background: radial-gradient(130% 150% at 0% 0%, color-mix(in srgb, var(--err) 17%, var(--card-2)), var(--card-2) 62%); }
-  .ist-hero.amber { border-color: color-mix(in srgb, var(--run) 40%, var(--border));
-    background: radial-gradient(130% 150% at 0% 0%, color-mix(in srgb, var(--run) 14%, var(--card-2)), var(--card-2) 62%); }
-  .ist-hero.green { border-color: color-mix(in srgb, var(--ok) 36%, var(--border));
-    background: radial-gradient(130% 150% at 0% 0%, color-mix(in srgb, var(--ok) 12%, var(--card-2)), var(--card-2) 62%); }
-  .ist-light { position: relative; flex: none; width: 46px; height: 46px; border-radius: 50%; color: var(--muted); }
+  .ist-card { padding: 18px 22px 20px; }
+  .isx-top { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; }
+  .isx-sum { flex: 1 1 auto; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; min-width: 0; }
+  .isx-sum b { font-size: 18px; font-weight: 800; letter-spacing: -.01em; }
+  .isx-sub { font-size: 13px; color: var(--muted); }
+  .ist-light { position: relative; flex: none; width: 24px; height: 24px; border-radius: 50%; color: var(--muted); }
   .ist-light::before { content: ''; position: absolute; inset: 0; border-radius: 50%; border: 2px solid currentColor; opacity: .32; }
   .ist-light::after { content: ''; position: absolute; inset: 0; border-radius: 50%; background: currentColor; opacity: 0;
     animation: istPing 2.2s var(--dq-ease) infinite; }
-  .ist-light i { position: absolute; inset: 11px; border-radius: 50%; background: currentColor; box-shadow: 0 0 18px 3px currentColor; }
+  .ist-light i { position: absolute; inset: 6px; border-radius: 50%; background: currentColor; box-shadow: 0 0 12px 2px currentColor; }
   .ist-light.red { color: var(--err); }
   .ist-light.amber { color: var(--run); }
   .ist-light.amber::after { animation-duration: 3.4s; }
   .ist-light.green { color: var(--ok); }
   .ist-light.green::after { animation: none; }
-  .ist-light.small { width: 32px; height: 32px; }
-  .ist-light.small i { inset: 8px; box-shadow: 0 0 10px 1px currentColor; }
-  @keyframes istPing { 0% { transform: scale(.5); opacity: .5; } 80%, 100% { transform: scale(1.3); opacity: 0; } }
-  .ist-hero-t { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-  .ist-hero-t b { font-size: 21px; font-weight: 800; letter-spacing: -.01em; line-height: 1.2; }
-  .ist-hero-t > span { font-size: 12.5px; color: var(--muted); line-height: 1.45; }
-  button.ist-go { display: inline-flex; align-items: center; gap: 8px; align-self: flex-start; max-width: 100%; margin-top: 8px; padding: 5px 10px;
-    border: 1px solid var(--border); border-radius: 9px; background: var(--card); box-shadow: none; color: var(--text);
-    font: inherit; font-size: 12.5px; cursor: pointer; }
-  button.ist-go:hover, button.ist-go:focus-visible { border-color: color-mix(in srgb, var(--accent) 60%, var(--border)); }
-  .ist-go-k { flex: none; font-size: 10px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
-  .ist-go-t { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 650; }
-  .ist-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(136px, 1fr)); gap: 10px; }
-  /* Beside the light on a laptop there is room for three a row: three and three, not four and two. */
-  @media (min-width: 1251px) and (max-width: 1700px) { .ist-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-  button.ist-kpi { display: flex; flex-direction: column; gap: 3px; min-width: 0; padding: 12px 14px; border: 1px solid var(--border);
-    border-radius: 12px; background: var(--card-2); box-shadow: none; color: var(--text); font: inherit; text-align: left; cursor: pointer;
-    transition: border-color .15s, background-color .15s, box-shadow .15s; }
-  button.ist-kpi:hover { border-color: color-mix(in srgb, var(--accent) 50%, var(--border)); }
-  button.ist-kpi[aria-pressed="true"] { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--card-2));
-    box-shadow: inset 0 0 0 1px var(--accent); }
-  button.ist-kpi:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-  .ist-k { font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
-  .ist-v { font-size: 27px; font-weight: 800; line-height: 1.1; font-variant-numeric: tabular-nums; }
-  .ist-kpi.bad .ist-v { color: var(--err); }
-  .ist-kpi.warn .ist-v { color: var(--run); }
-  .ist-kpi.good .ist-v { color: var(--ok); }
-  .ist-s { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11.5px; color: var(--muted); }
-  .ist-bar3 { display: flex; gap: 2px; height: 5px; margin: 3px 0 2px; overflow: hidden; border-radius: 3px; }
-  .ist-bar3 i { display: block; min-width: 4px; }
-  .ist-bar3 i.blocker { background: var(--err); }
-  .ist-bar3 i.major { background: var(--run); }
-  .ist-bar3 i.warning { background: var(--sev-warn); }
-  .ist-bar3.none i { flex: 1; background: var(--idle-bg); }
-  /* The search, the scope and the live line */
-  .ist-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin: 14px 0; }
-  .ist-search { flex: 1 1 320px; max-width: 540px; display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 9px 0 12px;
-    box-sizing: border-box; border: 1px solid var(--border); border-radius: 10px; background: var(--card-2); color: var(--muted); }
-  .ist-search:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
-  .ist-search svg { flex: none; width: 15px; height: 15px; }
-  #incidentsPanel .ist-search input { flex: 1 1 auto; width: auto; min-width: 0; height: 100%; padding: 0; border: 0; outline: 0;
-    background: none; box-shadow: none; color: var(--text); font: inherit; font-size: 13.5px; }
-  .ist-live { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-left: auto; font-size: 12px; color: var(--muted); }
+  .ist-light.small { width: 30px; height: 30px; }
+  .ist-light.small i { inset: 8px; }
+  @keyframes istPing { 0% { transform: scale(.5); opacity: .5; } 80%, 100% { transform: scale(1.4); opacity: 0; } }
+  .ist-live { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; font-size: 12px; color: var(--muted); }
   button.ist-livebtn { display: inline-flex; align-items: center; gap: 7px; height: 28px; padding: 0 11px; border: 1px solid var(--border);
     border-radius: 999px; background: var(--card-2); box-shadow: none; color: var(--muted); font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
   button.ist-livebtn.on { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 40%, var(--border)); }
@@ -1317,50 +1272,156 @@
   .ist-livebtn.on .ist-dot { animation: istBlink 2s ease-in-out infinite; }
   .ist-livebtn:not(.on) .ist-dot { width: 3px; height: 9px; border-radius: 1px; box-shadow: 5px 0 0 currentColor; margin-right: 5px; }
   @keyframes istBlink { 50% { opacity: .25; } }
+  /* The views, the search and the menus */
+  .isx-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 14px 0 4px; padding-bottom: 14px;
+    border-bottom: 1px solid var(--border); }
+  .isx-views { display: inline-flex; flex-wrap: wrap; gap: 6px; }
+  button.isx-view { display: inline-flex; align-items: center; gap: 7px; height: 30px; padding: 0 12px; border: 1px solid var(--border);
+    border-radius: 999px; background: none; box-shadow: none; color: var(--muted); font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer;
+    transition: color .15s, border-color .15s, background-color .15s; }
+  button.isx-view:hover { color: var(--text); border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); }
+  button.isx-view[aria-pressed="true"] { color: var(--text); border-color: color-mix(in srgb, var(--accent) 60%, var(--border));
+    background: color-mix(in srgb, var(--accent) 14%, transparent); }
+  button.isx-view:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .isx-view .n { min-width: 16px; padding: 0 6px; border-radius: 999px; background: var(--idle-bg); font-size: 11px; font-weight: 700;
+    text-align: center; font-variant-numeric: tabular-nums; }
+  .ist-search { display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 9px 0 12px; box-sizing: border-box;
+    border: 1px solid var(--border); border-radius: 10px; background: var(--card-2); color: var(--muted); }
+  /* The search and its menus wrap together, to the right, rather than one by one */
+  .isx-find { flex: 1 1 560px; max-width: 720px; display: flex; justify-content: flex-end; align-items: center; gap: 8px;
+    margin-left: auto; min-width: 0; }
+  .isx-find .ist-search { flex: 1 1 auto; min-width: 180px; max-width: 400px; }
+  .isx-filt { flex: none; }
+  @media (max-width: 760px) { .isx-find { flex-wrap: wrap; } }
+  .ist-search:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
+  .ist-search svg { flex: none; width: 15px; height: 15px; }
+  #incidentsPanel .ist-search input { flex: 1 1 auto; width: auto; min-width: 0; height: 100%; padding: 0; border: 0; outline: 0;
+    background: none; box-shadow: none; color: var(--text); font: inherit; font-size: 13px; }
   .ist-keys kbd, .ist-search kbd { display: inline-grid; place-items: center; min-width: 18px; height: 18px; margin: 0 2px; padding: 0 4px;
     box-sizing: border-box; border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 5px; background: var(--card);
     font: inherit; font-size: 10.5px; font-weight: 700; color: var(--text); }
-  /* Three columns where there is room; two, with the incident over the page, where there is not */
-  .ist-body { display: grid; grid-template-columns: 252px minmax(0, 1fr); gap: 14px; align-items: start; }
-  #incList.ist-wide .ist-body { grid-template-columns: 256px minmax(0, 1fr) minmax(360px, 420px); }
-  @media (max-width: 900px) { .ist-body { grid-template-columns: minmax(0, 1fr); } }
-  /* The datasets */
-  .ist-rail { position: sticky; top: calc(var(--dq-stick-top, 0px) + 12px); max-height: calc(100vh - var(--dq-stick-top, 0px) - 24px);
-    overflow-y: auto; display: flex; flex-direction: column; gap: 3px; padding: 8px; box-sizing: border-box;
-    border: 1px solid var(--border); border-radius: 14px; background: var(--card-2); }
-  @media (max-width: 900px) { .ist-rail { position: static; max-height: 320px; } }
-  .irl-hd { display: flex; align-items: center; justify-content: space-between; padding: 4px 6px 6px; font-size: 10.5px;
-    font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
-  .irl-hd .n { padding: 0 7px; border-radius: 999px; background: var(--idle-bg); letter-spacing: 0; }
-  button.irl { position: relative; display: flex; align-items: flex-start; gap: 10px; width: 100%; padding: 9px 9px 9px 12px;
-    border: 1px solid transparent; border-radius: 10px; background: none; box-shadow: none; color: var(--text);
-    font: inherit; text-align: left; cursor: pointer; transition: background-color .15s, border-color .15s; }
-  button.irl::before { content: ''; position: absolute; left: 3px; top: 11px; bottom: 11px; width: 3px; border-radius: 2px; }
-  button.irl.sev-3::before { background: var(--err); }
-  button.irl.sev-2::before { background: var(--run); }
-  button.irl.sev-1::before { background: var(--sev-warn); }
-  button.irl:hover { background: color-mix(in srgb, var(--accent) 6%, transparent); }
-  button.irl[aria-current="true"] { border-color: color-mix(in srgb, var(--accent) 42%, transparent);
-    background: color-mix(in srgb, var(--accent) 13%, transparent); }
-  button.irl:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
-  button.irl.all { margin-bottom: 4px; }
-  button.irl.all::after { content: ''; position: absolute; left: 6px; right: 6px; bottom: -4px; height: 1px; background: var(--border); }
-  .irl-ico { flex: none; display: grid; place-items: center; width: 30px; height: 30px; border: 1px solid var(--border); border-radius: 8px;
+  .isx-filt { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  button.isx-mbtn { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 11px; border: 1px solid var(--border);
+    border-radius: 9px; background: var(--card-2); box-shadow: none; color: var(--text); font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; }
+  button.isx-mbtn:hover, button.isx-mbtn[aria-expanded="true"], button.isx-mbtn.on { border-color: color-mix(in srgb, var(--accent) 60%, var(--border)); }
+  #incidentsPanel .ist-pop { width: 230px; }
+  #incidentsPanel .isx-filt .ist-pop { left: auto; right: 0; }
+  .ist-fchip { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; height: 30px; padding: 0 3px 0 10px; box-sizing: border-box;
+    border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--border)); border-radius: 999px;
+    background: color-mix(in srgb, var(--accent) 10%, transparent); font-size: 12.5px; font-weight: 600; }
+  .ist-fchip button { display: grid; place-items: center; width: 22px; height: 22px; padding: 0; border: 0; border-radius: 50%; background: none;
+    box-shadow: none; color: var(--muted); font-size: 10px; cursor: pointer; }
+  .ist-fchip button:hover, .ist-fchip button:focus-visible { color: var(--text); background: var(--idle-bg); }
+  .ifr-dsi { flex: none; display: inline-grid; place-items: center; width: 18px; height: 18px; font-size: 12px; line-height: 1; }
+  .ifr-dsi svg { width: 14px; height: 14px; }
+  /* The list */
+  .isx-list { display: flex; flex-direction: column; }
+  .isx-lh { display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 4px 0; font-size: 12.5px; color: var(--muted); }
+  .isx-lh .linkbtn { margin-left: auto; font-size: 12.5px; }
+  .ist-bulk { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 6px 0 8px; padding: 6px 10px 6px 0;
+    border: 1px solid color-mix(in srgb, var(--accent) 50%, var(--border)); border-radius: 12px;
+    background: color-mix(in srgb, var(--accent) 9%, var(--card-2)); animation: rxBarIn .2s var(--dq-ease) both; }
+  .ist-bulk b { margin-right: 4px; font-size: 13px; }
+  .ist-bulk .dsx-btn { height: 30px; padding: 0 11px; font-size: 12.5px; }
+  .ist-bulk .dsx-btn svg { width: 14px; height: 14px; }
+  .ist-bulk .linkbtn { margin-left: auto; font-size: 12.5px; }
+  .isx-grp { padding: 10px 0 14px; }
+  .isx-grp + .isx-grp { border-top: 1px solid color-mix(in srgb, var(--border) 70%, transparent); }
+  .isx-gh { display: flex; align-items: center; gap: 12px; padding: 0 0 8px; }
+  button.isx-gt { flex: 1 1 auto; display: flex; align-items: center; gap: 10px; min-width: 0; padding: 6px 8px 6px 2px; border: 0;
+    border-radius: 9px; background: none; box-shadow: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+  button.isx-gt:hover { background: color-mix(in srgb, var(--accent) 5%, transparent); }
+  button.isx-gt:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .isx-chev { flex: none; display: inline-grid; place-items: center; width: 18px; height: 18px; color: var(--muted); transition: transform .18s var(--dq-ease); }
+  .isx-chev svg { width: 16px; height: 16px; }
+  .isx-gt[aria-expanded="false"] .isx-chev { transform: rotate(-90deg); }
+  .isx-gico { flex: none; display: grid; place-items: center; width: 30px; height: 30px; border: 1px solid var(--border); border-radius: 8px;
     background: var(--card); font-size: 15px; line-height: 1; }
-  .irl-ico svg { width: 16px; height: 16px; }
-  .irl.all .irl-ico { color: var(--accent); }
-  .irl-main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-  .irl-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 650; }
-  .irl-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 3px 7px; font-size: 11.5px; color: var(--muted); }
-  .irl-sev { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; margin-top: 3px; font-size: 11px; }
-  .irl-s { padding: 0 6px; border-radius: 999px; font-weight: 700; }
-  .irl-s.blocker { color: var(--err); background: var(--err-bg); }
-  .irl-s.major { color: var(--run); background: var(--run-bg); }
-  .irl-s.warning { color: var(--sev-warn); background: color-mix(in srgb, var(--sev-warn) 14%, transparent); }
-  .irl-age { color: var(--muted); }
-  .irl-ok { color: var(--ok); font-weight: 700; }
-  .ist-rail .inc-pip { margin-top: 4px; }
-  .irl-none { margin: 6px 8px; font-size: 12.5px; color: var(--muted); }
+  .isx-gico svg { width: 16px; height: 16px; }
+  .isx-gname { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14.5px; font-weight: 750; }
+  .isx-gmeta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; min-width: 0; font-size: 12px; color: var(--muted); }
+  .isx-gn { font-size: 12px; color: var(--muted); }
+  .isx-gsev { flex: none; display: flex; align-items: center; gap: 12px; font-size: 12px; font-weight: 700; }
+  .isx-gs { display: inline-flex; align-items: center; gap: 6px; }
+  .isx-gs.blocker { color: var(--err); }
+  .isx-gs.major { color: var(--run); }
+  .isx-gs.warning { color: var(--sev-warn); }
+  .isx-gs.ok { color: var(--ok); }
+  .isx-gsn { display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 6px; box-sizing: border-box; border-radius: 7px;
+    font-size: 11px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .isx-gs.major .isx-gsn { background: var(--run-bg); }
+  .isx-gs.warning .isx-gsn { background: color-mix(in srgb, var(--sev-warn) 14%, transparent); }
+  .isx-gsev .inc-pip { min-width: 20px; height: 20px; padding: 0 6px; }
+  .isx-gopen { flex: none; margin-left: 0; font-size: 12.5px; }
+  .isx-rows { display: flex; flex-direction: column; gap: 6px; margin-left: 30px; }
+  @media (max-width: 900px) { .isx-rows { margin-left: 0; } .isx-gh { flex-wrap: wrap; } }
+  /* An incident */
+  .isx-item { border: 1px solid var(--border); border-left: 3px solid var(--border); border-radius: 11px; background: var(--card-2);
+    transition: border-color .15s, background-color .15s, box-shadow .2s; }
+  .isx-item.open.sev-blocker { border-left-color: var(--err); }
+  .isx-item.open.sev-major { border-left-color: var(--run); }
+  .isx-item.open.sev-warning { border-left-color: var(--sev-warn); }
+  .isx-item.recovered { border-left-color: var(--ok); }
+  .isx-item.dismissed { border-left-color: var(--muted); opacity: .86; }
+  .isx-item:hover { border-top-color: color-mix(in srgb, var(--accent) 40%, var(--border)); border-right-color: color-mix(in srgb, var(--accent) 40%, var(--border));
+    border-bottom-color: color-mix(in srgb, var(--accent) 40%, var(--border)); }
+  .isx-item.checked { background: color-mix(in srgb, var(--accent) 6%, var(--card-2)); }
+  .isx-item.sel { border-top-color: color-mix(in srgb, var(--accent) 55%, var(--border)); border-right-color: color-mix(in srgb, var(--accent) 55%, var(--border));
+    border-bottom-color: color-mix(in srgb, var(--accent) 55%, var(--border)); background: color-mix(in srgb, var(--accent) 4%, var(--card-2));
+    box-shadow: 0 18px 40px -20px rgba(0,0,0,.8); }
+  .isx-item.new { animation: istNew 1.6s ease-in-out 3; }
+  @keyframes istNew { 50% { box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent2) 60%, transparent), 0 0 24px -4px var(--accent2); } }
+  .isx-row { display: flex; align-items: center; }
+  .isx-ck { flex: none; display: grid; place-items: center; align-self: stretch; width: 30px; opacity: 0; transition: opacity .15s; }
+  .isx-item:hover .isx-ck, .isx-ck:focus-within, .isx-item.checked .isx-ck, .isx-list.picking .isx-ck, .isx-lh .isx-ck, .ist-bulk .isx-ck { opacity: 1; }
+  .isx-ck input { appearance: none; -webkit-appearance: none; display: grid; place-items: center; width: 16px; height: 16px; margin: 0; padding: 0;
+    border: 1.5px solid var(--muted); border-radius: 4px; background: var(--card); cursor: pointer; }
+  .isx-ck input:checked { border-color: var(--accent); background: var(--accent); }
+  .isx-ck input:checked::after { content: ''; width: 8px; height: 4px; margin-top: -2px; border-left: 2px solid #fff; border-bottom: 2px solid #fff;
+    transform: rotate(-45deg); }
+  .isx-ck input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  button.isx-main { flex: 1 1 auto; display: flex; align-items: center; gap: 12px; min-width: 0; padding: 11px 14px 11px 0; border: 0;
+    border-radius: 0 11px 11px 0; background: none; box-shadow: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+  button.isx-main:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .ifr-sev { flex: none; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 9px; }
+  .ifr-sev svg { width: 17px; height: 17px; }
+  .ifr-sev.blocker { color: var(--err); background: var(--err-bg); }
+  .ifr-sev.major { color: var(--run); background: var(--run-bg); }
+  .ifr-sev.warning { color: var(--sev-warn); background: color-mix(in srgb, var(--sev-warn) 14%, transparent); }
+  .isx-item.recovered .ifr-sev, .isx-item.dismissed .ifr-sev { filter: grayscale(.7); opacity: .75; }
+  .isx-txt { flex: 1 1 auto; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+  .isx-l1 { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .isx-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; font-weight: 700; }
+  .isx-msg { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; color: var(--muted); }
+  .isx-item.sel .isx-msg { visibility: hidden; height: 0; }
+  .ifr-kind, .ifr-new { flex: none; padding: 0 7px; border-radius: 5px; font-size: 10.5px; font-weight: 700; }
+  .ifr-kind.cmp { color: #c4b2f5; background: rgba(139,92,246,.14); border: 1px solid rgba(139,92,246,.35); }
+  .ifr-kind.src { color: #5eead4; background: rgba(45,212,191,.11); border: 1px solid rgba(45,212,191,.3); }
+  .ifr-new { color: #fff; background: var(--accent2); }
+  .isx-ind { flex: none; display: inline-flex; align-items: center; gap: 5px; }
+  .isx-i { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--idle-bg); color: var(--muted); }
+  .isx-i svg { width: 13px; height: 13px; }
+  .isx-i.ack { color: var(--ok); background: var(--ok-bg); }
+  .isx-i.av { background: color-mix(in srgb, var(--accent2) 42%, var(--card)); color: #fff; font-size: 8.5px; font-weight: 800; letter-spacing: .02em; }
+  .isx-i.ai .ai-ico { width: 13px; height: 13px; }
+  .isx-age { flex: none; min-width: 40px; font-size: 12px; color: var(--muted); text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .isx-main > .isx-chev { transition: transform .2s var(--dq-ease); }
+  .isx-main[aria-expanded="true"] > .isx-chev { transform: rotate(180deg); color: var(--accent); }
+  button.isx-ack { flex: none; display: grid; place-items: center; width: 30px; height: 30px; margin-right: 10px; padding: 0; border: 1px solid var(--border);
+    border-radius: 8px; background: var(--card); box-shadow: none; color: var(--muted); cursor: pointer; opacity: 0; transition: opacity .15s; }
+  button.isx-ack svg { width: 15px; height: 15px; }
+  .isx-item:hover button.isx-ack, button.isx-ack:focus-visible { opacity: 1; }
+  button.isx-ack:hover, button.isx-ack:focus-visible { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 55%, var(--border)); }
+  .ist-st { display: inline-flex; align-items: center; gap: 5px; flex: none; padding: 1px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; }
+  .ist-st::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .ist-st.open { color: var(--err); background: var(--err-bg); }
+  .ist-st.recovered { color: var(--ok); background: var(--ok-bg); }
+  .ist-st.dismissed { color: var(--muted); background: var(--idle-bg); }
+  .ist-sev { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px 3px 8px; border-radius: 999px; font-size: 12px; font-weight: 800; }
+  .ist-sev svg { width: 14px; height: 14px; }
+  .ist-sev.blocker { color: var(--err); background: var(--err-bg); }
+  .ist-sev.major { color: var(--run); background: var(--run-bg); }
+  .ist-sev.warning { color: var(--sev-warn); background: color-mix(in srgb, var(--sev-warn) 14%, transparent); }
   .ist-score { display: inline-flex; align-items: center; gap: 4px; padding: 0 7px; border-radius: 999px; background: var(--idle-bg);
     color: var(--muted); font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums; }
   .ist-score::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
@@ -1370,165 +1431,26 @@
   .ist-who { display: inline-flex; align-items: center; gap: 5px; }
   .ist-av { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%;
     background: color-mix(in srgb, var(--accent2) 42%, var(--card)); color: #fff; font-size: 8.5px; font-weight: 800; letter-spacing: .02em; }
-  /* The list */
-  .ist-feed { min-width: 0; }
-  .ist-fh { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 2px 0 10px; }
-  .ist-fh-l { flex: 1 1 auto; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; min-width: 0; }
-  .ist-fh h3 { min-width: 0; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 16px; font-weight: 800; }
-  .ist-n { min-width: 22px; padding: 1px 8px; border-radius: 999px; background: var(--idle-bg); font-size: 12px; font-weight: 700;
-    text-align: center; font-variant-numeric: tabular-nums; }
-  .ist-fchip { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; padding: 2px 3px 2px 10px; border-radius: 999px;
-    border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--border)); background: color-mix(in srgb, var(--accent) 10%, transparent);
-    font-size: 12px; font-weight: 600; }
-  .ist-fchip button { display: grid; place-items: center; width: 20px; height: 20px; padding: 0; border: 0; border-radius: 50%; background: none;
-    box-shadow: none; color: var(--muted); font-size: 10px; cursor: pointer; }
-  .ist-fchip button:hover, .ist-fchip button:focus-visible { color: var(--text); background: var(--idle-bg); }
-  .ist-segs { display: inline-flex; gap: 2px; padding: 2px; border: 1px solid var(--border); border-radius: 9px; background: var(--card-2); }
-  button.ist-seg { height: 28px; padding: 0 11px; border: 0; border-radius: 7px; background: none; box-shadow: none; color: var(--muted);
-    font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; }
-  button.ist-seg[aria-pressed="true"] { background: var(--card); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.35); }
-  .ist-seg .n, .ist-sevf .n { margin-left: 6px; opacity: .7; font-variant-numeric: tabular-nums; }
-  .ist-fh2 { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 10px; }
-  .ist-fh2 > .dsx-pw { margin-left: auto; }
-  #incidentsPanel .ist-fh2 .ist-pop { left: auto; right: 0; width: 210px; }
-  .ist-sevs { display: inline-flex; flex-wrap: wrap; gap: 6px; }
-  button.ist-sevf { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border: 1px solid var(--border);
-    border-radius: 999px; background: var(--card-2); box-shadow: none; color: var(--muted); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
-  button.ist-sevf svg { width: 14px; height: 14px; }
-  button.ist-sevf.blocker svg { color: var(--err); }
-  button.ist-sevf.major svg { color: var(--run); }
-  button.ist-sevf.warning svg { color: var(--sev-warn); }
-  button.ist-sevf[aria-pressed="true"].blocker { color: var(--err); border-color: color-mix(in srgb, var(--err) 55%, var(--border)); background: var(--err-bg); }
-  button.ist-sevf[aria-pressed="true"].major { color: var(--run); border-color: color-mix(in srgb, var(--run) 55%, var(--border)); background: var(--run-bg); }
-  button.ist-sevf[aria-pressed="true"].warning { color: var(--sev-warn); border-color: color-mix(in srgb, var(--sev-warn) 55%, var(--border));
-    background: color-mix(in srgb, var(--sev-warn) 14%, transparent); }
-  button.ist-sevf:disabled { opacity: .45; cursor: default; }
-  button.ist-sort { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border: 1px solid var(--border);
-    border-radius: 8px; background: var(--card-2); box-shadow: none; color: var(--text); font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; }
-  button.ist-sort:hover, button.ist-sort[aria-expanded="true"] { border-color: color-mix(in srgb, var(--accent) 60%, var(--border)); }
-  #incidentsPanel .ist-pop { width: 250px; }
-  .ist-bulk { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 10px; padding: 8px 10px 8px 14px;
-    border: 1px solid color-mix(in srgb, var(--accent) 50%, var(--border)); border-radius: 12px;
-    background: color-mix(in srgb, var(--accent) 9%, var(--card-2)); animation: rxBarIn .2s var(--dq-ease) both; }
-  .ist-bulk b { margin-right: 4px; font-size: 13px; }
-  .ist-bulk .dsx-btn { height: 30px; padding: 0 11px; font-size: 12.5px; }
-  .ist-bulk .dsx-btn svg { width: 14px; height: 14px; }
-  .ist-bulk .linkbtn { margin-left: auto; font-size: 12.5px; }
-  .ist-rows { display: flex; flex-direction: column; gap: 6px; }
-  .ifr { position: relative; display: flex; align-items: stretch; border: 1px solid var(--border); border-left: 3px solid var(--border);
-    border-radius: 11px; background: var(--card-2); transition: border-color .15s, background-color .15s, box-shadow .15s; }
-  .ifr.open.sev-blocker { border-left-color: var(--err); }
-  .ifr.open.sev-major { border-left-color: var(--run); }
-  .ifr.open.sev-warning { border-left-color: var(--sev-warn); }
-  .ifr.recovered { border-left-color: var(--ok); }
-  .ifr.dismissed { border-left-color: var(--muted); opacity: .86; }
-  .ifr:hover { border-top-color: color-mix(in srgb, var(--accent) 40%, var(--border)); border-right-color: color-mix(in srgb, var(--accent) 40%, var(--border));
-    border-bottom-color: color-mix(in srgb, var(--accent) 40%, var(--border)); }
-  .ifr.checked { background: color-mix(in srgb, var(--accent) 6%, var(--card-2)); }
-  .ifr.sel { background: color-mix(in srgb, var(--accent) 10%, var(--card-2)); box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 65%, transparent); }
-  .ifr.new { animation: istNew 1.6s ease-in-out 3; }
-  @keyframes istNew { 50% { box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent2) 60%, transparent), 0 0 24px -4px var(--accent2); } }
-  .ifr-ck, .ist-all { flex: none; display: grid; place-items: center; }
-  .ifr-ck { width: 34px; }
-  .ist-all { width: 22px; }
-  .ifr-ck input, .ist-all input { appearance: none; -webkit-appearance: none; display: grid; place-items: center; width: 16px; height: 16px;
-    margin: 0; padding: 0; border: 1.5px solid var(--muted); border-radius: 4px; background: var(--card); cursor: pointer; }
-  .ifr-ck input:checked, .ist-all input:checked { border-color: var(--accent); background: var(--accent); }
-  .ifr-ck input:checked::after, .ist-all input:checked::after { content: ''; width: 8px; height: 4px; margin-top: -2px;
-    border-left: 2px solid #fff; border-bottom: 2px solid #fff; transform: rotate(-45deg); }
-  .ifr-ck input:focus-visible, .ist-all input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-  button.ifr-main { flex: 1 1 auto; display: flex; align-items: flex-start; gap: 11px; min-width: 0; padding: 11px 12px 11px 0;
-    border: 0; border-radius: 0 11px 11px 0; background: none; box-shadow: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
-  button.ifr-main:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
-  .ifr-sev { flex: none; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 9px; }
-  .ifr-sev svg { width: 17px; height: 17px; }
-  .ifr-sev.blocker { color: var(--err); background: var(--err-bg); }
-  .ifr-sev.major { color: var(--run); background: var(--run-bg); }
-  .ifr-sev.warning { color: var(--sev-warn); background: color-mix(in srgb, var(--sev-warn) 14%, transparent); }
-  .ifr.recovered .ifr-sev, .ifr.dismissed .ifr-sev { filter: grayscale(.7); opacity: .75; }
-  .ifr-body { flex: 1 1 auto; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-  .ifr-l1 { display: flex; align-items: center; gap: 8px; min-width: 0; }
-  .ifr-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13.5px; font-weight: 700; }
-  .ifr-kind, .ifr-new { flex: none; padding: 0 7px; border-radius: 5px; font-size: 10.5px; font-weight: 700; }
-  .ifr-kind.cmp { color: #c4b2f5; background: rgba(139,92,246,.14); border: 1px solid rgba(139,92,246,.35); }
-  .ifr-kind.src { color: #5eead4; background: rgba(45,212,191,.11); border: 1px solid rgba(45,212,191,.3); }
-  .ifr-new { color: #fff; background: var(--accent2); }
-  .ifr-age { flex: none; margin-left: auto; font-size: 11.5px; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
-  .ifr-ds { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: 12px; color: var(--muted); }
-  .ifr-ds b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); font-weight: 650; }
-  .ifr-ds > span:last-child { flex: none; }
-  .ifr-dsi { flex: none; display: inline-grid; place-items: center; width: 18px; height: 18px; font-size: 12px; line-height: 1; }
-  .ifr-dsi svg { width: 14px; height: 14px; }
-  .ifr-msg { overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; font-size: 12.5px; line-height: 1.45; color: var(--muted); }
-  .ifr-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 2px; }
-  .ifc { display: inline-flex; align-items: center; gap: 5px; padding: 1px 8px; border-radius: 999px; background: var(--idle-bg);
-    font-size: 11px; color: var(--muted); }
-  .ifc.ack { color: var(--ok); background: var(--ok-bg); }
-  .ifc.quiet { color: #b1bcd3; }
-  .ifc.ai .ai-ico { width: 11px; height: 11px; }
-  .ifc .ist-av { width: 15px; height: 15px; font-size: 7.5px; }
-  button.ifr-ack { flex: none; align-self: center; width: 30px; height: 30px; margin-right: 10px; padding: 0; border: 1px solid var(--border);
-    border-radius: 8px; background: var(--card); box-shadow: none; color: var(--muted); font-size: 14px; cursor: pointer; opacity: 0; transition: opacity .15s; }
-  .ifr:hover button.ifr-ack, .ifr.sel button.ifr-ack, button.ifr-ack:focus-visible { opacity: 1; }
-  button.ifr-ack:hover, button.ifr-ack:focus-visible { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 55%, var(--border)); }
-  .ist-st { display: inline-flex; align-items: center; gap: 5px; padding: 1px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; }
-  .ist-st::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
-  .ist-st.open { color: var(--err); background: var(--err-bg); }
-  .ist-st.recovered { color: var(--ok); background: var(--ok-bg); }
-  .ist-st.dismissed { color: var(--muted); background: var(--idle-bg); }
-  .ist-empty { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 40px 20px; border: 1px dashed var(--border);
-    border-radius: 14px; text-align: center; font-size: 13px; color: var(--muted); }
-  .ist-empty b { color: var(--text); font-size: 15px; }
-  .ist-empty .dsx-btn { margin-top: 6px; }
-  .ist-keys { margin: 12px 0 0; font-size: 11.5px; color: var(--muted); }
-  .ist-keys kbd + kbd { margin-left: 0; }
-  .inc-miss { margin: -2px 0 10px; }
-  /* The incident picked */
-  .ist-det { position: sticky; top: calc(var(--dq-stick-top, 0px) + 12px); max-height: calc(100vh - var(--dq-stick-top, 0px) - 24px);
-    min-height: 480px; overflow-y: auto; box-sizing: border-box; padding: 16px 18px 18px; border: 1px solid var(--border);
-    border-radius: 14px; background: var(--card-2); outline: none; }
-  #incList:not(.ist-wide) .ist-det { position: fixed; z-index: 81; top: var(--dq-stick-top, 0px); right: 0; bottom: 0; width: min(480px, 94vw);
-    min-height: 0; max-height: none; border-radius: 16px 0 0 16px; box-shadow: -24px 0 60px rgba(0,0,0,.55);
-    transform: translateX(104%); visibility: hidden; transition: transform .3s var(--dq-ease), visibility 0s linear .3s; }
-  #incList:not(.ist-wide) .ist-det.open { transform: none; visibility: visible; transition: transform .3s var(--dq-ease); }
-  .ist-scrim { position: fixed; inset: 0; z-index: 80; background: rgba(4,7,14,.55); animation: dqFade .2s var(--dq-ease) both; }
-  .ist-scrim[hidden] { display: none; }
-  #incList.ist-wide .ist-x { display: none; }
-  .idet-top { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-  .idet-tr { display: inline-flex; align-items: center; gap: 6px; margin-left: auto; }
-  .idet-tr .dsx-btn.icon { width: 32px; height: 32px; }
-  .ist-sev { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px 3px 8px; border-radius: 999px; font-size: 12px; font-weight: 800; }
-  .ist-sev svg { width: 14px; height: 14px; }
-  .ist-sev.blocker { color: var(--err); background: var(--err-bg); }
-  .ist-sev.major { color: var(--run); background: var(--run-bg); }
-  .ist-sev.warning { color: var(--sev-warn); background: color-mix(in srgb, var(--sev-warn) 14%, transparent); }
-  .idet-age { font-size: 12px; color: var(--muted); }
-  h3.idet-h { margin: 10px 0 4px; font-size: 19px; font-weight: 800; line-height: 1.25; outline: none; }
-  .idet-what { margin: 0 0 12px; font-size: 12.5px; line-height: 1.5; color: var(--muted); }
-  .idet-ds { display: flex; align-items: center; gap: 12px; margin: 0 0 12px; padding: 11px 12px; border: 1px solid var(--border);
-    border-radius: 12px; background: var(--card); }
-  .idet-dsi { flex: none; display: grid; place-items: center; width: 38px; height: 38px; border: 1px solid var(--border); border-radius: 10px;
-    background: color-mix(in srgb, var(--accent) 10%, var(--card-2)); font-size: 19px; line-height: 1; }
-  .idet-dsi svg { width: 20px; height: 20px; }
-  .idet-dsm { flex: 1 1 auto; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-  .idet-dsm > b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; }
-  .idet-dsl { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: 12px; color: var(--muted); }
-  .idet-dsl b.bad { color: var(--err); }
-  .idet-dsm .linkbtn { align-self: flex-start; margin-left: 0; font-size: 12px; }
-  .idet-ds .dsx-btn { flex: none; height: 32px; padding: 0 12px; font-size: 12.5px; }
-  .idet-acts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 12px 0; border-top: 1px solid var(--border); }
-  .idet-acts .dsx-btn svg { width: 15px; height: 15px; }
-  #incidentsPanel .idet-more .ist-pop { left: auto; right: 0; width: 300px; }
-  .idet-closed { font-size: 12.5px; color: var(--muted); }
-  .idet-next { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 0 0 12px; }
+  /* The incident opened, the width of the list */
+  .isx-det { padding: 0 20px 20px 30px; }
+  .isx-dh { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; padding: 14px 0; border-top: 1px solid var(--border); }
+  .isx-dage { font-size: 12.5px; color: var(--muted); }
+  .isx-acts { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-left: auto; }
+  .isx-acts .dsx-btn svg { width: 15px; height: 15px; }
+  #incidentsPanel .isx-more .ist-pop { left: auto; right: 0; width: 300px; }
+  .isx-dgrid { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(280px, 1fr); gap: 18px 32px; }
+  @media (max-width: 1150px) { .isx-dgrid { grid-template-columns: minmax(0, 1fr); } .isx-dside { padding-left: 0 !important; border-left: 0 !important; } }
+  .isx-what { margin: 0 0 16px; font-size: 13.5px; line-height: 1.6; }
+  .isx-det h4 { margin: 0 0 8px; font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
+  .isx-found p { margin: 0; padding: 11px 13px; border: 1px solid var(--border); border-radius: 10px; background: var(--card);
+    font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
+  .isx-next { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 16px; }
   button.dsx-btn.ist-nextb { border-color: color-mix(in srgb, var(--accent) 55%, var(--border)); background: color-mix(in srgb, var(--accent) 9%, var(--card-2));
     color: var(--accent); }
-  .ist-det .ai-out { margin: 0 0 4px; }
-  .idet-sec { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
-  .idet-sec h4 { margin: 0 0 8px; font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
-  .idet-msg { margin: 0; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--card);
-    font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
-  .idet-facts { display: grid; grid-template-columns: 108px minmax(0, 1fr); gap: 7px 12px; margin: 0; font-size: 12.5px; }
+  .isx-dmain .ai-out { margin-top: 16px; }
+  .isx-dside { padding-left: 28px; border-left: 1px solid var(--border); }
+  .isx-dside h4 { margin-top: 18px; }
+  .idet-facts { display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: 8px 12px; margin: 0; font-size: 12.5px; }
   .idet-facts dt { color: var(--muted); }
   .idet-facts dd { min-width: 0; margin: 0; overflow-wrap: anywhere; }
   .idet-facts code { padding: 1px 6px; border: 1px solid var(--border); border-radius: 5px; background: var(--card); font-size: 11.5px; }
@@ -1547,11 +1469,13 @@
   .idet-tl li.ai::before { background: var(--accent2); }
   .idet-tl li.seen::before { background: var(--accent); }
   .idet-tlt { display: block; font-size: 11px; color: var(--muted); }
-  .idet-empty { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
-    min-height: 420px; text-align: center; font-size: 13px; color: var(--muted); }
-  .idet-empty b { color: var(--text); font-size: 15px; }
-  .idet-empty-ico svg { width: 38px; height: 38px; color: var(--accent); opacity: .7; }
-  .idet-empty .ist-x { position: absolute; top: 0; right: 0; }
+  .ist-empty { display: flex; flex-direction: column; align-items: center; gap: 6px; margin-top: 10px; padding: 40px 20px; border: 1px dashed var(--border);
+    border-radius: 14px; text-align: center; font-size: 13px; color: var(--muted); }
+  .ist-empty b { color: var(--text); font-size: 15px; }
+  .ist-empty .dsx-btn { margin-top: 6px; }
+  .ist-keys { margin: 10px 0 0; font-size: 11.5px; color: var(--muted); }
+  .ist-keys kbd + kbd { margin-left: 0; }
+  .inc-miss { margin: 0 0 6px; }
   .ist-toast { position: fixed; z-index: 95; left: 50%; bottom: 22px; max-width: min(560px, 90vw); padding: 10px 16px; border: 1px solid var(--border);
     border-radius: 12px; background: var(--card); box-shadow: 0 16px 40px rgba(0,0,0,.5); font-size: 13px; font-weight: 600;
     opacity: 0; pointer-events: none; transform: translate(-50%, 16px); transition: opacity .2s, transform .2s var(--dq-ease); }
@@ -1560,8 +1484,8 @@
   .ist-toast.ok::before { content: '✓  '; color: var(--ok); }
   .ist-toast.err { border-color: color-mix(in srgb, var(--err) 55%, var(--border)); color: #ffb4b4; }
   @media (prefers-reduced-motion: reduce) {
-    .ist-light::after, .ist-livebtn.on .ist-dot, .ifr.new, .ist-scrim, .ist-bulk { animation: none !important; }
-    #incList:not(.ist-wide) .ist-det, .ist-toast, .ifr, button.ist-kpi, button.irl, button.ifr-ack { transition: none !important; }
+    .ist-light::after, .ist-livebtn.on .ist-dot, .isx-item.new, .ist-bulk { animation: none !important; }
+    .ist-toast, .isx-item, .isx-chev, .isx-ck, button.isx-ack, button.isx-view, .isx-main > .isx-chev { transition: none !important; }
   }
   .inc-menu-wrap { position: relative; flex: none; }
   .inc-kebab { background: none; border: 1px solid var(--border); border-radius: 8px; padding: 1px 9px;
@@ -5321,28 +5245,30 @@
         </div>
       </div>
     </div>
-    <!-- The alert station: the state of things and the counts that matter, then the datasets, the
-         incidents and the one picked. Everything inside #incList is drawn by renderIncidents. -->
+    <!-- The incidents: a line that says how things are, the views and the filters, then one list
+         grouped by dataset. Everything inside #incHero, #incKpis, #incFilt and #incList is drawn by
+         renderIncidents. -->
     <div class="card ist-card" id="incStation">
-      <div class="ist-top">
-        <div class="ist-hero" id="incHero" role="status" aria-live="polite"></div>
-        <div class="ist-kpis" id="incKpis" role="group" aria-label="Show only"></div>
-      </div>
-      <div class="ist-tools">
-        <span class="scope-toggle" id="incScopeToggle">
-          <button type="button" class="scope-btn active" data-scope="app">App data</button>
-          <button type="button" class="scope-btn" data-scope="source">Source data</button>
-        </span>
-        <label class="ist-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6"/></svg>
-          <input type="search" id="incSearch" placeholder="Search by dataset, rule, message or person" autocomplete="off" aria-label="Search incidents"><kbd aria-hidden="true">/</kbd></label>
+      <div class="isx-top">
+        <div class="isx-sum" id="incHero" role="status" aria-live="polite"></div>
         <span class="ist-live"><span id="incCtx"></span>
           <button type="button" class="ist-livebtn lngb on" id="incLive" data-ix="live" aria-pressed="true"><span class="ist-dot" aria-hidden="true"></span>Live</button>
           <span id="incAge"></span>
           <button type="button" class="btn-sm" id="incRefresh">↻ Refresh</button></span>
       </div>
+      <div class="isx-bar">
+        <span class="scope-toggle" id="incScopeToggle">
+          <button type="button" class="scope-btn active" data-scope="app">App data</button>
+          <button type="button" class="scope-btn" data-scope="source">Source data</button>
+        </span>
+        <div class="isx-views" id="incKpis" role="group" aria-label="Show only"></div>
+        <div class="isx-find">
+        <label class="ist-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6"/></svg>
+          <input type="search" id="incSearch" placeholder="Search by dataset, rule, message or person" autocomplete="off" aria-label="Search incidents"><kbd aria-hidden="true">/</kbd></label>
+        <div class="isx-filt" id="incFilt"></div></div>
+      </div>
       <div id="incList"><p class="dash-muted">Loading…</p></div>
     </div>
-    <div class="ist-scrim" id="incScrim" hidden></div>
     <div class="ist-toast" id="incToast" role="status" aria-live="polite"></div>
   </div>
 
@@ -14344,28 +14270,27 @@ async function refreshBlockerBar() {
   } catch (e) { /* best-effort */ }
 }
 const refreshIncBadge = refreshBlockerBar;   // legacy name kept for existing callers
-// ---- The incidents station -------------------------------------------------------------------
-// One screen to work alerts from. At the top, a status light and the counts that matter, each of
-// which filters the list. Down the left, the datasets with something wrong, each saying what it is,
-// where it comes from and how it is scoring. In the middle, every incident as a row that names its
-// dataset, so a mixed list reads at a glance. Beside them, the one picked, with everything that can
-// be done to it as buttons, what the rule means, where to look next, and its history.
+// ---- The incidents list -----------------------------------------------------------------------
+// One list, the width of the page, grouped by dataset. Each group says what its dataset is (its
+// name, its source, its score and its owner) and what is open on it; under it, its incidents as
+// two-line rows. Clicking one opens it where it is, the width of the list, with what it means,
+// what to do about it and its history, and room to read all of that.
 //
-// It replaces a rail of bare dataset names and cards whose only control was a small ⋯ menu. It
-// refreshes itself every minute while it is on screen and nobody is in the middle of something,
-// and marks what has arrived since it was last looked at.
+// A line across the top says how bad things are, and a row of views (Open, Unacknowledged, Mine,
+// Snoozed or muted, Closed, All) filters the list. It refreshes itself every minute while it is on
+// screen and nobody is in the middle of something, and marks what has arrived since it was looked at.
 let incAll = [];
 let incScope = PORTAL ? 'source' : 'app';      // 'app' (Qlik tables) | 'source' (Data-from-Source)
 let incSearch = '';                             // narrows the list: dataset, rule, message, people
 function isSourceIncident(it) { return it && it.sourceFormat && it.sourceFormat !== 'qlik'; }
 let INC_LIST = [];            // the incidents in scope, as drawn
 let INC_GROUPS = [];          // a group per dataset, worst first
-let incView = 'open';         // open | unack | unowned | mine | quiet | closed | all
+let incView = 'open';         // open | unack | mine | quiet | closed | all
 let incDsSel = '';            // one dataset's key, or '' for every dataset
 let incSevSel = [];           // the severities shown; none chosen shows them all
 let incSort = 'urgent';
-let incSel = '';              // the incident open beside the list (incId)
-let incDrawer = false;        // narrow layout: the incident is open over the page
+let incSel = '';              // the incident open in the list (incId), or ''
+const incFolded = new Set();  // datasets whose incidents are folded away
 const incChecked = new Set(); // ticked for an action on several at once
 let incKnown = null;          // what was open at the previous load, to see what is new
 const incNew = new Set();
@@ -14375,7 +14300,7 @@ let incLoadedAt = 0, incFetching = false, incLive = true, incBusy = false, incTo
 // incident the blocker bar asked for ({ dk, key }).
 let incWant = null, incWantMiss = '', incWantInc = null;
 const incAiCache = {};        // incId -> its explanation, so opening it again needs no call
-const incAiOpen = new Set();  // and whose explanation was open, to keep it open through a refresh
+const incAiOpen = new Set();  // and whose explanation was open, to keep it open through a redraw
 
 const INC_SEV_RANK = { blocker: 3, major: 2, warning: 1, minor: 1 };
 const INC_SEV = { blocker: 'Blocker', major: 'Major', warning: 'Warning', minor: 'Minor' };
@@ -14386,6 +14311,13 @@ const INC_SEV_ICO = {
   warning: _incIco('<circle cx="12" cy="12" r="8.6"/><path d="M12 7.8v4.8M12 16.2v.01"/>'),
 };
 INC_SEV_ICO.minor = INC_SEV_ICO.warning;
+const INC_ICO = {
+  ack: _incIco('<path d="m5 12.5 4.2 4.2L19 7"/>'),
+  person: _incIco('<circle cx="12" cy="8" r="3.6"/><path d="M5 20a7 7 0 0 1 14 0"/>'),
+  snooze: _incIco('<path d="M4.5 13.5A8 8 0 1 0 12 5.5"/><path d="M4 4h4.5L4 9h4.5"/>'),
+  mute: _incIco('<path d="M11 5 6.5 9H3v6h3.5L11 19z"/><path d="m16 9.5 5 5m0-5-5 5"/>'),
+  chev: _incIco('<path d="m6 9 6 6 6-6"/>'),
+};
 const incId = it => `${it.datasetKey || it.dataset}|${it.key}`;
 const incIsOpen = it => String(it.status || '').toUpperCase() === 'OPEN';
 function incSevOf(it) {
@@ -14473,20 +14405,23 @@ function incWho(email) {
   const e = String(email || '').trim();
   return e && e !== 'unknown' ? e : '';
 }
+const _incIni = email => (String(email).split('@')[0].split(/[._-]+/).filter(Boolean).map(w => w[0]).join('').slice(0, 2) || '?').toUpperCase();
 /** A person: their initials in a circle and the name in front of the @. */
 function incPerson(email) {
   const e = incWho(email);
   if (!e) return '<span class="ist-who">someone</span>';
-  const local = e.split('@')[0];
-  const ini = (local.split(/[._-]+/).filter(Boolean).map(w => w[0]).join('').slice(0, 2) || '?').toUpperCase();
-  return `<span class="ist-who" data-tip="${esc(e)}"><span class="ist-av" aria-hidden="true">${esc(ini)}</span>${esc(local)}</span>`;
+  return `<span class="ist-who" data-tip="${esc(e)}"><span class="ist-av" aria-hidden="true">${esc(_incIni(e))}</span>${esc(e.split('@')[0])}</span>`;
 }
 const incMe = email => !!EMAIL && String(email || '').toLowerCase() === String(EMAIL).toLowerCase();
 
 // ---- Datasets ----
 // Incidents carry only their dataset's key. Its name, source, score and owner are the Overview's,
 // so that is where they are read from; a dataset the Overview no longer has keeps the key's name.
-function incDsRow(dk) { return (dashDatasetsAll || []).find(d => d.key === dk) || null; }
+function incDsRow(dk, it) {
+  // A Qlik table and a source table can share a key; the incident's own kind decides which it is.
+  const rows = (dashDatasetsAll || []).filter(d => d.key === dk);
+  return (it && rows.find(d => !!isSourceDataset(d) === !!isSourceIncident(it))) || rows[0] || null;
+}
 function incGroupOf(it) { return INC_GROUPS.find(g => g.key === (it.datasetKey || it.dataset)) || null; }
 function incName(it) { const g = incGroupOf(it); return g ? g.name : (it.dataset || ''); }
 function incGroups(list) {
@@ -14494,7 +14429,7 @@ function incGroups(list) {
   list.forEach(it => {
     const k = it.datasetKey || it.dataset;
     if (!m.has(k)) {
-      const d = incDsRow(k);
+      const d = incDsRow(k, it);
       m.set(k, { key: k, d, name: (d && d.name) || it.dataset || String(k).split('/').pop(),
                  fmt: d ? (isSourceDataset(d) ? d.sourceFormat : 'qlik') : (it.sourceFormat || ''), items: [] });
     }
@@ -14507,12 +14442,8 @@ function incGroups(list) {
     g.n = { blocker: 0, major: 0, warning: 0 };
     g.open.forEach(it => { g.n[incSevOf(it)]++; });
     g.worst = Math.max(0, ...g.open.map(it => INC_SEV_RANK[incSevOf(it)]));
-    const ts = g.open.map(incOpenedT).filter(t => !isNaN(t));
-    g.oldest = ts.length ? Math.min(...ts) : NaN;
     g.owner = entryFor(g.key).owner;
   });
-  // Worst first, then most open: the rail puts the dataset to look at next at the top, rather than
-  // keeping whatever order the API happened to return.
   gs.sort((a, b) => (b.worst - a.worst) || (b.open.length - a.open.length) || a.name.localeCompare(b.name));
   return gs;
 }
@@ -14521,13 +14452,12 @@ function incGroups(list) {
 const INC_VIEWS = {
   open: { t: 'Open', f: incIsOpen },
   unack: { t: 'Unacknowledged', f: it => incIsOpen(it) && !it.ackBy },
-  unowned: { t: 'Unassigned', f: it => incIsOpen(it) && !incWho(it.owner) },
   mine: { t: 'Assigned to me', f: it => incIsOpen(it) && incMe(it.owner) },
   quiet: { t: 'Snoozed or muted', f: it => incIsOpen(it) && (!!it.snoozeUntil || !!it.muted) },
   closed: { t: 'Closed', f: it => !incIsOpen(it) },
-  all: { t: 'Open and closed', f: () => true },
+  all: { t: 'All', f: () => true },
 };
-const INC_SORTS = [['urgent', 'Most urgent'], ['newest', 'Newest first'], ['oldest', 'Open longest'], ['dataset', 'By dataset']];
+const INC_SORTS = [['urgent', 'Most urgent'], ['newest', 'Newest first'], ['oldest', 'Open longest'], ['dataset', 'By dataset name']];
 function incHay(it) {
   const g = incGroupOf(it);
   return [g && g.name, it.dataset, incTitle(it), it.rule, it.message, it.owner, it.ackBy, g && g.owner,
@@ -14537,7 +14467,7 @@ function incMatch(it) {
   const words = incSearch.trim().toLowerCase().split(/\s+/).filter(Boolean);
   return (!incDsSel || (it.datasetKey || it.dataset) === incDsSel) && (!words.length || words.every(w => incHay(it).includes(w)));
 }
-/** The list before the severity chips, so the chips can count what each would show. */
+/** The list before the severity filter, so the filter can count what each severity would show. */
 function incFeedBase() {
   const v = INC_VIEWS[incView] || INC_VIEWS.open;
   return INC_LIST.filter(it => v.f(it) && incMatch(it));
@@ -14558,205 +14488,163 @@ function incFeedItems() {
   return incSorted(incSevSel.length ? base.filter(it => incSevSel.includes(incSevOf(it))) : base);
 }
 const incCur = () => INC_LIST.find(it => incId(it) === incSel) || null;
-const incWide = () => { const l = $('#incList'); return !!l && l.classList.contains('ist-wide'); };
-const incDetailShown = () => incWide() || incDrawer;
 
-// ---- The status light and the counts ----
-function incHeroHtml() {
-  const open = INC_LIST.filter(incIsOpen), blk = open.filter(it => incSevOf(it) === 'blocker');
-  const worst = incSorted(open)[0];
-  const rec = INC_LIST.filter(it => !incIsOpen(it) && !it.dismissed).length;
-  let cls, title, sub;
-  if (blk.length) {
-    cls = 'red';
-    title = `${blk.length} blocker${blk.length === 1 ? '' : 's'} open`;
-    sub = (open.length > blk.length ? `and ${open.length - blk.length} more open. ` : '') + 'A blocker fails its dataset\'s quality gate.';
-  } else if (open.length) {
-    cls = 'amber';
-    title = `${open.length} incident${open.length === 1 ? '' : 's'} open`;
-    sub = 'No blockers. Nothing open is failing a quality gate.';
-  } else {
-    cls = 'green';
-    title = 'All clear';
-    sub = `Nothing is open in this ${SCOPE_NOUN}` + (rec ? `. ${rec} recovered in the last 30 days.` : '.');
-  }
-  const go = worst ? `<button type="button" class="ist-go lngb" data-ix="worst">` +
-    `<span class="ist-go-k">Worst</span><span class="ist-go-t">${esc(incName(worst))} · ${esc(incTitle(worst))}</span>` +
-    `<span aria-hidden="true">→</span></button>` : '';
-  return { cls, html: `<span class="ist-light ${cls}" aria-hidden="true"><i></i></span>` +
-    `<div class="ist-hero-t"><b>${esc(title)}</b><span>${esc(sub)}</span>${go}</div>` };
+// ---- The line across the top, and the views ----
+function incSumHtml() {
+  const open = INC_LIST.filter(incIsOpen), blk = open.filter(it => incSevOf(it) === 'blocker').length;
+  const ua = open.filter(it => !it.ackBy).length, cl = INC_LIST.length - open.length;
+  const cls = blk ? 'red' : open.length ? 'amber' : 'green';
+  const title = blk ? `${blk} blocker${blk === 1 ? '' : 's'} open` : open.length ? `${open.length} open` : 'All clear';
+  const bits = blk ? [`${open.length} open in all`] : [];
+  if (open.length) bits.push(ua ? `${ua} unacknowledged` : 'every one acknowledged');
+  else bits.push(`nothing is open in this ${SCOPE_NOUN}`);
+  if (cl) bits.push(`${cl} closed in the last 30 days`);
+  return { cls, html: `<span class="ist-light ${cls}" aria-hidden="true"><i></i></span><b>${esc(title)}</b><span class="isx-sub">${esc(bits.join(' · '))}</span>` };
 }
-function incKpisHtml() {
-  const L = INC_LIST, open = L.filter(incIsOpen), cnt = v => L.filter(INC_VIEWS[v].f).length;
-  const n = { blocker: 0, major: 0, warning: 0 };
-  open.forEach(it => { n[incSevOf(it)]++; });
-  const rec = L.filter(it => !incIsOpen(it) && !it.dismissed).map(it => incClosedT(it) - incOpenedT(it)).filter(x => x >= 0).sort((a, b) => a - b);
-  const med = rec.length ? rec[Math.floor((rec.length - 1) / 2)] : NaN;
-  const bar = open.length ? `<span class="ist-bar3" aria-hidden="true">` + ['blocker', 'major', 'warning'].filter(s => n[s])
-    .map(s => `<i class="${s}" style="flex:${n[s]}"></i>`).join('') + `</span>` : '<span class="ist-bar3 none" aria-hidden="true"><i></i></span>';
-  const tile = (v, label, val, sub, o) => {
-    o = o || {};
-    return `<button type="button" class="ist-kpi lngb${o.cls ? ' ' + o.cls : ''}" data-ix="view" data-v="${v}" aria-pressed="${incView === v}"` +
-      ` data-tip="${esc(o.tip || 'Show only these')}"><span class="ist-k">${label}</span><span class="ist-v">${val}</span>` +
-      `${o.bar || ''}<span class="ist-s">${sub}</span></button>`;
-  };
-  const sevTxt = ['blocker', 'major', 'warning'].filter(s => n[s]).map(s => `${n[s]} ${s}`).join(' · ') || 'Nothing open';
-  const ua = cnt('unack'), uo = cnt('unowned'), q = cnt('quiet'), cl = cnt('closed');
-  return tile('open', 'Open', open.length, sevTxt, { bar, cls: n.blocker ? 'bad' : open.length ? 'warn' : 'good', tip: 'Every open incident' }) +
-    tile('unack', 'Unacknowledged', ua, ua ? 'Nobody has picked these up yet' : 'Every open one is picked up', { cls: ua ? 'warn' : '' }) +
-    tile('unowned', 'Unassigned', uo, uo ? 'Alerts go to dataset owners' : 'Every open one has an owner') +
-    (EMAIL ? tile('mine', 'Assigned to me', cnt('mine'), cnt('mine') ? 'Yours to work' : 'Nothing is assigned to you') : '') +
-    tile('quiet', 'Snoozed or muted', q, q ? 'Alerts held back for now' : 'No alerts held back') +
-    tile('closed', 'Closed, 30 days', cl, isNaN(med) ? 'Recovered or dismissed' : `Recovered in ${incSpan(med)}, typically`,
-      { tip: 'Recovered or dismissed in the last 30 days' });
-}
-
-// ---- The datasets ----
-function incRailHtml() {
-  const open = INC_LIST.filter(incIsOpen), withOpen = INC_GROUPS.filter(g => g.open.length).length;
-  const anyBlk = open.some(it => incSevOf(it) === 'blocker');
-  const pip = (n, cls, tip) => `<span class="inc-pip ${cls}" data-tip="${esc(tip)}">${n}</span>`;
-  const all = `<button type="button" class="irl all lngb" data-ix="ds" data-ds="" aria-current="${!incDsSel}">` +
-    `<span class="irl-ico" aria-hidden="true">${_incIco('<rect x="3.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.6"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.6"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.6"/>')}</span>` +
-    `<span class="irl-main"><span class="irl-name">All datasets</span>` +
-    `<span class="irl-meta">${open.length ? `${open.length} open across ${withOpen} dataset${withOpen === 1 ? '' : 's'}` : 'Nothing open'}</span></span>` +
-    (open.length ? pip(open.length, anyBlk ? 'blocker' : 'major', `${open.length} open`) : pip('&#10003;', 'clear', 'Nothing open')) + `</button>`;
-  const rows = INC_GROUPS.map(g => {
-    const d = g.d, sc = d && d.score != null ? `<span class="ist-score ${tagClass(String(d.status || '').toLowerCase())}">${esc(String(fmtScore(d.score)))}</span>` : '';
-    const meta = `<span>${esc(sourceLabel(g.fmt) || 'Source unknown')}</span>${sc}`;
-    const sev = g.open.length
-      ? ['blocker', 'major', 'warning'].filter(s => g.n[s]).map(s => `<span class="irl-s ${s}">${g.n[s]} ${s}</span>`).join('') +
-        (isNaN(g.oldest) ? '' : `<span class="irl-age">for ${esc(incSpan(Date.now() - g.oldest))}</span>`)
-      : `<span class="irl-ok">&#10003; Clear</span>${g.closed ? `<span class="irl-age">${g.closed} closed</span>` : ''}`;
-    const p = g.n.blocker ? pip(g.n.blocker, 'blocker', `${g.n.blocker} open blocker${g.n.blocker === 1 ? '' : 's'}`)
-      : g.open.length ? pip(g.open.length, 'major', `${g.open.length} open`) : pip('&#10003;', 'clear', 'Nothing open');
-    return `<button type="button" class="irl lngb sev-${g.worst}" data-ix="ds" data-ds="${esc(g.key)}" aria-current="${incDsSel === g.key}">` +
-      `<span class="irl-ico" aria-hidden="true">${srcIcon(g.fmt)}</span>` +
-      `<span class="irl-main"><span class="irl-name" data-tip="${esc(g.name)}">${esc(g.name)}</span>` +
-      `<span class="irl-meta">${meta}</span><span class="irl-sev">${sev}</span></span>${p}</button>`;
-  }).join('');
-  return `<div class="irl-hd"><span>Datasets</span><span class="n">${INC_GROUPS.length}</span></div>${all}` +
-    (rows || '<p class="irl-none">No dataset has had an incident in the last 30 days.</p>');
-}
-
-// ---- The list ----
-function incRowHtml(it, showDs) {
-  const id = incId(it), g = incGroupOf(it), sev = incSevOf(it), open = incIsOpen(it);
-  const st = open ? 'open' : it.dismissed ? 'dismissed' : 'recovered';
-  const age = open ? (incDur(it) ? `open ${incDur(it)}` : 'open')
-    : `${it.dismissed ? 'dismissed' : 'recovered'} ${incAgo(incClosedT(it))}`;
-  const chips = [
-    !open ? `<span class="ist-st ${st}">${it.dismissed ? 'Dismissed' : 'Recovered'}</span>` : '',
-    it.ackBy ? `<span class="ifc ack" data-tip="Acknowledged${incWho(it.ackBy) ? ` by ${esc(incWho(it.ackBy))}` : ''}">&#10003; Acknowledged</span>` : '',
-    incWho(it.owner) ? `<span class="ifc">${incPerson(it.owner)}</span>` : '',
-    it.snoozeUntil ? `<span class="ifc quiet">Snoozed until ${esc(incWhen(it.snoozeUntil))}</span>` : '',
-    it.muted ? '<span class="ifc quiet">Muted</span>' : '',
-    it.explainedAt ? `<span class="ifc ai">${aiIcon()}Explained</span>` : '',
-    it.occurrences > 1 ? `<span class="ifc">${esc(String(it.occurrences))} runs</span>` : '',
-  ].filter(Boolean).join('');
-  const kind = isComplianceRule(it.rule) ? '<span class="ifr-kind cmp">Compliance</span>'
-    : String(it.rule || '').indexOf('SOURCE_') === 0 ? '<span class="ifr-kind src">Source</span>' : '';
-  const ds = showDs ? `<span class="ifr-ds"><span class="ifr-dsi" aria-hidden="true">${srcIcon(g ? g.fmt : it.sourceFormat)}</span>` +
-    `<b>${esc(incName(it))}</b><span>${esc(sourceLabel(g ? g.fmt : it.sourceFormat) || '')}</span></span>` : '';
-  const isSel = id === incSel, chk = incChecked.has(id);
-  return `<div class="ifr sev-${sev} ${st}${isSel ? ' sel' : ''}${incNew.has(id) ? ' new' : ''}${chk ? ' checked' : ''}" role="listitem" data-id="${esc(id)}">` +
-    (open ? `<label class="ifr-ck"><input type="checkbox" data-ix="check" data-id="${esc(id)}"${chk ? ' checked' : ''} ` +
-      `aria-label="Select ${esc(incTitle(it))} on ${esc(incName(it))}"></label>` : '<span class="ifr-ck"></span>') +
-    `<button type="button" class="ifr-main lngb" data-ix="pick" data-id="${esc(id)}" aria-current="${isSel}" aria-controls="incDet" tabindex="${isSel ? 0 : -1}">` +
-      `<span class="ifr-sev ${sev}" data-tip="${INC_SEV[sev]}">${INC_SEV_ICO[sev]}</span>` +
-      `<span class="ifr-body"><span class="ifr-l1"><span class="ifr-title">${esc(incTitle(it))}</span>${kind}` +
-        `${incNew.has(id) ? '<span class="ifr-new">New</span>' : ''}<span class="ifr-age">${esc(age)}</span></span>` +
-        ds + (it.message ? `<span class="ifr-msg">${esc(it.message)}</span>` : '') +
-        (chips ? `<span class="ifr-chips">${chips}</span>` : '') + `</span>` +
-    `</button>` +
-    (open && !it.ackBy ? `<button type="button" class="ifr-ack lngb" data-ix="act" data-act="acknowledge" data-id="${esc(id)}" ` +
-      `aria-label="Acknowledge ${esc(incTitle(it))} on ${esc(incName(it))}" data-tip="Acknowledge: say someone is on it (A)">&#10003;</button>` : '') +
-    `</div>`;
+function incViewsHtml() {
+  const n = v => INC_LIST.filter(it => INC_VIEWS[v].f(it) && (!incDsSel || (it.datasetKey || it.dataset) === incDsSel)).length;
+  const views = ['open', 'unack'].concat(EMAIL ? ['mine'] : [], ['quiet', 'closed', 'all']);
+  return views.map(v => `<button type="button" class="isx-view lngb" data-ix="view" data-v="${v}" aria-pressed="${incView === v}">` +
+    `${INC_VIEWS[v].t}<span class="n">${n(v)}</span></button>`).join('');
 }
 function incMenuHtml(label, items) {
   return `<div class="dsx-menu dsx-pop ist-pop" role="menu" aria-label="${esc(label)}" hidden>` + items.map(it => it === '-'
     ? '<div class="dsx-sep" role="separator"></div>'
-    : `<button type="button" role="${it.radio ? 'menuitemradio' : 'menuitem'}"${it.radio ? ` aria-checked="${!!it.on}"` : ''} ` +
-      `class="dsx-mi lngb${it.danger ? ' danger' : ''}" ${it.attr} tabindex="-1"><span class="dsx-mi-ic" aria-hidden="true">${it.radio ? (it.on ? '&#10003;' : '') : (it.ic || '')}</span>` +
-      `<span class="dsx-mi-t">${it.label}${it.sub ? `<small>${esc(it.sub)}</small>` : ''}</span></button>`).join('') + `</div>`;
+    : `<button type="button" role="${it.radio ? 'menuitemradio' : it.check ? 'menuitemcheckbox' : 'menuitem'}"${it.radio || it.check ? ` aria-checked="${!!it.on}"` : ''} ` +
+      `class="dsx-mi lngb${it.danger ? ' danger' : ''}" ${it.attr} tabindex="-1"><span class="dsx-mi-ic" aria-hidden="true">${it.radio || it.check ? (it.on ? '&#10003;' : '') : (it.ic || '')}</span>` +
+      `<span class="dsx-mi-t">${it.label}${it.sub ? `<small>${esc(it.sub)}</small>` : ''}</span>` +
+      (it.n != null ? `<span class="dsx-mi-r">${it.n}</span>` : '') + `</button>`).join('') + `</div>`;
 }
 const INC_SNOOZE = [[1, 'For an hour'], [4, 'For 4 hours'], [24, 'For a day'], [168, 'For a week']];
-const _incSnoozeItems = (attr) => INC_SNOOZE.map(([h, l]) => ({ attr: `${attr} data-h="${h}"`, label: l, ic: '💤' }));
-function incFeedHtml() {
-  const base = incFeedBase(), items = incSorted(incSevSel.length ? base.filter(it => incSevSel.includes(incSevOf(it))) : base);
-  const g = incDsSel ? INC_GROUPS.find(x => x.key === incDsSel) : null;
-  const vw = INC_VIEWS[incView] || INC_VIEWS.open;
-  const here = INC_LIST.filter(incMatch);
-  const seg = ['open', 'closed', 'all'].map(v => {
-    const n = here.filter(INC_VIEWS[v].f).length;
-    return `<button type="button" class="ist-seg lngb" data-ix="view" data-v="${v}" aria-pressed="${incView === v}">${v === 'all' ? 'All' : INC_VIEWS[v].t}<span class="n">${n}</span></button>`;
-  }).join('');
-  const sub = ['open', 'closed', 'all'].includes(incView) ? ''
-    : `<span class="ist-fchip">${esc(vw.t)}<button type="button" class="lngb" data-ix="view" data-v="open" aria-label="Show every open incident">&#10005;</button></span>`;
-  const dsChip = g ? `<span class="ist-fchip ds"><span class="ifr-dsi" aria-hidden="true">${srcIcon(g.fmt)}</span><span class="ist-fchip-n">${esc(g.name)}</span>` +
-    `<button type="button" class="lngb" data-ix="ds" data-ds="" aria-label="Show every dataset">&#10005;</button></span>` : '';
-  const sevN = s => base.filter(it => incSevOf(it) === s).length;
-  const sevs = ['blocker', 'major', 'warning'].map(s => `<button type="button" class="ist-sevf ${s} lngb" data-ix="sev" data-v="${s}" ` +
-    `aria-pressed="${incSevSel.includes(s)}"${sevN(s) || incSevSel.includes(s) ? '' : ' disabled'}>${INC_SEV_ICO[s]}${INC_SEV[s]}<span class="n">${sevN(s)}</span></button>`).join('');
+const _incSnoozeItems = attr => INC_SNOOZE.map(([h, l]) => ({ attr: `${attr} data-h="${h}"`, label: l, ic: '💤' }));
+function incFiltHtml() {
+  const base = incFeedBase(), sevN = s => base.filter(it => incSevOf(it) === s).length;
+  const sevL = !incSevSel.length ? 'All severities' : incSevSel.length === 1 ? INC_SEV[incSevSel[0]] : `${incSevSel.length} severities`;
+  const sev = `<span class="dsx-pw"><button type="button" class="isx-mbtn lngb${incSevSel.length ? ' on' : ''}" data-ix="menu" aria-haspopup="menu" aria-expanded="false">` +
+    `${esc(sevL)}<span class="rx-caret" aria-hidden="true">▾</span></button>` +
+    incMenuHtml('Severity', ['blocker', 'major', 'warning'].map(s => ({ check: true, on: incSevSel.includes(s), attr: `data-ix="sev" data-v="${s}"`,
+      label: INC_SEV[s], n: sevN(s) })).concat(incSevSel.length ? ['-', { attr: 'data-ix="sevall"', label: 'Every severity' }] : [])) + `</span>`;
   const sortL = (INC_SORTS.find(x => x[0] === incSort) || INC_SORTS[0])[1];
-  const sort = `<span class="dsx-pw"><button type="button" class="ist-sort lngb" data-ix="menu" aria-haspopup="menu" aria-expanded="false">` +
+  const sort = `<span class="dsx-pw"><button type="button" class="isx-mbtn ist-sort lngb" data-ix="menu" aria-haspopup="menu" aria-expanded="false">` +
     `${esc(sortL)}<span class="rx-caret" aria-hidden="true">▾</span></button>` +
     incMenuHtml('Sort', INC_SORTS.map(([v, l]) => ({ radio: true, on: incSort === v, attr: `data-ix="sort" data-v="${v}"`, label: l }))) + `</span>`;
-  const openIds = items.filter(incIsOpen).map(incId), nChk = openIds.filter(id => incChecked.has(id)).length;
-  const all = openIds.length ? `<label class="ist-all" data-tip="Select every open incident listed"><input type="checkbox" data-ix="checkall"` +
-    `${nChk && nChk === openIds.length ? ' checked' : ''} aria-label="Select every open incident listed"></label>` : '';
-  const bulk = incChecked.size ? `<div class="ist-bulk" role="region" aria-label="The incidents selected">` +
-    `<b>${incChecked.size} selected</b>` +
-    `<button type="button" class="dsx-btn lngb" data-ix="bulk" data-act="acknowledge">&#10003; Acknowledge</button>` +
-    `<button type="button" class="dsx-btn lngb" data-ix="bulk" data-act="assign">${_incIco('<circle cx="12" cy="8" r="3.6"/><path d="M5 20a7 7 0 0 1 14 0"/>')}Assign…</button>` +
-    `<span class="dsx-pw"><button type="button" class="dsx-btn lngb" data-ix="menu" aria-haspopup="menu" aria-expanded="false">💤 Snooze<span class="rx-caret" aria-hidden="true">▾</span></button>` +
-    incMenuHtml('Snooze the selected', _incSnoozeItems('data-ix="bulk" data-act="snooze"')) + `</span>` +
-    `<button type="button" class="dsx-btn lngb" data-ix="bulk" data-act="mute">Mute</button>` +
-    `<button type="button" class="linkbtn lngb" data-ix="bulkclear">Clear</button></div>` : '';
-  let list;
-  if (items.length) list = `<div class="ist-rows" role="list">${items.map(it => incRowHtml(it, !incDsSel)).join('')}</div>`;
-  else {
-    const closedHere = g && !g.open.length && g.closed && incView === 'open';
-    list = `<div class="ist-empty"><span class="ist-light green small" aria-hidden="true"><i></i></span>` +
-      `<b>${incSearch.trim() || incSevSel.length ? 'Nothing matches' : incView === 'closed' ? 'Nothing closed' : 'Nothing here'}</b>` +
-      `<span>${incSearch.trim() || incSevSel.length ? 'No incident matches this search or filter.'
-        : incView === 'closed' ? 'Nothing has recovered or been dismissed in the last 30 days.'
-        : g ? `${esc(g.name)} has nothing ${esc(vw.t.toLowerCase())}.` : `No incident is ${esc(vw.t.toLowerCase())} right now.`}</span>` +
-      (closedHere ? `<button type="button" class="dsx-btn lngb" data-ix="view" data-v="closed">Show its ${g.closed} closed</button>` : '') + `</div>`;
-  }
-  const miss = !incDsSel && incWantMiss ? `<p class="hint inc-miss">${esc(incWantMiss)} has had no incidents in the last 30 days, so every dataset is shown.</p>` : '';
-  return `<div class="ist-fh"><div class="ist-fh-l">${all}<h3>${esc(incView === 'open' ? 'Open incidents' : vw.t)}</h3>` +
-      `<span class="ist-n">${items.length}</span>${sub}${dsChip}</div>` +
-      `<div class="ist-fh-r"><span class="ist-segs" role="group" aria-label="Status">${seg}</span></div></div>` +
-    `<div class="ist-fh2"><span class="ist-sevs" role="group" aria-label="Severity">${sevs}</span>${sort}</div>` +
-    bulk + miss + list +
-    `<p class="ist-keys"><kbd>J</kbd><kbd>K</kbd> move <kbd>A</kbd> acknowledge <kbd>E</kbd> explain <kbd>/</kbd> search</p>`;
+  const g = incDsSel ? INC_GROUPS.find(x => x.key === incDsSel) : null;
+  const chip = g ? `<span class="ist-fchip ds"><span class="ifr-dsi" aria-hidden="true">${srcIcon(g.fmt)}</span><span class="ist-fchip-n">${esc(g.name)}</span>` +
+    `<button type="button" class="lngb" data-ix="ds" data-ds="" aria-label="Show every dataset">&#10005;</button></span>` : '';
+  return chip + sev + sort;
 }
 
-// ---- The incident picked ----
-function incDetailHtml(it) {
-  const close = `<button type="button" class="dsx-btn icon lngb ist-x" data-ix="close" aria-label="Close the incident">&#10005;</button>`;
-  if (!it) {
-    return `<div class="idet-empty">${close}<span class="idet-empty-ico" aria-hidden="true">${_incIco('<path d="M4 13h3l2 4 4-10 2 6h5"/>')}</span>` +
-      `<b>${INC_LIST.length ? 'Pick an incident' : 'Nothing to work on'}</b>` +
-      `<span>${INC_LIST.length ? 'Its detail, and everything you can do about it, open here.' : 'When a dataset breaches what is expected of it, its incident appears here.'}</span></div>`;
+// ---- The list ----
+function incGroupHead(g, items) {
+  const d = g.d, folded = incFolded.has(g.key);
+  const sc = d && d.score != null ? `<span class="ist-score ${tagClass(String(d.status || '').toLowerCase())}">${esc(String(fmtScore(d.score)))}</span>` : '';
+  const meta = [`<span>${esc(sourceLabel(g.fmt) || 'Source unknown')}</span>`, sc,
+    g.owner ? `<span>owner ${incPerson(g.owner)}</span>` : ''].filter(Boolean).join('');
+  const sev = g.open.length
+    ? ['blocker', 'major', 'warning'].filter(s => g.n[s]).map(s =>
+        `<span class="isx-gs ${s}">${s === 'blocker' ? `<span class="inc-pip blocker">${g.n[s]}</span>` : `<span class="isx-gsn">${g.n[s]}</span>`}${s}${g.n[s] === 1 ? '' : 's'}</span>`).join('')
+    : `<span class="isx-gs ok">&#10003; Nothing open</span>`;
+  return `<div class="isx-gh">` +
+    `<button type="button" class="isx-gt lngb" data-ix="fold" data-ds="${esc(g.key)}" aria-expanded="${!folded}" data-tip="${folded ? 'Show' : 'Hide'} its incidents">` +
+      `<span class="isx-chev" aria-hidden="true">${INC_ICO.chev}</span><span class="isx-gico" aria-hidden="true">${srcIcon(g.fmt)}</span>` +
+      `<span class="isx-gname">${esc(g.name)}</span><span class="isx-gmeta">${meta}</span>` +
+      (folded ? `<span class="isx-gn">${items.length} hidden</span>` : '') + `</button>` +
+    `<span class="isx-gsev">${sev}</span>` +
+    `<button type="button" class="linkbtn lngb isx-gopen" data-ix="opends" data-ds="${esc(g.key)}"${d ? '' : ' disabled data-tip="This dataset is no longer on the Overview"'}>Open dataset</button></div>`;
+}
+function incRowHtml(it) {
+  const id = incId(it), sev = incSevOf(it), open = incIsOpen(it), isSel = id === incSel, chk = incChecked.has(id);
+  const st = open ? 'open' : it.dismissed ? 'dismissed' : 'recovered';
+  const age = open ? incDur(it) : `${it.dismissed ? 'dismissed' : 'recovered'} ${incAgo(incClosedT(it))}`;
+  const ind = [
+    it.ackBy ? `<span class="isx-i ack" data-tip="Acknowledged${incWho(it.ackBy) ? ` by ${esc(incWho(it.ackBy))}` : ''}">${INC_ICO.ack}</span>` : '',
+    incWho(it.owner) ? `<span class="isx-i av" data-tip="Assigned to ${esc(incWho(it.owner))}">${esc(_incIni(incWho(it.owner)))}</span>` : '',
+    it.snoozeUntil ? `<span class="isx-i" data-tip="Snoozed until ${esc(incWhen(it.snoozeUntil))}">${INC_ICO.snooze}</span>` : '',
+    it.muted ? `<span class="isx-i" data-tip="Alerts muted">${INC_ICO.mute}</span>` : '',
+    it.explainedAt ? `<span class="isx-i ai" data-tip="Explained by AI">${aiIcon()}</span>` : '',
+  ].filter(Boolean).join('');
+  const kind = isComplianceRule(it.rule) ? '<span class="ifr-kind cmp">Compliance</span>'
+    : String(it.rule || '').indexOf('SOURCE_') === 0 ? '<span class="ifr-kind src">Source</span>' : '';
+  return `<div class="isx-row">` +
+    (open ? `<label class="isx-ck"><input type="checkbox" data-ix="check" data-id="${esc(id)}"${chk ? ' checked' : ''} ` +
+      `aria-label="Select ${esc(incTitle(it))} on ${esc(incName(it))}"></label>` : '<span class="isx-ck"></span>') +
+    `<button type="button" class="isx-main lngb" data-ix="pick" data-id="${esc(id)}" aria-expanded="${isSel}"${isSel ? ' aria-controls="incDet"' : ''}>` +
+      `<span class="ifr-sev ${sev}" data-tip="${INC_SEV[sev]}">${INC_SEV_ICO[sev]}</span>` +
+      `<span class="isx-txt"><span class="isx-l1"><span class="isx-title">${esc(incTitle(it))}</span>${kind}` +
+        `${incNew.has(id) ? '<span class="ifr-new">New</span>' : ''}${open ? '' : `<span class="ist-st ${st}">${it.dismissed ? 'Dismissed' : 'Recovered'}</span>`}</span>` +
+        (it.message ? `<span class="isx-msg">${esc(it.message)}</span>` : '') + `</span>` +
+      `<span class="isx-ind">${ind}</span><span class="isx-age">${esc(age)}</span>` +
+      `<span class="isx-chev" aria-hidden="true">${INC_ICO.chev}</span>` +
+    `</button>` +
+    (open && !it.ackBy ? `<button type="button" class="isx-ack lngb" data-ix="act" data-act="acknowledge" data-id="${esc(id)}" ` +
+      `aria-label="Acknowledge ${esc(incTitle(it))} on ${esc(incName(it))}" data-tip="Acknowledge: say someone is on it (A)">${INC_ICO.ack}</button>` : '') +
+    `</div>`;
+}
+function incItemHtml(it) {
+  const id = incId(it), sev = incSevOf(it), open = incIsOpen(it), isSel = id === incSel;
+  const st = open ? 'open' : it.dismissed ? 'dismissed' : 'recovered';
+  return `<div class="isx-item sev-${sev} ${st}${isSel ? ' sel' : ''}${incNew.has(id) ? ' new' : ''}${incChecked.has(id) ? ' checked' : ''}" ` +
+    `role="listitem" data-id="${esc(id)}">${incRowHtml(it)}` +
+    (isSel ? `<div class="isx-det" id="incDet" role="region" aria-label="${esc(incTitle(it))} on ${esc(incName(it))}"></div>` : '') + `</div>`;
+}
+/** "3 open incidents", "1 incident assigned to you": how many the view shows, in words that suit it. */
+function incCountText(n) {
+  const s = n === 1 ? '' : 's';
+  return { open: `${n} open incident${s}`, unack: `${n} unacknowledged incident${s}`, mine: `${n} incident${s} assigned to you`,
+           quiet: `${n} snoozed or muted incident${s}`, closed: `${n} closed incident${s}` }[incView] || `${n} incident${s}`;
+}
+function incListHtml() {
+  const items = incFeedItems();
+  // Datasets in the order their first incident falls, so the sort decides which comes first.
+  const order = [], by = new Map();
+  items.forEach(it => {
+    const k = it.datasetKey || it.dataset;
+    if (!by.has(k)) { by.set(k, []); order.push(k); }
+    by.get(k).push(it);
+  });
+  const openIds = items.filter(incIsOpen).map(incId), nChk = openIds.filter(id => incChecked.has(id)).length;
+  const vw = INC_VIEWS[incView] || INC_VIEWS.open;
+  const head = incChecked.size
+    ? `<div class="ist-bulk" role="region" aria-label="The incidents selected">` +
+      `<label class="isx-ck on" data-tip="Select every open incident listed"><input type="checkbox" data-ix="checkall"${nChk && nChk === openIds.length ? ' checked' : ''} aria-label="Select every open incident listed"></label>` +
+      `<b>${incChecked.size} selected</b>` +
+      `<button type="button" class="dsx-btn lngb" data-ix="bulk" data-act="acknowledge">${INC_ICO.ack}Acknowledge</button>` +
+      `<button type="button" class="dsx-btn lngb" data-ix="bulk" data-act="assign">${INC_ICO.person}Assign…</button>` +
+      `<span class="dsx-pw"><button type="button" class="dsx-btn lngb" data-ix="menu" aria-haspopup="menu" aria-expanded="false">${INC_ICO.snooze}Snooze<span class="rx-caret" aria-hidden="true">▾</span></button>` +
+      incMenuHtml('Snooze the selected', _incSnoozeItems('data-ix="bulk" data-act="snooze"')) + `</span>` +
+      `<button type="button" class="dsx-btn lngb" data-ix="bulk" data-act="mute">${INC_ICO.mute}Mute</button>` +
+      `<button type="button" class="linkbtn lngb" data-ix="bulkclear">Clear</button></div>`
+    : `<div class="isx-lh">` + (openIds.length ? `<label class="isx-ck" data-tip="Select every open incident listed"><input type="checkbox" data-ix="checkall" aria-label="Select every open incident listed"></label>` : '') +
+      `<span>${items.length ? `${incCountText(items.length)} in ${order.length} dataset${order.length === 1 ? '' : 's'}` : ''}</span>` +
+      (order.length > 1 ? `<button type="button" class="linkbtn lngb" data-ix="foldall">${order.every(k => incFolded.has(k)) ? 'Show every dataset\'s incidents' : 'Hide them all'}</button>` : '') + `</div>`;
+  let body;
+  if (items.length) {
+    body = order.map(k => {
+      const g = INC_GROUPS.find(x => x.key === k), its = by.get(k);
+      return `<section class="isx-grp sev-${g ? g.worst : 0}" data-ds="${esc(k)}">${incGroupHead(g, its)}` +
+        (incFolded.has(k) ? '' : `<div class="isx-rows" role="list">${its.map(incItemHtml).join('')}</div>`) + `</section>`;
+    }).join('');
+  } else {
+    const g = incDsSel ? INC_GROUPS.find(x => x.key === incDsSel) : null;
+    const filtered = incSearch.trim() || incSevSel.length;
+    body = `<div class="ist-empty"><span class="ist-light green small" aria-hidden="true"><i></i></span>` +
+      `<b>${filtered ? 'Nothing matches' : incView === 'closed' ? 'Nothing closed' : 'Nothing here'}</b>` +
+      `<span>${filtered ? 'No incident matches this search or filter.'
+        : incView === 'closed' ? 'Nothing has recovered or been dismissed in the last 30 days.'
+        : g ? `${esc(g.name)} has nothing ${esc(vw.t.toLowerCase())}.` : `No incident is ${esc(vw.t.toLowerCase())} right now.`}</span>` +
+      (g && incView === 'open' && g.closed ? `<button type="button" class="dsx-btn lngb" data-ix="view" data-v="closed">Show its ${g.closed} closed</button>` : '') + `</div>`;
   }
-  const id = incId(it), g = incGroupOf(it), d = g && g.d, e = g ? entryFor(g.key) : {}, open = incIsOpen(it), sev = incSevOf(it);
+  const miss = !incDsSel && incWantMiss ? `<p class="hint inc-miss">${esc(incWantMiss)} has had no incidents in the last 30 days, so every dataset is shown.</p>` : '';
+  return head + miss + body +
+    `<p class="ist-keys"><kbd>J</kbd><kbd>K</kbd> move <kbd>Enter</kbd> open <kbd>A</kbd> acknowledge <kbd>E</kbd> explain <kbd>/</kbd> search <kbd>Esc</kbd> close</p>`;
+}
+
+// ---- The incident opened ----
+function incDetHtml(it) {
+  const id = incId(it), g = incGroupOf(it), d = g && g.d, open = incIsOpen(it), sev = incSevOf(it);
   const [what, nk] = incInfo(it), nx = INC_NEXT[nk];
   const st = open ? ['open', 'Open'] : it.dismissed ? ['dismissed', 'Dismissed'] : ['recovered', 'Recovered'];
-  const others = g ? g.open.filter(x => incId(x) !== id).length : 0;
-  const dsMeta = [
-    `<span>${esc(sourceLabel(g ? g.fmt : it.sourceFormat) || 'Source unknown')}</span>`,
-    d && d.score != null ? `<span class="ist-score ${tagClass(String(d.status || '').toLowerCase())}">${esc(String(fmtScore(d.score)))}</span>` : '',
-    d && d.gate != null ? `<span>gate ${d.gate === false ? '<b class="bad">failing</b>' : 'passing'}</span>` : '',
-    e.stage ? `<span>${esc(MEDAL_LABEL[e.stage] || e.stage)}</span>` : '',
-  ].filter(Boolean).join('');
-  const ds = `<div class="idet-ds"><span class="idet-dsi" aria-hidden="true">${srcIcon(g ? g.fmt : it.sourceFormat)}</span>` +
-    `<div class="idet-dsm"><b>${esc(incName(it))}</b><span class="idet-dsl">${dsMeta}</span>` +
-    (e.owner ? `<span class="idet-dsl">Owner ${incPerson(e.owner)}</span>` : '') +
-    (others ? `<button type="button" class="linkbtn lngb" data-ix="ds" data-ds="${esc(g.key)}">${others} more open on this dataset</button>` : '') + `</div>` +
-    `<button type="button" class="dsx-btn lngb" data-ix="opends"${d ? '' : ' disabled data-tip="This dataset is no longer on the Overview"'}>Open dataset</button></div>`;
-  const acked = !!it.ackBy;
+  const acked = !!it.ackBy, who = incWho(it.owner);
   const more = open
     ? [{ attr: `data-ix="act" data-act="${it.muted ? 'unmute' : 'mute'}"`, ic: it.muted ? '🔔' : '🔇', label: it.muted ? 'Unmute alerts' : 'Mute alerts',
          sub: it.muted ? 'Notify people about it again' : 'Stop its notifications while it stays open' }]
@@ -14766,35 +14654,32 @@ function incDetailHtml(it) {
                { attr: 'data-ix="act" data-act="dismiss"', ic: '🗂', label: 'Not an incident…', sub: 'Dismiss it with a reason; it reopens if it happens again', danger: true }])
     : [{ attr: 'data-ix="report"', ic: '📜', label: 'Open the run that raised it', sub: 'Its full report, in History' }, '-',
        { attr: 'data-ix="act" data-act="archive"', ic: '✕', label: 'Remove from the list', sub: 'It stays in history', danger: true }];
-  const moreBtn = `<span class="dsx-pw idet-more"><button type="button" class="dsx-btn icon lngb" data-ix="menu" aria-haspopup="menu" aria-expanded="false" ` +
+  const moreBtn = `<span class="dsx-pw isx-more"><button type="button" class="dsx-btn icon lngb" data-ix="menu" aria-haspopup="menu" aria-expanded="false" ` +
     `aria-label="More actions" data-tip="More actions">⋯</button>` + incMenuHtml('More actions', more) + `</span>`;
-  const top = `<div class="idet-top"><span class="ist-sev ${sev}">${INC_SEV_ICO[sev]}${INC_SEV[sev]}</span>` +
-    `<span class="ist-st ${st[0]}">${st[1]}</span><span class="idet-age">${esc(open ? `open ${incDur(it)}` : `lasted ${incDur(it)}`)}</span>` +
-    `<span class="idet-tr">${moreBtn}${close}</span></div>` +
-    `<h3 class="idet-h" id="incDetH" tabindex="-1">${esc(incTitle(it))}</h3>` + (what ? `<p class="idet-what">${esc(what)}</p>` : '');
   const acts = open
-    ? `<button type="button" class="dsx-btn lngb${acked ? '' : ' primary'}" data-ix="act" data-act="${acked ? 'unack' : 'acknowledge'}" ` +
-        `aria-pressed="${!!acked}" data-tip="${acked ? 'Click to take the acknowledgement back' : 'Tell everyone someone is on it (A)'}">&#10003; ${acked ? 'Acknowledged' : 'Acknowledge'}</button>` +
-      `<button type="button" class="dsx-btn lngb" data-ix="act" data-act="assign">${_incIco('<circle cx="12" cy="8" r="3.6"/><path d="M5 20a7 7 0 0 1 14 0"/>')}${incWho(it.owner) ? 'Reassign…' : 'Assign…'}</button>` +
+    ? `<button type="button" class="dsx-btn lngb${acked ? '' : ' primary'}" data-ix="act" data-act="${acked ? 'unack' : 'acknowledge'}" aria-pressed="${acked}" ` +
+        `data-tip="${acked ? 'Click to take the acknowledgement back' : 'Tell everyone someone is on it (A)'}">${INC_ICO.ack}${acked ? 'Acknowledged' : 'Acknowledge'}</button>` +
+      `<button type="button" class="dsx-btn lngb" data-ix="act" data-act="assign">${INC_ICO.person}${who ? 'Reassign…' : 'Assign…'}</button>` +
       (it.snoozeUntil
-        ? `<button type="button" class="dsx-btn lngb" data-ix="act" data-act="unsnooze" data-tip="Snoozed until ${esc(incWhen(it.snoozeUntil))}">⏰ Wake now</button>`
-        : `<span class="dsx-pw"><button type="button" class="dsx-btn lngb" data-ix="menu" aria-haspopup="menu" aria-expanded="false">💤 Snooze<span class="rx-caret" aria-hidden="true">▾</span></button>` +
+        ? `<button type="button" class="dsx-btn lngb" data-ix="act" data-act="unsnooze" data-tip="Snoozed until ${esc(incWhen(it.snoozeUntil))}">${INC_ICO.snooze}Wake now</button>`
+        : `<span class="dsx-pw"><button type="button" class="dsx-btn lngb" data-ix="menu" aria-haspopup="menu" aria-expanded="false">${INC_ICO.snooze}Snooze<span class="rx-caret" aria-hidden="true">▾</span></button>` +
           incMenuHtml('Snooze', _incSnoozeItems('data-ix="act" data-act="snooze"')) + `</span>`)
-    : (it.dismissed ? `<button type="button" class="dsx-btn primary lngb" data-ix="act" data-act="restore">↺ Reopen</button>` : '') +
-      `<span class="idet-closed">${it.dismissed ? 'Dismissed' : 'Recovered on its own'} ${esc(incAgo(incClosedT(it)))}</span>`;
-
+    : (it.dismissed ? `<button type="button" class="dsx-btn primary lngb" data-ix="act" data-act="restore">↺ Reopen</button>` : '');
+  const head = `<div class="isx-dh"><span class="ist-sev ${sev}">${INC_SEV_ICO[sev]}${INC_SEV[sev]}</span><span class="ist-st ${st[0]}">${st[1]}</span>` +
+    `<span class="isx-dage">${esc(open ? `open ${incDur(it)}` : `${it.dismissed ? 'dismissed' : 'recovered'} ${incAgo(incClosedT(it))}, after ${incDur(it)}`)}</span>` +
+    `<span class="isx-acts">${acts}${moreBtn}</span></div>`;
   const nextOk = nx && (nk === 'source' || d);
-  const next = `<div class="idet-next">` + (nx ? `<button type="button" class="dsx-btn lngb ist-nextb" data-ix="next"${nextOk ? '' : ' disabled data-tip="This dataset is no longer on the Overview"'}>${esc(nx[0])} →</button>` : '') +
-    aiBtn(it.explainedAt ? 'See the AI explanation' : 'Explain with AI', 'data-ix="explain"', 'ai-sm') + `</div>` +
+  const main = (what ? `<p class="isx-what">${esc(what)}</p>` : '') +
+    (it.message ? `<div class="isx-found"><h4>What it found</h4><p>${esc(it.message)}</p></div>` : '') +
+    `<div class="isx-next">` + (nx ? `<button type="button" class="dsx-btn lngb ist-nextb" data-ix="next"${nextOk ? '' : ' disabled data-tip="This dataset is no longer on the Overview"'}>${esc(nx[0])} →</button>` : '') +
+      aiBtn(it.explainedAt ? 'See the AI explanation' : 'Explain with AI', 'data-ix="explain"', 'ai-sm') + `</div>` +
     `<div class="ai-out" id="incAiOut" hidden></div>`;
-  const msg = it.message ? `<section class="idet-sec"><h4>What it found</h4><p class="idet-msg">${esc(it.message)}</p></section>` : '';
-  const who = incWho(it.owner);
   const facts = [
     ['Opened', `${esc(incWhen(it.openedAt || it.openedRun))} <span class="idet-dim">${esc(incAgo(incOpenedT(it)))}</span>`],
     open ? ['Last seen', `${esc(incWhen(it.lastSeenAt || it.lastRun))} <span class="idet-dim">on the latest run</span>`]
          : [it.dismissed ? 'Dismissed' : 'Recovered', `${esc(incWhen(it.resolvedAt || it.resolvedRun))}${it.dismissed && incWho(it.dismissedBy) ? ` by ${incPerson(it.dismissedBy)}` : ''}`],
     ['Runs', `${esc(String(it.occurrences || 1))} <span class="idet-dim">in a row raised it</span>`],
-    ['Assigned to', who ? incPerson(who) : `<span class="idet-dim">Nobody${e.owner ? '. Its alerts go to the dataset\'s owner.' : '.'}</span>`],
+    ['Assigned to', who ? incPerson(who) : `<span class="idet-dim">Nobody${g && g.owner ? '. Its alerts go to the dataset\'s owner.' : '.'}</span>`],
     ['Acknowledged', acked ? `${incPerson(it.ackBy)} <span class="idet-dim">${esc(incAgo(it.ackAt))}</span>` : '<span class="idet-dim">Not yet</span>'],
     open ? ['Alerts', it.muted ? 'Muted' : it.snoozeUntil ? `Snoozed until ${esc(incWhen(it.snoozeUntil))}` : 'On'] : null,
     it.dismissed && it.dismissReason ? ['Reason', esc(it.dismissReason)] : null,
@@ -14808,78 +14693,51 @@ function incDetailHtml(it) {
   if (open) add(incTs(it.lastSeenAt) || incTs(it.lastRun), `Seen again on the latest run${it.occurrences > 1 ? `, the ${_incOrd(+it.occurrences)} in a row` : ''}`, 'seen');
   else add(incClosedT(it), it.dismissed ? `Dismissed${incWho(it.dismissedBy) ? ` by ${incPerson(it.dismissedBy)}` : ''}` : 'Recovered', it.dismissed ? 'dis' : 'ok');
   ev.sort((a, b) => a[0] - b[0]);
-  const tl = ev.length ? `<section class="idet-sec"><h4>Timeline</h4><ol class="idet-tl">` + ev.map(([t, txt, cls]) =>
-    `<li class="${cls}"><span class="idet-tlt">${esc(incWhen(t))}</span><span class="idet-tld">${txt}</span></li>`).join('') + `</ol></section>` : '';
-  return top + ds + `<div class="idet-acts">${acts}</div>` + next + msg +
-    `<section class="idet-sec"><h4>Details</h4><dl class="idet-facts">${facts}</dl></section>` + tl;
+  const side = `<dl class="idet-facts">${facts}</dl>` + (ev.length ? `<h4>Timeline</h4><ol class="idet-tl">` + ev.map(([t, txt, cls]) =>
+    `<li class="${cls}"><span class="idet-tlt">${esc(incWhen(t))}</span><span class="idet-tld">${txt}</span></li>`).join('') + `</ol>` : '');
+  return head + `<div class="isx-dgrid"><div class="isx-dmain">${main}</div><div class="isx-dside">${side}</div></div>`;
 }
 
 // ---- Drawing ----
-function incBuild() {
-  const list = $('#incList');
-  if (!list || $('#incFeed')) return;
-  list.innerHTML = `<div class="ist-body"><nav class="ist-rail" id="incRail" aria-label="Datasets"></nav>` +
-    `<section class="ist-feed" id="incFeed" aria-label="Incidents"></section>` +
-    `<aside class="ist-det" id="incDet" aria-label="The incident" tabindex="-1"></aside></div>`;
-  incSizeCheck();
-  if (window.ResizeObserver && !list._incRO) { list._incRO = new ResizeObserver(() => incSizeCheck()); list._incRO.observe(list); }
-}
-// Three columns where there is room for the list beside the incident; otherwise the incident opens
-// over the page from the right. Measured on the list itself, which sits in a Qlik sheet's iframe
-// as often as in a full window.
-function incSizeCheck() {
-  const list = $('#incList');
-  if (!list || !list.clientWidth) return;
-  const wide = list.clientWidth >= 1080, was = list.classList.contains('ist-wide');
-  list.classList.toggle('ist-wide', wide);
-  if (wide === was) return;
-  if (wide && incDrawer) { incDrawer = false; const s = $('#incScrim'); if (s) s.hidden = true; }
-  if (wide && !incCur()) { const f = incFeedItems()[0]; if (f) incSel = incId(f); }
-  const det = $('#incDet'); if (det) det.classList.remove('open');
-  incPaintDetail(true);
-}
 function incPaintTop() {
   const h = $('#incHero');
   if (h) {
-    const { cls, html } = incHeroHtml();
-    if (h._html !== html) { h.innerHTML = html; h._html = html; h.className = 'ist-hero ' + cls; }
+    const { cls, html } = incSumHtml();
+    if (h._html !== html) { h.innerHTML = html; h._html = html; h.className = 'isx-sum ' + cls; }
   }
-  const k = $('#incKpis'); if (k) k.innerHTML = incKpisHtml();
+  const v = $('#incKpis'); if (v) v.innerHTML = incViewsHtml();
+  const f = $('#incFilt'); if (f) f.innerHTML = incFiltHtml();
 }
-function incPaintRail() { const r = $('#incRail'); if (r) r.innerHTML = incRailHtml(); }
-function incPaintFeed() {
-  const f = $('#incFeed');
-  if (!f) return;
-  const items = incFeedItems();
-  // With the incident beside the list there is always one open; over the page, only when asked.
-  if (!items.some(it => incId(it) === incSel) && !incDrawer) incSel = incWide() && items[0] ? incId(items[0]) : '';
-  const a = document.activeElement, back = a && f.contains(a) ? { ix: a.dataset.ix, id: a.dataset.id, v: a.dataset.v } : null;
-  f.innerHTML = incFeedHtml();
+/** Redraw the list. The incident open in it is kept as the very element it was when nothing about
+ *  it has changed, so a refresh every minute does not fold away an explanation somebody is reading. */
+function incPaintList() {
+  const list = $('#incList');
+  if (!list) return;
+  if (incSel && !incFeedItems().some(it => incId(it) === incSel)) incSel = '';
+  const old = $('#incDet'), it = incCur();
+  const sig = it ? JSON.stringify([it, (incGroupOf(it) || {}).owner]) : '';
+  const keep = old && it && old._sig === sig && old.dataset.id === incSel ? old : null;
+  const a = document.activeElement, back = a && list.contains(a) && !(keep && keep.contains(a))
+    ? { ix: a.dataset.ix, id: a.dataset.id, v: a.dataset.v, ds: a.dataset.ds } : null;
+  list.innerHTML = `<div class="isx-list" id="incFeed">${incListHtml()}</div>`;
+  const slot = $('#incDet');
+  if (slot && keep) slot.replaceWith(keep);
+  else if (slot && it) {
+    slot.innerHTML = incDetHtml(it); slot._sig = sig; slot.dataset.id = incSel;
+    // Drawn again because something about it changed: an explanation that was open stays open.
+    const r = incAiCache[incSel], b = slot.querySelector('[data-ix="explain"]');
+    if (r && incAiOpen.has(incSel)) {
+      aiAnswer($('#incAiOut'), aiMd(r.explanation), aiFoot(r, 'inc-regen'), { title: 'Why it was raised', instant: true });
+      if (b) { b.setAttribute('aria-expanded', 'true'); b.classList.add('active'); }
+    }
+  }
   if (back) {
-    const el = [...f.querySelectorAll('[data-ix]')].find(x => x.dataset.ix === back.ix && (x.dataset.id || '') === (back.id || '') && (x.dataset.v || '') === (back.v || ''));
+    const el = [...list.querySelectorAll('[data-ix]')].find(x => x.dataset.ix === back.ix && (x.dataset.id || '') === (back.id || '') &&
+      (x.dataset.v || '') === (back.v || '') && (x.dataset.ds || '') === (back.ds || ''));
     if (el) el.focus({ preventScroll: true });
   }
-  // Something has to take Tab into the list even when nothing is picked.
-  if (!f.querySelector('.ifr-main[tabindex="0"]')) { const m = f.querySelector('.ifr-main'); if (m) m.tabIndex = 0; }
 }
-/** The incident beside the list, redrawn only when it changed: a refresh every minute must not
- *  fold away an explanation somebody is reading. */
-function incPaintDetail(force) {
-  const det = $('#incDet');
-  if (!det) return;
-  const it = incCur();
-  const g = it && incGroupOf(it), sig = JSON.stringify([it, g && g.d && [g.d.score, g.d.status, g.d.gate], g && g.open.length, incWide()]);
-  if (!force && det._sig === sig) return;
-  det._sig = sig;
-  det.innerHTML = incDetailHtml(it);
-  det.classList.toggle('open', incDrawer && !incWide());
-  if (it && incAiOpen.has(incId(it)) && incAiCache[incId(it)]) {
-    const r = incAiCache[incId(it)], b = det.querySelector('[data-ix="explain"]');
-    aiAnswer($('#incAiOut'), aiMd(r.explanation), aiFoot(r, 'inc-regen'), { title: 'Why it was raised', instant: true });
-    if (b) { b.setAttribute('aria-expanded', 'true'); b.classList.add('active'); }
-  }
-}
-function incPaintAll() { incPaintTop(); incPaintRail(); incPaintFeed(); incPaintDetail(); }
+function incPaintAll() { incPaintTop(); incPaintList(); }
 
 function renderIncidents(r) {
   INC_LIST = (r && r.incidents) || [];
@@ -14887,6 +14745,7 @@ function renderIncidents(r) {
   if (incWant) {
     const w = INC_GROUPS.find(g => g.key === incWant.key);
     incDsSel = w ? w.key : '';
+    if (w) incFolded.delete(w.key);                         // asked for, so not folded away
     incWantMiss = w ? '' : incWant.name;
     if (w && incView === 'open') incView = 'all';           // one dataset's whole story, open and closed
     incWant = null;
@@ -14894,7 +14753,6 @@ function renderIncidents(r) {
   if (incDsSel && !INC_GROUPS.some(g => g.key === incDsSel)) incDsSel = '';
   if (incView === 'mine' && !EMAIL) incView = 'open';
   [...incChecked].forEach(id => { const it = INC_LIST.find(x => incId(x) === id); if (!it || !incIsOpen(it)) incChecked.delete(id); });
-  incBuild();
   incPaintAll();
 }
 function applyIncScope() {
@@ -14903,8 +14761,8 @@ function applyIncScope() {
   renderIncidents({ incidents: incAll.filter(it => incScope === 'source' ? isSourceIncident(it) : !isSourceIncident(it)) });
 }
 document.querySelectorAll('#incScopeToggle .scope-btn').forEach(b =>
-  b.addEventListener('click', () => { incScope = b.dataset.scope; incDsSel = ''; incSel = ''; applyIncScope(); }));
-{ const s = $('#incSearch'); if (s) s.addEventListener('input', () => { incSearch = s.value || ''; incPaintFeed(); incPaintDetail(); }); }
+  b.addEventListener('click', () => { incScope = b.dataset.scope; incDsSel = ''; incSel = ''; incWantMiss = ''; applyIncScope(); }));
+{ const s = $('#incSearch'); if (s) s.addEventListener('input', () => { incSearch = s.value || ''; incPaintTop(); incPaintList(); }); }
 { const b = $('#acToggle'); if (b) b.addEventListener('click', () => {
     const c = $('#alertChannelsCard'); if (!c) return;
     const show = c.style.display === 'none'; c.style.display = show ? '' : 'none';
@@ -14912,43 +14770,43 @@ document.querySelectorAll('#incScopeToggle .scope-btn').forEach(b =>
     if (show) { loadAlertChannels(); c.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
   }); }
 
-// ---- Choosing ----
-function incSelect(id, o) {
+// ---- Opening one ----
+/** Open an incident in the list (or close it again), and bring it into view. */
+function incExpand(id, o) {
   o = o || {};
-  incSel = id;
-  if (incNew.delete(id)) { const row = $(`#incFeed .ifr[data-id="${CSS.escape(id)}"]`); if (row) { row.classList.remove('new'); const nb = row.querySelector('.ifr-new'); if (nb) nb.remove(); } }
-  document.querySelectorAll('#incFeed .ifr').forEach(r => {
-    const on = r.dataset.id === id, m = r.querySelector('.ifr-main');
-    r.classList.toggle('sel', on);
-    if (m) { m.setAttribute('aria-current', String(on)); m.tabIndex = on ? 0 : -1; }
-  });
-  if (o.open && !incWide()) incOpenDrawer();
-  incPaintDetail();
-  const row = $(`#incFeed .ifr[data-id="${CSS.escape(id)}"]`);
-  if (row && o.focus) { const m = row.querySelector('.ifr-main'); if (m) m.focus({ preventScroll: true }); row.scrollIntoView({ block: 'nearest' }); }
+  const was = incSel;
+  incSel = was === id && !o.keep ? '' : id;
+  incNew.delete(id);
+  const item = $(`#incFeed .isx-item[data-id="${CSS.escape(id)}"]`);
+  if (!incSel && item) {
+    // Folding up: ease it shut, then draw the list without it.
+    const det = $('#incDet');
+    if (det && !dqReduced()) { dqReveal(det, false, 260, () => { incPaintList(); incFocusRow(id); }); return; }
+    incPaintList(); incFocusRow(id);
+    return;
+  }
+  incPaintList();
+  const det = $('#incDet'), row = det && det.closest('.isx-item');
+  if (det && !dqReduced() && o.animate !== false) dqReveal(det, true, 320);
+  if (o.focus !== false) incFocusRow(incSel);
+  if (row) setTimeout(() => aiInView(det, row.querySelector('.isx-main')), o.animate === false || dqReduced() ? 0 : 340);
+}
+function incFocusRow(id) {
+  const m = $(`#incFeed .isx-item[data-id="${CSS.escape(id)}"] .isx-main`);
+  if (m) { m.focus({ preventScroll: true }); m.closest('.isx-item').scrollIntoView({ block: 'nearest' }); }
 }
 function incMove(step) {
-  const items = incFeedItems();
-  if (!items.length) return;
-  const i = items.findIndex(it => incId(it) === incSel);
-  const j = i < 0 ? 0 : Math.max(0, Math.min(items.length - 1, i + step));
-  incSelect(incId(items[j]), { focus: true });
+  const btns = [...document.querySelectorAll('#incFeed .isx-main')];
+  if (!btns.length) return;
+  const a = document.activeElement, i = btns.indexOf(a);
+  const cur = i >= 0 ? i : Math.max(0, btns.findIndex(b => b.dataset.id === incSel));
+  const j = Math.max(0, Math.min(btns.length - 1, (i < 0 && !incSel ? -1 : cur) + step));
+  btns[j].focus({ preventScroll: false });
 }
-function incOpenDrawer() {
-  incDrawer = true;
-  const det = $('#incDet'), s = $('#incScrim');
-  if (s) s.hidden = false;
-  if (det) { det.classList.add('open'); det.scrollTop = 0; }
-  setTimeout(() => { const h = $('#incDetH'); if (h && incDrawer) h.focus({ preventScroll: true }); }, 30);
-}
-function incCloseDrawer() {
-  if (!incDrawer) return;
-  incDrawer = false;
-  const det = $('#incDet'), s = $('#incScrim');
-  if (s) s.hidden = true;
-  if (det) det.classList.remove('open');
-  const m = $(`#incFeed .ifr[data-id="${CSS.escape(incSel)}"] .ifr-main`);
-  if (m) m.focus({ preventScroll: true });
+/** The incident a key or a press is about: the row focused, else the one open. */
+function incFocused() {
+  const a = document.activeElement, item = a && a.closest && a.closest('#incFeed .isx-item');
+  return item ? INC_LIST.find(x => incId(x) === item.dataset.id) || null : incCur();
 }
 function incToast(msg, kind) {
   const t = $('#incToast');
@@ -15028,57 +14886,54 @@ async function incAct(items, action, extra) {
   loadIncidents({ silent: true });
 }
 
-// The station's buttons, in one place: it is redrawn constantly, so nothing is wired per draw.
+// The list's buttons, in one place: it is redrawn constantly, so nothing is wired per draw.
 async function incClick(e) {
   const regen = e.target.closest('.inc-regen');
   if (regen) { e.preventDefault(); const it = incCur(); if (it) incExplain(it, true); return; }
   const t = e.target.closest('[data-ix]');
   if (!t || !$('#incStation').contains(t) || t.disabled) return;
   const ix = t.dataset.ix;
-  if (t.closest('.dsx-pop') && ix !== 'menu') dsxMenuHide(['sort'].includes(ix));
+  if (t.closest('.dsx-pop') && ix !== 'menu') dsxMenuHide(['sort', 'sev', 'sevall'].includes(ix));
   const it = t.dataset.id ? INC_LIST.find(x => incId(x) === t.dataset.id) : incCur();
+  const groupOf = k => INC_GROUPS.find(g => g.key === k) || null;
   switch (ix) {
-    case 'pick': incSelect(t.dataset.id, { open: true }); break;
-    case 'ds': {
-      const was = incDsSel;
-      incDsSel = t.dataset.ds || '';
-      incWantMiss = '';
-      if (incDsSel && incView === 'open') incView = 'all';
-      else if (!incDsSel && was && incView === 'all') incView = 'open';
-      incSel = '';
-      incPaintRail(); incPaintTop(); incPaintFeed(); incPaintDetail();
-      const r = $(`#incRail .irl[data-ds="${CSS.escape(incDsSel)}"]`); if (r) r.focus({ preventScroll: true });
+    case 'pick': incExpand(t.dataset.id); break;
+    case 'fold': {
+      const k = t.dataset.ds;
+      if (incFolded.has(k)) incFolded.delete(k); else incFolded.add(k);
+      incPaintList();
       break;
     }
-    case 'view':
-      incView = t.dataset.v;
-      if (t.classList.contains('ist-kpi') && incDsSel) { incDsSel = ''; incPaintRail(); }
-      incPaintTop(); incPaintFeed(); incPaintDetail();
+    case 'foldall': {
+      const keys = [...new Set(incFeedItems().map(x => x.datasetKey || x.dataset))];
+      const all = keys.every(k => incFolded.has(k));
+      keys.forEach(k => { if (all) incFolded.delete(k); else incFolded.add(k); });
+      incPaintList();
       break;
+    }
+    case 'ds': incDsSel = t.dataset.ds || ''; incWantMiss = ''; if (!incDsSel && incView === 'all') incView = 'open'; incPaintAll(); break;
+    case 'view': incView = t.dataset.v; incWantMiss = ''; incPaintAll(); break;
     case 'sev': {
       const v = t.dataset.v, i = incSevSel.indexOf(v);
       if (i >= 0) incSevSel.splice(i, 1); else incSevSel.push(v);
-      incPaintFeed(); incPaintDetail();
+      incPaintAll();
       break;
     }
-    case 'sort': incSort = t.dataset.v; incPaintFeed(); { const b = $('#incFeed .ist-sort'); if (b) b.focus({ preventScroll: true }); } break;
+    case 'sevall': incSevSel = []; incPaintAll(); break;
+    case 'sort': incSort = t.dataset.v; incPaintAll(); break;
     case 'menu': {
       const menu = t.parentElement.querySelector('.dsx-pop');
       if (dsxMenuOpen && dsxMenuOpen.menu === menu) dsxMenuHide(true); else if (menu) dsxMenuShow(t, menu);
       break;
     }
-    case 'check': {
-      if (t.checked) incChecked.add(t.dataset.id); else incChecked.delete(t.dataset.id);
-      incPaintFeed();
-      break;
-    }
+    case 'check': if (t.checked) incChecked.add(t.dataset.id); else incChecked.delete(t.dataset.id); incPaintList(); break;
     case 'checkall': {
       const ids = incFeedItems().filter(incIsOpen).map(incId), on = t.checked;
       ids.forEach(id => { if (on) incChecked.add(id); else incChecked.delete(id); });
-      incPaintFeed();
+      incPaintList();
       break;
     }
-    case 'bulkclear': incChecked.clear(); incPaintFeed(); break;
+    case 'bulkclear': incChecked.clear(); incPaintList(); break;
     case 'bulk': {
       const sel = INC_LIST.filter(x => incChecked.has(incId(x)) && incIsOpen(x));
       incAct(sel, t.dataset.act, t.dataset.h ? { snooze_hours: Number(t.dataset.h) } : null);
@@ -15089,25 +14944,16 @@ async function incClick(e) {
       incAct([it], a, a === 'snooze' ? { snooze_hours: Number(t.dataset.h) } : null);
       break;
     }
-    case 'worst': {
-      const w = incSorted(INC_LIST.filter(incIsOpen))[0];
-      if (!w) break;
-      incView = 'open'; incDsSel = ''; incSevSel = []; incSearch = ''; { const s = $('#incSearch'); if (s) s.value = ''; }
-      incSel = incId(w);
-      incPaintAll();
-      incSelect(incSel, { open: true, focus: true });
-      break;
-    }
-    case 'opends': { const g = it && incGroupOf(it); if (g && g.d) incOpenDataset(g, 'scores'); break; }
+    case 'opends': { const g = groupOf(t.dataset.ds) || (it && incGroupOf(it)); if (g && g.d) incOpenDataset(g, 'scores'); break; }
     case 'next': {
       const g = it && incGroupOf(it), nk = it && incInfo(it)[1];
       if (!g) break;
-      if (nk === 'source') { incCloseDrawer(); dsxMonitor({ key: g.key }); }
+      if (nk === 'source') dsxMonitor({ key: g.key });
       else if (nk === 'rerun') { if (g.d) reRunTable(g.d.name, g.d.sourceFormat || '', g.d.resultPrefix || ''); }
       else if (g.d) incOpenDataset(g, INC_NEXT[nk][1]);
       break;
     }
-    case 'report': if (it && it.resultPrefix) { incCloseDrawer(); cmpOpenReport(it.resultPrefix); } break;
+    case 'report': if (it && it.resultPrefix) cmpOpenReport(it.resultPrefix); break;
     case 'explain': {
       if (!it) break;
       const out = $('#incAiOut'), shown = out && !out.hidden && !!out.innerHTML.trim();
@@ -15115,13 +14961,11 @@ async function incClick(e) {
       if (shown) incAiOpen.delete(incId(it)); else incAiOpen.add(incId(it));
       break;
     }
-    case 'close': incCloseDrawer(); break;
     case 'live': incLive = !incLive; incLivePaint(); if (incLive && Date.now() - incLoadedAt > 60000) loadIncidents({ silent: true }); break;
   }
 }
 async function incOpenDataset(g, tab) {
   const d = g.d;
-  incCloseDrawer();
   dashScope = isSourceDataset(d) ? 'source' : 'app';   // first, so the dataset is in the list it opens from
   switchTab('dashboard');
   await loadDashboard();
@@ -15137,7 +14981,10 @@ async function incExplain(it, regenerate) {
     if (!it.explainedAt) {
       it.explainedAt = r.generatedAt || new Date().toISOString();
       it.explainedBy = r.generatedBy || EMAIL || '';
-      incPaintFeed();
+      // The row says so straight away; the open incident keeps its answer where it is.
+      const ind = $(`#incFeed .isx-item[data-id="${CSS.escape(id)}"] .isx-ind`);
+      if (ind && !ind.querySelector('.ai')) ind.insertAdjacentHTML('beforeend', `<span class="isx-i ai" data-tip="Explained by AI">${aiIcon()}</span>`);
+      const det = $('#incDet'); if (det) det._sig = JSON.stringify([it, (incGroupOf(it) || {}).owner]);
     }
   };
   if (!regenerate && incAiCache[id]) { show(incAiCache[id]); return; }
@@ -15175,29 +15022,28 @@ setInterval(() => {
 if ($('#incStation')) {
   $('#incStation').addEventListener('click', incClick);
   ['pointerdown', 'keydown', 'input'].forEach(ev => $('#incidentsPanel').addEventListener(ev, () => { incTouchedAt = Date.now(); }, true));
-  const s = $('#incScrim'); if (s) s.addEventListener('click', () => incCloseDrawer());
 }
-// The keyboard: J and K (or the arrows, in the list) move through it, A acknowledges, E explains,
-// / searches and Escape closes the incident when it is open over the page.
+// The keyboard: J and K (or the arrows, in the list) move from row to row, Enter opens one and
+// Escape closes it, A acknowledges, E explains and / searches.
 document.addEventListener('keydown', e => {
   const p = $('#incidentsPanel');
   // A key a menu has already taken (Escape closing it) is not also a shortcut here.
   if (e.defaultPrevented || !p || p.style.display === 'none' || e.ctrlKey || e.metaKey || e.altKey) return;
   if (document.querySelector('.dq-ov') || dsxMenuOpen || document.getElementById('gdSpotTip')) return;
   const tg = e.target, typing = tg && (/^(INPUT|TEXTAREA|SELECT)$/.test(tg.tagName) || tg.isContentEditable);
-  if (e.key === 'Escape' && incDrawer) { e.preventDefault(); incCloseDrawer(); return; }
   if (typing) {
-    if (e.key === 'Escape' && tg.id === 'incSearch' && tg.value) { tg.value = ''; incSearch = ''; incPaintFeed(); incPaintDetail(); }
+    if (e.key === 'Escape' && tg.id === 'incSearch' && tg.value) { tg.value = ''; incSearch = ''; incPaintTop(); incPaintList(); }
     return;
   }
-  const k = e.key.length === 1 ? e.key.toLowerCase() : e.key, inFeed = tg && tg.closest && tg.closest('#incFeed');
+  const k = e.key.length === 1 ? e.key.toLowerCase() : e.key, inList = tg && tg.closest && tg.closest('#incFeed');
   if (k === '/') { e.preventDefault(); const s = $('#incSearch'); if (s) s.focus(); }
-  else if (k === 'j' || (k === 'ArrowDown' && inFeed)) { e.preventDefault(); incMove(1); }
-  else if (k === 'k' || (k === 'ArrowUp' && inFeed)) { e.preventDefault(); incMove(-1); }
-  else if (k === 'a' && incDetailShown()) {
-    const it = incCur();
+  else if (k === 'j' || (k === 'ArrowDown' && inList)) { e.preventDefault(); incMove(1); }
+  else if (k === 'k' || (k === 'ArrowUp' && inList)) { e.preventDefault(); incMove(-1); }
+  else if (k === 'Escape' && incSel) { e.preventDefault(); incExpand(incSel); }
+  else if (k === 'a') {
+    const it = incFocused();
     if (it && incIsOpen(it)) { e.preventDefault(); incAct([it], it.ackBy ? 'unack' : 'acknowledge', {}); }
-  } else if (k === 'e' && incDetailShown()) {
+  } else if (k === 'e' && incSel) {
     const b = $('#incDet [data-ix="explain"]');
     if (b) { e.preventDefault(); b.click(); }
   }
@@ -15220,7 +15066,7 @@ async function loadIncidents(o) {
   try {
     const [r] = await Promise.all([
       postJSON(`${API_BASE}/data-quality/incidents/list`, HEADERS, { app_id: APP_ID, window_days: 30 }),
-      // A dataset's name, source, score and owner are the Overview's; without them every row would
+      // A dataset's name, source, score and owner are the Overview's; without them every group would
       // name its dataset by its key.
       (dashDatasetsAll || []).length ? null : loadDashboard().catch(() => null),
     ]);
@@ -15231,19 +15077,20 @@ async function loadIncidents(o) {
     incKnown = ids;
     updateIncBadge(r.openCount || 0);                 // badge/bar stay global (all open)
     renderBlockerBar(incAll.filter(incIsOpen));
+    let want = null;
     if (incWantInc) {
       const w = incAll.find(it => (it.datasetKey || it.dataset) === incWantInc.dk && it.key === incWantInc.key);
       if (w) {
         if (!PORTAL) incScope = isSourceIncident(w) ? 'source' : 'app';
         incView = incIsOpen(w) ? 'open' : 'all'; incDsSel = ''; incSevSel = [];
         incSearch = ''; const s = $('#incSearch'); if (s) s.value = '';
-        incSel = incId(w);
-        incDrawer = !incWide();
+        incFolded.delete(w.datasetKey || w.dataset);
+        want = incId(w);
       }
       incWantInc = null;
     }
     applyIncScope();                                  // list filtered to the active scope
-    if (incDrawer && incCur() && !incWide()) incOpenDrawer();
+    if (want) incExpand(want, { keep: true });
   } catch (e) {
     if (!built) list.innerHTML = `<p class="dash-muted" style="color:var(--err)">${esc(e.message)}</p>`;
     else if (!o.silent) incToast('Could not refresh: ' + e.message, 'err');
@@ -20000,8 +19847,8 @@ const GD_SHOTS = {
   "heatmap": [1124, 1282, "eaa67f551b"],
   "history-p": [1600, 1164, "cfca32980f"],
   "history-q": [1600, 979, "539a02e628"],
-  "incidents-p": [1600, 1421, "eb099f3ca8"],
-  "incidents-q": [1600, 1420, "04edcf4c3e"],
+  "incidents-p": [1600, 1638, "b9c28d8ca6"],
+  "incidents-q": [1600, 1637, "055bea2ae5"],
   "lineage-app": [1600, 1141, "8605e85254"],
   "lineage-source": [1600, 1129, "cc5e81a146"],
   "onprem-file": [1600, 1156, "244201089c"],
@@ -20088,12 +19935,12 @@ function gdOpenFirstDataset(tab) {
     if (!dashSelected || dashSelected.key !== d.key || dsTab !== tab) await selectDataset(d.key, d.name, tab);
   };
 }
-// The incident tab draws itself once its list arrives; then the first incident is opened (over the
-// page, where there is no room beside the list) so its buttons are there to point at.
+// The incident tab draws itself once its list arrives; then the first incident is opened in the
+// list, so its buttons are there to point at.
 async function gdOpenFirstIncident() {
-  for (let i = 0; i < 40 && !document.querySelector('#incFeed .ifr'); i++) await new Promise(r => setTimeout(r, 100));
+  for (let i = 0; i < 40 && !document.querySelector('#incFeed .isx-item'); i++) await new Promise(r => setTimeout(r, 100));
   const f = incFeedItems()[0];
-  if (f) incSelect(incId(f), { open: true });
+  if (f) incExpand(incId(f), { keep: true, animate: false });
 }
 function gdPickSource(key) {
   return () => {
@@ -20136,9 +19983,9 @@ const GD_SHOW = {
   'tagrun': { tab: 'tagrun', sel: '#tagrunSearch', tip: 'Search for a tag, or pick one of the popular ones below.' },
   'stages': { tab: 'medallion', sel: '#medallionPanel .medal-combo-btn',
     tip: 'Pick a bronze, a silver and a gold dataset to compare them.' },
-  'inc-board': { tab: 'incidents', sel: '#incKpis', tip: 'The counts that matter. Press one to show only those incidents.' },
-  'inc-actions': { tab: 'incidents', prep: gdOpenFirstIncident, sel: '#incDet .idet-acts', miss: 'No incident is open right now, so there is nothing to act on.',
-    tip: 'Everything you can do about the incident picked: acknowledge it, assign it and snooze it here, and more under <b>⋯</b>.' },
+  'inc-board': { tab: 'incidents', sel: '#incKpis', tip: 'The views, each with its count. Press one to show only those incidents.' },
+  'inc-actions': { tab: 'incidents', prep: gdOpenFirstIncident, sel: '#incDet .isx-acts', miss: 'No incident is open right now, so there is nothing to act on.',
+    tip: 'Everything you can do about the incident opened: acknowledge it, assign it and snooze it here, and more under <b>⋯</b>.' },
   'alert-channels': { tab: 'incidents', sel: '#acToggle', tip: 'Opens the Slack and Teams settings.' },
   'watch-table': { tab: 'sourcewatch', sel: '#watchList',
     tip: 'Every source, whether it is monitored, and if not, why not.' },
@@ -21057,7 +20904,7 @@ function buildGuides() {
   G.push({
     id: 'incidents', cat: 'Monitor', icon: 'bell', tint: '#fb7185',
     title: 'Track incidents', sub: 'What raises one, how alerts reach people, and how to work them',
-    keywords: 'incidents alerts station slack teams email webhook acknowledge assign snooze mute dismiss accept new normal baseline gate volume schema drift stale explain live refresh unacknowledged unassigned bulk keyboard',
+    keywords: 'incidents alerts grouped by dataset fold slack teams email webhook acknowledge assign snooze mute dismiss accept new normal baseline gate volume schema drift stale explain live refresh unacknowledged unassigned bulk keyboard',
     open: { tab: 'incidents', label: 'Open Incidents' },
     sections: [
       { h: 'What an incident is', body:
@@ -21073,13 +20920,13 @@ function buildGuides() {
           ['Stale', 'Warning', 'The dataset has not been assessed for seven days'],
           ['Source signals', 'Warning or Major', `Found by source monitoring between runs. ${see('source-monitoring', 'Source monitoring')}`],
         ]) },
-      { h: 'The station', body:
-          p(`Incidents opens on the state of things: a light that is red while a blocker is open, the worst incident, and the counts that matter. Press a count, such as ${ui('Unacknowledged')}, to show only those. ${showme('inc-board')}`) +
-          shot('incidents', `${n(1)} The state of things, and the worst incident. ${n(2)} The counts: press one to show only those. ${n(3)} Each dataset with something wrong, its source, its score and what is open on it. ${n(4)} Every incident names its dataset. ${n(5)} The incident picked, with what you can do about it.`) +
+      { h: 'The list', body:
+          p(`Incidents opens on one line that says how things are: a light that is red while a blocker is open, how many are open and how many nobody has acknowledged. Under it are the views, each with its count: ${ui('Open')}, ${ui('Unacknowledged')}, ${ui('Assigned to me')}, ${ui('Snoozed or muted')}, ${ui('Closed')} and ${ui('All')}. ${showme('inc-board')}`) +
+          shot('incidents', `${n(1)} How things are. ${n(2)} The views: press one to show only those. ${n(3)} Each dataset heads its own incidents, with its source, its score, its owner and what is open on it. ${n(4)} An incident, opened where it is. ${n(5)} What you can do about it.`) +
           list(
-            `<b>Down the left</b>, the datasets with something wrong, worst first, each with where it comes from and how it is scoring. Pick one to see its incidents, open and closed.`,
-            `<b>In the middle</b>, every incident as a row: how severe, what it is, which dataset, what the run found and who is on it. Filter by severity, sort it, or search by dataset, rule, message or person.`,
-            `<b>Beside it</b>, the incident you pick: what the rule means, its dataset, its details and timeline, and the buttons to act on it. Where the window is too narrow for it, it opens over the page from the right.`,
+            `<b>Grouped by dataset</b>, worst first. The arrow on a dataset folds its incidents away, and ${ui('Open dataset')} opens it on the Overview.`,
+            `<b>Each incident</b> is a row: how severe, what it is, what the run found, who is on it and how long it has been open. Filter by severity, sort it, or search by dataset, rule, message or person.`,
+            `<b>Click an incident</b> and it opens where it is, the width of the list: what the rule means, what the run found, the next step, its details and timeline, and the buttons to act on it. Click it again, or press ${ui('Esc')}, to close it.`,
             `It refreshes itself every minute while you are on it, and marks anything new. ${ui('Live')} pauses that.`) },
       { h: 'Working an incident', body:
           p(`Click an incident to open it. ${showme('inc-actions')}`) +
@@ -21095,7 +20942,7 @@ function buildGuides() {
             ['⋯ Not an incident…', 'Dismisses it with a reason, and sends an audit email. If it happens again, it reopens as a new incident.'],
             ['Reopen, Remove from the list', 'For closed incidents'],
           ]) +
-          tip(`Tick several incidents to acknowledge, assign, snooze or mute them together. On the keyboard, ${ui('J')} and ${ui('K')} move through the list, ${ui('A')} acknowledges, ${ui('E')} explains and ${ui('/')} searches.`) },
+          tip(`Tick several incidents to acknowledge, assign, snooze or mute them together. On the keyboard, ${ui('J')} and ${ui('K')} move through the list, ${ui('Enter')} opens an incident and ${ui('Esc')} closes it, ${ui('A')} acknowledges, ${ui('E')} explains and ${ui('/')} searches.`) },
       { h: 'Alerts in Slack or Teams', body:
           steps(`Open ${go('incidents', 'Incidents')} and expand ${ui('Alert channels')}. ${showme('alert-channels')}`,
                 `Paste an incoming-webhook URL for a Slack workspace, a Microsoft Teams channel, or both.`,
