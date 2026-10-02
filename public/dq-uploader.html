@@ -1309,15 +1309,23 @@
   .inc-menu-item:hover { background: var(--idle-bg); }
   .inc-menu-item.danger { color: var(--err); }
   .inc-menu-sep { height: 1px; background: var(--border); margin: 5px 4px; }
-  /* AI ruleset reviewer */
-  .rules-review { border-left: 3px solid var(--accent); padding: 6px 0 6px 14px; }
-  .rules-list { display: flex; flex-direction: column; }
-  .rule-sug { display: grid; grid-template-columns: 30px 1fr; gap: 8px; align-items: start;
-    padding: 10px 8px; border-top: 1px solid var(--border); cursor: pointer; border-radius: 6px; }
-  .rule-sug:first-child { border-top: 0; }
-  .rule-sug:hover { background: var(--bg); }
-  .rule-acc-cell { padding-top: 2px; }
-  .rule-acc { width: 16px; height: 16px; cursor: pointer; }
+  /* AI ruleset reviewer: a card per suggestion, ticked to pin */
+  .rules-review { padding: 0; }
+  .rules-list { display: flex; flex-direction: column; gap: 8px; }
+  .rule-sug { display: grid; grid-template-columns: 26px 1fr; gap: 10px; align-items: start; padding: 13px 14px;
+    border: 1px solid var(--border); border-radius: 12px; background: var(--card-2); cursor: pointer;
+    transition: border-color .15s, background-color .15s; }
+  .rule-sug:hover { border-color: color-mix(in srgb, var(--accent) 40%, var(--border)); }
+  .rule-sug:has(.rule-acc:checked) { border-color: color-mix(in srgb, var(--accent) 60%, var(--border));
+    background: color-mix(in srgb, var(--accent) 6%, var(--card-2)); }
+  .rule-acc-cell { padding-top: 1px; }
+  .rule-acc { appearance: none; -webkit-appearance: none; display: grid; place-items: center; width: 18px; height: 18px;
+    margin: 0; border: 1.5px solid var(--muted); border-radius: 5px; background: var(--card); cursor: pointer; }
+  .rule-acc:checked { border-color: var(--accent); background: var(--accent); }
+  .rule-acc:checked::after { content: ''; width: 9px; height: 5px; margin-top: -2px; border-left: 2px solid #fff;
+    border-bottom: 2px solid #fff; transform: rotate(-45deg); }
+  .rule-acc:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .rule-own { margin: 12px 0 0; }
   .rule-sug.rule-adv { cursor: default; }
   .rule-sug-body { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
   .rule-sug-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 7px; }
@@ -1325,15 +1333,181 @@
   .tag-adv { background: var(--idle-bg); color: var(--muted); }
   .rule-sug-lbl { display: flex; flex-direction: column; gap: 4px; cursor: pointer; }
   .rule-sug.rule-adv .rule-sug-lbl { cursor: default; }
-  .rule-edit { display: flex; flex-wrap: wrap; gap: 8px 12px; margin-top: 7px; }
-  .rule-edit-field { display: flex; flex-direction: column; gap: 2px; }
-  .rule-edit-field label { font-size: 11px; color: var(--muted); }
-  .rule-edit-in { padding: 3px 6px; border: 1px solid var(--border); border-radius: 5px;
-    background: var(--bg); color: var(--text); font-size: 12px; min-width: 92px; }
+  .rule-edit { display: flex; flex-wrap: wrap; gap: 8px 14px; margin-top: 9px; }
+  .rule-edit-field { display: flex; flex-direction: column; gap: 4px; }
+  .rule-edit-field label { font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .rules-review .rule-edit-in { height: 32px; padding: 0 10px; border: 1px solid var(--border); border-radius: 9px; box-sizing: border-box;
+    background: var(--card); color: var(--text); font: inherit; font-size: 13px; min-width: 110px; }
+  .rules-review .rule-edit-in:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
+  .rules-review select.rule-edit-in { appearance: none; -webkit-appearance: none; padding-right: 28px; cursor: pointer;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6'><path d='M1 1l4 4 4-4' fill='none' stroke='%2394a2be' stroke-width='1.6'/></svg>");
+    background-repeat: no-repeat; background-position: right 10px center; }
   .rule-flag { align-self: center; font-size: 11px; color: var(--muted);
     background: var(--idle-bg); padding: 2px 8px; border-radius: 10px; }
   .rule-edited { align-self: center; font-size: 11px; color: var(--accent2); }
-  .ar-list { max-height: 460px; overflow-y: auto; padding-right: 4px; }
+  /* ---- The Rules tab: a row per column, which opens into its editor ---------------------- */
+  .rx-assist { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 14px; margin: 0 0 16px; }
+  .rx-assist .hint { margin: 0; max-width: 620px; }
+  .rx-notes:empty { display: none; }
+  .rx-note { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 12px; margin: 0 0 12px; padding: 9px 13px;
+    border-radius: 10px; border: 1px solid var(--border); background: var(--card-2); font-size: 12.5px; }
+  .rx-note.warn { border-color: color-mix(in srgb, var(--run) 45%, var(--border)); background: color-mix(in srgb, var(--run) 8%, var(--card-2)); }
+  .rx-note .linkbtn { margin-left: 0; font-size: 12.5px; }
+  .rx-top { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; margin: 0 0 10px; }
+  .rx-sum { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); }
+  .rx-sum b { color: var(--text); font-weight: 700; }
+  .rx-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-left: auto; }
+  .rx-search { display: inline-flex; align-items: center; gap: 7px; height: 32px; padding: 0 10px; box-sizing: border-box;
+    border: 1px solid var(--border); border-radius: 9px; background: var(--card-2); color: var(--muted); }
+  .rx-search:focus-within { border-color: var(--accent); }
+  .rx-search svg { width: 14px; height: 14px; flex: none; }
+  .rx .rx-search input:focus { box-shadow: none; }
+  .rx .rx-search input { width: 150px; padding: 0; border: 0; outline: 0; background: none; color: var(--text); font: inherit; font-size: 13px; }
+  .rx-filt { display: inline-flex; gap: 2px; padding: 2px; border-radius: 9px; border: 1px solid var(--border); background: var(--card-2); }
+  button.rx-fb { height: 26px; padding: 0 10px; border: 0; border-radius: 7px; background: none; box-shadow: none; color: var(--muted);
+    font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+  button.rx-fb[aria-pressed="true"] { background: var(--card); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.35); }
+  .rx-fb .n { margin-left: 6px; opacity: .7; }
+  .rx-tools .linkbtn { margin-left: 0; font-size: 12.5px; }
+  .rx-intro { margin: 0 0 12px; font-size: 12.5px; color: var(--muted); }
+  .rx-list { display: flex; flex-direction: column; gap: 8px; }
+  .rx-col { border: 1px solid var(--border); border-radius: 12px; background: var(--card-2); transition: border-color .15s; }
+  .rx-col.open { border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); }
+  button.rx-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; width: 100%; min-height: 54px; padding: 10px 14px;
+    border: 0; border-radius: 12px; background: none; box-shadow: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+  button.rx-row:hover { background: color-mix(in srgb, var(--accent) 5%, transparent); }
+  button.rx-row:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .rx-chev { flex: none; width: 7px; height: 7px; margin: 0 3px 0 1px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted);
+    transform: rotate(-45deg); transition: transform .18s var(--dq-ease); }
+  .rx-col.open > .rx-row .rx-chev, .rx-refs[open] > summary .rx-chev { transform: rotate(45deg); }
+  .rx-ti { flex: none; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 8px;
+    border: 1px solid var(--border); background: var(--card); color: var(--accent); }
+  .rx-ti svg { width: 16px; height: 16px; }
+  .rx-id { flex: 0 1 auto; display: flex; flex-direction: column; min-width: 140px; max-width: 32%; }
+  .rx-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 13.5px; font-weight: 600; }
+  .rx-type { font-size: 11.5px; color: var(--muted); }
+  .rx-chips { flex: 1 1 260px; min-width: 0; display: flex; flex-wrap: wrap; gap: 5px; }
+  .rx-chip { max-width: 280px; padding: 2px 9px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; border-radius: 999px;
+    border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--border)); background: color-mix(in srgb, var(--accent) 9%, var(--card));
+    font-size: 11.5px; font-weight: 500; }
+  .rx-chip.key { border-color: color-mix(in srgb, #ffcf4d 38%, var(--border)); background: color-mix(in srgb, #ffcf4d 11%, var(--card)); }
+  .rx-none { margin: 0; font-size: 12.5px; font-style: italic; color: var(--muted); }
+  .rx-mark { flex: none; display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 700; color: var(--accent2); }
+  .rx-mark::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--accent2); }
+  .rx-sev { flex: none; display: inline-flex; align-items: center; gap: 6px; margin-left: auto; padding: 3px 10px; border-radius: 999px;
+    font-size: 11.5px; font-weight: 700; }
+  .rx-sev::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+  .rx-sev.blocker { color: var(--err); background: var(--err-bg); }
+  .rx-sev.major { color: var(--run); background: var(--run-bg); }
+  .rx-sev.minor { color: var(--muted); background: var(--idle-bg); }
+  .rx-sev[data-default] { opacity: .72; }
+  .rx-ed { padding: 0 18px 16px 58px; }
+  .rx-props { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 24px; padding: 14px 0; border-top: 1px solid var(--border); }
+  .rx-prop { display: flex; flex-direction: column; gap: 6px; }
+  .rx-pl, .rx-hd { font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .rx-mw { position: relative; display: inline-flex; }
+  .rx-pop { width: 280px; }
+  .rx-pop.rx-pkm { left: auto; right: 0; }
+  button.rx-pick { display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 10px; box-sizing: border-box;
+    border: 1px solid var(--border); border-radius: 9px; background: var(--card); box-shadow: none; color: var(--text);
+    font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+  button.rx-pick .rx-ti { width: 22px; height: 22px; margin-left: -4px; border-radius: 6px; }
+  button.rx-pick .rx-ti svg { width: 13px; height: 13px; }
+  button.rx-pick:hover, button.rx-pick[aria-expanded="true"] { border-color: color-mix(in srgb, var(--accent) 60%, var(--border)); }
+  button.rx-pick.rx-pkb { height: 28px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12.5px; }
+  .rx-caret { font-size: 10px; color: var(--muted); }
+  .rx-seg { display: inline-flex; gap: 2px; padding: 2px; border-radius: 9px; border: 1px solid var(--border); background: var(--card); }
+  button.rx-segb { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 11px; border: 0; border-radius: 7px;
+    background: none; box-shadow: none; color: var(--muted); font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; }
+  button.rx-segb::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: currentColor; opacity: .5; }
+  button.rx-segb[aria-checked="true"]::before { opacity: 1; }
+  button.rx-segb[aria-checked="true"].blocker { color: var(--err); background: var(--err-bg); }
+  button.rx-segb[aria-checked="true"].major { color: var(--run); background: var(--run-bg); }
+  button.rx-segb[aria-checked="true"].minor { color: var(--text); background: var(--idle-bg); }
+  button.rx-segb.dflt[aria-checked="true"] { box-shadow: inset 0 0 0 1px currentColor; background: none; }
+  .rx .rx-in { width: 120px; height: 32px; padding: 0 10px; box-sizing: border-box; border: 1px solid var(--border); border-radius: 9px;
+    background: var(--card); color: var(--text); font: inherit; font-size: 13px; }
+  .rx .rx-in:focus, .rx .rx-tags:focus-within { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
+  .rx .rx-in.rx-w { width: 76px; }
+  .rx .rx-in.rx-date { width: 150px; color-scheme: dark; }
+  .rx .rx-in.rx-mono { width: 280px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .rx .rx-in.rx-grow { flex: 1 1 200px; width: auto; min-width: 160px; }
+  .rx select.rx-in { appearance: none; -webkit-appearance: none; width: auto; min-width: 170px; padding-right: 28px; cursor: pointer;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6'><path d='M1 1l4 4 4-4' fill='none' stroke='%2394a2be' stroke-width='1.6'/></svg>");
+    background-repeat: no-repeat; background-position: right 10px center; }
+  .rx-checks { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding-top: 2px; }
+  .rx-hd { margin: 0 0 6px; }
+  .rx-check { display: flex; align-items: center; align-self: stretch; gap: 12px; min-height: 42px; margin: 0 -8px; padding: 4px 8px; border-radius: 9px; }
+  .rx-check:hover { background: color-mix(in srgb, var(--accent) 4%, transparent); }
+  .rx-flag { cursor: pointer; }
+  .rx-slot { flex: none; width: 34px; display: grid; place-items: center; }
+  .rx-slot::after { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+  .rx-cl { flex: 0 0 140px; font-size: 13px; font-weight: 600; }
+  .rx-cd { font-size: 12.5px; color: var(--muted); }
+  .rx-cv { flex: 1 1 auto; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .rx-to, .rx-unit { font-size: 12.5px; color: var(--muted); }
+  .rx-eg { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; color: var(--muted); }
+  button.rx-x { flex: none; width: 28px; height: 28px; margin-left: auto; padding: 0; border: 0; border-radius: 7px; background: none; box-shadow: none;
+    color: var(--muted); font-size: 12px; cursor: pointer; }
+  button.rx-x:hover, button.rx-x:focus-visible { color: var(--err); background: color-mix(in srgb, var(--err) 12%, transparent); }
+  button.rx-sw { position: relative; flex: none; width: 34px; height: 20px; padding: 0; border: 0; border-radius: 999px;
+    background: var(--idle-bg); box-shadow: inset 0 0 0 1px var(--border); cursor: pointer; transition: background-color .18s; }
+  .rx-knob { position: absolute; top: 3px; left: 3px; width: 14px; height: 14px; border-radius: 50%; background: #c9d1e2;
+    transition: transform .18s var(--dq-ease), background-color .18s; }
+  button.rx-sw[aria-checked="true"] { background: var(--accent); box-shadow: none; }
+  button.rx-sw[aria-checked="true"] .rx-knob { transform: translateX(14px); background: #fff; }
+  button.rx-sw:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .rx-tags { flex: 1 1 280px; display: flex; flex-wrap: wrap; align-items: center; gap: 5px; min-height: 32px; padding: 3px 6px; box-sizing: border-box;
+    border: 1px solid var(--border); border-radius: 9px; background: var(--card); }
+  .rx-tag { display: inline-flex; align-items: center; gap: 2px; height: 22px; padding: 0 2px 0 8px; border-radius: 6px;
+    background: color-mix(in srgb, var(--accent) 14%, var(--card-2)); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; }
+  button.rx-tag-x { width: 18px; height: 18px; padding: 0; border: 0; border-radius: 4px; background: none; box-shadow: none;
+    color: var(--muted); font-size: 9px; cursor: pointer; }
+  button.rx-tag-x:hover, button.rx-tag-x:focus-visible { color: var(--err); }
+  .rx .rx-tag-in { flex: 1 1 100px; min-width: 100px; height: 24px; padding: 0 4px; border: 0; outline: 0; background: none;
+    color: var(--text); font: inherit; font-size: 12.5px; }
+  button.rx-add { display: inline-flex; align-items: center; gap: 6px; height: 30px; margin-top: 6px; padding: 0 12px;
+    border: 1px dashed color-mix(in srgb, var(--accent) 50%, var(--border)); border-radius: 9px; background: none; box-shadow: none;
+    color: var(--accent); font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; }
+  button.rx-add:hover, button.rx-add[aria-expanded="true"] { border-style: solid; background: color-mix(in srgb, var(--accent) 10%, transparent); }
+  .rx-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin-top: 12px; padding-top: 8px; border-top: 1px solid var(--border); }
+  .rx-foot .rx-check { flex: 1 1 auto; align-self: auto; }
+  .rx-foot-acts { display: inline-flex; gap: 16px; margin-left: auto; }
+  .rx-foot-acts .linkbtn { margin-left: 0; font-size: 12.5px; }
+  .linkbtn.rx-danger { color: var(--err); }
+  .rx-refs { margin-top: 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--card-2); }
+  .rx-refs > summary { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 14px 16px; list-style: none; cursor: pointer; border-radius: 12px; }
+  .rx-refs > summary::-webkit-details-marker { display: none; }
+  .rx-refs > summary:hover { background: color-mix(in srgb, var(--accent) 5%, transparent); }
+  .rx-refs-t { font-size: 13.5px; font-weight: 700; }
+  .rx-refs-n { padding: 2px 9px; border-radius: 999px; background: var(--idle-bg); color: var(--muted); font-size: 11.5px; font-weight: 700; }
+  .rx-refs-n.on { background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); }
+  .rx-refs-d { font-size: 12.5px; color: var(--muted); }
+  .rx-refs-body { display: grid; gap: 20px; padding: 2px 16px 18px 40px; }
+  .rx-ref h4 { margin: 0 0 2px; font-size: 13px; }
+  .rx-ref .hint { margin: 0 0 10px; }
+  .rx-ref-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .rx-ref-row.rx-sor { align-items: flex-end; gap: 12px; }
+  .rx-ref-row.rx-sor .rx-prop { flex: 1 1 180px; }
+  .rx .rx-ref-row.rx-sor .rx-in { flex: none; width: 100%; }
+  .rx-ref .rx-none { margin: 0 0 8px; }
+  .rx-bar { position: sticky; bottom: 12px; z-index: 9; display: flex; align-items: center; gap: 12px; margin: 16px 0 0;
+    padding: 10px 12px 10px 16px; border-radius: 12px; border: 1px solid color-mix(in srgb, var(--accent) 50%, var(--border));
+    background: color-mix(in srgb, var(--accent) 7%, var(--card)); box-shadow: 0 16px 40px rgba(0,0,0,.5); animation: rxBarIn .22s var(--dq-ease) both; }
+  .rx-bar[hidden] { display: none; }
+  .rx-bar-ico { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--accent2); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent2) 22%, transparent); }
+  .rx-bar-msg { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+  .rx-bar-acts { flex: none; display: flex; gap: 8px; }
+  .rx-bar.ok { border-color: color-mix(in srgb, var(--ok) 55%, var(--border)); background: color-mix(in srgb, var(--ok) 7%, var(--card)); }
+  .rx-bar.ok .rx-bar-ico { background: var(--ok); box-shadow: 0 0 0 4px color-mix(in srgb, var(--ok) 22%, transparent); }
+  .rx-bar.err .rx-bar-msg { white-space: normal; color: var(--err); }
+  @keyframes rxBarIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+  @media (max-width: 1300px) { .rx-ed { padding-left: 18px; } .rx-cl { flex-basis: 120px; } }
+  @media (prefers-reduced-motion: reduce) {
+    .rx-chev, button.rx-sw, .rx-knob, .rx-col, .rule-sug { transition: none !important; }
+    .rx-bar { animation: none !important; }
+  }
   .ar-card { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; background: var(--card); }
   .ar-card-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
   .ar-card-head strong { font-size: 14px; }
@@ -6743,11 +6917,611 @@ if ($('#prmDone')) $('#prmDone').addEventListener('click', closePinRulesModal);
 if ($('#pinRulesModal')) $('#pinRulesModal').addEventListener('click', e => { if (e.target.id === 'pinRulesModal') closePinRulesModal(); });
 
 // ---- Edit active rules (the ruleset currently pinned / in effect for a dataset) --------
-// Whether the optional accuracy/integrity block is expanded. Persisted across the in-place
-// rerender()s that adding or removing a rule triggers - a fresh <details> defaults to closed, so
-// without this the section would snap shut the moment you clicked "+ Add lookup". Reset when the
-// editor is opened, so viewing a dataset's Rules tab always starts collapsed as intended.
-let arRefsOpen = false;
+const _splitList = s => String(s || '').split(',').map(x => x.trim()).filter(Boolean);
+
+// ---- The Rules tab: the rules in effect, a row per column ------------------------------------
+// Closed, a column's row says what its rules are in plain words ("Required · Not in the future ·
+// Date (ISO 8601)") with its severity. Open, it edits them: a switch for each yes/no rule, a
+// control for severity, and a row for every other rule with its values. Nothing changes until
+// Save, which a bar at the foot of the window offers whenever there is something to save, and
+// changes not saved yet are still there after leaving the tab and coming back.
+//
+// It replaces a card per column of native checkboxes and drop-downs, a box per constraint and a
+// "Choose…" list to add one, all inside a box that scrolled on its own.
+const RX_TYPES = [['string', 'Text'], ['integer', 'Whole number'], ['decimal', 'Decimal'],
+                  ['boolean', 'True or false'], ['date', 'Date'], ['datetime', 'Date and time']];
+const RX_TYPE_ICO = {
+  string: '<path d="M5 7V5h14v2M12 5v14M9 19h6"/>',
+  integer: '<path d="M10 4 8 20M16 4l-2 16M5 9h15M4 15h15"/>',
+  decimal: '<path d="M5.5 18h.01"/><rect x="10" y="5" width="7" height="14" rx="3.5"/>',
+  boolean: '<rect x="3" y="8" width="18" height="8" rx="4"/><circle cx="16" cy="12" r="2"/>',
+  date: '<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16"/>',
+  datetime: '<circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/>',
+  '': '<path d="M9.5 9a2.5 2.5 0 1 1 3.4 2.3c-.6.3-.9.8-.9 1.5v.4M12 17h.01"/>',
+};
+const RX_FORMATS = {
+  email: 'Email address', uk_postcode: 'UK postcode', e164_phone: 'Phone number (E.164)',
+  iso_date: 'Date (ISO 8601)', iso_datetime: 'Date and time (ISO 8601)', uuid: 'UUID', url: 'Web address',
+  ipv4: 'IP address (IPv4)', iban: 'Bank account (IBAN)', uk_sort_code: 'UK sort code',
+  uk_nino: 'UK National Insurance number', country_code_iso2: 'Country code (ISO 3166)',
+  currency_code: 'Currency code (ISO 4217)', numeric_string: 'Digits only', alphanumeric: 'Letters and digits',
+};
+// Severity decides the gate, not the score: the score weighs a column's rules by their weight.
+const RX_SEV = [['blocker', 'Blocker', 'Any failure fails the quality gate'],
+                ['major', 'Major', 'Reported as a major failure; the gate can still pass'],
+                ['minor', 'Minor', 'Reported as a minor failure; the gate can still pass']];
+const RX_FLAGS = [['mandatory', 'Required', 'Every row has a value'], ['unique', 'Unique', 'No value appears twice'],
+                  ['not_future', 'Not in the future', 'No date after today']];
+// The rules with values. `for` is the types each suits; with no type set, all are offered.
+const RX_KINDS = {
+  format: { label: 'Format', sub: 'A known shape, such as an email address or a postcode', f: ['format'], for: ['string', 'date', 'datetime'] },
+  allowed_values: { label: 'Allowed values', sub: 'Only values from a list', f: ['allowed_values'], for: ['string', 'integer', 'boolean'] },
+  range: { label: 'Range', sub: 'A lowest value, a highest, or both', f: ['min', 'max'], for: ['integer', 'decimal'] },
+  date_range: { label: 'Date range', sub: 'The earliest date, the latest, or both', f: ['min_date', 'max_date'], for: ['date', 'datetime'] },
+  length: { label: 'Length', sub: 'How many characters a value has', f: ['min_length', 'max_length'], for: ['string'] },
+  regex: { label: 'Pattern', sub: 'A regular expression every value matches', f: ['regex'], for: ['string'] },
+  scale: { label: 'Decimal places', sub: 'How many digits after the point', f: ['scale'], for: ['decimal'] },
+};
+const RX_KIND_ORDER = ['format', 'allowed_values', 'range', 'date_range', 'length', 'regex', 'scale'];
+const rxDrafts = {};            // result prefix -> the editor with changes not saved yet
+let rxNow = null;               // the editor on screen, if any
+
+const _rxSet = v => !(v === undefined || v === null || v === '' || (Array.isArray(v) && !v.length));
+const _rxClone = o => JSON.parse(JSON.stringify(o));
+const _rxVals = v => Array.isArray(v) ? v.map(String) : _splitList(v);
+function _rxCanon(spec) {
+  const o = {};
+  Object.keys(spec || {}).sort().forEach(k => { if (_rxSet(spec[k])) o[k] = spec[k]; });
+  return JSON.stringify(o);
+}
+function _rxRefsCanon(s) {
+  const lk = (s.accuracyLookups || []).filter(l => l.col || (l.values || []).length);
+  return JSON.stringify([s.integrityRules || [], s.accuracy || {}, lk]);
+}
+function _rxStateCanon(s) {
+  const cols = {};
+  Object.keys(s.columns || {}).sort().forEach(c => { cols[c] = _rxCanon(s.columns[c]); });
+  return JSON.stringify([cols, (s.primaryKey || []).slice().sort(), _rxRefsCanon(s)]);
+}
+const _rxPk = (s, col) => (s.primaryKey || []).includes(col);
+function rxColDirty(rx, col) {
+  return _rxCanon(rx.state.columns[col]) !== _rxCanon(rx.base.columns[col]) || _rxPk(rx.state, col) !== _rxPk(rx.base, col);
+}
+function rxChanges(rx) {
+  const cols = Object.keys(rx.state.columns).filter(c => rxColDirty(rx, c));
+  const refs = _rxRefsCanon(rx.state) !== _rxRefsCanon(rx.base);
+  return { cols, refs, n: cols.length + (refs ? 1 : 0) };
+}
+function _rxIco(t) {
+  return `<span class="rx-ti" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" ` +
+    `stroke-linecap="round" stroke-linejoin="round">${RX_TYPE_ICO[t] || RX_TYPE_ICO['']}</svg></span>`;
+}
+const _rxNum = v => (typeof v === 'number' ? v.toLocaleString() : String(v));
+function _rxSpan(lo, hi, unit, from, upto) {
+  const a = _rxSet(lo), b = _rxSet(hi), u = n => unit ? ` ${unit}${Math.abs(+n) === 1 ? '' : 's'}` : '';
+  if (a && b) return String(lo) === String(hi) ? `Exactly ${_rxNum(lo)}${u(lo)}` : `${_rxNum(lo)} to ${_rxNum(hi)}${u(hi)}`;
+  if (a) return `${from || 'At least'} ${_rxNum(lo)}${u(lo)}`;
+  if (b) return `${upto || 'At most'} ${_rxNum(hi)}${u(hi)}`;
+  return '';
+}
+/** What a column's rules say, as chips: [text, tooltip, extra class]. */
+function rxChips(spec, pk) {
+  const c = [];
+  if (pk) c.push(['🔑 Key', 'Part of the primary key', 'key']);
+  RX_FLAGS.forEach(([f, l, d]) => { if (spec[f] === true) c.push([l, d]); });
+  if (_rxSet(spec.format)) c.push([RX_FORMATS[spec.format] || spec.format, _FX_FMT[spec.format] ? `For example ${_FX_FMT[spec.format]}` : '']);
+  const av = _rxVals(spec.allowed_values);
+  if (av.length) c.push([av.length === 1 ? `Only ${av[0]}` : `One of ${av.length} values`, av.join(', ')]);
+  const r = _rxSpan(spec.min, spec.max); if (r) c.push([r, 'Range']);
+  const d = _rxSpan(spec.min_date, spec.max_date, '', 'From', 'Until'); if (d) c.push([d, 'Date range']);
+  const l = _rxSpan(spec.min_length, spec.max_length, 'character'); if (l) c.push([l, 'Length']);
+  if (_rxSet(spec.regex)) c.push(['Pattern', String(spec.regex)]);
+  if (_rxSet(spec.scale)) c.push([`${spec.scale} decimal place${+spec.scale === 1 ? '' : 's'}`, 'Decimal places']);
+  if (_rxSet(spec.weight) && +spec.weight !== 1) c.push([`Weight ${spec.weight}`, 'How much its rules count in the score']);
+  return c;
+}
+const _rxRuleCount = spec => rxChips(spec, false).filter(([t]) => !/^Weight /.test(t)).length;
+
+// ---- Drawing ----
+function rxRowHtml(rx, col, i) {
+  const spec = rx.state.columns[col] || {}, open = rx.ui.open.includes(col), pk = _rxPk(rx.state, col);
+  const t = RX_TYPES.find(x => x[0] === spec.type), sev = spec.severity || 'major', dirty = rxColDirty(rx, col);
+  const chips = rxChips(spec, pk);
+  return `<div class="rx-col${open ? ' open' : ''}${dirty ? ' edited' : ''}" data-col="${esc(col)}" role="listitem">` +
+    `<button type="button" class="rx-row lngb" data-rx="toggle" aria-expanded="${open}" aria-controls="rx-ed-${i}">` +
+      `<span class="rx-chev" aria-hidden="true"></span>${_rxIco(spec.type)}` +
+      `<span class="rx-id"><span class="rx-name">${esc(col)}</span><span class="rx-type">${t ? t[1] : spec.type ? esc(spec.type) : 'No type set'}</span></span>` +
+      `<span class="rx-chips">${chips.length ? chips.map(([x, tip, cls]) => `<span class="rx-chip${cls ? ' ' + cls : ''}"${tip ? ` data-tip="${esc(tip)}"` : ''}>${esc(x)}</span>`).join('')
+        : '<span class="rx-none">No rules</span>'}</span>` +
+      (dirty ? '<span class="rx-mark" data-tip="Changed, and not saved yet">Edited</span>' : '') +
+      `<span class="rx-sev ${esc(sev)}"${spec.severity ? '' : ' data-default="1" data-tip="Major, the default"'}>${esc((RX_SEV.find(x => x[0] === sev) || [sev, sev])[1])}</span>` +
+    `</button>` +
+    `<div class="rx-ed" id="rx-ed-${i}"${open ? '' : ' hidden'}>${open ? rxEditorHtml(rx, col) : ''}</div></div>`;
+}
+function _rxMenu(label, items, cls) {
+  return `<div class="dsx-menu dsx-pop rx-pop${cls ? ' ' + cls : ''}" role="menu" aria-label="${esc(label)}" hidden>` + items.map(it =>
+    `<button type="button" role="${it.radio ? 'menuitemradio' : it.check ? 'menuitemcheckbox' : 'menuitem'}"` +
+    `${it.radio || it.check ? ` aria-checked="${!!it.on}"` : ''} class="dsx-mi lngb" ${it.attr} tabindex="-1">` +
+    `<span class="dsx-mi-ic" aria-hidden="true">${(it.radio || it.check) ? (it.on ? '✓' : '') : (it.ic || '')}</span>` +
+    `<span class="dsx-mi-t">${it.label}${it.sub ? `<small>${esc(it.sub)}</small>` : ''}</span></button>`).join('') + `</div>`;
+}
+function _rxSwitch(attrs, on, label, desc) {
+  return `<div class="rx-check rx-flag"><button type="button" role="switch" aria-checked="${!!on}" class="rx-sw lngb" ${attrs} ` +
+    `aria-label="${esc(label)}"><span class="rx-knob"></span></button><span class="rx-cl">${esc(label)}</span>` +
+    `<span class="rx-cd">${esc(desc)}</span></div>`;
+}
+const _rxTagSpans = (vals, attrs) => vals.map(v => `<span class="rx-tag">${esc(v)}<button type="button" class="rx-tag-x lngb" ` +
+  `data-rx="untag" ${attrs} data-v="${esc(v)}" aria-label="Remove ${esc(v)}">✕</button></span>`).join('');
+function _rxTags(vals, attrs, ph) {
+  return `<span class="rx-tags">${_rxTagSpans(vals, attrs)}` +
+    `<input class="rx-tag-in" type="text" data-rx="tagin" ${attrs} placeholder="${esc(ph)}" aria-label="${esc(ph)}" spellcheck="false"></span>`;
+}
+/** Rebuild a tag box's tags around its own input, which stays where it is (and keeps focus). Only
+ *  the tags are replaced, so a click already on its way to another control is not lost. */
+function _rxTagsFill(box, list, attrs) {
+  box.querySelectorAll('.rx-tag').forEach(x => x.remove());
+  box.querySelector('.rx-tag-in').insertAdjacentHTML('beforebegin', _rxTagSpans(list, attrs));
+}
+const _rxTagAttrs = el => el.dataset.ali != null ? `data-ali="${el.dataset.ali}"` : `data-f="${el.dataset.f || 'allowed_values'}"`;
+function _rxNumIn(spec, f, ph, label, o) {
+  o = o || {};
+  return `<input class="rx-in${o.cls ? ' ' + o.cls : ''}" type="${o.type || 'number'}"${o.step ? ` step="${o.step}"` : ''}` +
+    `${o.min != null ? ` min="${o.min}"` : ''} value="${esc(_rxSet(spec[f]) ? String(spec[f]) : '')}" placeholder="${esc(ph)}" ` +
+    `data-rx="field" data-f="${f}" aria-label="${esc(label)}">`;
+}
+function rxCheckRow(k, spec) {
+  const K = RX_KINDS[k];
+  let v = '';
+  if (k === 'range') v = _rxNumIn(spec, 'min', 'lowest', 'Lowest value') + '<span class="rx-to">to</span>' + _rxNumIn(spec, 'max', 'highest', 'Highest value');
+  else if (k === 'date_range') v = _rxNumIn(spec, 'min_date', '', 'Earliest date', { type: 'date', cls: 'rx-date' }) +
+    '<span class="rx-to">to</span>' + _rxNumIn(spec, 'max_date', '', 'Latest date', { type: 'date', cls: 'rx-date' });
+  else if (k === 'length') v = _rxNumIn(spec, 'min_length', 'fewest', 'Fewest characters', { step: 1, min: 0 }) +
+    '<span class="rx-to">to</span>' + _rxNumIn(spec, 'max_length', 'most', 'Most characters', { step: 1, min: 0 }) + '<span class="rx-unit">characters</span>';
+  else if (k === 'scale') v = _rxNumIn(spec, 'scale', 'places', 'Decimal places', { step: 1, min: 0, cls: 'rx-w' }) + '<span class="rx-unit">after the point</span>';
+  else if (k === 'regex') v = `<input class="rx-in rx-mono" type="text" value="${esc(spec.regex || '')}" placeholder="^[A-Z]{3}$" ` +
+    `data-rx="field" data-f="regex" aria-label="Pattern" spellcheck="false">`;
+  else if (k === 'format') {
+    const cur = spec.format || '';
+    v = `<span class="rx-mw"><button type="button" class="rx-pick lngb" data-rx="menu" data-f="format" aria-haspopup="menu" aria-expanded="false">` +
+        `<span>${esc(RX_FORMATS[cur] || cur || 'Choose a format')}</span><span class="rx-caret" aria-hidden="true">▾</span></button>` +
+        _rxMenu('Format', Object.keys(RX_FORMATS).map(f => ({ radio: true, on: cur === f, attr: `data-rxset="format" data-v="${f}"`,
+          label: esc(RX_FORMATS[f]), sub: _FX_FMT[f] ? `e.g. ${_FX_FMT[f]}` : '' })), 'rx-fmt') + `</span>` +
+      (_FX_FMT[cur] ? `<span class="rx-eg">e.g. ${esc(_FX_FMT[cur])}</span>` : '');
+  } else if (k === 'allowed_values') v = _rxTags(_rxVals(spec.allowed_values), 'data-f="allowed_values"', 'Add a value');
+  return `<div class="rx-check" data-kind="${k}"><span class="rx-slot" aria-hidden="true"></span><span class="rx-cl">${K.label}</span>` +
+    `<span class="rx-cv">${v}</span><button type="button" class="rx-x lngb" data-rx="drop" data-kind="${k}" ` +
+    `aria-label="Remove the ${esc(K.label.toLowerCase())} rule" data-tip="Remove this rule">✕</button></div>`;
+}
+function rxEditorHtml(rx, col) {
+  const spec = rx.state.columns[col] || {}, type = spec.type || '', sev = spec.severity || '';
+  const t = RX_TYPES.find(x => x[0] === type);
+  const typePick = `<span class="rx-mw"><button type="button" class="rx-pick lngb" data-rx="menu" data-f="type" aria-haspopup="menu" aria-expanded="false">` +
+    `${_rxIco(type)}<span>${t ? t[1] : type ? esc(type) : 'No type set'}</span><span class="rx-caret" aria-hidden="true">▾</span></button>` +
+    _rxMenu('Type', RX_TYPES.map(([v, l]) => ({ radio: true, on: type === v, attr: `data-rxset="type" data-v="${v}"`, label: esc(l) }))
+      .concat([{ radio: true, on: !type, attr: 'data-rxset="type" data-v=""', label: 'No type set' }])) + `</span>`;
+  const seg = `<span class="rx-seg" role="radiogroup" aria-label="Severity">` + RX_SEV.map(([v, l, d]) =>
+    `<button type="button" role="radio" aria-checked="${(sev || 'major') === v}" class="rx-segb ${v}${!sev && v === 'major' ? ' dflt' : ''} lngb" ` +
+    `data-rx="sev" data-v="${v}" data-tip="${esc(d + (!sev && v === 'major' ? ' (the default)' : ''))}">${l}</button>`).join('') + `</span>`;
+  const props = `<div class="rx-props">` +
+    `<div class="rx-prop"><span class="rx-pl">Type</span>${typePick}</div>` +
+    `<div class="rx-prop"><span class="rx-pl">Severity</span>${seg}</div>` +
+    `<div class="rx-prop"><span class="rx-pl">Weight</span><input class="rx-in rx-w" type="number" step="0.1" min="0" ` +
+      `value="${esc(_rxSet(spec.weight) ? String(spec.weight) : '')}" placeholder="1" data-rx="field" data-f="weight" ` +
+      `aria-label="Weight" data-tip="How much its rules count in the score. 1 is normal."></div></div>`;
+  const flags = RX_FLAGS.filter(([f]) => f !== 'not_future' || ['date', 'datetime'].includes(type) || spec[f] === true)
+    .map(([f, l, d]) => _rxSwitch(`data-rx="flag" data-f="${f}"`, spec[f] === true, l, d)).join('');
+  const kinds = RX_KIND_ORDER.filter(k => RX_KINDS[k].f.some(f => f in spec));
+  const addable = RX_KIND_ORDER.filter(k => !kinds.includes(k) && (!type || RX_KINDS[k].for.includes(type)));
+  const add = addable.length ? `<span class="rx-mw"><button type="button" class="rx-add lngb" data-rx="menu" data-f="add" aria-haspopup="menu" aria-expanded="false">` +
+    `＋ Add a rule</button>` + _rxMenu('Add a rule', addable.map(k => ({ attr: `data-rxadd="${k}"`, ic: '＋',
+      label: RX_KINDS[k].label, sub: RX_KINDS[k].sub }))) + `</span>` : '';
+  const dirty = rxColDirty(rx, col);
+  const foot = `<div class="rx-foot">${_rxSwitch('data-rx="pk"', _rxPk(rx.state, col), 'Primary key', 'Identifies each row, alone or with the other key columns')}` +
+    `<span class="rx-foot-acts">${dirty ? '<button type="button" class="linkbtn lngb" data-rx="undo">Undo changes</button>' : ''}` +
+    `${Object.keys(spec).some(k => _rxSet(spec[k])) ? '<button type="button" class="linkbtn lngb rx-danger" data-rx="clear">Remove every rule</button>' : ''}</span></div>`;
+  return props + `<div class="rx-checks"><div class="rx-hd">Rules</div>${flags}${kinds.map(k => rxCheckRow(k, spec)).join('')}${add}</div>` + foot;
+}
+function rxRefsHtml(rx) {
+  const s = rx.state, cols = Object.keys(s.columns), acc = s.accuracy || {};
+  const n = (s.integrityRules || []).length + (s.accuracyLookups || []).length + (acc.reference_uri ? 1 : 0);
+  const colSel = (sel, attrs) => `<select class="rx-in rx-sel" ${attrs}><option value="">Choose a column</option>` +
+    cols.map(c => `<option value="${esc(c)}"${c === sel ? ' selected' : ''}>${esc(c)}</option>`).join('') + `</select>`;
+  const ir = (s.integrityRules || []).map((r, i) => `<div class="rx-ref-row">` +
+    `<input class="rx-in" data-iri="${i}" data-irf="columns" value="${esc((r.columns || []).join(', '))}" placeholder="column" aria-label="Column whose values must exist elsewhere">` +
+    `<span class="rx-to">must exist in</span>` +
+    `<input class="rx-in rx-grow" data-iri="${i}" data-irf="reference_uri" value="${esc(r.reference_uri || '')}" placeholder="schema.table" aria-label="Reference table">` +
+    `<span class="rx-to">as</span>` +
+    `<input class="rx-in" data-iri="${i}" data-irf="reference_columns" value="${esc((r.reference_columns || []).join(', '))}" placeholder="its column" aria-label="Column in the reference table">` +
+    `<button type="button" class="rx-x lngb" data-rx="irdrop" data-i="${i}" aria-label="Remove this check">✕</button></div>`).join('');
+  const lk = (s.accuracyLookups || []).map((l, i) => `<div class="rx-ref-row">` +
+    colSel(l.col || '', `data-ali="${i}" data-alf="col" aria-label="Column"`) + `<span class="rx-to">is one of</span>` +
+    _rxTags(l.values || [], `data-ali="${i}"`, 'Add a correct value') +
+    `<button type="button" class="rx-x lngb" data-rx="aldrop" data-i="${i}" aria-label="Remove this list">✕</button></div>`).join('');
+  const field = (f, label, ph) => `<label class="rx-prop"><span class="rx-pl">${label}</span><input class="rx-in rx-grow" data-accf="${f}" ` +
+    `value="${esc(f === 'reference_uri' ? (acc[f] || '') : (acc[f] || []).join(', '))}" placeholder="${esc(ph)}"></label>`;
+  const none = t => `<p class="rx-none">${t}</p>`;
+  return `<details class="rx-refs"${rx.ui.refs ? ' open' : ''}><summary><span class="rx-chev" aria-hidden="true"></span>` +
+      `<span class="rx-refs-t">Reference checks</span><span class="rx-refs-n${n ? ' on' : ''}">${n ? `${n} set up` : 'Optional'}</span>` +
+      `<span class="rx-refs-d">Check values against other data, for the accuracy and referential integrity dimensions</span></summary>` +
+    `<div class="rx-refs-body">` +
+      `<section class="rx-ref"><h4>Must exist in another table</h4><p class="hint">A column's values must be found in a reference (master) table in the same warehouse.</p>` +
+        `${ir || none('None yet.')}<button type="button" class="rx-add lngb" data-rx="iradd">＋ Add a check</button></section>` +
+      `<section class="rx-ref"><h4>Lists of correct values</h4><p class="hint">A column and its full set of correct values. Anything outside the list counts as inaccurate.</p>` +
+        `${lk || none('None yet.')}<button type="button" class="rx-add lngb" data-rx="aladd">＋ Add a list</button></section>` +
+      `<section class="rx-ref"><h4>A system of record</h4><p class="hint">Join each row to a trusted table on its key, and check that it is there and that the compared columns agree.</p>` +
+        `<div class="rx-ref-row rx-sor">${field('reference_uri', 'Reference table', 'schema.table')}${field('join_on', 'Join on', 'key column')}${field('compare_columns', 'Compare', 'columns')}</div></section>` +
+    `</div></details>`;
+}
+function rxTopHtml(rx) {
+  const s = rx.state, cols = Object.keys(s.columns), ch = rxChanges(rx);
+  const rules = cols.reduce((a, c) => a + _rxRuleCount(s.columns[c] || {}), 0);
+  const pk = s.primaryKey || [];
+  const blk = cols.filter(c => (s.columns[c] || {}).severity === 'blocker').length;
+  const fb = (v, l, n) => `<button type="button" class="rx-fb lngb" data-rx="filter" data-v="${v}" aria-pressed="${rx.ui.filter === v}">${l}<span class="n">${n}</span></button>`;
+  const pkMenu = _rxMenu('Primary key', cols.map(c => ({ check: true, on: pk.includes(c), attr: `data-rxpk="${esc(c)}"`, label: esc(c) }))
+    .concat([{ attr: 'data-rxpk=""', ic: '∅', label: 'No primary key' }]), 'rx-pkm');
+  return `<div class="rx-top"><div class="rx-sum"><span><b>${cols.length}</b> column${cols.length === 1 ? '' : 's'}</span><span aria-hidden="true">·</span>` +
+      `<span><b>${rules}</b> rule${rules === 1 ? '' : 's'}</span><span aria-hidden="true">·</span><span>Primary key</span>` +
+      `<span class="rx-mw"><button type="button" class="rx-pick rx-pkb lngb" data-rx="menu" data-f="pk" aria-haspopup="menu" aria-expanded="false">` +
+      `<span>${pk.length ? pk.map(esc).join(' + ') : 'None'}</span><span class="rx-caret" aria-hidden="true">▾</span></button>${pkMenu}</span></div>` +
+    `<div class="rx-tools"><label class="rx-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">` +
+      `<circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6"/></svg><input type="search" data-rx="q" placeholder="Find a column" aria-label="Find a column" value="${esc(rx.ui.q)}"></label>` +
+      `<span class="rx-filt" role="group" aria-label="Show">${fb('all', 'All', cols.length)}${fb('blocker', 'Blockers', blk)}` +
+      `${ch.cols.length || rx.ui.filter === 'edited' ? fb('edited', 'Edited', ch.cols.length) : ''}</span>` +
+      `<button type="button" class="linkbtn lngb rx-all" data-rx="all">${cols.length && cols.every(c => rx.ui.open.includes(c)) ? 'Close all' : 'Open all'}</button></div></div>`;
+}
+function rxNotesHtml(rx) {
+  let h = '';
+  if (rx.ui.restored) h += `<div class="rx-note">Your changes from earlier are still here, not saved yet.</div>`;
+  if (rx.ui.dropped) h += `<div class="rx-note warn">The rules changed since you last edited them here, so your unsaved changes were set aside.</div>`;
+  if (rx.state.hasPending) h += `<div class="rx-note warn"><span>Changes are already queued for this dataset's next run. Saving here replaces them.</span>` +
+    `<button type="button" class="linkbtn lngb" data-rx="viewq">See them</button></div>`;
+  return h;
+}
+function rxBarHtml(rx) {
+  const ch = rxChanges(rx);
+  const names = ch.cols.slice(0, 3).map(esc).concat(ch.refs ? ['reference checks'] : []);
+  const more = ch.cols.length > 3 ? ` and ${ch.cols.length - 3} more` : '';
+  return `<span class="rx-bar-ico" aria-hidden="true"></span><span class="rx-bar-msg" role="status">` +
+    `<b>${ch.n} change${ch.n === 1 ? '' : 's'}</b> not saved yet: ${names.join(', ')}${more}</span>` +
+    `<span class="rx-bar-acts"><button type="button" class="dsx-btn lngb" data-rx="discard">Discard</button>` +
+    `<button type="button" class="dsx-btn primary lngb" data-rx="save">Save changes</button></span>`;
+}
+function rxPaint(rx) {
+  rx.cols = Object.keys(rx.state.columns);
+  const rows = rx.cols.map((c, i) => rxRowHtml(rx, c, i)).join('');
+  rx.root.innerHTML = `<div class="rx"><div class="rx-notes">${rxNotesHtml(rx)}</div>` +
+    `<div class="rx-topw">${rxTopHtml(rx)}</div>` +
+    `<p class="rx-intro">Open a column to change its rules. Nothing changes until you save, and saved rules apply on the dataset's next run.</p>` +
+    (rx.cols.length ? `<div class="rx-list" role="list">${rows}</div><p class="rx-none rx-nomatch" hidden></p>`
+      : `<p class="hint">No column rules are pinned for this dataset yet.</p>`) +
+    rxRefsHtml(rx) + `<div class="rx-bar" role="region" aria-label="Changes not saved yet" hidden></div></div>`;
+  rxFilter(rx);
+  rxBar(rx);
+}
+function _rxColEl(rx, col) { return [...rx.root.querySelectorAll('.rx-col')].find(e => e.dataset.col === col) || null; }
+/** Redraw one column, keeping focus on the control that had it (or on `want`). */
+function rxRedraw(rx, col, want) {
+  const el = _rxColEl(rx, col);
+  if (!el) return;
+  const a = document.activeElement, had = a && el.contains(a)
+    ? { rx: a.dataset.rx, f: a.dataset.f, kind: a.dataset.kind, v: a.dataset.v, row: a.classList.contains('rx-row') } : null;
+  const i = rx.cols.indexOf(col), tmp = document.createElement('div');
+  tmp.innerHTML = rxRowHtml(rx, col, i);
+  const nu = tmp.firstElementChild;
+  el.replaceWith(nu);
+  let f = want ? nu.querySelector(want) : null;
+  if (!f && had) f = had.row ? nu.querySelector('.rx-row') : [...nu.querySelectorAll('[data-rx]')].find(x => x.dataset.rx === had.rx &&
+    (x.dataset.f || '') === (had.f || '') && (x.dataset.kind || '') === (had.kind || '') && (!had.v || x.dataset.v === had.v));
+  if (f) f.focus({ preventScroll: true });
+  rxFilter(rx);
+}
+/** The summary line, the filters and the bar, after any change. */
+function rxTouched(rx) {
+  if (rxChanges(rx).n) rxDrafts[rx.prefix] = rx; else delete rxDrafts[rx.prefix];
+  const top = rx.root.querySelector('.rx-topw');
+  if (top) {
+    const q = top.querySelector('[data-rx="q"]'), typing = q && document.activeElement === q;
+    if (!typing) top.innerHTML = rxTopHtml(rx);
+  }
+  rxBar(rx);
+}
+function rxBar(rx, msg, cls) {
+  const bar = rx.root.querySelector('.rx-bar');
+  if (!bar) return;
+  clearTimeout(bar._t);
+  const ch = rxChanges(rx);
+  bar.className = 'rx-bar' + (cls ? ' ' + cls : '');
+  if (msg) { bar.hidden = false; bar.innerHTML = `<span class="rx-bar-ico" aria-hidden="true"></span><span class="rx-bar-msg" role="status">${msg}</span>`; return; }
+  bar.hidden = !ch.n;
+  if (ch.n) bar.innerHTML = rxBarHtml(rx);
+}
+function rxFilter(rx) {
+  const q = (rx.ui.q || '').trim().toLowerCase();
+  let shown = 0;
+  rx.root.querySelectorAll('.rx-col').forEach(el => {
+    const col = el.dataset.col, spec = rx.state.columns[col] || {};
+    const ok = (!q || col.toLowerCase().includes(q)) &&
+      (rx.ui.filter !== 'blocker' || spec.severity === 'blocker') && (rx.ui.filter !== 'edited' || rxColDirty(rx, col));
+    el.hidden = !ok;
+    if (ok) shown++;
+  });
+  const nm = rx.root.querySelector('.rx-nomatch');
+  if (nm) {
+    nm.hidden = !!shown || !rx.cols.length;
+    nm.textContent = q ? `No column matches “${rx.ui.q.trim()}”.` : 'No column matches this filter.';
+  }
+}
+
+// ---- Changing it ----
+function _rxAddTags(list, raw) {
+  _splitList(raw).forEach(v => { if (!list.includes(v)) list.push(v); });
+  return list;
+}
+function rxOnClick(rx, e) {
+  const t = e.target.closest('[data-rx], [data-rxset], [data-rxadd], [data-rxpk]');
+  const flagRow = !t && e.target.closest('.rx-flag');
+  if (flagRow) { const sw = flagRow.querySelector('.rx-sw'); if (sw) sw.click(); return; }
+  if (!t || !rx.root.contains(t)) return;
+  const colEl = t.closest('.rx-col'), col = colEl && colEl.dataset.col, spec = col ? rx.state.columns[col] : null;
+  if (t.hasAttribute('data-rxset')) {
+    dsxMenuHide(true);
+    if (!spec) return;
+    if (t.dataset.v) spec[t.dataset.rxset] = t.dataset.v; else delete spec[t.dataset.rxset];
+    rxRedraw(rx, col); rxTouched(rx);
+    return;
+  }
+  if (t.hasAttribute('data-rxadd')) {
+    dsxMenuHide(false);
+    if (!spec) return;
+    RX_KINDS[t.dataset.rxadd].f.forEach(f => { if (!(f in spec)) spec[f] = f === 'allowed_values' ? [] : ''; });
+    rxRedraw(rx, col, `.rx-check[data-kind="${t.dataset.rxadd}"] input, .rx-check[data-kind="${t.dataset.rxadd}"] .rx-pick`);
+    if (t.dataset.rxadd === 'format') { const p = _rxColEl(rx, col).querySelector('.rx-check[data-kind="format"] .rx-pick'); if (p) p.click(); }
+    rxTouched(rx);
+    return;
+  }
+  if (t.hasAttribute('data-rxpk')) {
+    const c = t.dataset.rxpk, pk = rx.state.primaryKey = (rx.state.primaryKey || []).slice();
+    if (!c) rx.state.primaryKey = [];
+    else if (pk.includes(c)) pk.splice(pk.indexOf(c), 1); else pk.push(c);
+    const keep = rx.root.querySelector('.rx-pkb') === document.activeElement || !!t.closest('.rx-pkm');
+    dsxMenuHide(false);
+    rx.cols.forEach(cc => { if (_rxColEl(rx, cc)) rxRedraw(rx, cc); });
+    rxTouched(rx);
+    if (keep) { const b = rx.root.querySelector('.rx-pkb'); if (b) b.focus({ preventScroll: true }); }
+    return;
+  }
+  switch (t.dataset.rx) {
+    case 'toggle': {
+      const o = rx.ui.open, i = o.indexOf(col);
+      if (i >= 0) o.splice(i, 1); else o.push(col);
+      rxRedraw(rx, col, '.rx-row');
+      const all = rx.root.querySelector('.rx-all');
+      if (all) all.textContent = rx.cols.every(c => o.includes(c)) ? 'Close all' : 'Open all';
+      const ed = _rxColEl(rx, col).querySelector('.rx-ed');
+      if (ed && !ed.hidden) dqIn(ed);
+      break;
+    }
+    case 'menu': {
+      const menu = t.parentElement.querySelector('.dsx-pop');
+      if (dsxMenuOpen && dsxMenuOpen.menu === menu) dsxMenuHide(true); else if (menu) dsxMenuShow(t, menu);
+      break;
+    }
+    case 'sev':
+      if (!spec) break;
+      spec.severity = t.dataset.v;
+      rxRedraw(rx, col); rxTouched(rx);
+      break;
+    case 'flag':
+      if (!spec) break;
+      if (spec[t.dataset.f] === true) delete spec[t.dataset.f]; else spec[t.dataset.f] = true;
+      rxRedraw(rx, col); rxTouched(rx);
+      break;
+    case 'pk': {
+      const pk = rx.state.primaryKey = (rx.state.primaryKey || []).slice();
+      if (pk.includes(col)) pk.splice(pk.indexOf(col), 1); else pk.push(col);
+      rxRedraw(rx, col); rxTouched(rx);
+      break;
+    }
+    case 'drop':
+      if (!spec) break;
+      RX_KINDS[t.dataset.kind].f.forEach(f => { delete spec[f]; });
+      rxRedraw(rx, col, '.rx-add'); rxTouched(rx);
+      break;
+    case 'untag': {
+      const box = t.closest('.rx-tags'), lk = t.dataset.ali != null;
+      const list = lk ? rx.state.accuracyLookups[+t.dataset.ali].values : (spec ? _rxVals(spec.allowed_values) : []);
+      const at = list.indexOf(t.dataset.v);
+      if (at >= 0) list.splice(at, 1);
+      if (!lk) { spec.allowed_values = list; rxSummary(rx, col); }
+      _rxTagsFill(box, list, _rxTagAttrs(t));
+      box.querySelector('.rx-tag-in').focus({ preventScroll: true });
+      rxTouched(rx);
+      break;
+    }
+    case 'undo':
+      rx.state.columns[col] = _rxClone(rx.base.columns[col] || {});
+      {
+        const pk = rx.state.primaryKey = (rx.state.primaryKey || []).filter(c => c !== col);
+        if (_rxPk(rx.base, col)) pk.push(col);
+      }
+      rxRedraw(rx, col, '.rx-row'); rxTouched(rx);
+      break;
+    case 'clear':
+      rx.state.columns[col] = {};
+      rxRedraw(rx, col, '.rx-add'); rxTouched(rx);
+      break;
+    case 'all': {
+      const all = rx.cols.length && rx.cols.every(c => rx.ui.open.includes(c));
+      rx.ui.open = all ? [] : rx.cols.slice();
+      rxPaint(rx);
+      const b = rx.root.querySelector('.rx-all'); if (b) b.focus({ preventScroll: true });
+      break;
+    }
+    case 'filter':
+      rx.ui.filter = t.dataset.v;
+      rx.root.querySelectorAll('.rx-fb').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === rx.ui.filter)));
+      rxFilter(rx);
+      break;
+    case 'iradd':
+      rx.state.integrityRules.push({ id: `fk_${rx.state.integrityRules.length + 1}`, columns: [], reference_uri: '', reference_columns: [], severity: 'major', weight: 1 });
+      rxRefs(rx, '[data-irf="columns"]'); rxTouched(rx);
+      break;
+    case 'irdrop': rx.state.integrityRules.splice(+t.dataset.i, 1); rxRefs(rx); rxTouched(rx); break;
+    case 'aladd': rx.state.accuracyLookups.push({ col: '', values: [] }); rxRefs(rx, 'select[data-alf="col"]'); rxTouched(rx); break;
+    case 'aldrop': rx.state.accuracyLookups.splice(+t.dataset.i, 1); rxRefs(rx); rxTouched(rx); break;
+    case 'save': rxSave(rx); break;
+    case 'discard': rxDiscard(rx); break;
+    case 'viewq': rxViewQueued(rx); break;
+  }
+}
+/** Redraw the reference checks, focusing the last match of `want` (a row just added). */
+function rxRefs(rx, want) {
+  const d = rx.root.querySelector('.rx-refs');
+  if (!d) return;
+  const tmp = document.createElement('div');
+  tmp.innerHTML = rxRefsHtml(rx);
+  const nu = tmp.firstElementChild;
+  d.replaceWith(nu);
+  if (want) { const all = nu.querySelectorAll(want); if (all.length) all[all.length - 1].focus({ preventScroll: true }); }
+}
+function rxOnInput(rx, e) {
+  const t = e.target;
+  if (t.dataset.rx === 'q') { rx.ui.q = t.value; rxFilter(rx); return; }
+  if (t.dataset.rx === 'field') {
+    const col = t.closest('.rx-col').dataset.col, spec = rx.state.columns[col];
+    if (!spec) return;
+    if (t.value === '') spec[t.dataset.f] = ''; else applyRuleEdit(spec, t.dataset.f, t.value);
+    rxSummary(rx, col); rxTouched(rx);
+    return;
+  }
+  if (t.dataset.iri != null) {
+    const r = rx.state.integrityRules[+t.dataset.iri]; if (!r) return;
+    r[t.dataset.irf] = t.dataset.irf === 'reference_uri' ? t.value.trim() : _splitList(t.value);
+  } else if (t.dataset.alf === 'col') {
+    const l = rx.state.accuracyLookups[+t.dataset.ali]; if (l) l.col = t.value.trim();
+  } else if (t.dataset.accf) {
+    rx.state.accuracy = rx.state.accuracy || {};
+    rx.state.accuracy[t.dataset.accf] = t.dataset.accf === 'reference_uri' ? t.value.trim() : _splitList(t.value);
+  } else return;
+  rxTouched(rx);
+}
+/** Just the closed row's chips and marks, so typing in a field never loses its place. */
+function rxSummary(rx, col) {
+  const el = _rxColEl(rx, col);
+  if (!el) return;
+  const tmp = document.createElement('div');
+  tmp.innerHTML = rxRowHtml(rx, col, rx.cols.indexOf(col));
+  const nu = tmp.firstElementChild;
+  el.querySelector('.rx-row').innerHTML = nu.querySelector('.rx-row').innerHTML;
+  el.classList.toggle('edited', nu.classList.contains('edited'));
+  const fa = el.querySelector('.rx-foot-acts'), nfa = nu.querySelector('.rx-foot-acts');
+  if (fa && nfa) fa.innerHTML = nfa.innerHTML;
+}
+function rxTagKey(rx, e) {
+  const t = e.target;
+  if (t.dataset.rx !== 'tagin') return;
+  // Typed values become tags on Enter or a comma, and on leaving the box. The tags are rebuilt
+  // in place around the box, so focus stays in it (or goes wherever the reader moved it).
+  const commit = () => {
+    const val = t.value;
+    if (!val.trim()) return false;
+    t.value = '';
+    let list;
+    if (t.dataset.ali != null) {
+      const l = rx.state.accuracyLookups[+t.dataset.ali];
+      list = l.values = _rxAddTags(l.values || [], val);
+    } else {
+      const col = t.closest('.rx-col').dataset.col, spec = rx.state.columns[col];
+      list = spec.allowed_values = _rxAddTags(_rxVals(spec.allowed_values), val);
+      rxSummary(rx, col);
+    }
+    _rxTagsFill(t.parentElement, list, _rxTagAttrs(t));
+    rxTouched(rx);
+    return true;
+  };
+  if (e.type === 'focusout') { commit(); return; }
+  if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); commit(); }
+  else if (e.key === 'Backspace' && !t.value) {
+    const last = [...t.parentElement.querySelectorAll('.rx-tag-x')].pop();
+    if (last) { e.preventDefault(); last.click(); }
+  }
+}
+
+// ---- Saving it ----
+async function rxSave(rx) {
+  const s = rx.state, columns = {};
+  for (const [c, spec] of Object.entries(s.columns)) {
+    const clean = {};
+    for (const [k, v] of Object.entries(spec || {})) if (_rxSet(v)) clean[k] = v;
+    if (Object.keys(clean).length) columns[c] = clean;
+  }
+  // Keep only well-formed integrity rules (a child column + a reference table).
+  const integrity = (s.integrityRules || [])
+    .filter(r => (r.columns || []).length && (r.reference_uri || '').trim())
+    .map((r, i) => ({ id: r.id || `fk_${i + 1}`, columns: r.columns, reference_uri: r.reference_uri.trim(),
+      reference_columns: (r.reference_columns && r.reference_columns.length) ? r.reference_columns : r.columns,
+      severity: r.severity || 'major', weight: r.weight || 1 }));
+  const acc = s.accuracy || {}, lookups = {};
+  (s.accuracyLookups || []).forEach(l => { if (l.col && (l.values || []).length) lookups[l.col] = l.values; });
+  const accuracy = { ...acc, reference_uri: (acc.reference_uri || '').trim(),
+    join_on: acc.join_on || [], compare_columns: acc.compare_columns || [], lookups };
+  // The key in the dataset's own column casing (FL_DATE -> fl_date), so a case mismatch does not
+  // quietly leave the key matching no column.
+  const colCase = {};
+  Object.keys(s.columns || {}).forEach(c => { colCase[c.toLowerCase()] = c; });
+  const primary_key = (s.primaryKey || []).map(x => colCase[String(x).toLowerCase()] || x);
+  rx.root.querySelectorAll('.rx-bar button').forEach(b => { b.disabled = true; });
+  const sv = rx.root.querySelector('.rx-bar [data-rx="save"]'); if (sv) sv.textContent = 'Saving…';
+  try {
+    await postJSON(`${API_BASE}/data-quality/save-ruleset`, HEADERS,
+      { result_prefix: rx.prefix, columns, primary_key, integrity_rules: integrity, accuracy, actor: EMAIL || undefined });
+  } catch (e) {
+    rxBar(rx);
+    const m = rx.root.querySelector('.rx-bar .rx-bar-msg');
+    if (m) { m.innerHTML = `<b>Not saved.</b> ${esc(e.message)}`; rx.root.querySelector('.rx-bar').classList.add('err'); }
+    return;
+  }
+  rx.base = _rxClone(s);
+  s.hasPending = true;
+  delete rxDrafts[rx.prefix];
+  rx.ui.restored = rx.ui.dropped = false;
+  rxPaint(rx);
+  rxBar(rx, '<b>Saved.</b> The next run of this dataset uses these rules.', 'ok');
+  const bar = rx.root.querySelector('.rx-bar');
+  bar._t = setTimeout(() => rxBar(rx), 4000);
+  refreshDatasetQueued(rx.prefix);
+}
+async function rxDiscard(rx) {
+  const n = rxChanges(rx).n;
+  if (!n || !await dqConfirm(`Discard ${n === 1 ? 'this change' : `these ${n} changes`}? The rules go back to how they are in effect now.`,
+    { title: 'Discard changes', danger: true, okLabel: 'Discard' })) return;
+  const pend = rx.state.hasPending;
+  rx.state = _rxClone(rx.base);
+  rx.state.hasPending = pend;
+  delete rxDrafts[rx.prefix];
+  rx.ui.restored = rx.ui.dropped = false;
+  rxPaint(rx);
+}
+async function rxViewQueued(rx) {
+  let r = null;
+  try { r = await dsxResult(rx.prefix, true); } catch (e) { /* the modal says there are no details */ }
+  openPinRulesModal((r && r.pendingPinRules) || {}, { by: r && r.pendingPinBy, at: r && r.pendingPinAt });
+}
+/** The queued state changed (rules saved or pinned elsewhere): the editor's note follows. */
+function rxQueued(prefix, r) {
+  const rx = rxNow;
+  if (!rx || rx.prefix !== prefix || !rx.root.isConnected || !r) return;
+  if (!!r.pendingPin === !!rx.state.hasPending) return;
+  rx.state.hasPending = !!r.pendingPin;
+  rx.base.hasPending = rx.state.hasPending;
+  const n = rx.root.querySelector('.rx-notes');
+  if (n) n.innerHTML = rxNotesHtml(rx);
+}
+// Leaving the page with rules edited and not saved asks first, as a closing editor would.
+window.addEventListener('beforeunload', e => {
+  if (Object.values(rxDrafts).some(rx => rxChanges(rx).n)) { e.preventDefault(); e.returnValue = ''; }
+});
 
 async function editActiveRules(prefix, outEl) {
   outEl.innerHTML = dqSkeleton('Loading the active ruleset', 5);
@@ -6777,230 +7551,38 @@ async function editActiveRules(prefix, outEl) {
   }
   const state = {
     columns: norm, primaryKey: (data.primaryKey || []).slice(), hasPending: !!data.hasPending,
-    integrityRules: JSON.parse(JSON.stringify(data.integrityRules || [])),
-    accuracy: JSON.parse(JSON.stringify(data.accuracy || {})),
+    integrityRules: _rxClone(data.integrityRules || []),
+    accuracy: _rxClone(data.accuracy || {}),
     // Lookups edited as ordered rows, folded back to an object on save.
     accuracyLookups: Object.entries((data.accuracy || {}).lookups || {})
-      .map(([col, vals]) => ({ col, values: Array.isArray(vals) ? vals.slice() : [] })),
+      .map(([col, vals]) => ({ col, values: Array.isArray(vals) ? vals.map(String) : [] })),
   };
-  // Opening the editor for a dataset starts the optional block COLLAPSED, whatever the reader
-  // last expanded on another dataset. The flag only survives the in-place rerender()s.
-  arRefsOpen = false;
-  renderActiveRulesEditor(state, outEl, prefix);
-}
-const _splitList = s => String(s || '').split(',').map(x => x.trim()).filter(Boolean);
-function _refsSection(state) {
-  const irows = (state.integrityRules || []).map((r, i) => `
-    <div class="ar-ref-row">
-      <input class="rule-edit-in ir-in" data-iri="${i}" data-irf="columns" placeholder="column(s)" value="${esc((r.columns || []).join(', '))}" style="min-width:130px;">
-      <span class="hint">must exist in</span>
-      <input class="rule-edit-in ir-in" data-iri="${i}" data-irf="reference_uri" placeholder="schema.table" value="${esc(r.reference_uri || '')}" style="min-width:150px;">
-      <input class="rule-edit-in ir-in" data-iri="${i}" data-irf="reference_columns" placeholder="ref column(s)" value="${esc((r.reference_columns || []).join(', '))}" style="min-width:130px;">
-      <button type="button" class="ar-field-x ir-remove" data-iri="${i}" title="Remove rule">✕</button>
-    </div>`).join('') || `<p class="hint" style="margin:0 0 6px;">No integrity rules yet.</p>`;
-  const acc = state.accuracy || {};
-  const cols = Object.keys(state.columns || {});
-  const colOptions = (sel) => `<option value="">column…</option>` +
-    cols.map(c => `<option value="${esc(c)}"${c === sel ? ' selected' : ''}>${esc(c)}</option>`).join('');
-  const lrows = (state.accuracyLookups || []).map((l, i) => `
-    <div class="ar-ref-row">
-      <select class="rule-edit-in al-in" data-ali="${i}" data-alf="col" style="min-width:160px;">${colOptions(l.col || '')}</select>
-      <input class="rule-edit-in al-in" data-ali="${i}" data-alf="values" placeholder="allowed values, comma-separated" value="${esc((l.values || []).join(', '))}" style="flex:1;min-width:240px;">
-      <button type="button" class="ar-field-x al-remove" data-ali="${i}" title="Remove lookup">✕</button>
-    </div>`).join('') || `<p class="hint" style="margin:0 0 6px;">No accuracy lookups yet.</p>`;
-  // Collapsed by default, and a <details> to match the identical block on the source form
-  // (#srcRefs). It is three stacked sub-forms that are OPTIONAL and usually empty, so expanded
-  // it pushed the auto-detected rules - the thing the tab is actually for - off the screen.
-  // A count in the summary so anything already configured is visible without opening it.
-  const _arN = (state.accuracyLookups || []).length + (state.integrityRules || []).length
-             + (acc.reference_uri ? 1 : 0);
-  return `<details class="ar-refs"${arRefsOpen ? ' open' : ''}>
-      <summary style="cursor:pointer;font-weight:600;" class="ar-con-label">Accuracy &amp; referential integrity <span style="text-transform:none;font-weight:400;color:var(--muted);">${_arN ? `(${_arN} configured)` : '(optional)'}</span></summary>
-      <p class="hint" style="margin:8px 0 12px;">Added on top of the auto-detected rules - leave empty to skip. These light up the Accuracy and Referential Integrity dimensions.</p>
-      <div class="ar-con-label">Accuracy - authoritative lookups</div>
-      <p class="hint" style="margin:0 0 8px;">A column and its full set of allowed values - anything outside the list counts as inaccurate.</p>
-      <div class="ar-al-list">${lrows}</div>
-      <div class="ar-add"><button type="button" class="btn-sm al-add">＋ Add lookup</button></div>
-      <div class="ar-con-label" style="margin-top:16px;">Referential integrity</div>
-      <p class="hint" style="margin:0 0 8px;">A column's values must exist in a reference (master) table in the same warehouse.</p>
-      <div class="ar-ir-list">${irows}</div>
-      <div class="ar-add"><button type="button" class="btn-sm ir-add">＋ Add integrity rule</button></div>
-      <div class="ar-con-label" style="margin-top:16px;">Accuracy - system of record</div>
-      <p class="hint" style="margin:0 0 8px;">Join rows to a reference table on key column(s); checks they exist and that the compared column(s) agree.</p>
-      <div class="ar-fields">
-        <span class="rule-edit-field"><label>Reference table</label><input class="rule-edit-in acc-in" data-accf="reference_uri" placeholder="schema.table" value="${esc(acc.reference_uri || '')}"></span>
-        <span class="rule-edit-field"><label>Join on (keys)</label><input class="rule-edit-in acc-in" data-accf="join_on" placeholder="col(s)" value="${esc((acc.join_on || []).join(', '))}"></span>
-        <span class="rule-edit-field"><label>Compare columns</label><input class="rule-edit-in acc-in" data-accf="compare_columns" placeholder="col(s)" value="${esc((acc.compare_columns || []).join(', '))}"></span>
-      </div>
-    </details>`;
-}
-// Type / Severity / Weight are column PROPERTIES (always present, no remove); everything
-// else in RULE_FIELD_ORDER is a pass/fail CONSTRAINT (removable, its own box).
-const AR_PROP_FIELDS = ['type', 'severity', 'weight'];
-function _activeTypedField(col, f, spec, removable) {
-  const meta = RULE_FIELD_META[f], id = `ar-${col}-${f}`;
-  let input;
-  if (meta.type === 'select') {
-    input = `<select id="${id}" class="rule-edit-in ar-in" data-arcol="${esc(col)}" data-arf="${f}">` +
-      [`<option value="">(none)</option>`].concat(meta.options.map(o => `<option value="${esc(o)}"${String(o) === String(spec[f]) ? ' selected' : ''}>${esc(o)}</option>`)).join('') + `</select>`;
-  } else {
-    const extra = (meta.step ? ` step="${meta.step}"` : '') + (meta.min !== undefined ? ` min="${meta.min}"` : '');
-    const shown = (meta.list && Array.isArray(spec[f])) ? spec[f].join(', ') : spec[f];
-    input = `<input id="${id}" class="rule-edit-in ar-in" type="${meta.type}"${extra} value="${esc(String(shown == null ? '' : shown))}" data-arcol="${esc(col)}" data-arf="${f}">`;
-  }
-  const x = removable
-    ? `<button type="button" class="ar-field-x" data-arcol="${esc(col)}" data-arf="${f}" title="Remove this constraint" aria-label="Remove ${esc(meta.label)}">✕</button>` : '';
-  return `<span class="rule-edit-field"><label for="${id}">${esc(meta.label)}${x}</label>${input}</span>`;
-}
-function _activeRuleCard(col, spec) {
-  const flags = Object.entries(RULE_BOOL_FIELDS).map(([bf, label]) =>
-    `<label class="ar-flag"><input type="checkbox" class="ar-bool" data-arcol="${esc(col)}" data-arf="${bf}"${spec[bf] === true ? ' checked' : ''}> ${esc(label)}</label>`).join('');
-  const props = AR_PROP_FIELDS.filter(f => f in spec).map(f => _activeTypedField(col, f, spec, false));
-  const conFields = RULE_FIELD_ORDER.filter(f => !AR_PROP_FIELDS.includes(f) && f in spec);
-  const cons = conFields.map(f => `<div class="ar-constraint">${_activeTypedField(col, f, spec, true)}</div>`).join('');
-  const conBlock = cons
-    ? `<div class="ar-con-label">Constraints</div><div class="ar-cons">${cons}</div>`
-    : `<div class="ar-con-label">Constraints</div><div class="ar-empty">None - add one below.</div>`;
-  // Only unset CONSTRAINT fields are addable (properties are always present).
-  const unset = RULE_FIELD_ORDER.filter(f => !AR_PROP_FIELDS.includes(f) && !(f in spec));
-  const addSel = unset.length
-    ? `<div class="ar-add">＋ Add constraint <select class="ar-add-sel" data-arcol="${esc(col)}">` +
-        `<option value="">Choose…</option>` + unset.map(f => `<option value="${f}">${esc(RULE_FIELD_META[f].label)}</option>`).join('') +
-      `</select></div>` : '';
-  return `<div class="ar-card">
-      <div class="ar-card-head"><strong>${esc(col)}</strong>
-        <button type="button" class="linkbtn ar-remove" data-arcol="${esc(col)}">Remove all rules</button></div>
-      <div class="ar-flags">${flags}</div>
-      ${props.length ? `<div class="ar-props">${props.join('')}</div>` : ''}
-      ${conBlock}${addSel}
-    </div>`;
-}
-function renderActiveRulesEditor(state, outEl, prefix) {
-  const cols = Object.keys(state.columns);
-  const pendWarn = state.hasPending
-    ? `<p class="hint" style="color:var(--run);">You already have queued changes for this dataset - saving here replaces them.</p>` : '';
-  const cards = cols.map(col => _activeRuleCard(col, state.columns[col])).join('')
-    || `<p class="hint">No column rules are currently pinned for this dataset.</p>`;
-  outEl.innerHTML = `<div class="rules-review">
-      <p class="hint">These are the rules currently in effect. Edit a value, toggle a flag, add or remove a constraint, or set the primary key. Changes apply on the next run.</p>
-      ${pendWarn}
-      <div class="rule-edit-field" style="margin-bottom:12px;max-width:320px;"><label for="arPk">Primary key</label>
-        <select id="arPk" class="rule-edit-in ar-in" data-arpk="1"><option value="">(none)</option>${Object.keys(state.columns || {}).map(c => `<option value="${esc(c)}"${(state.primaryKey || [])[0] === c ? ' selected' : ''}>${esc(c)}</option>`).join('')}</select></div>
-      <div class="ar-list">${cards}</div>
-      ${_refsSection(state)}
-      <div class="actions" style="margin-top:14px;align-items:center;">
-        <button type="button" class="ar-save">Save changes</button>
-        <span class="hint" id="arNote">Edits apply on the next assessment of this dataset (no new AI call).</span>
-      </div>
-    </div>`;
-  // Re-render in place WITHOUT losing the reader's position in the rules list.
-  const rerender = () => {
-    const list = outEl.querySelector('.ar-list');
-    const top = list ? list.scrollTop : 0;
-    renderActiveRulesEditor(state, outEl, prefix);
-    const nl = outEl.querySelector('.ar-list');
-    if (nl) nl.scrollTop = top;
-  };
-  outEl.querySelectorAll('.ar-in').forEach(el => el.addEventListener('input', () => {
-    if (el.dataset.arpk) { state.primaryKey = el.value ? [el.value] : []; return; }
-    const col = el.dataset.arcol, f = el.dataset.arf;
-    if (state.columns[col]) applyRuleEdit(state.columns[col], f, el.value);
-  }));
-  outEl.querySelectorAll('.ar-bool').forEach(cb => cb.addEventListener('change', () => {
-    const col = cb.dataset.arcol, f = cb.dataset.arf;
-    if (!state.columns[col]) return;
-    if (cb.checked) state.columns[col][f] = true; else delete state.columns[col][f];
-  }));
-  outEl.querySelectorAll('.ar-add-sel').forEach(sel => sel.addEventListener('change', () => {
-    const col = sel.dataset.arcol, f = sel.value;
-    if (!f || !state.columns[col]) return;
-    state.columns[col][f] = '';                          // blank input to fill in
-    rerender();
-  }));
-  outEl.querySelectorAll('.ar-field-x').forEach(b => b.addEventListener('click', () => {
-    const col = b.dataset.arcol, f = b.dataset.arf;
-    if (state.columns[col]) delete state.columns[col][f];
-    rerender();
-  }));
-  outEl.querySelectorAll('.ar-remove').forEach(b => b.addEventListener('click', () => {
-    delete state.columns[b.dataset.arcol];
-    rerender();
-  }));
-  // Referential-integrity rule rows + accuracy reference config.
-  outEl.querySelectorAll('.ir-in').forEach(el => el.addEventListener('input', () => {
-    const r = state.integrityRules[+el.dataset.iri]; if (!r) return;
-    const f = el.dataset.irf;
-    r[f] = (f === 'reference_uri') ? el.value.trim() : _splitList(el.value);
-  }));
-  outEl.querySelectorAll('.ir-remove').forEach(b => b.addEventListener('click', () => {
-    state.integrityRules.splice(+b.dataset.iri, 1); rerender();
-  }));
-  const irAdd = outEl.querySelector('.ir-add');
-  if (irAdd) irAdd.addEventListener('click', () => {
-    state.integrityRules.push({ id: `fk_${state.integrityRules.length + 1}`, columns: [], reference_uri: '', reference_columns: [], severity: 'major', weight: 1 });
-    rerender();
-  });
-  outEl.querySelectorAll('.acc-in').forEach(el => el.addEventListener('input', () => {
-    const f = el.dataset.accf;
-    state.accuracy = state.accuracy || {};
-    state.accuracy[f] = (f === 'reference_uri') ? el.value.trim() : _splitList(el.value);
-  }));
-  outEl.querySelectorAll('.al-in').forEach(el => el.addEventListener('input', () => {
-    const l = state.accuracyLookups[+el.dataset.ali]; if (!l) return;
-    const f = el.dataset.alf;
-    l[f] = (f === 'col') ? el.value.trim() : _splitList(el.value);
-  }));
-  outEl.querySelectorAll('.al-remove').forEach(b => b.addEventListener('click', () => {
-    state.accuracyLookups.splice(+b.dataset.ali, 1); rerender();
-  }));
-  const alAdd = outEl.querySelector('.al-add');
-  if (alAdd) alAdd.addEventListener('click', () => { state.accuracyLookups.push({ col: '', values: [] }); rerender(); });
-  const arDet = outEl.querySelector('details.ar-refs');
-  if (arDet) arDet.addEventListener('toggle', () => { arRefsOpen = arDet.open; });
-  const saveBtn = outEl.querySelector('.ar-save');
-  if (saveBtn) saveBtn.addEventListener('click', () => saveActiveRules(prefix, state, saveBtn, outEl.querySelector('#arNote')));
-}
-async function saveActiveRules(prefix, state, btn, note) {
-  const columns = {};
-  for (const [c, spec] of Object.entries(state.columns)) {
-    const clean = {};
-    for (const [k, v] of Object.entries(spec || {})) {
-      if (v === null || v === undefined || v === '' || (Array.isArray(v) && !v.length)) continue;
-      clean[k] = v;
+  const loaded = _rxStateCanon(state);
+  let rx = { prefix, root: outEl, state, base: _rxClone(state), loaded, ui: { open: [], q: '', filter: 'all', refs: false } };
+  // Changes not saved last time are put back, unless the rules moved underneath them meanwhile.
+  const draft = rxDrafts[prefix];
+  if (draft && rxChanges(draft).n) {
+    if (draft.loaded === loaded) {
+      rx = Object.assign(draft, { root: outEl });
+      rx.state.hasPending = rx.base.hasPending = state.hasPending;
+      rx.ui.restored = true;
+      rx.ui.dropped = false;
+    } else {
+      delete rxDrafts[prefix];
+      rx.ui.dropped = true;
     }
-    if (Object.keys(clean).length) columns[c] = clean;
   }
-  // Keep only well-formed integrity rules (a child column + a reference table).
-  const integrity = (state.integrityRules || [])
-    .filter(r => (r.columns || []).length && (r.reference_uri || '').trim())
-    .map((r, i) => ({ id: r.id || `fk_${i + 1}`, columns: r.columns,
-      reference_uri: r.reference_uri.trim(),
-      reference_columns: (r.reference_columns && r.reference_columns.length) ? r.reference_columns : r.columns,
-      severity: r.severity || 'major', weight: r.weight || 1 }));
-  const acc = state.accuracy || {};
-  const lookups = {};
-  (state.accuracyLookups || []).forEach(l => { if (l.col && (l.values || []).length) lookups[l.col] = l.values; });
-  const accuracy = { ...acc,
-    reference_uri: (acc.reference_uri || '').trim(),
-    join_on: acc.join_on || [], compare_columns: acc.compare_columns || [], lookups };
-  // Normalise the primary key to the dataset's actual column casing (e.g. FL_DATE -> fl_date),
-  // so a case mismatch doesn't silently make the key match no column.
-  const colCase = {};
-  Object.keys(state.columns || {}).forEach(c => { colCase[c.toLowerCase()] = c; });
-  const primary_key = (state.primaryKey || []).map(x => colCase[String(x).toLowerCase()] || x);
-  const old = btn.textContent; btn.disabled = true; btn.textContent = 'Saving…';
-  try {
-    await postJSON(`${API_BASE}/data-quality/save-ruleset`, HEADERS,
-      { result_prefix: prefix, columns, primary_key,
-        integrity_rules: integrity, accuracy, actor: EMAIL || undefined });
-    btn.textContent = 'Saved ✓';
-    if (note) { note.textContent = 'Saved - your next assessment of this dataset will use these rules.'; }
-    // Briefly show "Saved ✓", then close the editor and surface the queued-rules chip.
-    if (typeof closeDatasetRulesPanel === 'function') setTimeout(closeDatasetRulesPanel, 700);
-  } catch (e) {
-    btn.disabled = false; btn.textContent = old;
-    if (note) note.textContent = e.message;
-  }
+  rxNow = rx;
+  rxPaint(rx);
+  if (outEl._rxWired) { outEl._rx = rx; return; }
+  outEl._rxWired = true;
+  outEl._rx = rx;
+  outEl.addEventListener('click', e => { if (outEl._rx) rxOnClick(outEl._rx, e); });
+  outEl.addEventListener('input', e => { if (outEl._rx) rxOnInput(outEl._rx, e); });
+  outEl.addEventListener('change', e => { if (outEl._rx && e.target.tagName === 'SELECT') rxOnInput(outEl._rx, e); });
+  outEl.addEventListener('keydown', e => { if (outEl._rx) rxTagKey(outEl._rx, e); });
+  outEl.addEventListener('focusout', e => { if (outEl._rx && e.target.dataset && e.target.dataset.rx === 'tagin') rxTagKey(outEl._rx, e); });
+  outEl.addEventListener('toggle', e => { if (outEl._rx && e.target.classList && e.target.classList.contains('rx-refs')) outEl._rx.ui.refs = e.target.open; }, true);
 }
 
 // --------------------------------------------------------------------------- //
@@ -10759,8 +11341,8 @@ async function loadDsScores(panel, prefix) {
 
 async function loadDsRules(panel, prefix) {
   panel.innerHTML =
-    `<div class="actions" style="margin-bottom:12px;">${aiBtn('Review rules with AI', 'id="dsReviewRules"')}` +
-    `<span id="dashQueued" style="display:none;align-items:center;gap:8px;"></span></div>` +
+    `<div class="rx-assist">${aiBtn('Review rules with AI', 'id="dsReviewRules"')}` +
+    `<span class="hint">Claude reads these rules against the data they came from and suggests changes, which you can edit before pinning.</span></div>` +
     // The review opens in its own panel above the rules in effect, so both can be read together.
     `<div id="dsReviewOut" class="ai-out" hidden></div>` +
     `<div id="dsRulesBody">${dqSkeleton('Loading the active ruleset', 5)}</div>`;
@@ -13134,13 +13716,15 @@ function renderTrends(d) {
 
 // Show/refresh the "Queued rules" chip + View button next to the dataset's rule buttons.
 async function refreshDatasetQueued(prefix) {
-  const el = $('#dashQueued');
-  if (!el || !prefix) return;
-  el.style.display = 'none'; el.innerHTML = '';
+  if (!prefix) return;
   let r;
   try { r = await dsxResult(prefix, true); }        // fresh: rules may have been pinned since
   catch (e) { return; }
   if (dashSelected && dashSelected.prefix === prefix) updateDetailTrust(dashSelected.key);   // its Rules chip
+  rxQueued(prefix, r);                               // and the Rules tab's note
+  const el = $('#dashQueued');
+  if (!el) return;
+  el.style.display = 'none'; el.innerHTML = '';
   if (!r || !r.pendingPin) return;
   el.style.display = 'inline-flex';
   el.innerHTML = `<span class="tag info-tag" data-tip="Rules are pinned for this dataset and apply on its next run">✎ Queued rules</span>` +
@@ -14179,41 +14763,6 @@ function applyRuleEdit(obj, f, raw) {
     obj[f] = raw;
   }
 }
-// Build an augment fragment for a brand-new / promoted rule of a given kind + column.
-const ADD_RULE_KINDS = [
-  ['range', 'Range (min/max)'], ['date_range', 'Date range'], ['length', 'Length'],
-  ['format', 'Format'], ['allowed_values', 'Allowed values'], ['type', 'Type'],
-  ['regex', 'Pattern (regex)'], ['scale', 'Decimal places'], ['mandatory', 'Mandatory'],
-  ['unique', 'Unique'], ['severity', 'Severity only'],
-];
-const ADD_KIND_FIELDS = {
-  range: ['min', 'max'], date_range: ['min_date', 'max_date'], length: ['min_length', 'max_length'],
-  format: ['format'], allowed_values: ['allowed_values'], type: ['type'], regex: ['regex'],
-  scale: ['scale'], mandatory: ['severity'], unique: [], severity: ['severity'],
-};
-function buildRuleAugment(kind, col, vals) {
-  const d = {};
-  if (kind === 'mandatory') d.mandatory = true;
-  if (kind === 'unique') d.unique = true;
-  for (const f of (ADD_KIND_FIELDS[kind] || [])) applyRuleEdit(d, f, vals[f] != null ? vals[f] : '');
-  return (Object.keys(d).length && col) ? { columns: { [col]: d } } : null;
-}
-function _addFieldControl(f) {
-  const meta = RULE_FIELD_META[f]; if (!meta) return '';
-  const id = `addf-${f}`;
-  if (meta.type === 'select') {
-    const opts = [`<option value="">(choose)</option>`]
-      .concat(meta.options.map(o => `<option value="${esc(o)}">${esc(o)}</option>`)).join('');
-    return `<span class="rule-edit-field"><label for="${id}">${esc(meta.label)}</label><select id="${id}" class="rule-edit-in addf" data-f="${f}">${opts}</select></span>`;
-  }
-  const extra = (meta.step ? ` step="${meta.step}"` : '') + (meta.min !== undefined ? ` min="${meta.min}"` : '')
-    + (meta.wide ? ` style="min-width:220px;"` : '');
-  return `<span class="rule-edit-field"><label for="${id}">${esc(meta.label)}</label><input id="${id}" class="rule-edit-in addf" type="${meta.type}"${extra} data-f="${f}"></span>`;
-}
-function renderAddFields(kind) {
-  return (ADD_KIND_FIELDS[kind] || []).map(_addFieldControl).join('')
-    || `<span class="hint" style="align-self:center;">No parameters - just Add.</span>`;
-}
 function mergeAugments(frags) {
   const out = {};
   for (const f of (frags || [])) {
@@ -14300,23 +14849,9 @@ function renderRuleReview(r, outEl, prefix, regen) {
        </div>
        <p class="hint" style="margin:8px 0 0;">Pinned rules become this dataset's <strong>pinned ruleset</strong> - your next assessment uses them automatically (no new AI call).</p>`
     : '';
-  const addCols = r.columns || [];
-  const colControl = addCols.length
-    ? `<select id="addCol" class="rule-edit-in">${addCols.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('')}</select>`
-    : `<input id="addCol" class="rule-edit-in" placeholder="column name">`;
-  const addForm = `
-    <details class="rule-add" style="margin-top:14px;">
-      <summary style="cursor:pointer;font-weight:600;">➕ Add a rule</summary>
-      <div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:8px 12px;align-items:flex-end;">
-        <span class="rule-edit-field"><label for="addCol">Column</label>${colControl}</span>
-        <span class="rule-edit-field"><label for="addKind">Rule</label>
-          <select id="addKind" class="rule-edit-in">${ADD_RULE_KINDS.map(k => `<option value="${k[0]}">${esc(k[1])}</option>`).join('')}</select></span>
-        <span id="addFields" style="display:flex;flex-wrap:wrap;gap:8px 12px;align-items:flex-end;"></span>
-        <button type="button" id="addRuleBtn">Add rule</button>
-      </div>
-      <p class="hint" id="addRuleNote" style="margin:8px 0 0;">Pick a column and rule, fill the values, then Add - it joins the list above, ticked and ready to pin.</p>
-    </details>`;
-  outEl.innerHTML = `<div class="rules-review"><div class="rules-list">${rows}</div>${applyBar}${addForm}${foot}</div>`;
+  // Rules of your own are written in the editor below, on the column they belong to.
+  const own = `<p class="hint rule-own">To write a rule of your own, open its column below and press ＋ Add a rule.</p>`;
+  outEl.innerHTML = `<div class="rules-review"><div class="rules-list">${rows}</div>${applyBar}${own}${foot}</div>`;
   const applyBtn = outEl.querySelector('.rule-apply');
   const pinBtn = outEl.querySelector('.rule-pin');
   const note = outEl.querySelector('#ruleApplyNote');
@@ -14358,25 +14893,6 @@ function renderRuleReview(r, outEl, prefix, regen) {
     s.augment = JSON.parse(JSON.stringify(s.editAugment || { columns: {} }));
     rerender();
   }));
-  // "+ Add a rule": build a new applyable suggestion and append it to the list.
-  const addKind = outEl.querySelector('#addKind');
-  const addFieldsEl = outEl.querySelector('#addFields');
-  const renderAF = () => { if (addFieldsEl && addKind) addFieldsEl.innerHTML = renderAddFields(addKind.value); };
-  if (addKind) { addKind.addEventListener('change', renderAF); renderAF(); }
-  const addBtn = outEl.querySelector('#addRuleBtn');
-  if (addBtn) addBtn.addEventListener('click', () => {
-    const anote = outEl.querySelector('#addRuleNote');
-    const kind = addKind ? addKind.value : '';
-    const col = ((outEl.querySelector('#addCol') || {}).value || '').trim();
-    if (!col) { if (anote) anote.textContent = 'Choose or enter a column.'; return; }
-    const vals = {};
-    outEl.querySelectorAll('#addFields .addf').forEach(el => { vals[el.dataset.f] = el.value; });
-    const aug = buildRuleAugment(kind, col, vals);
-    if (!aug) { if (anote) anote.textContent = 'Fill in at least one value for this rule.'; return; }
-    sug.push({ id: `add-${sug.length}`, kind, columns: [col], applyable: true, _added: true, _checked: true,
-      title: `${RULE_KIND_LABEL[kind] || kind} on ${col}`, rationale: 'Added manually.', augment: aug });
-    rerender();
-  });
   if (applyBtn) applyBtn.addEventListener('click', () => applyRulesAndRerun(rerun, mergeAugments(chosenAugs())));
   if (pinBtn) pinBtn.addEventListener('click', () => pinSelectedRules(prefix, mergeAugments(chosenAugs()), pinBtn, note));
   wireFoot();
@@ -14417,6 +14933,7 @@ async function pinSelectedRules(prefix, augment, btn, note) {
       { result_prefix: prefix, augment, actor: EMAIL || undefined });
     if (btn) { btn.textContent = 'Pinned ✓'; btn.dataset.done = '1'; }
     if (note) { note.textContent = 'Pinned - your next assessment of this dataset will use these rules.'; note.dataset.sticky = '1'; }
+    refreshDatasetQueued(prefix);
   } catch (e) {
     if (btn) { btn.disabled = false; btn.textContent = old; }
     if (note) { note.textContent = e.message; note.dataset.sticky = '1'; }
@@ -18617,7 +19134,7 @@ const GD_SHOTS = {
   "admin-tags": [1600, 1095, "db660355f0"],
   "admin-users": [1600, 792, "5fe189e3d0"],
   "agents": [1600, 809, "68e531d6b9"],
-  "ai-review": [1600, 1194, "4e7c30f5f3"],
+  "ai-review": [1600, 1199, "343bfb93ac"],
   "alert-channels": [1600, 707, "da6beb721b"],
   "app-tables": [1600, 1377, "9eeda98170"],
   "approvals": [1600, 691, "e9fc97c6b8"],
@@ -18653,7 +19170,7 @@ const GD_SHOTS = {
   "profile": [1600, 526, "104f28f43a"],
   "quality-space": [1600, 812, "7bfbdb7881"],
   "records-policy": [1600, 433, "0850fe5c47"],
-  "rules-tab": [1600, 898, "5dcdb14320"],
+  "rules-tab": [1600, 1301, "c843b0e52d"],
   "run-result": [1600, 1381, "27d7222b2c"],
   "runs-on-agent": [1600, 1090, "167a7715e0"],
   "schedule-form-p": [1600, 1133, "b82b8c3aca"],
@@ -18764,7 +19281,7 @@ const GD_SHOW = {
   'ds-actions': { tab: 'dashboard', prep: gdOpenFirstDataset('scores'), sel: '#dsActions', miss: GD_NO_DATASET,
     tip: 'Everything you can do to this dataset: run it, schedule it, see its lineage and incidents, export it, describe it.' },
   'ds-rules': { tab: 'dashboard', prep: gdOpenFirstDataset('rules'), sel: '#dsSubtabs [data-dstab="rules"]', miss: GD_NO_DATASET,
-    tip: 'The Rules tab of the open dataset: every rule in effect, and <b>Review rules with AI</b>.' },
+    tip: 'The Rules tab of the open dataset: a row per column saying its rules, which opens to edit them, and <b>Review rules with AI</b>.' },
   'ds-failed': { tab: 'dashboard', prep: gdOpenFirstDataset('failed'), sel: '#dsSubtabs [data-dstab="failed"]', miss: GD_NO_DATASET,
     tip: 'The failing records of the open dataset, blockers first.' },
   'tag-edit': { tab: 'dashboard', sel: '#dashTableWrap .ds-tag-add', miss: 'There is no dataset in view to tag yet.',
@@ -19569,7 +20086,7 @@ function buildGuides() {
       { h: 'The tabs', body: table(['Tab', 'What it shows'], [
           ['Scores', `Each dimension, why the gate failed with a way straight to each check's failing records, and AI's explanation of the score.`],
           ['Failed records', 'Blocker records to fix first, failing checks by severity, the most affected columns, and the offending records themselves.'],
-          ['Rules', `The rules the dataset is scored against, and AI suggestions for more. ${see('rules', 'Rules guide')}`],
+          ['Rules', `The rules the dataset is scored against, a row per column that opens to edit them, and AI suggestions for more. ${see('rules', 'Rules guide')}`],
           ['History', `How it has moved over the last year or 30 days (what changed, the score against its own learned baseline, the gate and every dimension), then every run.`],
           ['Compliance', `Exposure and findings, the compliance policy, ISO/IEC 27701 readiness and attestations. ${see('compliance', 'Compliance guide')}`],
           ['Metadata', 'The quality of the structure rather than the values: naming, typing and personal-data labelling. Set a <b>metadata contract</b> (a description on every column, a primary key, personal data labelled, required columns) and the dataset is scored against it.'],
@@ -19588,26 +20105,32 @@ function buildGuides() {
   G.push({
     id: 'rules', cat: 'Results', icon: 'sparkle', tint: '#c084fc',
     title: 'Rules and AI rule review', sub: 'Where rules come from, and how to add, edit or pin them',
-    keywords: 'rules ruleset pinned inferred ai review suggestions bedrock claude pin apply re-run edit active rules add rule queued changes provisional',
+    keywords: 'rules ruleset pinned inferred ai review suggestions bedrock claude pin apply re-run edit active rules add rule remove rule queued changes provisional severity weight primary key allowed values format range save discard',
     open: { tab: 'dashboard', label: 'Open Overview' },
     sections: [
       { h: 'Where the rules come from', body:
           p(`On a dataset's first run, rules are inferred from the data itself: types, formats, which columns must be filled, ranges, allowed values and keys. Where possible they are enriched with AI, then <b>pinned</b>, so every later run is scored against the same rules. A drop in score then reflects the data, not moving goalposts.`) +
           (Q || ADMIN ? note(`Runs on an on-premises agent pin their inferred rules on the first run without an AI step, because the agent never calls out to an AI service. Add AI rules to those datasets from our side with Review rules with AI.`) : '') },
       { h: 'See the active rules', body:
-          p(`Open the dataset and choose the ${ui('Rules')} tab. It lists, column by column, every rule currently in effect. ${showme('ds-rules')}`) +
-          shot('rules-tab', `The Rules tab: ${ui('Review rules with AI')} at the top, then every rule in effect, column by column.`) },
+          p(`Open the dataset and choose the ${ui('Rules')} tab. Each column has a row that says its rules in plain words, such as ${ui('Required')}, ${ui('Not in the future')} or ${ui('One of 5 values')}, with its severity. Open a row to change them. ${showme('ds-rules')}`) +
+          shot('rules-tab', `${n(1)} How many columns and rules, and the primary key. ${n(2)} A column's rules, in words. ${n(3)} A column opened: its type, severity and weight, then each of its rules. ${n(4)} ${ui('＋ Add a rule')} adds one that suits the column.`) +
+          tip(`${ui('Find a column')} searches by name, and ${ui('Blockers')} shows only the columns that can fail the quality gate.`) },
       { h: 'Review rules with AI', body:
           steps(
             `Press ${ui('Review rules with AI')}. Suggestions come from Claude Haiku 4.5 on Amazon Bedrock, and open in a panel above the rules in effect, so you can compare the two. Press the button again to fold the panel away.`,
             `Tick the suggestions you want. Each one says which columns it covers and why, and most can be edited before you accept them. An <b>advisory</b> one can be turned into an editable rule with ${ui('Make editable')}.`,
             `Press ${ui('Pin selected to ruleset')}. The rules apply automatically on the dataset's next assessment, with no further AI call.`,
             `Or press ${ui('Apply & re-run now')}, which appears when the run can be launched again from here, such as ${Q ? 'an app table or ' : ''}an uploaded file that is still stored.`) +
-          shot('ai-review', `${n(1)} Tick the suggestions you want, editing their values first if you like. ${n(2)} An advisory suggestion is guidance to apply yourself. ${n(3)} ${ui('Pin selected to ruleset')}. ${n(4)} ${ui('➕ Add a rule')} writes one of your own.`) +
+          shot('ai-review', `${n(1)} Tick the suggestions you want, editing their values first if you like. ${n(2)} An advisory suggestion is guidance to apply yourself. ${n(3)} ${ui('Pin selected to ruleset')}. ${n(4)} ${ui('Regenerate')} asks for a fresh set.`) +
           note(`The AI only ever sees column names, aggregate statistics and masked value shapes (an email reads like <code>aaaa@aaa.aaa</code>). It never sees your values.`) +
-          tip(`${ui('➕ Add a rule')} lets you write one yourself, and ${ui('Regenerate')} asks for a fresh set of suggestions.`) },
+          tip(`To write a rule of your own, open its column in the Rules tab and press ${ui('＋ Add a rule')}.`) },
       { h: 'Edit or remove rules', body:
-          p(`Change or remove rules in the active-rules editor and save. The change is queued and replaces the pinned ruleset on the next assessment. If changes are already queued, the editor says so: saving again replaces them.`) },
+          steps(
+            `Open the column. Switch ${ui('Required')}, ${ui('Unique')} or ${ui('Not in the future')} on or off, choose its severity, or change a rule's values. Allowed values are tags: type one and press Enter to add it, or press its ${ui('✕')} to take it off.`,
+            `${ui('＋ Add a rule')} adds one that suits the column's type, such as a range for a number or a format for text. ${ui('✕')} beside a rule removes it, and ${ui('Remove every rule')} clears the column.`,
+            `Press ${ui('Save changes')} in the bar at the foot of the window. The changes are queued and replace the pinned ruleset on the dataset's next assessment. ${ui('Discard')} puts everything back instead.`) +
+          p(`The primary key can be one column or several: choose them from ${ui('Primary key')} at the top of the tab, or switch ${ui('Primary key')} on in a column.`) +
+          note(`Changes you have not saved are kept if you leave the tab and come back. If changes are already queued for the next run, the tab says so: saving again replaces them.`) },
       { h: 'Why pinning matters', body:
           p(`Incidents compare each run with the one before and with the dataset's learned baseline. If the rules shifted with the data, a column that started arriving empty would simply become optional. Pinned rules are what make a regression show up as one.`) },
     ],
