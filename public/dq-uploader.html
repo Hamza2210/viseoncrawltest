@@ -1855,6 +1855,17 @@
     color: var(--tr2-neon); background: none; border: 0; box-shadow: none; }
   .tr2-hd-ic svg { width: 24px; height: 24px; display: block; }
   .tr2-hd-t { font-size: 16px; font-weight: 700; }
+  /* The historic runs start folded: the header says how many there are, and opens them. */
+  button.tr2-fold { display: inline-flex; align-items: center; gap: 8px; padding: 2px 6px 2px 0; border: 0; border-radius: 6px; background: none;
+    box-shadow: none; color: var(--text); font: inherit; font-size: 16px; font-weight: 700; cursor: pointer; }
+  button.tr2-fold:hover { color: var(--accent); }
+  button.tr2-fold:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .tr2-fold-n { padding: 1px 8px; border-radius: 999px; background: var(--idle-bg); color: var(--muted); font-size: 11.5px; font-weight: 700;
+    font-variant-numeric: tabular-nums; }
+  .tr2-fold-n:empty { display: none; }
+  .tr2-fold-ch { width: 16px; height: 16px; color: var(--muted); transition: transform .2s var(--dq-ease); }
+  .tr2-fold[aria-expanded="true"] .tr2-fold-ch { transform: rotate(180deg); }
+  @media (prefers-reduced-motion: reduce) { .tr2-fold-ch { transition: none; } }
   .tr2-hd-spacer { flex: 1 1 auto; }
   /* The tag-wide action stays in the card HEADER, top-right: it acts on the whole container, so
      it belongs beside the container's title rather than after the last card in the grid. */
@@ -5883,11 +5894,11 @@
     <div class="card" id="tr2HistCard" style="display:none;">
       <div class="tr2-card-hd">
         <span class="tr2-hd-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 6.8V12l3.4 2"/></svg></span>
-        <span class="tr2-hd-t">Historic assessment runs</span>
+        <button type="button" class="tr2-hd-t tr2-fold" id="tr2HistFold" aria-expanded="false" aria-controls="tr2Hist">Historic assessment runs<span class="tr2-fold-n" id="tr2HistN"></span><svg class="tr2-fold-ch" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
         <span class="tr2-hd-spacer"></span>
         <button type="button" class="linkbtn" id="tr2AllRuns">View all runs →</button>
       </div>
-      <div id="tr2Hist"></div>
+      <div id="tr2Hist" hidden></div>
     </div>
 
     <div id="tagrunSkipped" class="tagrun-skipped" style="display:none;"></div>
@@ -9727,6 +9738,14 @@ const TR2_PILLS = 8;
 // The history table is a summary, not the History tab. Ten rows answers "has this tag been
 // looked at lately"; the rest is one click away rather than an unbounded table on this page.
 const TR2_RUNS = 10;
+// The historic runs start folded away under their header, and stay as the reader left them.
+let tr2HistOpen = false;
+function tr2HistToggle(open) {
+  tr2HistOpen = open == null ? !tr2HistOpen : !!open;
+  const b = $('#tr2HistFold'), h = $('#tr2Hist');
+  if (b) b.setAttribute('aria-expanded', String(tr2HistOpen));
+  if (h && (h.hidden === tr2HistOpen)) dqReveal(h, tr2HistOpen, 260);
+}
 let tagrunShowAll = false;
 
 // [{tag, total, runnable}] for every tag in use, sorted. `runnable` is a best-effort count:
@@ -9781,6 +9800,7 @@ async function initTagRun() {
       const view = e.target.closest('[data-tr2view]');
       if (view) { switchTab('history'); openHistoryRun(view.getAttribute('data-tr2view')); return; }
       if (e.target.closest('#tr2AllRuns')) { switchTab('history'); return; }
+      if (e.target.closest('#tr2HistFold')) { tr2HistToggle(); return; }
       const goto = e.target.closest('[data-goto]');
       if (goto) switchTab(goto.getAttribute('data-goto'));
     });
@@ -10112,6 +10132,10 @@ function renderTagRunHistory() {
 
   const all = (historyRuns || []).filter(r => r && slugs[r.slug]);
   const rows = all.slice(0, TR2_RUNS);
+  const n = $('#tr2HistN'), fb = $('#tr2HistFold');
+  if (n) n.textContent = all.length ? (all.length > TR2_RUNS ? `${TR2_RUNS} of ${all.length}` : String(all.length)) : '';
+  if (fb) { fb.setAttribute('aria-expanded', String(tr2HistOpen)); fb.dataset.tip = tr2HistOpen ? 'Hide the runs' : (all.length ? `Show the last ${rows.length} run${rows.length === 1 ? '' : 's'}` : 'Show'); }
+  host.hidden = !tr2HistOpen;
   if (!rows.length) {
     host.innerHTML = `<p class="hint">No assessment has run yet for any dataset tagged ` +
       `\u201c${esc(tag)}\u201d. Runs appear here as soon as one finishes.</p>`;
@@ -21004,7 +21028,7 @@ function buildGuides() {
       { h: 'Run everything with a tag', body:
           steps(`Open ${go('tagrun', 'By tag')} and select a tag. Every dataset carrying it is listed. ${showme('tagrun')}`,
                 `Run them all together in one task, or any one on its own.`,
-                `Results appear underneath, one tab per dataset, and earlier tag runs are listed below.`) +
+                `Results appear underneath, one tab per dataset. Earlier runs for the tag sit below, folded under their header with how many there are; press the header to see them.`) +
           shot('tagrun', `A tag selected: every dataset carrying it, each with its own ${ui('▶ Run assessment')}, and one button at the top that runs them all together.`) +
           note(`A tag run reconnects to each dataset's source, so it covers source datasets whose last run used a saved credential profile. Anything it cannot run is listed with the reason: never assessed on its own yet, ${Q ? 'a Qlik app table, ' : ''}an uploaded file, or no saved credentials.`) },
       { h: 'Schedule a tag', body:
