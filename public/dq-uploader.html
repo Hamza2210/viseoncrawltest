@@ -3393,6 +3393,7 @@
   .ac-hd h2 { margin: 0 0 2px; }
   .ac-hd p { margin: 0; font-size: 12.5px; }
   .ac-blurb { margin: 10px 0 16px; line-height: 1.6; }
+  .ac-blurb .ac-guide { margin-left: 6px; font-size: inherit; font-weight: 600; }
 
   /* FOUR blocks on ONE row: the two channels, the events, then Save. With the actions on a
      second line the card read as two unrelated halves, and Save sat under the events rather than
@@ -5255,8 +5256,9 @@
       <p class="dash-muted ac-blurb">Post this <span class="scope-n">app</span>'s failures (opened
         incidents, recoveries, staleness) to a chat channel - each message shows the
         <span class="scope-n">app</span>, dataset, score, reasons, owner, and a link. Paste an
-        incoming-webhook URL. <span style="opacity:.8;">Point multiple
-        <span class="scope-n">app</span>s at the same webhook to share one channel.</span></p>
+        incoming-webhook URL from Slack, or a Workflows URL from Teams. <span style="opacity:.8;">Point multiple
+        <span class="scope-n">app</span>s at the same webhook to share one channel.</span>
+        <button type="button" class="linkbtn ac-guide" id="acGuide">Step-by-step guide &rsaquo;</button></p>
       <div class="ac-form">
         <!-- Each channel wears its own mark. Two identical text fields differing only by their
              label is the shape that gets a Teams URL pasted into the Slack box. -->
@@ -5268,7 +5270,7 @@
         <label class="ac-row">
           <span class="ac-brand"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.2" y="5" width="12.6" height="14" rx="2.2" fill="#5059C9"/><path d="M5 8.6h7.1v1.9H9.7v6.1H7.4v-6.1H5z" fill="#fff"/><circle cx="18.4" cy="6.6" r="2.4" fill="#7B83EB"/><path d="M16.3 10.4h4.1a1.4 1.4 0 0 1 1.4 1.4v3.4a3.5 3.5 0 0 1-3.5 3.5 3.5 3.5 0 0 1-2-.6z" fill="#7B83EB"/></svg></span>
           <span class="ac-body"><span class="ac-label">Teams webhook</span>
-            <span class="ac-inrow"><input type="text" id="acTeams" class="ac-input" placeholder="https://…webhook.office.com/…" autocomplete="off">
+            <span class="ac-inrow"><input type="text" id="acTeams" class="ac-input" placeholder="https://….environment.api.powerplatform.com/…" autocomplete="off">
             <button type="button" class="ac-remove" id="acRemoveTeams" style="display:none;" data-tip="Stop sending to Teams">✕ Remove</button></span></span></label>
         <div class="ac-events"><span class="ac-label">Send on</span>
           <div class="ac-chks">
@@ -15246,7 +15248,7 @@ function _acApply(r) {
   if (!r) return;
   const s = $('#acSlack'), t = $('#acTeams');
   if (s) { s.value = ''; s.placeholder = r.slack_configured ? `Saved (${r.slack_hint}) - leave blank to keep` : 'https://hooks.slack.com/services/…'; }
-  if (t) { t.value = ''; t.placeholder = r.teams_configured ? `Saved (${r.teams_hint}) - leave blank to keep` : 'https://…webhook.office.com/…'; }
+  if (t) { t.value = ''; t.placeholder = r.teams_configured ? `Saved (${r.teams_hint}) - leave blank to keep` : 'https://….environment.api.powerplatform.com/…'; }
   const rs = $('#acRemoveSlack'), rt = $('#acRemoveTeams');
   if (rs) rs.style.display = r.slack_configured ? '' : 'none';
   if (rt) rt.style.display = r.teams_configured ? '' : 'none';
@@ -15294,6 +15296,7 @@ async function testAlertChannels() {
 { const b = $('#acTest'); if (b) b.addEventListener('click', testAlertChannels); }
 { const b = $('#acRemoveSlack'); if (b) b.addEventListener('click', () => clearChannel('slack')); }
 { const b = $('#acRemoveTeams'); if (b) b.addEventListener('click', () => clearChannel('teams')); }
+{ const b = $('#acGuide'); if (b) b.addEventListener('click', () => { switchTab('guides'); openGuide('alert-setup'); }); }
 
 // ---- AI actions ------------------------------------------------------------------------------ //
 // Everything that asks the model (Claude Haiku 4.5 on Amazon Bedrock) looks and moves the same way.
@@ -19963,7 +19966,7 @@ const GD_SHOTS = {
   "admin-users": [1600, 792, "5fe189e3d0"],
   "agents": [1600, 809, "68e531d6b9"],
   "ai-review": [1600, 1199, "343bfb93ac"],
-  "alert-channels": [1600, 707, "da6beb721b"],
+  "alert-channels": [1600, 707, "ce27567a3f"],
   "app-tables": [1600, 1377, "9eeda98170"],
   "approvals": [1600, 691, "e9fc97c6b8"],
   "assistant-p": [1600, 514, "e9b5c1827b"],
@@ -21087,15 +21090,64 @@ function buildGuides() {
           tip(`On the keyboard, ${ui('J')} and ${ui('K')} move through the incidents (with the detail out, it shows each in turn), ${ui('Enter')} opens one and ${ui('Esc')} closes it, ${ui('A')} acknowledges, ${ui('E')} explains and ${ui('/')} searches.`) },
       { h: 'Alerts in Slack or Teams', body:
           steps(`Open ${go('incidents', 'Incidents')} and expand ${ui('Alert channels')}. ${showme('alert-channels')}`,
-                `Paste an incoming-webhook URL for a Slack workspace, a Microsoft Teams channel, or both.`,
+                `Paste an incoming-webhook URL from Slack, a Workflows URL from Microsoft Teams, or both.`,
                 `Choose what to send: ${ui('Incident opened')}, ${ui('Recovered')} and ${ui('Staleness')}.`,
                 `Press ${ui('Save')}, then ${ui('Send test')} to check it arrives.`) +
           p(`Each message shows the ${SC}, dataset, score, reasons, owner and a link. Point several ${SC}s at the same webhook to share one channel.`) +
+          tip(`Getting the URL out of Slack or Teams is the part people get stuck on. ${see('alert-setup', 'Set up Slack and Teams alerts')} walks through both, click by click, and what to do when the test does not arrive.`) +
           shot('alert-channels', `Slack is connected here and Teams is not yet. Choose what to send, then ${ui('Save')} and ${ui('Send test')}.`) },
       { h: 'Email', body:
           p(`Incident emails go to the dataset's owner, or to whoever submitted the dataset when it has no owner. A dataset with neither raises no email.`) },
       Q ? { h: 'App data and source data', body:
           p(`Like the Overview, Incidents has an ${ui('App data')} and ${ui('Source data')} toggle. The count on the Incidents tab and the red bar at the top always cover everything open.`) } : null,
+    ],
+  });
+
+  G.push({
+    id: 'alert-setup', cat: 'Monitor', icon: 'chat', tint: '#a78bfa',
+    title: 'Set up Slack and Teams alerts', sub: 'A webhook from each, click by click, pasted into Alert channels and tested',
+    keywords: 'slack teams webhook workflows power automate incoming webhook alert channel notification chat message set up setup connect test send test channel url',
+    open: { tab: 'incidents', label: 'Open Incidents' },
+    sections: [
+      { h: 'How an alert reaches a channel', body:
+          p(`Data Assurance posts to an <b>incoming webhook</b>: a URL that Slack or Teams gives you, which accepts a message and puts it in one channel. Nothing is installed in your workspace or tenant. You create the webhook there, paste its URL here, and from then on the ${SC}'s incidents post to that channel: once when one opens, once when it recovers, and when a dataset goes stale, whichever of those you choose.`) +
+          p(`Channels belong to the ${SC}. An alert about a dataset goes to the channels set up for the ${SC} it belongs to. Several ${SC}s can share one channel by pasting the same URL. Email is separate and needs no setting up: it goes to the dataset's owner. See ${see('incidents', 'Track incidents')}.`) +
+          warn(`A webhook URL is a secret. Anyone holding it can post into the channel, so treat it like a password. If it leaks, delete the webhook in Slack or Teams, make a new one and paste that here; the old URL stops working at once.`) },
+      { h: 'Slack, step by step', body:
+          steps(
+            `Go to <b>api.slack.com/apps</b> and press ${ui('Create New App')}, then ${ui('From scratch')}. Name it (<b>Data Assurance</b> reads well as the sender) and pick the workspace the channel is in.`,
+            `In the app's settings, open ${ui('Incoming Webhooks')} and switch ${ui('Activate Incoming Webhooks')} on.`,
+            `Press ${ui('Add New Webhook to Workspace')}, choose the channel the alerts should land in, and press ${ui('Allow')}. A channel of its own, such as <b>#data-alerts</b>, is easier to live with than a busy one.`,
+            `Copy the ${ui('Webhook URL')}. It starts with <b>https://hooks.slack.com/services/</b>.`,
+            `Back here, open ${go('incidents', 'Incidents')}, expand ${ui('Alert channels')} and paste it into ${ui('Slack workspace')}. ${showme('alert-channels')}`) +
+          note(`One webhook posts to one channel. For a second channel, add another webhook to the same Slack app and use it from another ${SC}. If your workspace only lets admins install apps, the last step sends a request to them instead of giving you the URL; it appears once they approve.`) },
+      { h: 'Microsoft Teams, step by step', body:
+          warn(`Teams' old <b>Incoming Webhook</b> connector, whose URLs contained <b>webhook.office.com</b>, was retired by Microsoft in May 2026 and no longer delivers anything. Use a Workflow instead. It is built into Teams and takes two minutes.`) +
+          steps(
+            `In Teams, open the channel the alerts should land in, press the ${ui('⋯')} beside its name and choose ${ui('Workflows')}.`,
+            `Pick the template ${ui('Post to a channel when a webhook request is received')}. Search for <b>webhook</b> if it is not on the first page. Sign in if asked and press ${ui('Next')}.`,
+            `Check the team and channel it shows, then press ${ui('Add workflow')}.`,
+            `Copy the URL it gives you. It is long, and it ends in your Power Platform environment: <b>….environment.api.powerplatform.com/…</b> (a workflow made before late 2025 may still say <b>….logic.azure.com/…</b>, which works too). It is shown once; if you lose it, open the ${ui('Workflows')} app in Teams, open this workflow, and copy it from its first step.`,
+            `Back here, paste it into ${ui('Teams webhook')}.`) +
+          note(`A workflow belongs to whoever created it and stops if that account is disabled, so create it from an account that will stay, or add a colleague as an owner in the Workflows app. The message is posted by <b>Workflows</b>, and the link under it (${ui(pk('Open the app', 'Open in the portal'))}) is part of the text, since Workflows does not draw the button the old connector did.`) },
+      { h: 'Choose what to send, save, and test', body:
+          steps(
+            `Under ${ui('Send on')}, tick what should post: ${ui('Incident opened')}, ${ui('Recovered')} and ${ui('Staleness')}. Most teams keep all three; a channel that only hears about openings never learns that things got better.`,
+            `Press ${ui('Save')}. The field shows ${ui('Saved')} with the end of the URL, and stays blank: leaving it blank keeps the saved webhook, pasting a new URL replaces it.`,
+            `Press ${ui('Send test')}. A test message goes to every saved channel, and the line beside the button says what happened to each: ${ui('slack: sent ✓')}, ${ui('teams: failed ✗')}.`,
+            `${ui('✕ Remove')} beside a saved channel stops it. It asks first.`) +
+          shot('alert-channels', `Slack is connected here and Teams is not yet. Choose what to send, then ${ui('Save')} and ${ui('Send test')}.`) +
+          p(`A real alert shows the ${SC}, the dataset, its score, why it was raised, the owner (or whoever submitted the dataset when it has no owner), and a link back to it here. Its colour follows the severity. People hear about an incident twice, when it opens and when it clears, not on every run.`) },
+      { h: 'If the test does not arrive', body:
+          table(['What you see', 'Why', 'What to do'], [
+            [ui('Error: slack_url must be an https hooks.slack.com webhook'), 'The URL was copied from somewhere else in Slack, or is missing its start.', 'Copy the Webhook URL from the app\'s Incoming Webhooks page. It begins with https://hooks.slack.com/services/.'],
+            [ui('Error: teams_url must be an https Teams webhook'), 'An old connector URL (webhook.office.com), or a URL that is not a Teams workflow.', 'Create a Workflow as above and paste the URL it gives you.'],
+            [ui('teams: failed ✗'), 'The workflow is turned off, its URL was regenerated, or its owner\'s account is disabled.', 'Open the Workflows app in Teams, find the workflow, check it is on and look at its run history. Copy its current URL and save it here again.'],
+            [ui('slack: failed ✗'), 'The webhook was revoked: the app was removed from the workspace, or the channel was archived or deleted.', 'Add a new webhook to the app, pointed at a channel that exists, and save it here.'],
+            ['Sent ✓, but nothing in the channel', 'The webhook posts to a different channel than you are looking at.', 'In Slack, the channel was chosen when the webhook was added; in Teams, when the workflow was created. Check there, or make a new one for the right channel.'],
+            ['Alerts arrive for one ' + SC + ' but not another', 'Channels are set per ' + SC + '.', 'Open the other ' + SC + ' and paste the same URL there.'],
+          ]) +
+          tip(`${ui('Send test')} is safe to press as often as you like. It posts a short test message and changes nothing else.`) },
     ],
   });
 
