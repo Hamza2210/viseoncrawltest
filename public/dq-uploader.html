@@ -19664,10 +19664,18 @@ function rcxShare(x) {
   if (p >= 1) return `${p.toFixed(1)}%`;
   return p >= 0.01 ? `${parseFloat(p.toPrecision(2))}%` : 'under 0.01%';
 }
+/** A date column's bounds arrive as midnight UTC instants; shown in local time they would read as
+ *  "01:00 AM" in summer. A date is a day, so it is said as one, in UTC. */
+const rcxIsDay = iso => /T00:00:00(\.0+)?(Z|\+00:00)$/.test(String(iso || ''));
+function rcxDay(iso) {
+  const d = new Date(iso);
+  return isNaN(d.getTime()) ? String(iso) : d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
+}
 function rcxWhereText(w, which, n) {
-  const from = rcxWhen(w.from), to = rcxWhen(w.to), same = w.from === w.to;
+  const days = rcxIsDay(w.from) && rcxIsDay(w.to);
+  const from = days ? rcxDay(w.from) : rcxWhen(w.from), to = days ? rcxDay(w.to) : rcxWhen(w.to), same = w.from === w.to;
   const who = which === 'missing' ? `All ${rcxN(n)} missing rows` : `All ${rcxN(n)} extra rows`;
-  const when = same ? `at ${esc(from)}` : `between ${esc(from)} and ${esc(to)}`;
+  const when = same ? `${days ? 'on' : 'at'} ${esc(from)}` : `between ${esc(from)} and ${esc(to)}`;
   if (w.share_of_table != null && !same) {
     return `${who} have <b>${esc(w.column)}</b> ${when}: a window of ${rcxSpan(w.span_seconds)} holding ${rcxShare(w.share_of_table)} of the table` +
       `${w.table_span_seconds ? `, which spans ${rcxSpan(w.table_span_seconds)}` : ''}.`;
