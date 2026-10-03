@@ -3526,6 +3526,7 @@
   .rcx-hint { margin: 12px 0 0; min-height: 1em; }
   .rcx-hint.err { color: var(--err); }
   .rcx-hint.ok { color: var(--ok); }
+  .rcx-pop-note { padding: 8px 12px; font-size: 11.5px; line-height: 1.45; color: var(--muted); border-bottom: 1px solid var(--border); }
   .rcx-hint:empty { display: none; }
   /* Progress */
   .rcx-loader { display: flex; flex-direction: column; align-items: center; gap: 18px; padding: 26px 0 18px; text-align: center; }
@@ -19092,16 +19093,26 @@ const RCX_DOW = [['MON', 'Monday'], ['TUE', 'Tuesday'], ['WED', 'Wednesday'], ['
 
 const rcxDs = key => (dashDatasetsAll || []).find(d => d.key === key) || null;
 const rcxN = n => (n == null ? '-' : Number(n).toLocaleString());
-/** Source datasets everywhere; inside the Qlik app, its own tables too, since only the extension holds the key that opens them. */
-function rcxDatasets() { return (dashDatasetsAll || []).filter(d => isSourceDataset(d) || (!PORTAL && BEARER && String(d.sourceFormat || '').toLowerCase() === 'qlik')); }
+/** Source datasets everywhere, except uploads (their files are not kept once assessed, so there is
+ *  nothing to read); inside the Qlik app, its own tables too, since only the extension holds the key
+ *  that opens them. */
+function rcxDatasets() {
+  return (dashDatasetsAll || []).filter(d => !d.isUpload && (isSourceDataset(d) || (!PORTAL && BEARER && String(d.sourceFormat || '').toLowerCase() === 'qlik')));
+}
+const rcxUploads = () => (dashDatasetsAll || []).filter(d => d && d.isUpload).length;
 const rcxIsQlik = key => String((rcxDs(key) || {}).sourceFormat || '').toLowerCase() === 'qlik';
+/** A file in an object store: fetched onto the worker and read there, like a Qlik table and unlike a database. */
+const RCX_FILE = new Set(['s3', 'gcs', 'azureblob']);
+const rcxIsFile = key => RCX_FILE.has(String((rcxDs(key) || {}).sourceFormat || '').toLowerCase());
 /** The headers every reconcile call carries: the app's key rides along inside Qlik, so an app table can be a side. */
 function rcxHdr() { return BEARER ? { ...HEADERS, 'X-Qlik-Bearer': BEARER } : HEADERS; }
 /** What leaves where: an app table is read out of its app into the worker, as an assessment reads it; every other side stays put. */
 function rcxWhereHint() {
-  const l = esc(rcxName(rcx.left)), r = esc(rcxName(rcx.right)), ql = rcxIsQlik(rcx.left), qr = rcxIsQlik(rcx.right);
-  if (ql && qr) return `${l} and ${r} are read out of the app into the worker, as an assessment reads them, and compared there.`;
-  if (ql || qr) return `${ql ? l : r} is read out of the app into the worker, as an assessment reads it; ${ql ? r : l} is compared where it lives, and only fingerprints of its rows leave.`;
+  const l = esc(rcxName(rcx.left)), r = esc(rcxName(rcx.right));
+  const how = k => rcxIsQlik(k) ? 'read out of the app into the worker' : rcxIsFile(k) ? 'fetched onto the worker' : '';
+  const hl = how(rcx.left), hr = how(rcx.right);
+  if (hl && hr) return `${l} and ${r} are ${hl === hr ? hl : 'read into the worker'}, as an assessment reads them, and compared there.`;
+  if (hl || hr) return `${hl ? l : r} is ${hl || hr}, as an assessment reads it; ${hl ? r : l} is compared where it lives, and only fingerprints of its rows leave.`;
   return `${l} and ${r} are compared where they live. Only fingerprints of their rows leave each source.`;
 }
 function rcxName(key) { const d = rcxDs(key); return d ? d.name : String(key || '').split('/').pop(); }
@@ -19210,8 +19221,9 @@ function rcxSideHtml(side) {
 function rcxOptsHtml(side) {
   const other = rcx[side === 'left' ? 'right' : 'left'], q = (rcx.q || '').trim().toLowerCase();
   const opts = rcxDatasets().filter(d => d.key !== other && (!q || String(d.name || '').toLowerCase().includes(q)));
-  if (!opts.length) return `<div class="rcx-none">${rcxDatasets().length ? 'No dataset matches.' : 'No source dataset has been assessed yet.'}</div>`;
-  return opts.map(d => { const st = rcxStageOf(d.key); return `<button type="button" role="option" class="rcx-opt lngb${d.key === rcx[side] ? ' sel' : ''}" ` +
+  const note = rcxUploads() && !q ? `<div class="rcx-pop-note">Uploaded files are not listed: their files are not kept once assessed. To reconcile one, assess it from S3 or a database.</div>` : '';
+  if (!opts.length) return `<div class="rcx-none">${rcxDatasets().length ? 'No dataset matches.' : 'No source dataset has been assessed yet.'}</div>` + note;
+  return note + opts.map(d => { const st = rcxStageOf(d.key); return `<button type="button" role="option" class="rcx-opt lngb${d.key === rcx[side] ? ' sel' : ''}" ` +
     `data-rcx="pick" data-side="${side}" data-key="${esc(d.key)}" aria-selected="${d.key === rcx[side]}">` +
     `<span class="ifr-dsi" aria-hidden="true">${srcIcon(d.sourceFormat)}</span><span class="rcx-opt-n">${esc(d.name)}</span>` +
     `<span class="rcx-opt-s">${esc(sourceLabel(d.sourceFormat))}</span>${st ? `<span class="rcx-medal ${st}" data-tip="${esc(MEDAL_LABEL[st])}"></span>` : ''}</button>`; }).join('');
@@ -19535,7 +19547,7 @@ function rcxResultHtml(res, hist) {
                 c.changed ? `${rcxN(c.changed)} changed` : ''].filter(Boolean);
   const sub = diff === 0 ? `${rcxN(c.carried)} rows, identical on both sides` : bits.join(' · ');
   const side = (S, cls) => `<div class="rcx-hside ${cls}"><span class="ifr-dsi" aria-hidden="true">${srcIcon(S.kind)}</span>` +
-    `<div><b>${esc(S.name || S.dataset_key || '')}</b><span>${esc(sourceLabel(S.kind) || S.kind || '')} · ${esc(S.kind === 'qlik' ? 'read out of the app' : [S.schema, S.table].filter(Boolean).join('.'))} · ${rcxN(S.rows)} rows</span></div></div>`;
+    `<div><b>${esc(S.name || S.dataset_key || '')}</b><span>${esc(sourceLabel(S.kind) || S.kind || '')} · ${esc(S.kind === 'qlik' ? 'read out of the app' : RCX_FILE.has(String(S.kind || '').toLowerCase()) ? 'fetched onto the worker' : [S.schema, S.table].filter(Boolean).join('.'))} · ${rcxN(S.rows)} rows</span></div></div>`;
   const keyTxt = (key.left || []).join(' + ') + ((key.right || []).join(' + ') !== (key.left || []).join(' + ') ? ` ↔ ${(key.right || []).join(' + ')}` : '');
   const how = RCX_KEY_HOW[key.how] || '';
   const strip = (res.columns || []).map(col => {
@@ -21551,7 +21563,7 @@ function buildGuides() {
   G.push({
     id: 'reconcile', cat: 'Explore', icon: 'copy', tint: '#38bdf8',
     title: 'Reconcile two datasets', sub: 'Do they agree? Which rows carried over, changed or went missing, and where the lost ones went',
-    keywords: 'reconcile reconciliation compare agree match diff difference missing extra changed rows key bronze silver gold stages migration replica copy flow watch schedule tolerance divergence drift incident explain ai qlik app table',
+    keywords: 'reconcile reconciliation compare agree match diff difference missing extra changed rows key bronze silver gold stages migration replica copy flow watch schedule tolerance divergence drift incident explain ai qlik app table file parquet csv s3 upload',
     open: { tab: 'medallion', label: 'Open Reconcile' },
     sections: [
       { h: 'What it answers', body:
@@ -21585,9 +21597,12 @@ function buildGuides() {
             `Both reach ${go('incidents', 'Incidents')}, email, and Slack or Teams like every other incident, and the incident's next step opens the pair here. The schedule is listed under ${go('schedules', 'Schedules')} too, where it can be paused.`) },
       { h: 'Explain with AI', body:
           p(`${ui('Explain with AI')} asks Claude what the result means, from the facts alone: the counts, the key, which columns changed, what the differing rows have in common, the load window and the trend. It never sees a row or a value, so a column marked as personal data costs nothing to explain. The answer is kept with the run; ${ui('Regenerate')} asks again.`) },
-      { h: 'Qlik app tables', body:
-          p(`Inside a Qlik app, the app's own tables can be a side: the picker lists them with the source datasets. An app table is the one side whose rows do leave where they live. The engine cannot hash the way the databases do, so the table is read out of the app into the worker, as an assessment reads it, and compared from there; a million rows take a few minutes to read.`) +
-          note(`From the portal the picker leaves app tables out: it holds no key that opens an app. A watch on a pair with an app table keeps the Qlik key you had when you set it; when that key expires, the watch fails and says so.`) },
+      { h: 'What can be a side', body:
+          list(
+            `<b>A database or warehouse table</b> with a saved connection: Snowflake, Databricks, Redshift, BigQuery, Postgres, MySQL, SQL Server, Synapse, Fabric, Oracle, Qlik Open Lakehouse. Compared where it lives.`,
+            `<b>A file in Amazon S3, Google Cloud Storage or Azure Blob</b> with a saved connection: parquet, csv, json, Excel or QVD. A file has no engine to ask, so it is fetched onto the worker, as its assessment fetched it, and read there.`,
+            `<b>A Qlik app table</b>, inside the app: the picker lists the app's own tables with the source datasets. The engine cannot hash the way the databases do, so the table is read out of the app into the worker, as an assessment reads it, and compared from there; a million rows take a few minutes. From the portal the picker leaves app tables out: it holds no key that opens an app.`) +
+          note(`Not a side: an <b>uploaded file</b>, because its file is not kept once it has been assessed (put it in S3 or a database and assess it from there); a <b>SharePoint file</b>, which a run cannot reach again; a file on an <b>on-premises agent</b>. A watch on a pair with an app table keeps the Qlik key you had when you set it; when that key expires, the watch fails and says so.`) },
     ],
   });
 
