@@ -3526,6 +3526,19 @@
   button.dsx-btn.rcx-go:disabled { opacity: .45; cursor: default; filter: none; }
   .rcx-hint { margin: 12px 0 0; min-height: 1em; }
   .rcx-hint.err { color: var(--err); }
+  .rcx-hint.ok { color: var(--ok); }
+  .rcx-pop-note { padding: 8px 12px; font-size: 11.5px; line-height: 1.45; color: var(--muted); border-bottom: 1px solid var(--border); }
+  /* Naming the key */
+  .rcx-keypick b { display: block; font-size: 15px; margin-bottom: 6px; }
+  .rcx-keypick p { margin: 0 0 14px; font-size: 13px; line-height: 1.55; color: var(--muted); }
+  .rcx-keypick code { padding: 1px 6px; border: 1px solid var(--border); border-radius: 5px; background: var(--card-2); font-size: 11.5px; color: var(--text); }
+  .rcx-keyrows { display: flex; flex-direction: column; gap: 8px; }
+  .rcx-keyrow { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+  .rcx-keyrow select { flex: 1 1 260px; min-width: 200px; padding: 7px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--card); color: var(--text); font: inherit; font-size: 13px; }
+  .rcx-keyrow .rcx-arr { color: var(--muted); }
+  .rcx-keyacts { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-top: 16px; }
+  .rcx-keyacts-r { display: inline-flex; align-items: center; gap: 12px; }
+  .rcx-foot-acts { display: inline-flex; align-items: center; gap: 14px; }
   .rcx-hint:empty { display: none; }
   /* Progress */
   .rcx-loader { display: flex; flex-direction: column; align-items: center; gap: 18px; padding: 26px 0 18px; text-align: center; }
@@ -3604,6 +3617,27 @@
   .rcx-spark { width: 320px; max-width: 100%; height: 54px; color: var(--accent); }
   .rcx-hist-row p { margin: 0; font-size: 13px; color: var(--muted); }
   .rcx-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-top: 22px; padding-top: 14px; border-top: 1px solid var(--border); font-size: 12px; color: var(--muted); }
+  /* The watch strip and the AI button, under the verdict */
+  .rcx-tools { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; margin: 14px 0 0; padding: 10px 14px;
+    border: 1px solid var(--border); border-radius: 12px; background: var(--card-2); }
+  .rcx-watch { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; flex: 1 1 420px; min-width: 0; font-size: 12.5px; color: var(--muted); }
+  .rcx-watch-btn, .rcx-watch-on { display: inline-flex; align-items: center; gap: 7px; }
+  .rcx-watch-on { font-weight: 700; color: var(--ok); }
+  .rcx-watch-on.off { color: var(--muted); }
+  .rcx-watch-btn svg, .rcx-watch-on svg { flex: none; }
+  .rcx-watch-s { line-height: 1.5; }
+  .rcx-watch-acts { display: inline-flex; flex-wrap: wrap; gap: 2px 12px; margin-left: auto; }
+  .rcx-watch-acts .danger { color: var(--err); }
+  .rcx-wform { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; width: 100%; margin: 0; font-size: 12.5px; color: var(--text); }
+  .rcx-wform label { display: inline-flex; align-items: center; gap: 6px; }
+  .rcx-wform label[hidden] { display: none; }
+  .rcx-wform input, .rcx-wform select { padding: 5px 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--card); color: var(--text); font: inherit; font-size: 12.5px; }
+  .rcx-wform input[type="number"] { width: 76px; }
+  .rcx-wform input[type="email"] { width: 230px; }
+  .rcx-wacts { display: inline-flex; align-items: center; gap: 10px; margin-left: auto; }
+  .rcx-wform .hint { flex-basis: 100%; margin: 0; }
+  .rcx-chip.watched::after { content: '◉'; margin-left: 6px; font-size: 9px; color: var(--ok); }
+  #rcxAi { margin-top: 10px; }
   /* The entrance the Stages result had: a fade and a small rise, the vocabulary every reveal shares. */
   .medal-card-in { animation: medalin .34s ease both; }
   @keyframes medalin { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
@@ -14095,6 +14129,8 @@ const _RULE_LABEL = {
   // Found by source monitoring between assessments (observability/rules.py).
   SOURCE_STALE: 'Source stopped loading', SOURCE_STALLED: 'Source stalled', SOURCE_VOLUME: 'Source lost rows',
   SOURCE_GROWTH: 'Source grew sharply', SOURCE_SCHEMA: 'Source changed shape', SOURCE_UNREACHABLE: 'Source unreachable',
+  // Raised by a watched pair in Reconcile (observability/handler.py, handle_recon).
+  RECON_DIVERGENCE: 'Diverged from its pair', RECON_FAILED: 'Reconcile could not run',
 };
 function ruleLabel(r) { return _RULE_LABEL[r] || r; }
 // A compliance-driven incident (rule starts COMPLIANCE) - used to badge it distinctly in the list.
@@ -14475,30 +14511,34 @@ const INC_RULE_INFO = {
   SOURCE_GROWTH: ['The source grew far faster than it usually does since the last check.', 'source'],
   SOURCE_SCHEMA: ['Source monitoring found that the table changed shape at the source: columns were added or removed.', 'source'],
   SOURCE_UNREACHABLE: ['Source monitoring could not reach the source with its saved connection.', 'source'],
+  RECON_DIVERGENCE: ['Reconcile found more rows differing between this dataset and the one it is watched against than the watch allows.', 'reconcile'],
+  RECON_FAILED: ['A scheduled reconcile of this dataset against its pair could not run, so the pair is not being compared.', 'reconcile'],
 };
 function incInfo(it) {
   const r = String(it.rule || '');
   if (INC_RULE_INFO[r]) return INC_RULE_INFO[r];
   if (isComplianceRule(r)) return ['A compliance finding of high or critical exposure, such as personal data that is stored without protection.', 'compliance'];
   if (r.indexOf('SOURCE_') === 0) return ['Found by source monitoring, between assessments.', 'source'];
+  if (r.indexOf('RECON_') === 0) return ['Found by Reconcile, watching this dataset against another.', 'reconcile'];
   return ['', 'scores'];
 }
 const INC_NEXT = {
   failed: ['See the failing records', 'failed'], scores: ['See its scores', 'scores'], history: ['See its history', 'history'],
   metadata: ['See its metadata', 'metadata'], compliance: ['See its compliance findings', 'compliance'],
-  rerun: ['Assess it again now'], source: ['See it in Source monitoring'],
+  rerun: ['Assess it again now'], source: ['See it in Source monitoring'], reconcile: ['See the pair in Reconcile'],
 };
 /** The dimension in a key such as "QUALITY_DRIFT:validity", for a rule that is raised per dimension. */
 function incDim(it) {
   const k = String(it.key || ''), r = String(it.rule || '');
   const m = r && k.indexOf(r + ':') === 0 ? /^([a-z_]+)$/.exec(k.slice(r.length + 1)) : null;
-  if (!m) return '';
+  if (!m || r.indexOf('RECON_') === 0) return '';          // a pair's incident is keyed by its pair, not a dimension
   const d = DAMA_DIMS.find(x => x[0] === m[1]);
   return d ? d[1] : m[1].replace(/_/g, ' ');
 }
 const incTitle = it => ruleLabel(it.rule) + (incDim(it) ? ' · ' + incDim(it) : '');
 const _incOrd = n => n + (n % 10 === 1 && n % 100 !== 11 ? 'st' : n % 10 === 2 && n % 100 !== 12 ? 'nd' : n % 10 === 3 && n % 100 !== 13 ? 'rd' : 'th');
-const incKind = it => isComplianceRule(it.rule) ? 'Compliance' : String(it.rule || '').indexOf('SOURCE_') === 0 ? 'Source monitoring' : 'Incident';
+const incKind = it => isComplianceRule(it.rule) ? 'Compliance' : String(it.rule || '').indexOf('SOURCE_') === 0 ? 'Source monitoring'
+  : String(it.rule || '').indexOf('RECON_') === 0 ? 'Reconcile' : 'Incident';
 /** A reference for an incident, the same for everyone: the month it opened and four characters of
  *  its identity. It is not a number the API knows; it is there to be read out or pasted. */
 function incRef(it) {
@@ -14825,15 +14865,17 @@ function incDetHtml(it) {
   const [what, nk] = incInfo(it), nx = INC_NEXT[nk];
   const [stc, stl] = incStateOf(it), acked = !!it.ackBy, who = incWho(it.owner);
   const report = { attr: 'data-ix="report"', ic: '📜', label: 'Open the run that raised it', sub: 'Its full report, in History' };
+  // A pair's incident was raised by a reconciliation, not an assessment: there is no run to open; its next step opens the pair.
+  const runItems = it.pair ? [] : [report];
   const ds = { attr: 'data-ix="opends"', ic: '📊', label: 'Open the dataset', sub: 'On the Overview' };
   const more = open
     ? [{ attr: `data-ix="act" data-act="${it.muted ? 'unmute' : 'mute'}"`, ic: it.muted ? '🔔' : '🔇', label: it.muted ? 'Unmute alerts' : 'Mute alerts',
          sub: it.muted ? 'Notify people about it again' : 'Stop its notifications while it stays open' }]
       .concat(String(it.rule || '').indexOf('BASELINE_') === 0 ? [{ attr: 'data-ix="act" data-act="accept_new_normal"', ic: '↺', label: 'Accept as the new normal',
          sub: 'The baseline learns again from now, which closes this' }] : [])
-      .concat([report].concat(d ? [ds] : []), ['-',
+      .concat(runItems.concat(d ? [ds] : []), ['-',
                { attr: 'data-ix="act" data-act="dismiss"', ic: '🗂', label: 'Not an incident…', sub: 'Dismiss it with a reason; it reopens if it happens again', danger: true }])
-    : [report].concat(d ? [ds] : [], ['-', { attr: 'data-ix="act" data-act="archive"', ic: '✕', label: 'Remove from the list', sub: 'It stays in history', danger: true }]);
+    : runItems.concat(d ? [ds] : [], ['-', { attr: 'data-ix="act" data-act="archive"', ic: '✕', label: 'Remove from the list', sub: 'It stays in history', danger: true }]);
   const moreBtn = `<span class="dsx-pw isx-more"><button type="button" class="dsx-btn icon lngb" data-ix="menu" aria-haspopup="menu" aria-expanded="false" ` +
     `aria-label="More actions" data-tip="More actions">⋯</button>` + incMenuHtml('More actions', more) + `</span>`;
   const acts = open
@@ -14858,6 +14900,8 @@ function incDetHtml(it) {
   const sc = d && d.score != null ? `<span class="ist-score ${tagClass(String(d.status || '').toLowerCase())}">${esc(String(fmtScore(d.score)))}</span>` : '<span class="idet-dim">Not scored</span>';
   const fl = [
     ['Dataset', d ? `<button type="button" class="linkbtn lngb ipx-dsl" data-ix="opends">${esc(incName(it))}</button>` : esc(incName(it))],
+    // A pair's incident names the other side: the dataset above is the right, this is the left.
+    it.pair ? ['Compared with', `${esc(it.pair.left_name || String(it.pair.left_key || '').split('/').pop() || 'its pair')} <span class="idet-dim">on the left</span>`] : null,
     ['Source', esc(sourceLabel(g && g.fmt) || 'Unknown')],
     ['Overall score', sc],
     ['Rule', `<code>${esc(it.rule || '').replace(/_/g, '_<wbr>')}</code>`],
@@ -14889,7 +14933,7 @@ function incDetHtml(it) {
   ev.sort((a, b) => a[0] - b[0]);
   const tl = ev.length ? `<h4>Timeline</h4><ol class="ipx-tl">` + ev.map(([t, cls, h, txt]) =>
     `<li class="${cls}"><span class="ipx-tlh">${h}</span><span class="ipx-tlt">${esc(incWhen(t))}</span><span class="ipx-tld">${txt}</span></li>`).join('') + `</ol>` : '';
-  const nextOk = nx && (nk === 'source' || d);
+  const nextOk = nx && (nk === 'source' || nk === 'reconcile' || d);
   const foot = `<div class="ipx-foot">` + (nx ? `<button type="button" class="dsx-btn lngb ist-nextb" data-ix="next"${nextOk ? '' : ' disabled data-tip="This dataset is no longer on the Overview"'}>${esc(nx[0])} →</button>` : '') +
     aiBtn(it.explainedAt ? 'See the AI explanation' : 'Explain with AI', 'data-ix="explain"', 'ipx-ai') + `</div>` +
     `<div class="ai-out" id="incAiOut" hidden></div>`;
@@ -15179,6 +15223,7 @@ async function incClick(e) {
     case 'opends': { const g = it && incGroupOf(it); if (g && g.d) { incHide(); incOpenDataset(g, 'scores'); } break; }
     case 'next': {
       const g = it && incGroupOf(it), nk = it && incInfo(it)[1];
+      if (nk === 'reconcile') { incHide(); rcxOpenPair(it.pair || {}); break; }
       if (!g) break;
       if (nk === 'source') { incHide(); dsxMonitor({ key: g.key }); }
       else if (nk === 'rerun') { if (g.d) reRunTable(g.d.name, g.d.sourceFormat || '', g.d.resultPrefix || ''); }
@@ -19042,7 +19087,7 @@ annotateSourceFields();
 // (carried, changed, missing, extra), how far each column agrees, the rows that differ, where the
 // lost ones sit in time, and the pair's history. Bronze → Silver and Silver → Gold come
 // ready-paired from the stage tags, which is what the tab used to compare by score alone.
-let rcx = { left: '', right: '', q: '', open: '', pairs: null, run: null, result: null, history: null, busy: false };
+let rcx = { left: '', right: '', q: '', open: '', pairs: null, run: null, result: null, history: null, busy: false, watch: null, watchOpen: false, key: null, keyPick: null };
 const RCX_PHASE = {
   queued: 'Starting a worker', connecting: 'Connecting to both sources', profiling: 'Reading both tables',
   keys: 'Finding the key', mapping: 'Pairing the columns', comparing: 'Comparing the rows',
@@ -19055,10 +19100,33 @@ const RCX_KEY_HOW = {
   given: 'the key you named', catalog: 'the primary key both catalogs declare',
   name: 'the unique column both sides share', values: 'two unique columns whose values overlap',
 };
+const RCX_EYE = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+const RCX_DOW = [['MON', 'Monday'], ['TUE', 'Tuesday'], ['WED', 'Wednesday'], ['THU', 'Thursday'], ['FRI', 'Friday'], ['SAT', 'Saturday'], ['SUN', 'Sunday']];
 
 const rcxDs = key => (dashDatasetsAll || []).find(d => d.key === key) || null;
 const rcxN = n => (n == null ? '-' : Number(n).toLocaleString());
-function rcxDatasets() { return (dashDatasetsAll || []).filter(d => isSourceDataset(d)); }   // app tables: a later stage
+/** Source datasets everywhere, except uploads (their files are not kept once assessed, so there is
+ *  nothing to read); inside the Qlik app, its own tables too, since only the extension holds the key
+ *  that opens them. */
+function rcxDatasets() {
+  return (dashDatasetsAll || []).filter(d => !d.isUpload && (isSourceDataset(d) || (!PORTAL && BEARER && String(d.sourceFormat || '').toLowerCase() === 'qlik')));
+}
+const rcxUploads = () => (dashDatasetsAll || []).filter(d => d && d.isUpload).length;
+const rcxIsQlik = key => String((rcxDs(key) || {}).sourceFormat || '').toLowerCase() === 'qlik';
+/** A file in an object store: fetched onto the worker and read there, like a Qlik table and unlike a database. */
+const RCX_FILE = new Set(['s3', 'gcs', 'azureblob']);
+const rcxIsFile = key => RCX_FILE.has(String((rcxDs(key) || {}).sourceFormat || '').toLowerCase());
+/** The headers every reconcile call carries: the app's key rides along inside Qlik, so an app table can be a side. */
+function rcxHdr() { return BEARER ? { ...HEADERS, 'X-Qlik-Bearer': BEARER } : HEADERS; }
+/** What leaves where: an app table is read out of its app into the worker, as an assessment reads it; every other side stays put. */
+function rcxWhereHint() {
+  const l = esc(rcxName(rcx.left)), r = esc(rcxName(rcx.right));
+  const how = k => rcxIsQlik(k) ? 'read out of the app into the worker' : rcxIsFile(k) ? 'fetched onto the worker' : '';
+  const hl = how(rcx.left), hr = how(rcx.right);
+  if (hl && hr) return `${l} and ${r} are ${hl === hr ? hl : 'read into the worker'}, as an assessment reads them, and compared there.`;
+  if (hl || hr) return `${hl ? l : r} is ${hl || hr}, as an assessment reads it; ${hl ? r : l} is compared where it lives, and only fingerprints of its rows leave.`;
+  return `${l} and ${r} are compared where they live. Only fingerprints of their rows leave each source.`;
+}
 function rcxName(key) { const d = rcxDs(key); return d ? d.name : String(key || '').split('/').pop(); }
 function rcxStageOf(key) { return entryFor(key).stage || ''; }
 function rcxPct(p) {
@@ -19098,7 +19166,7 @@ async function loadReconcile() {
   } catch (e) { /* keep whatever we had */ }
   await loadDashEntries();
   rcxPaintPick();
-  try { rcx.pairs = await postJSON(`${API_BASE}/data-quality/reconcile`, HEADERS, { app_id: APP_ID, action: 'pairs' }); }
+  try { rcx.pairs = await postJSON(`${API_BASE}/data-quality/reconcile`, rcxHdr(), { app_id: APP_ID, action: 'pairs' }); }
   catch (e) { rcx.pairs = null; }
   rcxPaintPick();
 }
@@ -19138,10 +19206,10 @@ function rcxPaintPick() {
       `${MEDAL_LABEL[p.from].split(' ')[1]} to ${MEDAL_LABEL[p.to].split(' ')[1]}`)).join('') + `</div>`;
   }
   if (recent.length) {
-    html += `<div class="rcx-pre-row"><span class="rcx-pre-l">Reconciled before</span>` + recent.slice(0, 6).map(p => chip(p.left, p.right, 'recent',
+    html += `<div class="rcx-pre-row"><span class="rcx-pre-l">Reconciled before</span>` + recent.slice(0, 6).map(p => chip(p.left, p.right, 'recent' + (p.watched ? ' watched' : ''),
       `${esc(p.left_name || rcxName(p.left))}<span class="rcx-arr" aria-hidden="true">→</span>${esc(p.right_name || rcxName(p.right))}` +
       (p.last ? `<small>${esc(rcxLastWords(p.last))}</small>` : ''),
-      p.last ? `Last reconciled ${rcxWhen(p.last.finished_at)}, ${p.runs} time${p.runs === 1 ? '' : 's'} in all` : '')).join('') + `</div>`;
+      (p.last ? `Last reconciled ${rcxWhen(p.last.finished_at)}, ${p.runs} time${p.runs === 1 ? '' : 's'} in all` : '') + (p.watched ? (p.watch_enabled === false ? ' · watch paused' : ' · watched on a schedule') : ''))).join('') + `</div>`;
   }
   pre.innerHTML = html;
   pre.hidden = !html;
@@ -19165,8 +19233,9 @@ function rcxSideHtml(side) {
 function rcxOptsHtml(side) {
   const other = rcx[side === 'left' ? 'right' : 'left'], q = (rcx.q || '').trim().toLowerCase();
   const opts = rcxDatasets().filter(d => d.key !== other && (!q || String(d.name || '').toLowerCase().includes(q)));
-  if (!opts.length) return `<div class="rcx-none">${rcxDatasets().length ? 'No dataset matches.' : 'No source dataset has been assessed yet.'}</div>`;
-  return opts.map(d => { const st = rcxStageOf(d.key); return `<button type="button" role="option" class="rcx-opt lngb${d.key === rcx[side] ? ' sel' : ''}" ` +
+  const note = rcxUploads() && !q ? `<div class="rcx-pop-note">Uploaded files are not listed: their files are not kept once assessed. To reconcile one, assess it from S3 or a database.</div>` : '';
+  if (!opts.length) return `<div class="rcx-none">${rcxDatasets().length ? 'No dataset matches.' : 'No source dataset has been assessed yet.'}</div>` + note;
+  return note + opts.map(d => { const st = rcxStageOf(d.key); return `<button type="button" role="option" class="rcx-opt lngb${d.key === rcx[side] ? ' sel' : ''}" ` +
     `data-rcx="pick" data-side="${side}" data-key="${esc(d.key)}" aria-selected="${d.key === rcx[side]}">` +
     `<span class="ifr-dsi" aria-hidden="true">${srcIcon(d.sourceFormat)}</span><span class="rcx-opt-n">${esc(d.name)}</span>` +
     `<span class="rcx-opt-s">${esc(sourceLabel(d.sourceFormat))}</span>${st ? `<span class="rcx-medal ${st}" data-tip="${esc(MEDAL_LABEL[st])}"></span>` : ''}</button>`; }).join('');
@@ -19186,25 +19255,54 @@ function rcxClosePick() { if (rcx.open) { rcx.open = ''; rcx.q = ''; rcxPaintPic
   const panel = $('#medallionPanel');
   if (panel) {
     panel.addEventListener('click', e => {
+      const rg = e.target.closest('.rcx-ai-regen');
+      if (rg) { e.preventDefault(); rcxExplain(true); return; }
       const t = e.target.closest('[data-rcx]');
       if (!t || t.disabled) return;
       const a = t.dataset.rcx;
-      if (a === 'open') {
+      if (a === 'ai') {
+        aiToggle(t, $('#rcxAi'), () => rcxExplain(false));
+      } else if (a === 'watch-open') {
+        rcx.watchOpen = true; rcxPaintWatch();
+        const f = panel.querySelector('.rcx-wform select[name="freq"]'); if (f) f.focus();
+      } else if (a === 'watch-cancel') {
+        rcx.watchOpen = false; rcxPaintWatch();
+      } else if (a === 'watch-save') {
+        rcxWatchSave();
+      } else if (a === 'watch-pause' || a === 'watch-resume') {
+        rcxWatchState(a === 'watch-resume');
+      } else if (a === 'watch-stop') {
+        rcxUnwatch();
+      } else if (a === 'open') {
         rcx.open = rcx.open === t.dataset.side ? '' : t.dataset.side; rcx.q = '';
         rcxPaintPick();
         if (rcx.open) { const s = panel.querySelector('.rcx-search'); if (s) s.focus(); }
       } else if (a === 'pick') {
-        rcx[t.dataset.side] = t.dataset.key; rcx.open = ''; rcx.q = '';
+        rcx[t.dataset.side] = t.dataset.key; rcx.open = ''; rcx.q = ''; rcx.key = null;
         rcxPaintPick(); rcxHint('');
         const b = panel.querySelector(`.rcx-side[data-side="${t.dataset.side}"] .rcx-pick-btn`); if (b) b.focus();
       } else if (a === 'pair') {
-        rcx.left = t.dataset.l; rcx.right = t.dataset.r; rcx.open = '';
+        rcx.left = t.dataset.l; rcx.right = t.dataset.r; rcx.open = ''; rcx.key = null;
         rcxPaintPick(); rcxHint('');
         if (t.classList.contains('recent')) rcxShowLast(t.dataset.l, t.dataset.r);
       } else if (a === 'swap') {
-        [rcx.left, rcx.right] = [rcx.right, rcx.left]; rcxPaintPick();
+        [rcx.left, rcx.right] = [rcx.right, rcx.left]; rcx.key = rcx.key ? { left: rcx.key.right, right: rcx.key.left } : null; rcxPaintPick();
       } else if (a === 'go' || a === 'again') {
         rcxStart();
+      } else if (a === 'rekey') {
+        const res = rcx.result || {}, k = res.key || {};
+        rcx.keyPick = { cols: { left: (res.left || {}).columns || [], right: (res.right || {}).columns || [] }, cands: {}, title: 'Match on a different key',
+                        pairs: (k.left || []).map((c, i) => [c, (k.right || [])[i] || '']) };
+        rcxPaintKeyPick();
+      } else if (a === 'key-add') {
+        if (rcx.keyPick) { rcx.keyPick.pairs.push(['', '']); rcxPaintKeyPick(); const sels = panel.querySelectorAll('.rcx-keyrow select[data-side="left"]'); if (sels.length) sels[sels.length - 1].focus(); }
+      } else if (a === 'key-go') {
+        const kp = rcx.keyPick; if (!kp || !kp.pairs.every(p => p[0] && p[1])) return;
+        rcx.key = { left: kp.pairs.map(p => p[0]), right: kp.pairs.map(p => p[1]) }; rcx.keyPick = null;
+        rcxStart();
+      } else if (a === 'key-cancel') {
+        rcx.keyPick = null;
+        if (rcx.result) rcxPaintResult(); else { $('#rcxStage').style.display = 'none'; }
       } else if (a === 'dismiss') {
         rcx.run = null; rcx.busy = false; $('#rcxStage').style.display = 'none'; rcxPaintPick();
       }
@@ -19215,6 +19313,19 @@ function rcxClosePick() { if (rcx.open) { rcx.open = ''; rcx.q = ''; rcxPaintPic
       const opts = panel.querySelector('.rcx-opts'); if (opts && rcx.open) opts.innerHTML = rcxOptsHtml(rcx.open);
     });
     panel.addEventListener('keydown', e => { if (e.key === 'Escape' && rcx.open) { e.preventDefault(); const side = rcx.open; rcxClosePick(); const b = panel.querySelector(`.rcx-side[data-side="${side}"] .rcx-pick-btn`); if (b) b.focus(); } });
+    panel.addEventListener('submit', e => { if (e.target.closest('.rcx-wform')) { e.preventDefault(); rcxWatchSave(); } });
+    panel.addEventListener('change', e => {
+      const kr = e.target.closest('.rcx-keyrow');
+      if (kr && rcx.keyPick) {
+        rcx.keyPick.pairs = [...panel.querySelectorAll('.rcx-keyrow')].map(r => [r.querySelector('select[data-side="left"]').value, r.querySelector('select[data-side="right"]').value]);
+        const go = panel.querySelector('[data-rcx="key-go"]'); if (go) go.disabled = !rcx.keyPick.pairs.every(p => p[0] && p[1]);
+        return;
+      }
+      if (e.target.name !== 'freq' || !e.target.closest('.rcx-wform')) return;
+      const f = e.target.closest('.rcx-wform'), v = e.target.value;
+      f.querySelector('.rcx-wat').hidden = v === 'hourly' || v === '6h';
+      f.querySelector('.rcx-wdow').hidden = v !== 'weekly';
+    });
     document.addEventListener('click', e => { if (rcx.open && !e.target.closest('.rcx-pick')) rcxClosePick(); });
   }
 }
@@ -19224,7 +19335,7 @@ function rcxLoaderHtml(phase, detail) {
   const step = RCX_STEP_OF[phase] == null ? -1 : RCX_STEP_OF[phase];
   return `<div class="rcx-loader">${dqLoader(RCX_PHASE[phase] || 'Working', detail || '')}` +
     `<ol class="rcx-steps" aria-label="Progress">${RCX_STEPS.map(([k, l], i) => `<li class="${i < step ? 'done' : i === step ? 'now' : ''}" data-step="${k}">${l}</li>`).join('')}</ol>` +
-    `<p class="hint">${esc(rcxName(rcx.left))} and ${esc(rcxName(rcx.right))} are compared where they live. Only fingerprints of their rows leave each source.</p></div>`;
+    `<p class="hint">${rcxWhereHint()}</p></div>`;
 }
 function rcxLoaderUpdate(phase, detail) {
   const box = $('#rcxStage .rcx-loader'); if (!box) return;
@@ -19238,13 +19349,47 @@ function rcxFailHtml(title, msg) {
   return `<div class="rcx-fail" role="alert"><b>${esc(title)}</b><p>${esc(msg)}</p>` +
     `<div class="rcx-fail-acts"><button type="button" class="dsx-btn lngb" data-rcx="again">Try again</button><button type="button" class="linkbtn lngb" data-rcx="dismiss">Close</button></div></div>`;
 }
+// ---- Naming the key ----
+const rcxNorm = n => String(n || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+/** A first guess at the key: a column unique on one side that the other side has by name, else
+ *  any name both sides share; else nothing, and the reader chooses. */
+function rcxKeyGuess(L, R, cl, cr) {
+  const rby = new Map(R.map(n => [rcxNorm(n), n])), lby = new Map(L.map(n => [rcxNorm(n), n]));
+  for (const c of cl) if (rby.has(rcxNorm(c))) return [c, rby.get(rcxNorm(c))];
+  for (const c of cr) if (lby.has(rcxNorm(c))) return [lby.get(rcxNorm(c)), c];
+  for (const c of L) if (rby.has(rcxNorm(c))) return [c, rby.get(rcxNorm(c))];
+  return ['', ''];
+}
+/** The key, named by hand: a select per side, a row per column of a composite key. Shown when no
+ *  column identifies a row on both sides, and under a result to match on a different key. */
+function rcxPaintKeyPick() {
+  const kp = rcx.keyPick, stage = $('#rcxStage'); if (!kp || !stage) return;
+  const L = (kp.cols.left || []).map(c => c.name || c), R = (kp.cols.right || []).map(c => c.name || c);
+  const cl = kp.cands.left || [], cr = kp.cands.right || [];
+  if (!kp.pairs || !kp.pairs.length) kp.pairs = [rcxKeyGuess(L, R, cl, cr)];
+  const opt = (names, sel) => `<option value="">Choose a column…</option>` + names.map(n => `<option value="${esc(n)}"${n === sel ? ' selected' : ''}>${esc(n)}</option>`).join('');
+  const rows = kp.pairs.map(p => `<div class="rcx-keyrow"><select data-side="left" aria-label="Key column on the left">${opt(L, p[0])}</select>` +
+    `<span class="rcx-arr" aria-hidden="true">↔</span><select data-side="right" aria-label="Key column on the right">${opt(R, p[1])}</select></div>`).join('');
+  const code = c => `<code>${esc(c)}</code>`;
+  const hints = [cl.length ? `Unique on the left: ${cl.slice(0, 6).map(code).join(', ')}.` : '', cr.length ? `Unique on the right: ${cr.slice(0, 6).map(code).join(', ')}.` : ''].filter(Boolean).join(' ');
+  const ready = kp.pairs.every(p => p[0] && p[1]);
+  stage.style.display = ''; stage.classList.remove('medal-card-in');
+  stage.innerHTML = `<div class="rcx-keypick" role="group" aria-labelledby="rcxKeyT"><b id="rcxKeyT">${esc(kp.title)}</b>` +
+    `<p>Name the key: the column, or columns together, that identify one row on each side. Rows are matched when every key column agrees.${hints ? ' ' + hints : ''}</p>` +
+    `<div class="rcx-keyrows">${rows}</div>` +
+    `<div class="rcx-keyacts"><button type="button" class="linkbtn lngb" data-rcx="key-add">Add a column</button>` +
+    `<span class="rcx-keyacts-r"><button type="button" class="dsx-btn primary" data-rcx="key-go"${ready ? '' : ' disabled'}>Compare on this key</button>` +
+    `<button type="button" class="linkbtn lngb" data-rcx="key-cancel">${rcx.result ? 'Back to the result' : 'Close'}</button></span></div></div>`;
+}
+
 async function rcxStart() {
   if (!rcx.left || !rcx.right || rcx.left === rcx.right || rcx.busy) return;
-  rcx.busy = true; rcx.result = null; rcx.history = null; rcxPaintPick(); rcxHint('');
+  rcx.busy = true; rcx.result = null; rcx.history = null; rcx.watch = null; rcx.watchOpen = false; rcxPaintPick(); rcxHint('');
   const stage = $('#rcxStage'); stage.style.display = ''; stage.classList.remove('medal-card-in');
   stage.innerHTML = rcxLoaderHtml('queued', 'Asking for a worker in the cloud');
   try {
-    const r = await postJSON(`${API_BASE}/data-quality/reconcile`, HEADERS, { app_id: APP_ID, action: 'start', left_key: rcx.left, right_key: rcx.right });
+    const r = await postJSON(`${API_BASE}/data-quality/reconcile`, rcxHdr(), { app_id: APP_ID, action: 'start', left_key: rcx.left, right_key: rcx.right,
+      ...(rcx.key ? { key_left: rcx.key.left, key_right: rcx.key.right } : {}) });
     rcx.run = { reconId: r.reconId, pairId: r.pairId, left: rcx.left, right: rcx.right, startedAt: Date.now() };
     rcxPoll(rcx.run);
   } catch (e) {
@@ -19258,7 +19403,7 @@ async function rcxPoll(run) {
     await new Promise(r => setTimeout(r, 2500));
     if (rcx.run !== run) return;
     let s;
-    try { s = await postJSON(`${API_BASE}/data-quality/reconcile`, HEADERS, { app_id: APP_ID, action: 'status', pair_id: run.pairId, recon_id: run.reconId }); }
+    try { s = await postJSON(`${API_BASE}/data-quality/reconcile`, rcxHdr(), { app_id: APP_ID, action: 'status', pair_id: run.pairId, recon_id: run.reconId }); }
     catch (e) { continue; }                                   // a transient read failure must not abort the wait
     const st = s.status || {};
     if (st.state === 'done' && s.result) {
@@ -19268,6 +19413,13 @@ async function rcxPoll(run) {
     }
     if (st.state === 'failed') {
       rcx.busy = false; rcxPaintPick();
+      if (st.reason === 'no_key') {
+        // Not a fault but a question: the worker found no column unique on both sides, and says
+        // which columns there are. The reader names the key and the comparison runs again.
+        rcx.keyPick = { cols: st.columns || {}, cands: st.candidates || {}, title: 'No column identifies a row on both sides', pairs: null };
+        rcxPaintKeyPick();
+        return;
+      }
       stage.innerHTML = rcxFailHtml('The comparison failed', st.error || st.detail || 'The worker did not say why.');
       return;
     }
@@ -19277,18 +19429,181 @@ async function rcxPoll(run) {
 }
 async function rcxLoadHistory(pairId) {
   try {
-    const h = await postJSON(`${API_BASE}/data-quality/reconcile`, HEADERS, { app_id: APP_ID, action: 'history', pair_id: pairId });
-    rcx.history = h.pair || null;
-  } catch (e) { rcx.history = null; }
+    const h = await postJSON(`${API_BASE}/data-quality/reconcile`, rcxHdr(), { app_id: APP_ID, action: 'history', pair_id: pairId });
+    rcx.history = h.pair || null; rcx.watch = h.watch || null;
+  } catch (e) { rcx.history = null; rcx.watch = null; }
+  rcx.watchOpen = false;
   const box = $('#rcxHist'); if (box && rcx.result) box.innerHTML = rcxHistoryHtml(rcx.history, rcx.result);
+  rcxPaintWatch();
+}
+/** Open the Reconcile tab on a pair (from an incident, or the schedules list) and show a run of it:
+ *  the run named, else the pair's last finished one. */
+async function rcxOpenPair(p) {
+  p = p || {};
+  if (!p.left_key || !p.right_key) { switchTab('medallion'); return; }
+  rcx.left = p.left_key; rcx.right = p.right_key; rcx.open = ''; rcx.q = '';
+  rcx.run = null; rcx.result = null; rcx.history = null; rcx.watch = null; rcx.watchOpen = false; rcx.busy = false;
+  switchTab('medallion');
+  const stage = $('#rcxStage'); if (!stage) return;
+  stage.style.display = ''; stage.classList.remove('medal-card-in'); stage.innerHTML = dqSkeleton('Loading the result', 4);
+  const pairId = p.pair_id || '';
+  const status = rid => postJSON(`${API_BASE}/data-quality/reconcile`, rcxHdr(), { app_id: APP_ID, action: 'status', pair_id: pairId, recon_id: rid });
+  try {
+    let st = p.recon_id && pairId ? await status(p.recon_id) : null;
+    if (!(st && st.result) && pairId) {
+      const h = await postJSON(`${API_BASE}/data-quality/reconcile`, rcxHdr(), { app_id: APP_ID, action: 'history', pair_id: pairId });
+      const runs = ((h.pair || {}).runs || []).filter(r => r && r.recon_id && r.status !== 'failed');
+      if (runs.length) st = await status(runs[runs.length - 1].recon_id);
+    }
+    if (st && st.result) { rcx.result = st.result; rcxPaintResult(); rcxLoadHistory(pairId); }
+    else { stage.style.display = 'none'; rcxHint('This pair has no finished comparison to show yet. Press Reconcile to compare them now.'); }
+  } catch (e) { stage.innerHTML = rcxFailHtml('Could not load the result', rcxErrText(e)); }
+}
+
+// ---- Watching the pair ----
+/** cron(m h dom mon dow year) -> { freq, at, dow } for the form; anything else reads as daily at 06:00. */
+function rcxCronParts(expr) {
+  const m = /^cron\((\S+) (\S+) (\S+) (\S+) (\S+) \S+\)$/.exec(String(expr || '').trim());
+  const out = { freq: 'daily', at: '06:00', dow: 'MON' };
+  if (!m) return out;
+  const [, mi, hh, dom, , dow] = m;
+  if (hh === '*') return Object.assign(out, { freq: 'hourly' });
+  if (/^\d+\/6$/.test(hh)) return Object.assign(out, { freq: '6h' });
+  if (/^\d+$/.test(mi) && /^\d+$/.test(hh)) out.at = `${hh.padStart(2, '0')}:${mi.padStart(2, '0')}`;
+  if (dom === '?' && dow !== '?' && dow !== '*') { out.freq = 'weekly'; out.dow = dow; }
+  return out;
+}
+function rcxCronOf(freq, at, dow) {
+  const [hh, mi] = String(at || '06:00').split(':').map(x => parseInt(x, 10) || 0);
+  if (freq === 'hourly') return 'cron(0 * * * ? *)';
+  if (freq === '6h') return 'cron(0 0/6 * * ? *)';
+  if (freq === 'weekly') return `cron(${mi} ${hh} ? * ${dow || 'MON'} *)`;
+  return `cron(${mi} ${hh} * * ? *)`;
+}
+/** How often, in the strip's lower-case voice: every hour, every 6 hours, daily at 06:00, weekly (MON) at 06:00. */
+function rcxCronHuman(expr) {
+  const p = rcxCronParts(expr);
+  if (p.freq === 'hourly') return 'every hour';
+  if (p.freq === '6h') return 'every 6 hours';
+  const h = cronHuman(expr);
+  return h === expr ? String(expr || '') : h.charAt(0).toLowerCase() + h.slice(1);
+}
+function rcxPaintWatch() {
+  const box = $('#rcxWatch'); if (box && rcx.result) box.innerHTML = rcxWatchHtml(rcx.result);
+}
+/** The watch strip under the verdict: an offer when the pair is not watched, its terms and
+ *  controls when it is, or the form while it is being set. */
+function rcxWatchHtml(res) {
+  if (rcx.watchOpen) return rcxWatchFormHtml(res);
+  const w = rcx.watch, R = (res && res.right) || {};
+  if (!w) {
+    return `<button type="button" class="dsx-btn lngb rcx-watch-btn" data-rcx="watch-open">${RCX_EYE}Watch this pair</button>` +
+      `<span class="rcx-watch-s">Compare them on a schedule, and raise an incident on ${esc(R.name || 'the right side')} when they drift apart.</span>`;
+  }
+  const sch = w.schedule || {}, on = w.enabled !== false;
+  const tol = [w.tolerance_pct != null ? `${w.tolerance_pct}% of rows` : '', w.tolerance_rows != null ? `${rcxN(w.tolerance_rows)} rows` : ''].filter(Boolean).join(' or ') || 'any difference';
+  return `<span class="rcx-watch-on${on ? '' : ' off'}">${RCX_EYE}${on ? 'Watched' : 'Watch paused'}</span>` +
+    `<span class="rcx-watch-s">${esc(rcxCronHuman(sch.expression))}${sch.timezone && sch.timezone !== 'UTC' ? ` (${esc(sch.timezone)})` : ''} · incident when over ${esc(tol)} differ` +
+    `${w.notify_email ? ` · alerts to ${esc(w.notify_email)}` : ''}${w.has_qlik_bearer ? ' · with your Qlik key' : ''}</span>` +
+    `<span class="rcx-watch-acts"><button type="button" class="linkbtn lngb" data-rcx="watch-open">Change</button>` +
+    `<button type="button" class="linkbtn lngb" data-rcx="${on ? 'watch-pause' : 'watch-resume'}">${on ? 'Pause' : 'Resume'}</button>` +
+    `<button type="button" class="linkbtn lngb danger" data-rcx="watch-stop">Stop watching</button></span>`;
+}
+function rcxWatchFormHtml(res) {
+  const w = rcx.watch || {}, sch = w.schedule || {}, R = (res && res.right) || {};
+  const tz = sch.timezone || (Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC');
+  const cur = rcxCronParts(sch.expression), tol = w.tolerance_pct != null ? w.tolerance_pct : 0.1, email = w.notify_email || EMAIL || '';
+  const opt = (v, l) => `<option value="${v}"${cur.freq === v ? ' selected' : ''}>${l}</option>`;
+  return `<form class="rcx-wform" novalidate>` +
+    `<label>Compare them <select name="freq" aria-label="How often">${opt('hourly', 'every hour')}${opt('6h', 'every 6 hours')}${opt('daily', 'every day')}${opt('weekly', 'every week')}</select></label>` +
+    `<label class="rcx-wat"${cur.freq === 'hourly' || cur.freq === '6h' ? ' hidden' : ''}>at <input type="time" name="at" value="${esc(cur.at)}" aria-label="At what time"></label>` +
+    `<label class="rcx-wdow"${cur.freq === 'weekly' ? '' : ' hidden'}>on <select name="dow" aria-label="Which day">${RCX_DOW.map(([v, l]) => `<option value="${v}"${cur.dow === v ? ' selected' : ''}>${l}</option>`).join('')}</select></label>` +
+    `<label>and raise an incident when more than <input type="number" name="tol" min="0" max="100" step="0.01" value="${esc(String(tol))}" aria-label="Tolerance, as a share of rows"> % of rows differ</label>` +
+    `<label>Alert <input type="email" name="email" value="${esc(email)}" placeholder="name@example.com" aria-label="Alert address"></label>` +
+    `<span class="rcx-wacts"><button type="button" class="dsx-btn primary rcx-wsave" data-rcx="watch-save">${rcx.watch ? 'Save' : 'Start watching'}</button>` +
+    `<button type="button" class="linkbtn lngb" data-rcx="watch-cancel">Cancel</button></span>` +
+    `<p class="hint">Times are in ${esc(tz)}. The schedule is listed under Schedules too. The incident opens against ${esc(R.name || 'the right side')} and clears when a later run is within tolerance.` +
+    `${[res && res.left, res && res.right].some(S => S && S.kind === 'qlik') ? ' The watch keeps the Qlik key you have now; when it expires, the watch fails and says so.' : ''}</p></form>`;
+}
+async function rcxWatchSave() {
+  const f = $('#rcxWatch .rcx-wform'), res = rcx.result; if (!f || !res) return;
+  const freq = f.freq.value, at = f.at.value || '06:00', dow = f.dow.value || 'MON';
+  const tol = parseFloat(f.tol.value), email = (f.email.value || '').trim();
+  if (!(tol >= 0 && tol <= 100)) { rcxHint('The tolerance is a share of rows, from 0 to 100.', 'err'); f.tol.focus(); return; }
+  if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { rcxHint('The alert address does not look like an email address.', 'err'); f.email.focus(); return; }
+  const btn = f.querySelector('.rcx-wsave'); btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    const r = await postJSON(`${API_BASE}/data-quality/reconcile`, rcxHdr(), { app_id: APP_ID, action: 'watch',
+      left_key: (res.left || {}).dataset_key || rcx.left, right_key: (res.right || {}).dataset_key || rcx.right,
+      schedule_expression: rcxCronOf(freq, at, dow), timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
+      tolerance_pct: tol, email: email || undefined, ...rcxNamedKey(res) });
+    rcx.watch = r.watch || null; rcx.watchOpen = false; rcxPaintWatch(); rcxRecentWatched(true);
+    rcxHint(`Watching ${rcxSideName(res, 'left')} and ${rcxSideName(res, 'right')} ${rcxCronHuman(((rcx.watch || {}).schedule || {}).expression)}.`, 'ok');
+  } catch (e) {
+    btn.disabled = false; btn.textContent = rcx.watch ? 'Save' : 'Start watching';
+    rcxHint(rcxErrText(e), 'err');
+  }
+}
+async function rcxWatchState(enabled) {
+  const w = rcx.watch; if (!w) return;
+  try {
+    const r = await postJSON(`${API_BASE}/data-quality/reconcile`, rcxHdr(), { app_id: APP_ID, action: 'watch_state', pair_id: w.pair_id, enabled });
+    rcx.watch = r.watch || rcx.watch; rcxPaintWatch(); rcxRecentWatched(true);
+  } catch (e) { rcxHint(rcxErrText(e), 'err'); }
+}
+async function rcxUnwatch() {
+  const w = rcx.watch; if (!w) return;
+  if (!await dqConfirm(`Stop watching ${rcxSideName(rcx.result, 'left')} and ${rcxSideName(rcx.result, 'right')}?
+
+The schedule goes; the comparisons already made keep their history, and an open incident on the pair stays until it is dismissed.`,
+      { title: 'Stop watching', danger: true, okLabel: 'Stop watching' })) return;
+  try {
+    await postJSON(`${API_BASE}/data-quality/reconcile`, rcxHdr(), { app_id: APP_ID, action: 'unwatch', pair_id: w.pair_id });
+    rcx.watch = null; rcx.watchOpen = false; rcxPaintWatch(); rcxRecentWatched(false);
+    rcxHint('No longer watched.');
+  } catch (e) { rcxHint(rcxErrText(e), 'err'); }
+}
+/** The key the reader named, if any, so a watch compares on it too: the one set for this run, else the result's when it was given. */
+function rcxNamedKey(res) {
+  if (rcx.key) return { key_left: rcx.key.left, key_right: rcx.key.right };
+  const k = (res || {}).key || {};
+  return k.how === 'given' && (k.left || []).length ? { key_left: k.left, key_right: k.right } : {};
+}
+/** A side of the result by name, falling back to the picker's dataset. */
+function rcxSideName(res, side) {
+  const S = (res || {})[side] || {};
+  return S.name || rcxName(S.dataset_key || rcx[side]);
+}
+/** Keep the "Reconciled before" chips honest about the watch without another round trip. */
+function rcxRecentWatched(on) {
+  const res = rcx.result || {}, lk = (res.left || {}).dataset_key || rcx.left, rk = (res.right || {}).dataset_key || rcx.right;
+  const p = ((rcx.pairs || {}).recent || []).find(x => x.left === lk && x.right === rk);
+  if (p) { p.watched = !!on; p.watch_enabled = on ? (rcx.watch || {}).enabled !== false : undefined; rcxPaintPick(); }
+}
+
+// ---- Explain with AI ----
+/** The model is given the result's facts, never a sample: counts, the key, which columns changed,
+ *  what the differing rows have in common, the load window and the trend. The answer is kept with
+ *  the run on the server, so the next person to open it reads the same words. */
+async function rcxExplain(regen) {
+  const res = rcx.result, out = $('#rcxAi'), btn = $('#rcxStage [data-rcx="ai"]'); if (!res || !out) return;
+  const title = 'What this result means';
+  aiBusy(btn, true, 'Reading the result…');
+  aiThinking(out, `Reading the counts, the key, what the differences have in common and the trend for ${(res.left || {}).name || rcxName(rcx.left)} and ${(res.right || {}).name || rcxName(rcx.right)}. No row values are sent.`, { title, anchor: btn });
+  try {
+    const r = await postJSON(`${API_BASE}/data-quality/reconcile`, rcxHdr(), { app_id: APP_ID, action: 'explain', pair_id: res.pair_id, recon_id: res.recon_id, regenerate: !!regen, actor: EMAIL || undefined });
+    aiAnswer(out, aiMd(r.explanation), aiFoot(r, 'rcx-ai-regen'), { title, anchor: btn });
+  } catch (e) { aiFail(out, rcxErrText(e), { title, anchor: btn }); }
+  finally { aiBusy(btn, false); }
 }
 /** A pair reconciled before: show its last result straight away. */
 async function rcxShowLast(l, r) {
   const p = ((rcx.pairs || {}).recent || []).find(x => x.left === l && x.right === r);
   if (!p || !p.last || !p.last.recon_id) return;
   const stage = $('#rcxStage'); stage.style.display = ''; stage.innerHTML = dqSkeleton('Loading the last result', 4);
+  rcx.watch = null; rcx.watchOpen = false;
   try {
-    const s = await postJSON(`${API_BASE}/data-quality/reconcile`, HEADERS, { app_id: APP_ID, action: 'status', pair_id: p.pair_id, recon_id: p.last.recon_id });
+    const s = await postJSON(`${API_BASE}/data-quality/reconcile`, rcxHdr(), { app_id: APP_ID, action: 'status', pair_id: p.pair_id, recon_id: p.last.recon_id });
     if (s.result) { rcx.result = s.result; rcx.run = null; rcxPaintResult(); rcxLoadHistory(p.pair_id); }
     else stage.style.display = 'none';
   } catch (e) { stage.innerHTML = rcxFailHtml('Could not load the last result', rcxErrText(e)); }
@@ -19311,7 +19626,7 @@ function rcxResultHtml(res, hist) {
                 c.changed ? `${rcxN(c.changed)} changed` : ''].filter(Boolean);
   const sub = diff === 0 ? `${rcxN(c.carried)} rows, identical on both sides` : bits.join(' · ');
   const side = (S, cls) => `<div class="rcx-hside ${cls}"><span class="ifr-dsi" aria-hidden="true">${srcIcon(S.kind)}</span>` +
-    `<div><b>${esc(S.name || S.dataset_key || '')}</b><span>${esc(sourceLabel(S.kind) || S.kind || '')} · ${esc([S.schema, S.table].filter(Boolean).join('.'))} · ${rcxN(S.rows)} rows</span></div></div>`;
+    `<div><b>${esc(S.name || S.dataset_key || '')}</b><span>${esc(sourceLabel(S.kind) || S.kind || '')} · ${esc(S.kind === 'qlik' ? 'read out of the app' : RCX_FILE.has(String(S.kind || '').toLowerCase()) ? 'fetched onto the worker' : [S.schema, S.table].filter(Boolean).join('.'))} · ${rcxN(S.rows)} rows</span></div></div>`;
   const keyTxt = (key.left || []).join(' + ') + ((key.right || []).join(' + ') !== (key.left || []).join(' + ') ? ` ↔ ${(key.right || []).join(' + ')}` : '');
   const how = RCX_KEY_HOW[key.how] || '';
   const strip = (res.columns || []).map(col => {
@@ -19333,13 +19648,15 @@ function rcxResultHtml(res, hist) {
   const factsHtml = facts.length ? `<div class="rcx-facts"><h4>${diff ? 'What the differences have in common' : 'Notes'}</h4><ul>${facts.join('')}</ul></div>` : '';
   return `<div class="rcx-head">${side(L, 'left')}<div class="rcx-key"><span class="rcx-key-l">Matched on</span><code>${esc(keyTxt)}</code>${how ? `<small>${esc(how)}${key.how === 'values' && key.confidence != null ? ` (${Math.round(key.confidence * 100)}%)` : ''}</small>` : ''}</div>${side(R, 'right')}</div>` +
     `<div class="rcx-verdict ${verdictCls}"><b>${esc(verdict)}</b><span>${esc(sub)}</span></div>` +
+    `<div class="rcx-tools"><div class="rcx-watch" id="rcxWatch">${rcxWatchHtml(res)}</div>${aiBtn('Explain with AI', 'data-rcx="ai"', 'rcx-ai')}</div>` +
+    `<div class="ai-out" id="rcxAi" hidden></div>` +
     `<div class="rcx-flow">${rcxFlowSvg(c, L, R)}</div>` +
     `<div class="rcx-legend"><span class="carried">Carried</span><span class="changed">Changed</span><span class="missing">Missing on the right</span><span class="extra">Only on the right</span></div>` +
     (strip ? `<div class="rcx-strip-wrap"><h4>How far each column agrees</h4><div class="rcx-strip">${strip}</div>${unmappedHtml}</div>` : '') +
     factsHtml + rcxSamplesHtml(res) +
     `<div class="rcx-hist" id="rcxHist">${rcxHistoryHtml(hist, res)}</div>` +
     `<div class="rcx-foot"><span>${rcxN((res.queries || {}).left + (res.queries || {}).right)} queries · ${((res.elapsed_ms || 0) / 1000).toFixed(1)} s · ${(res.levels || []).length} pass${(res.levels || []).length === 1 ? '' : 'es'}` +
-    `${res.finished_at ? ` · ${esc(rcxWhen(res.finished_at))}` : ''}</span><button type="button" class="dsx-btn lngb" data-rcx="again">Reconcile again</button></div>`;
+    `${res.finished_at ? ` · ${esc(rcxWhen(res.finished_at))}` : ''}</span><span class="rcx-foot-acts"><button type="button" class="linkbtn lngb" data-rcx="rekey">Match on a different key</button><button type="button" class="dsx-btn lngb" data-rcx="again">Reconcile again</button></span></div>`;
 }
 /** A share of the table, said the way the engine says it: 12%, 1.4%, 0.17%. */
 function rcxShare(x) {
@@ -19348,10 +19665,18 @@ function rcxShare(x) {
   if (p >= 1) return `${p.toFixed(1)}%`;
   return p >= 0.01 ? `${parseFloat(p.toPrecision(2))}%` : 'under 0.01%';
 }
+/** A date column's bounds arrive as midnight UTC instants; shown in local time they would read as
+ *  "01:00 AM" in summer. A date is a day, so it is said as one, in UTC. */
+const rcxIsDay = iso => /T00:00:00(\.0+)?(Z|\+00:00)$/.test(String(iso || ''));
+function rcxDay(iso) {
+  const d = new Date(iso);
+  return isNaN(d.getTime()) ? String(iso) : d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
+}
 function rcxWhereText(w, which, n) {
-  const from = rcxWhen(w.from), to = rcxWhen(w.to), same = w.from === w.to;
+  const days = rcxIsDay(w.from) && rcxIsDay(w.to);
+  const from = days ? rcxDay(w.from) : rcxWhen(w.from), to = days ? rcxDay(w.to) : rcxWhen(w.to), same = w.from === w.to;
   const who = which === 'missing' ? `All ${rcxN(n)} missing rows` : `All ${rcxN(n)} extra rows`;
-  const when = same ? `at ${esc(from)}` : `between ${esc(from)} and ${esc(to)}`;
+  const when = same ? `${days ? 'on' : 'at'} ${esc(from)}` : `between ${esc(from)} and ${esc(to)}`;
   if (w.share_of_table != null && !same) {
     return `${who} have <b>${esc(w.column)}</b> ${when}: a window of ${rcxSpan(w.span_seconds)} holding ${rcxShare(w.share_of_table)} of the table` +
       `${w.table_span_seconds ? `, which spans ${rcxSpan(w.table_span_seconds)}` : ''}.`;
@@ -20273,8 +20598,8 @@ const GD_SHOTS = {
   "heatmap": [1124, 1282, "eaa67f551b"],
   "history-p": [1600, 1164, "cfca32980f"],
   "history-q": [1600, 979, "539a02e628"],
-  "incidents-p": [1600, 1107, "7afba110c2"],
-  "incidents-q": [1600, 1107, "d7c78ac125"],
+  "incidents-p": [1600, 1163, "d257df8b88"],
+  "incidents-q": [1600, 1163, "8acb69c159"],
   "lineage-app": [1600, 1141, "8605e85254"],
   "lineage-source": [1600, 1129, "cc5e81a146"],
   "onprem-file": [1600, 1156, "244201089c"],
@@ -20294,7 +20619,7 @@ const GD_SHOTS = {
   "source-menu": [1600, 913, "23d4212bf0"],
   "source-picker": [1600, 736, "ad2f24e825"],
   "sourcewatch": [1600, 1112, "bcdfc62955"],
-  "stages": [1600, 2150, "ae8b4e3c60"],
+  "stages": [1600, 2150, "5e745f8096"],
   "tag-edit-pa": [976, 1608, "8e3addbf3c"],
   "tag-edit-q": [976, 612, "9929794e2b"],
   "tagrun": [1600, 1378, "2630e79d1f"],
@@ -21325,7 +21650,7 @@ function buildGuides() {
   G.push({
     id: 'reconcile', cat: 'Explore', icon: 'copy', tint: '#38bdf8',
     title: 'Reconcile two datasets', sub: 'Do they agree? Which rows carried over, changed or went missing, and where the lost ones went',
-    keywords: 'reconcile reconciliation compare agree match diff difference missing extra changed rows key bronze silver gold stages migration replica copy flow',
+    keywords: 'reconcile reconciliation compare agree match diff difference missing extra changed rows key bronze silver gold stages migration replica copy flow watch schedule tolerance divergence drift incident explain ai qlik app table file parquet csv s3 upload',
     open: { tab: 'medallion', label: 'Open Reconcile' },
     sections: [
       { h: 'What it answers', body:
@@ -21339,10 +21664,11 @@ function buildGuides() {
           steps(`Open ${go('medallion', 'Reconcile')}. ${showme('stages')}`,
                 `Pick the left and the right dataset, or press a ready-made pair: <b>Bronze to Silver</b> and <b>Silver to Gold</b> are built from the stage tags, and pairs reconciled before are listed too.`,
                 `Press ${ui('Reconcile')}. The comparison runs where the data lives, and the steps light up as it goes. A few million rows take a minute or two; most of that is a worker starting.`) +
-          shot('stages', `${n(1)} The pair, with the stage pairs ready-made. ${n(2)} The key both sides were matched on. ${n(3)} The flow of rows: carried, changed, missing, extra. ${n(4)} How far each column agrees. ${n(5)} What the differences have in common.`) },
+          shot('stages', `${n(1)} The pair, with the stage pairs ready-made. ${n(2)} The key both sides were matched on. ${n(3)} The flow of rows: carried, changed, missing, extra. ${n(4)} How far each column agrees. ${n(5)} What the differences have in common. ${n(6)} The watch on the pair, and Explain with AI.`) },
       { h: 'Reading the result', body:
           list(
             `<b>Matched on</b> says which column identifies a row: the key you named, the primary key both catalogs declare, a unique column both sides share, or two unique columns whose values overlap.`,
+            `<b>Name the key</b> when no column identifies a row on both sides: the tab asks for the column, or columns together, on each side, says which were unique on each, and compares again. ${ui('Match on a different key')} under a result does the same when the key it found is not the one you meant. A watch keeps the key you named.`,
             `<b>The flow</b> runs from the left table to the right. Carried and changed rows cross; missing rows fade out before they arrive; extra rows appear part way.`,
             `<b>The column strip</b> gives each compared column its share of rows that agree. A column with no counterpart of the same name, or a different type, is listed as not compared rather than guessed.`,
             `<b>What the differences have in common</b>, which is usually the cause: when every missing row came from one source system that holds a tenth of the table, when two columns together single them out, when their amounts sit in a band of their own, when they were all loaded in the same quarter of an hour, or when every changed amount is exactly 1.2 times the left, it says so. Columns marked as personal data take no part.`,
@@ -21351,10 +21677,20 @@ function buildGuides() {
       { h: 'What leaves each source, and what never does', body:
           p(`Each side computes small fingerprints of its own rows, with its own SQL: counts, sums, and folded hashes of text, in a thousand buckets by key. Buckets that agree are never looked at again; the rest are split, then split again, and only the handful of rows that still differ have their keys pulled. The rows themselves are never copied.`) +
           note(`A column the compliance scan marked as personal data never has a value pulled, even when it changed: the result shows that it differs, and its length, and nothing else. When the key itself is personal data, the keys are shown hashed.`) },
-      { h: 'Not yet', body:
+      { h: 'Watch a pair', body:
+          p(`Under the verdict, ${ui('Watch this pair')} compares the two again on a schedule: every hour, every six hours, daily or weekly, in your timezone. Name the share of rows allowed to differ (a tenth of a per cent, say: a live pipeline is never exactly in step) and where its alerts go.`) +
           list(
-            `Qlik app tables as a side. Today both sides are database or warehouse tables with a saved connection; a dataset without one says so when you press Reconcile.`,
-            `Watching a pair on a schedule and raising an incident when it drifts. Reconcile again by hand for now, and the history below the result keeps the trend.`) },
+            `When a run finds more rows differing than the watch allows, a <b>Diverged from its pair</b> incident opens against the right-hand dataset, with the counts and the strongest fact in its message; ten times over the tolerance makes it major. It clears on its own when a later run is back within tolerance, scheduled or by hand.`,
+            `A run that could not happen (a saved connection that no longer works, say) opens <b>Reconcile could not run</b>, so a watch never goes quietly dark.`,
+            `Both reach ${go('incidents', 'Incidents')}, email, and Slack or Teams like every other incident, and the incident's next step opens the pair here. The schedule is listed under ${go('schedules', 'Schedules')} too, where it can be paused.`) },
+      { h: 'Explain with AI', body:
+          p(`${ui('Explain with AI')} asks Claude what the result means, from the facts alone: the counts, the key, which columns changed, what the differing rows have in common, the load window and the trend. It never sees a row or a value, so a column marked as personal data costs nothing to explain. The answer is kept with the run; ${ui('Regenerate')} asks again.`) },
+      { h: 'What can be a side', body:
+          list(
+            `<b>A database or warehouse table</b> with a saved connection: Snowflake, Databricks, Redshift, BigQuery, Postgres, MySQL, SQL Server, Synapse, Fabric, Oracle, Qlik Open Lakehouse. Compared where it lives.`,
+            `<b>A file in Amazon S3, Google Cloud Storage or Azure Blob</b> with a saved connection: parquet, csv, json, Excel or QVD. A file has no engine to ask, so it is fetched onto the worker, as its assessment fetched it, and read there.`,
+            `<b>A Qlik app table</b>, inside the app: the picker lists the app's own tables with the source datasets. The engine cannot hash the way the databases do, so the table is read out of the app into the worker, as an assessment reads it, and compared from there; a million rows take a few minutes. From the portal the picker leaves app tables out: it holds no key that opens an app.`) +
+          note(`Not a side: an <b>uploaded file</b>, because its file is not kept once it has been assessed (put it in S3 or a database and assess it from there); a <b>SharePoint file</b>, which a run cannot reach again; a file on an <b>on-premises agent</b>. A watch on a pair with an app table keeps the Qlik key you had when you set it; when that key expires, the watch fails and says so.`) },
     ],
   });
 
@@ -21377,6 +21713,7 @@ function buildGuides() {
           ['Compliance exposure', 'By exposure', 'A high or critical compliance finding, such as card numbers in clear text'],
           ['Stale', 'Warning', 'The dataset has not been assessed for seven days'],
           ['Source signals', 'Warning or Major', `Found by source monitoring between runs. ${see('source-monitoring', 'Source monitoring')}`],
+          ['Diverged from its pair', 'Warning, then Major', `A pair watched in Reconcile has more rows differing than its watch allows; ten times over makes it major. Its companion, Reconcile could not run, opens when a watched comparison could not happen. ${see('reconcile', 'Reconcile')}`],
         ]) },
       { h: 'The list', body:
           p(`Incidents opens on four tiles: what is ${ui('Open')}, what is ${ui('Unacknowledged')}, what has closed in the last 30 days, and the total. Each says how that has moved, with a line of the last 30 days. Press a tile to show only those. ${showme('inc-board')}`) +
@@ -24510,7 +24847,7 @@ function _tzClose() {
 // <select> stays in the DOM - hidden - and remains the single source of truth for the value.
 // Every existing read and write of #schSourceKind.value therefore keeps working as written.
 // These two are not data sources, so they have no brand mark of their own.
-const SCHED_KIND_ICON = { tag: '🏷️', 'source-watch': '👁️' };
+const SCHED_KIND_ICON = { tag: '🏷️', 'source-watch': '👁️', reconcile: '⚖️' };
 function schedKindIcon(v) { return `<span class="skc-ic">${SCHED_KIND_ICON[v] || srcIcon(v)}</span>`; }
 
 function buildSchedKindSelect() {
@@ -24774,6 +25111,9 @@ function renderSchedules(list) {
       // Not a data source, so no source chip: that fell through to the kind in capitals.
       : s.sourceKind === 'source-watch'
       ? `<span class="ds-tag" style="cursor:default">${SCHED_KIND_ICON['source-watch']} Source monitoring</span>`
+      // A watched pair, set from the Reconcile tab; its Edit opens the pair there.
+      : s.sourceKind === 'reconcile'
+      ? `<span class="ds-tag" style="cursor:default">${SCHED_KIND_ICON.reconcile} Reconcile</span>` + detail(s.sourceSummary || '')
       : isSrc
         ? sourceChip(s.sourceKind) + detail(s.sourceSummary || '')
         : sourceChip('qlik') + detail((s.tables && s.tables.length)
@@ -24789,7 +25129,7 @@ function renderSchedules(list) {
         <td class="sched-src">${tables}</td>
         <td><div class="sched-acts">
           <button class="sact${on ? '' : ' on'}" data-act="toggle" data-i="${i}" data-tip="${on ? 'Pause this schedule - it stops firing but keeps its settings' : 'Resume this schedule'}">${on ? '⏸' : '▶'}<span>${on ? 'Pause' : 'Resume'}</span></button>
-          <button class="sact" data-act="edit" data-i="${i}" data-tip="Load this schedule into the form above">✎<span>Edit</span></button>
+          <button class="sact" data-act="edit" data-i="${i}" data-tip="${s.sourceKind === 'reconcile' ? 'Open the pair in Reconcile, where its watch is changed' : 'Load this schedule into the form above'}">✎<span>Edit</span></button>
           <button class="sact danger" data-act="del" data-i="${i}" data-tip="Delete this schedule">🗑<span>Delete</span></button>
         </div></td>
       </tr>
@@ -24818,7 +25158,9 @@ function renderSchedules(list) {
     const exp = $(`tr[data-exp="${i}"]`);
     exp.querySelector('.v-cron').textContent = s.cron || '-';
     exp.querySelector('.v-tz').textContent = s.timezone || 'UTC';
-    exp.querySelector('.v-tables').textContent = (s.sourceKind && s.sourceKind !== 'qlik')
+    exp.querySelector('.v-tables').textContent = s.sourceKind === 'reconcile'
+      ? `Reconcile${s.sourceSummary ? ' · ' + s.sourceSummary : ''}`
+      : (s.sourceKind && s.sourceKind !== 'qlik')
       ? `${SOURCE_LABEL[s.sourceKind] || s.sourceKind}${s.sourceSummary ? ' · ' + s.sourceSummary : ''}`
       : ((s.tables && s.tables.length) ? s.tables.join(', ') : 'All tables');
     // What the schedule will actually do. Older schedules may still carry a stored address from
@@ -24871,7 +25213,8 @@ This cannot be undone. Assessments already run keep their `
       await dqDone('Schedule deleted',
         `<strong>${esc(s.label)}</strong> is gone. Runs it already made keep their history.`);
     } else if (act === 'edit') {
-      editSchedule(s);
+      if (s.sourceKind === 'reconcile') rcxOpenPair({ left_key: s.leftKey, right_key: s.rightKey, pair_id: s.pairId });
+      else editSchedule(s);
     }
   } catch (e) { schBanner('err', e.message); }
 }
