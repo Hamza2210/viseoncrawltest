@@ -19045,10 +19045,11 @@ let rcx = { left: '', right: '', q: '', open: '', pairs: null, run: null, result
 const RCX_PHASE = {
   queued: 'Starting a worker', connecting: 'Connecting to both sources', profiling: 'Reading both tables',
   keys: 'Finding the key', mapping: 'Pairing the columns', comparing: 'Comparing the rows',
-  isolating: 'Isolating the rows that differ', sampling: 'Fetching a sample of them', writing: 'Writing the result',
+  isolating: 'Isolating the rows that differ', sampling: 'Fetching a sample of them',
+  explaining: 'Looking for what the differences have in common', writing: 'Writing the result',
 };
-const RCX_STEPS = [['connecting', 'Connect'], ['profiling', 'Read'], ['keys', 'Key'], ['comparing', 'Compare'], ['isolating', 'Isolate'], ['sampling', 'Sample']];
-const RCX_STEP_OF = { queued: -1, connecting: 0, profiling: 1, keys: 2, mapping: 2, comparing: 3, isolating: 4, sampling: 5, writing: 5, done: 6 };
+const RCX_STEPS = [['connecting', 'Connect'], ['profiling', 'Read'], ['keys', 'Key'], ['comparing', 'Compare'], ['isolating', 'Isolate'], ['sampling', 'Sample'], ['explaining', 'Explain']];
+const RCX_STEP_OF = { queued: -1, connecting: 0, profiling: 1, keys: 2, mapping: 2, comparing: 3, isolating: 4, sampling: 5, explaining: 6, writing: 6, done: 7 };
 const RCX_KEY_HOW = {
   given: 'the key you named', catalog: 'the primary key both catalogs declare',
   name: 'the unique column both sides share', values: 'two unique columns whose values overlap',
@@ -19321,7 +19322,7 @@ function rcxResultHtml(res, hist) {
   const unmapped = [...(um.left || []).map(u => ({ ...u, side: 'left' })), ...(um.right || []).map(u => ({ ...u, side: 'right' }))];
   const unmappedHtml = unmapped.length ? `<div class="rcx-unmapped"><span>Not compared:</span>${unmapped.map(u => `<span class="rcx-uchip" data-tip="${esc(u.reason)}">${esc(u.column)}<small>${u.side}</small></span>`).join('')}</div>` : '';
   const facts = [];
-  (res.explain || []).forEach(x => facts.push(`<li class="why">${esc(x.text)}</li>`));
+  (res.explain || []).forEach(x => facts.push(`<li class="why ${esc(x.kind || '')}">${esc(x.text)}</li>`));
   const w = res.where || {};
   if (w.missing && c.missing) facts.push(`<li class="where">${rcxWhereText(w.missing, 'missing', c.missing)}</li>`);
   if (w.extra && c.extra) facts.push(`<li class="where">${rcxWhereText(w.extra, 'extra', c.extra)}</li>`);
@@ -19339,11 +19340,23 @@ function rcxResultHtml(res, hist) {
     `<div class="rcx-foot"><span>${rcxN((res.queries || {}).left + (res.queries || {}).right)} queries · ${((res.elapsed_ms || 0) / 1000).toFixed(1)} s · ${(res.levels || []).length} pass${(res.levels || []).length === 1 ? '' : 'es'}` +
     `${res.finished_at ? ` · ${esc(rcxWhen(res.finished_at))}` : ''}</span><button type="button" class="dsx-btn lngb" data-rcx="again">Reconcile again</button></div>`;
 }
+/** A share of the table, said the way the engine says it: 12%, 1.4%, 0.17%. */
+function rcxShare(x) {
+  const p = x * 100;
+  if (p >= 10) return `${Math.round(p)}%`;
+  if (p >= 1) return `${p.toFixed(1)}%`;
+  return p >= 0.01 ? `${parseFloat(p.toPrecision(2))}%` : 'under 0.01%';
+}
 function rcxWhereText(w, which, n) {
   const from = rcxWhen(w.from), to = rcxWhen(w.to), same = w.from === w.to;
   const who = which === 'missing' ? `All ${rcxN(n)} missing rows` : `All ${rcxN(n)} extra rows`;
-  return `${who} have <b>${esc(w.column)}</b> ${same ? `at ${esc(from)}` : `between ${esc(from)} and ${esc(to)}`}` +
-    `${same ? '' : ` (${rcxSpan(w.span_seconds)})`}${w.table_span_seconds ? `, in a table spanning ${rcxSpan(w.table_span_seconds)}` : ''}.`;
+  const when = same ? `at ${esc(from)}` : `between ${esc(from)} and ${esc(to)}`;
+  if (w.share_of_table != null && !same) {
+    return `${who} have <b>${esc(w.column)}</b> ${when}: a window of ${rcxSpan(w.span_seconds)} holding ${rcxShare(w.share_of_table)} of the table` +
+      `${w.table_span_seconds ? `, which spans ${rcxSpan(w.table_span_seconds)}` : ''}.`;
+  }
+  return `${who} have <b>${esc(w.column)}</b> ${when}${same ? '' : ` (${rcxSpan(w.span_seconds)})`}` +
+    `${w.table_span_seconds ? `, in a table spanning ${rcxSpan(w.table_span_seconds)}` : ''}.`;
 }
 function rcxVal(v) {
   if (v && typeof v === 'object' && v.masked) return `<span class="rcx-mask" data-tip="Personal data: the value never leaves the source">${v.empty ? 'empty' : '••••••'}</span>`;
@@ -20280,7 +20293,7 @@ const GD_SHOTS = {
   "source-menu": [1600, 913, "23d4212bf0"],
   "source-picker": [1600, 736, "ad2f24e825"],
   "sourcewatch": [1600, 1112, "bcdfc62955"],
-  "stages": [1600, 2150, "d60a61b396"],
+  "stages": [1600, 2150, "ae8b4e3c60"],
   "tag-edit-pa": [976, 1608, "8e3addbf3c"],
   "tag-edit-q": [976, 612, "9929794e2b"],
   "tagrun": [1600, 1378, "2630e79d1f"],
@@ -21331,7 +21344,7 @@ function buildGuides() {
             `<b>Matched on</b> says which column identifies a row: the key you named, the primary key both catalogs declare, a unique column both sides share, or two unique columns whose values overlap.`,
             `<b>The flow</b> runs from the left table to the right. Carried and changed rows cross; missing rows fade out before they arrive; extra rows appear part way.`,
             `<b>The column strip</b> gives each compared column its share of rows that agree. A column with no counterpart of the same name, or a different type, is listed as not compared rather than guessed.`,
-            `<b>What the differences have in common</b>: when every changed amount is exactly 1.2 times the left, or every missing row was loaded in the same quarter of an hour, it says so. That is usually the cause.`,
+            `<b>What the differences have in common</b>, which is usually the cause: when every missing row came from one source system that holds a tenth of the table, when two columns together single them out, when their amounts sit in a band of their own, when they were all loaded in the same quarter of an hour, or when every changed amount is exactly 1.2 times the left, it says so. Columns marked as personal data take no part.`,
             `<b>The rows that changed</b>, with both values, and the keys that are missing or extra.`,
             `<b>Over time</b>, once a pair has been reconciled twice: the share that agreed on each run.`) },
       { h: 'What leaves each source, and what never does', body:
