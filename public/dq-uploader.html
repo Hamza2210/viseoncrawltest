@@ -3527,6 +3527,17 @@
   .rcx-hint.err { color: var(--err); }
   .rcx-hint.ok { color: var(--ok); }
   .rcx-pop-note { padding: 8px 12px; font-size: 11.5px; line-height: 1.45; color: var(--muted); border-bottom: 1px solid var(--border); }
+  /* Naming the key */
+  .rcx-keypick b { display: block; font-size: 15px; margin-bottom: 6px; }
+  .rcx-keypick p { margin: 0 0 14px; font-size: 13px; line-height: 1.55; color: var(--muted); }
+  .rcx-keypick code { padding: 1px 6px; border: 1px solid var(--border); border-radius: 5px; background: var(--card-2); font-size: 11.5px; color: var(--text); }
+  .rcx-keyrows { display: flex; flex-direction: column; gap: 8px; }
+  .rcx-keyrow { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+  .rcx-keyrow select { flex: 1 1 260px; min-width: 200px; padding: 7px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--card); color: var(--text); font: inherit; font-size: 13px; }
+  .rcx-keyrow .rcx-arr { color: var(--muted); }
+  .rcx-keyacts { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-top: 16px; }
+  .rcx-keyacts-r { display: inline-flex; align-items: center; gap: 12px; }
+  .rcx-foot-acts { display: inline-flex; align-items: center; gap: 14px; }
   .rcx-hint:empty { display: none; }
   /* Progress */
   .rcx-loader { display: flex; flex-direction: column; align-items: center; gap: 18px; padding: 26px 0 18px; text-align: center; }
@@ -19075,7 +19086,7 @@ annotateSourceFields();
 // (carried, changed, missing, extra), how far each column agrees, the rows that differ, where the
 // lost ones sit in time, and the pair's history. Bronze → Silver and Silver → Gold come
 // ready-paired from the stage tags, which is what the tab used to compare by score alone.
-let rcx = { left: '', right: '', q: '', open: '', pairs: null, run: null, result: null, history: null, busy: false, watch: null, watchOpen: false };
+let rcx = { left: '', right: '', q: '', open: '', pairs: null, run: null, result: null, history: null, busy: false, watch: null, watchOpen: false, key: null, keyPick: null };
 const RCX_PHASE = {
   queued: 'Starting a worker', connecting: 'Connecting to both sources', profiling: 'Reading both tables',
   keys: 'Finding the key', mapping: 'Pairing the columns', comparing: 'Comparing the rows',
@@ -19266,17 +19277,31 @@ function rcxClosePick() { if (rcx.open) { rcx.open = ''; rcx.q = ''; rcxPaintPic
         rcxPaintPick();
         if (rcx.open) { const s = panel.querySelector('.rcx-search'); if (s) s.focus(); }
       } else if (a === 'pick') {
-        rcx[t.dataset.side] = t.dataset.key; rcx.open = ''; rcx.q = '';
+        rcx[t.dataset.side] = t.dataset.key; rcx.open = ''; rcx.q = ''; rcx.key = null;
         rcxPaintPick(); rcxHint('');
         const b = panel.querySelector(`.rcx-side[data-side="${t.dataset.side}"] .rcx-pick-btn`); if (b) b.focus();
       } else if (a === 'pair') {
-        rcx.left = t.dataset.l; rcx.right = t.dataset.r; rcx.open = '';
+        rcx.left = t.dataset.l; rcx.right = t.dataset.r; rcx.open = ''; rcx.key = null;
         rcxPaintPick(); rcxHint('');
         if (t.classList.contains('recent')) rcxShowLast(t.dataset.l, t.dataset.r);
       } else if (a === 'swap') {
-        [rcx.left, rcx.right] = [rcx.right, rcx.left]; rcxPaintPick();
+        [rcx.left, rcx.right] = [rcx.right, rcx.left]; rcx.key = rcx.key ? { left: rcx.key.right, right: rcx.key.left } : null; rcxPaintPick();
       } else if (a === 'go' || a === 'again') {
         rcxStart();
+      } else if (a === 'rekey') {
+        const res = rcx.result || {}, k = res.key || {};
+        rcx.keyPick = { cols: { left: (res.left || {}).columns || [], right: (res.right || {}).columns || [] }, cands: {}, title: 'Match on a different key',
+                        pairs: (k.left || []).map((c, i) => [c, (k.right || [])[i] || '']) };
+        rcxPaintKeyPick();
+      } else if (a === 'key-add') {
+        if (rcx.keyPick) { rcx.keyPick.pairs.push(['', '']); rcxPaintKeyPick(); const sels = panel.querySelectorAll('.rcx-keyrow select[data-side="left"]'); if (sels.length) sels[sels.length - 1].focus(); }
+      } else if (a === 'key-go') {
+        const kp = rcx.keyPick; if (!kp || !kp.pairs.every(p => p[0] && p[1])) return;
+        rcx.key = { left: kp.pairs.map(p => p[0]), right: kp.pairs.map(p => p[1]) }; rcx.keyPick = null;
+        rcxStart();
+      } else if (a === 'key-cancel') {
+        rcx.keyPick = null;
+        if (rcx.result) rcxPaintResult(); else { $('#rcxStage').style.display = 'none'; }
       } else if (a === 'dismiss') {
         rcx.run = null; rcx.busy = false; $('#rcxStage').style.display = 'none'; rcxPaintPick();
       }
@@ -19289,6 +19314,12 @@ function rcxClosePick() { if (rcx.open) { rcx.open = ''; rcx.q = ''; rcxPaintPic
     panel.addEventListener('keydown', e => { if (e.key === 'Escape' && rcx.open) { e.preventDefault(); const side = rcx.open; rcxClosePick(); const b = panel.querySelector(`.rcx-side[data-side="${side}"] .rcx-pick-btn`); if (b) b.focus(); } });
     panel.addEventListener('submit', e => { if (e.target.closest('.rcx-wform')) { e.preventDefault(); rcxWatchSave(); } });
     panel.addEventListener('change', e => {
+      const kr = e.target.closest('.rcx-keyrow');
+      if (kr && rcx.keyPick) {
+        rcx.keyPick.pairs = [...panel.querySelectorAll('.rcx-keyrow')].map(r => [r.querySelector('select[data-side="left"]').value, r.querySelector('select[data-side="right"]').value]);
+        const go = panel.querySelector('[data-rcx="key-go"]'); if (go) go.disabled = !rcx.keyPick.pairs.every(p => p[0] && p[1]);
+        return;
+      }
       if (e.target.name !== 'freq' || !e.target.closest('.rcx-wform')) return;
       const f = e.target.closest('.rcx-wform'), v = e.target.value;
       f.querySelector('.rcx-wat').hidden = v === 'hourly' || v === '6h';
@@ -19317,13 +19348,47 @@ function rcxFailHtml(title, msg) {
   return `<div class="rcx-fail" role="alert"><b>${esc(title)}</b><p>${esc(msg)}</p>` +
     `<div class="rcx-fail-acts"><button type="button" class="dsx-btn lngb" data-rcx="again">Try again</button><button type="button" class="linkbtn lngb" data-rcx="dismiss">Close</button></div></div>`;
 }
+// ---- Naming the key ----
+const rcxNorm = n => String(n || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+/** A first guess at the key: a column unique on one side that the other side has by name, else
+ *  any name both sides share; else nothing, and the reader chooses. */
+function rcxKeyGuess(L, R, cl, cr) {
+  const rby = new Map(R.map(n => [rcxNorm(n), n])), lby = new Map(L.map(n => [rcxNorm(n), n]));
+  for (const c of cl) if (rby.has(rcxNorm(c))) return [c, rby.get(rcxNorm(c))];
+  for (const c of cr) if (lby.has(rcxNorm(c))) return [lby.get(rcxNorm(c)), c];
+  for (const c of L) if (rby.has(rcxNorm(c))) return [c, rby.get(rcxNorm(c))];
+  return ['', ''];
+}
+/** The key, named by hand: a select per side, a row per column of a composite key. Shown when no
+ *  column identifies a row on both sides, and under a result to match on a different key. */
+function rcxPaintKeyPick() {
+  const kp = rcx.keyPick, stage = $('#rcxStage'); if (!kp || !stage) return;
+  const L = (kp.cols.left || []).map(c => c.name || c), R = (kp.cols.right || []).map(c => c.name || c);
+  const cl = kp.cands.left || [], cr = kp.cands.right || [];
+  if (!kp.pairs || !kp.pairs.length) kp.pairs = [rcxKeyGuess(L, R, cl, cr)];
+  const opt = (names, sel) => `<option value="">Choose a column…</option>` + names.map(n => `<option value="${esc(n)}"${n === sel ? ' selected' : ''}>${esc(n)}</option>`).join('');
+  const rows = kp.pairs.map(p => `<div class="rcx-keyrow"><select data-side="left" aria-label="Key column on the left">${opt(L, p[0])}</select>` +
+    `<span class="rcx-arr" aria-hidden="true">↔</span><select data-side="right" aria-label="Key column on the right">${opt(R, p[1])}</select></div>`).join('');
+  const code = c => `<code>${esc(c)}</code>`;
+  const hints = [cl.length ? `Unique on the left: ${cl.slice(0, 6).map(code).join(', ')}.` : '', cr.length ? `Unique on the right: ${cr.slice(0, 6).map(code).join(', ')}.` : ''].filter(Boolean).join(' ');
+  const ready = kp.pairs.every(p => p[0] && p[1]);
+  stage.style.display = ''; stage.classList.remove('medal-card-in');
+  stage.innerHTML = `<div class="rcx-keypick" role="group" aria-labelledby="rcxKeyT"><b id="rcxKeyT">${esc(kp.title)}</b>` +
+    `<p>Name the key: the column, or columns together, that identify one row on each side. Rows are matched when every key column agrees.${hints ? ' ' + hints : ''}</p>` +
+    `<div class="rcx-keyrows">${rows}</div>` +
+    `<div class="rcx-keyacts"><button type="button" class="linkbtn lngb" data-rcx="key-add">Add a column</button>` +
+    `<span class="rcx-keyacts-r"><button type="button" class="dsx-btn primary" data-rcx="key-go"${ready ? '' : ' disabled'}>Compare on this key</button>` +
+    `<button type="button" class="linkbtn lngb" data-rcx="key-cancel">${rcx.result ? 'Back to the result' : 'Close'}</button></span></div></div>`;
+}
+
 async function rcxStart() {
   if (!rcx.left || !rcx.right || rcx.left === rcx.right || rcx.busy) return;
   rcx.busy = true; rcx.result = null; rcx.history = null; rcx.watch = null; rcx.watchOpen = false; rcxPaintPick(); rcxHint('');
   const stage = $('#rcxStage'); stage.style.display = ''; stage.classList.remove('medal-card-in');
   stage.innerHTML = rcxLoaderHtml('queued', 'Asking for a worker in the cloud');
   try {
-    const r = await postJSON(`${API_BASE}/data-quality/reconcile`, rcxHdr(), { app_id: APP_ID, action: 'start', left_key: rcx.left, right_key: rcx.right });
+    const r = await postJSON(`${API_BASE}/data-quality/reconcile`, rcxHdr(), { app_id: APP_ID, action: 'start', left_key: rcx.left, right_key: rcx.right,
+      ...(rcx.key ? { key_left: rcx.key.left, key_right: rcx.key.right } : {}) });
     rcx.run = { reconId: r.reconId, pairId: r.pairId, left: rcx.left, right: rcx.right, startedAt: Date.now() };
     rcxPoll(rcx.run);
   } catch (e) {
@@ -19347,6 +19412,13 @@ async function rcxPoll(run) {
     }
     if (st.state === 'failed') {
       rcx.busy = false; rcxPaintPick();
+      if (st.reason === 'no_key') {
+        // Not a fault but a question: the worker found no column unique on both sides, and says
+        // which columns there are. The reader names the key and the comparison runs again.
+        rcx.keyPick = { cols: st.columns || {}, cands: st.candidates || {}, title: 'No column identifies a row on both sides', pairs: null };
+        rcxPaintKeyPick();
+        return;
+      }
       stage.innerHTML = rcxFailHtml('The comparison failed', st.error || st.detail || 'The worker did not say why.');
       return;
     }
@@ -19463,7 +19535,7 @@ async function rcxWatchSave() {
     const r = await postJSON(`${API_BASE}/data-quality/reconcile`, rcxHdr(), { app_id: APP_ID, action: 'watch',
       left_key: (res.left || {}).dataset_key || rcx.left, right_key: (res.right || {}).dataset_key || rcx.right,
       schedule_expression: rcxCronOf(freq, at, dow), timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
-      tolerance_pct: tol, email: email || undefined });
+      tolerance_pct: tol, email: email || undefined, ...rcxNamedKey(res) });
     rcx.watch = r.watch || null; rcx.watchOpen = false; rcxPaintWatch(); rcxRecentWatched(true);
     rcxHint(`Watching ${rcxSideName(res, 'left')} and ${rcxSideName(res, 'right')} ${rcxCronHuman(((rcx.watch || {}).schedule || {}).expression)}.`, 'ok');
   } catch (e) {
@@ -19489,6 +19561,12 @@ The schedule goes; the comparisons already made keep their history, and an open 
     rcx.watch = null; rcx.watchOpen = false; rcxPaintWatch(); rcxRecentWatched(false);
     rcxHint('No longer watched.');
   } catch (e) { rcxHint(rcxErrText(e), 'err'); }
+}
+/** The key the reader named, if any, so a watch compares on it too: the one set for this run, else the result's when it was given. */
+function rcxNamedKey(res) {
+  if (rcx.key) return { key_left: rcx.key.left, key_right: rcx.key.right };
+  const k = (res || {}).key || {};
+  return k.how === 'given' && (k.left || []).length ? { key_left: k.left, key_right: k.right } : {};
 }
 /** A side of the result by name, falling back to the picker's dataset. */
 function rcxSideName(res, side) {
@@ -19577,7 +19655,7 @@ function rcxResultHtml(res, hist) {
     factsHtml + rcxSamplesHtml(res) +
     `<div class="rcx-hist" id="rcxHist">${rcxHistoryHtml(hist, res)}</div>` +
     `<div class="rcx-foot"><span>${rcxN((res.queries || {}).left + (res.queries || {}).right)} queries · ${((res.elapsed_ms || 0) / 1000).toFixed(1)} s · ${(res.levels || []).length} pass${(res.levels || []).length === 1 ? '' : 'es'}` +
-    `${res.finished_at ? ` · ${esc(rcxWhen(res.finished_at))}` : ''}</span><button type="button" class="dsx-btn lngb" data-rcx="again">Reconcile again</button></div>`;
+    `${res.finished_at ? ` · ${esc(rcxWhen(res.finished_at))}` : ''}</span><span class="rcx-foot-acts"><button type="button" class="linkbtn lngb" data-rcx="rekey">Match on a different key</button><button type="button" class="dsx-btn lngb" data-rcx="again">Reconcile again</button></span></div>`;
 }
 /** A share of the table, said the way the engine says it: 12%, 1.4%, 0.17%. */
 function rcxShare(x) {
@@ -21581,6 +21659,7 @@ function buildGuides() {
       { h: 'Reading the result', body:
           list(
             `<b>Matched on</b> says which column identifies a row: the key you named, the primary key both catalogs declare, a unique column both sides share, or two unique columns whose values overlap.`,
+            `<b>Name the key</b> when no column identifies a row on both sides: the tab asks for the column, or columns together, on each side, says which were unique on each, and compares again. ${ui('Match on a different key')} under a result does the same when the key it found is not the one you meant. A watch keeps the key you named.`,
             `<b>The flow</b> runs from the left table to the right. Carried and changed rows cross; missing rows fade out before they arrive; extra rows appear part way.`,
             `<b>The column strip</b> gives each compared column its share of rows that agree. A column with no counterpart of the same name, or a different type, is listed as not compared rather than guessed.`,
             `<b>What the differences have in common</b>, which is usually the cause: when every missing row came from one source system that holds a tenth of the table, when two columns together single them out, when their amounts sit in a band of their own, when they were all loaded in the same quarter of an hour, or when every changed amount is exactly 1.2 times the left, it says so. Columns marked as personal data take no part.`,
