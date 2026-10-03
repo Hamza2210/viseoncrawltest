@@ -14852,15 +14852,17 @@ function incDetHtml(it) {
   const [what, nk] = incInfo(it), nx = INC_NEXT[nk];
   const [stc, stl] = incStateOf(it), acked = !!it.ackBy, who = incWho(it.owner);
   const report = { attr: 'data-ix="report"', ic: '📜', label: 'Open the run that raised it', sub: 'Its full report, in History' };
+  // A pair's incident was raised by a reconciliation, not an assessment: there is no run to open; its next step opens the pair.
+  const runItems = it.pair ? [] : [report];
   const ds = { attr: 'data-ix="opends"', ic: '📊', label: 'Open the dataset', sub: 'On the Overview' };
   const more = open
     ? [{ attr: `data-ix="act" data-act="${it.muted ? 'unmute' : 'mute'}"`, ic: it.muted ? '🔔' : '🔇', label: it.muted ? 'Unmute alerts' : 'Mute alerts',
          sub: it.muted ? 'Notify people about it again' : 'Stop its notifications while it stays open' }]
       .concat(String(it.rule || '').indexOf('BASELINE_') === 0 ? [{ attr: 'data-ix="act" data-act="accept_new_normal"', ic: '↺', label: 'Accept as the new normal',
          sub: 'The baseline learns again from now, which closes this' }] : [])
-      .concat([report].concat(d ? [ds] : []), ['-',
+      .concat(runItems.concat(d ? [ds] : []), ['-',
                { attr: 'data-ix="act" data-act="dismiss"', ic: '🗂', label: 'Not an incident…', sub: 'Dismiss it with a reason; it reopens if it happens again', danger: true }])
-    : [report].concat(d ? [ds] : [], ['-', { attr: 'data-ix="act" data-act="archive"', ic: '✕', label: 'Remove from the list', sub: 'It stays in history', danger: true }]);
+    : runItems.concat(d ? [ds] : [], ['-', { attr: 'data-ix="act" data-act="archive"', ic: '✕', label: 'Remove from the list', sub: 'It stays in history', danger: true }]);
   const moreBtn = `<span class="dsx-pw isx-more"><button type="button" class="dsx-btn icon lngb" data-ix="menu" aria-haspopup="menu" aria-expanded="false" ` +
     `aria-label="More actions" data-tip="More actions">⋯</button>` + incMenuHtml('More actions', more) + `</span>`;
   const acts = open
@@ -19090,7 +19092,18 @@ const RCX_DOW = [['MON', 'Monday'], ['TUE', 'Tuesday'], ['WED', 'Wednesday'], ['
 
 const rcxDs = key => (dashDatasetsAll || []).find(d => d.key === key) || null;
 const rcxN = n => (n == null ? '-' : Number(n).toLocaleString());
-function rcxDatasets() { return (dashDatasetsAll || []).filter(d => isSourceDataset(d)); }   // app tables: a later stage
+/** Source datasets everywhere; inside the Qlik app, its own tables too, since only the extension holds the key that opens them. */
+function rcxDatasets() { return (dashDatasetsAll || []).filter(d => isSourceDataset(d) || (!PORTAL && BEARER && String(d.sourceFormat || '').toLowerCase() === 'qlik')); }
+const rcxIsQlik = key => String((rcxDs(key) || {}).sourceFormat || '').toLowerCase() === 'qlik';
+/** The headers every reconcile call carries: the app's key rides along inside Qlik, so an app table can be a side. */
+function rcxHdr() { return BEARER ? { ...HEADERS, 'X-Qlik-Bearer': BEARER } : HEADERS; }
+/** What leaves where: an app table is read out of its app into the worker, as an assessment reads it; every other side stays put. */
+function rcxWhereHint() {
+  const l = esc(rcxName(rcx.left)), r = esc(rcxName(rcx.right)), ql = rcxIsQlik(rcx.left), qr = rcxIsQlik(rcx.right);
+  if (ql && qr) return `${l} and ${r} are read out of the app into the worker, as an assessment reads them, and compared there.`;
+  if (ql || qr) return `${ql ? l : r} is read out of the app into the worker, as an assessment reads it; ${ql ? r : l} is compared where it lives, and only fingerprints of its rows leave.`;
+  return `${l} and ${r} are compared where they live. Only fingerprints of their rows leave each source.`;
+}
 function rcxName(key) { const d = rcxDs(key); return d ? d.name : String(key || '').split('/').pop(); }
 function rcxStageOf(key) { return entryFor(key).stage || ''; }
 function rcxPct(p) {
@@ -19130,7 +19143,7 @@ async function loadReconcile() {
   } catch (e) { /* keep whatever we had */ }
   await loadDashEntries();
   rcxPaintPick();
-  try { rcx.pairs = await postJSON(`${API_BASE}/data-quality/reconcile`, HEADERS, { app_id: APP_ID, action: 'pairs' }); }
+  try { rcx.pairs = await postJSON(`${API_BASE}/data-quality/reconcile`, rcxHdr(), { app_id: APP_ID, action: 'pairs' }); }
   catch (e) { rcx.pairs = null; }
   rcxPaintPick();
 }
@@ -19278,7 +19291,7 @@ function rcxLoaderHtml(phase, detail) {
   const step = RCX_STEP_OF[phase] == null ? -1 : RCX_STEP_OF[phase];
   return `<div class="rcx-loader">${dqLoader(RCX_PHASE[phase] || 'Working', detail || '')}` +
     `<ol class="rcx-steps" aria-label="Progress">${RCX_STEPS.map(([k, l], i) => `<li class="${i < step ? 'done' : i === step ? 'now' : ''}" data-step="${k}">${l}</li>`).join('')}</ol>` +
-    `<p class="hint">${esc(rcxName(rcx.left))} and ${esc(rcxName(rcx.right))} are compared where they live. Only fingerprints of their rows leave each source.</p></div>`;
+    `<p class="hint">${rcxWhereHint()}</p></div>`;
 }
 function rcxLoaderUpdate(phase, detail) {
   const box = $('#rcxStage .rcx-loader'); if (!box) return;
@@ -19298,7 +19311,7 @@ async function rcxStart() {
   const stage = $('#rcxStage'); stage.style.display = ''; stage.classList.remove('medal-card-in');
   stage.innerHTML = rcxLoaderHtml('queued', 'Asking for a worker in the cloud');
   try {
-    const r = await postJSON(`${API_BASE}/data-quality/reconcile`, HEADERS, { app_id: APP_ID, action: 'start', left_key: rcx.left, right_key: rcx.right });
+    const r = await postJSON(`${API_BASE}/data-quality/reconcile`, rcxHdr(), { app_id: APP_ID, action: 'start', left_key: rcx.left, right_key: rcx.right });
     rcx.run = { reconId: r.reconId, pairId: r.pairId, left: rcx.left, right: rcx.right, startedAt: Date.now() };
     rcxPoll(rcx.run);
   } catch (e) {
@@ -19312,7 +19325,7 @@ async function rcxPoll(run) {
     await new Promise(r => setTimeout(r, 2500));
     if (rcx.run !== run) return;
     let s;
-    try { s = await postJSON(`${API_BASE}/data-quality/reconcile`, HEADERS, { app_id: APP_ID, action: 'status', pair_id: run.pairId, recon_id: run.reconId }); }
+    try { s = await postJSON(`${API_BASE}/data-quality/reconcile`, rcxHdr(), { app_id: APP_ID, action: 'status', pair_id: run.pairId, recon_id: run.reconId }); }
     catch (e) { continue; }                                   // a transient read failure must not abort the wait
     const st = s.status || {};
     if (st.state === 'done' && s.result) {
@@ -19331,7 +19344,7 @@ async function rcxPoll(run) {
 }
 async function rcxLoadHistory(pairId) {
   try {
-    const h = await postJSON(`${API_BASE}/data-quality/reconcile`, HEADERS, { app_id: APP_ID, action: 'history', pair_id: pairId });
+    const h = await postJSON(`${API_BASE}/data-quality/reconcile`, rcxHdr(), { app_id: APP_ID, action: 'history', pair_id: pairId });
     rcx.history = h.pair || null; rcx.watch = h.watch || null;
   } catch (e) { rcx.history = null; rcx.watch = null; }
   rcx.watchOpen = false;
@@ -19349,11 +19362,11 @@ async function rcxOpenPair(p) {
   const stage = $('#rcxStage'); if (!stage) return;
   stage.style.display = ''; stage.classList.remove('medal-card-in'); stage.innerHTML = dqSkeleton('Loading the result', 4);
   const pairId = p.pair_id || '';
-  const status = rid => postJSON(`${API_BASE}/data-quality/reconcile`, HEADERS, { app_id: APP_ID, action: 'status', pair_id: pairId, recon_id: rid });
+  const status = rid => postJSON(`${API_BASE}/data-quality/reconcile`, rcxHdr(), { app_id: APP_ID, action: 'status', pair_id: pairId, recon_id: rid });
   try {
     let st = p.recon_id && pairId ? await status(p.recon_id) : null;
     if (!(st && st.result) && pairId) {
-      const h = await postJSON(`${API_BASE}/data-quality/reconcile`, HEADERS, { app_id: APP_ID, action: 'history', pair_id: pairId });
+      const h = await postJSON(`${API_BASE}/data-quality/reconcile`, rcxHdr(), { app_id: APP_ID, action: 'history', pair_id: pairId });
       const runs = ((h.pair || {}).runs || []).filter(r => r && r.recon_id && r.status !== 'failed');
       if (runs.length) st = await status(runs[runs.length - 1].recon_id);
     }
@@ -19406,7 +19419,7 @@ function rcxWatchHtml(res) {
   const tol = [w.tolerance_pct != null ? `${w.tolerance_pct}% of rows` : '', w.tolerance_rows != null ? `${rcxN(w.tolerance_rows)} rows` : ''].filter(Boolean).join(' or ') || 'any difference';
   return `<span class="rcx-watch-on${on ? '' : ' off'}">${RCX_EYE}${on ? 'Watched' : 'Watch paused'}</span>` +
     `<span class="rcx-watch-s">${esc(rcxCronHuman(sch.expression))}${sch.timezone && sch.timezone !== 'UTC' ? ` (${esc(sch.timezone)})` : ''} · incident when over ${esc(tol)} differ` +
-    `${w.notify_email ? ` · alerts to ${esc(w.notify_email)}` : ''}</span>` +
+    `${w.notify_email ? ` · alerts to ${esc(w.notify_email)}` : ''}${w.has_qlik_bearer ? ' · with your Qlik key' : ''}</span>` +
     `<span class="rcx-watch-acts"><button type="button" class="linkbtn lngb" data-rcx="watch-open">Change</button>` +
     `<button type="button" class="linkbtn lngb" data-rcx="${on ? 'watch-pause' : 'watch-resume'}">${on ? 'Pause' : 'Resume'}</button>` +
     `<button type="button" class="linkbtn lngb danger" data-rcx="watch-stop">Stop watching</button></span>`;
@@ -19424,7 +19437,8 @@ function rcxWatchFormHtml(res) {
     `<label>Alert <input type="email" name="email" value="${esc(email)}" placeholder="name@example.com" aria-label="Alert address"></label>` +
     `<span class="rcx-wacts"><button type="button" class="dsx-btn primary rcx-wsave" data-rcx="watch-save">${rcx.watch ? 'Save' : 'Start watching'}</button>` +
     `<button type="button" class="linkbtn lngb" data-rcx="watch-cancel">Cancel</button></span>` +
-    `<p class="hint">Times are in ${esc(tz)}. The schedule is listed under Schedules too. The incident opens against ${esc(R.name || 'the right side')} and clears when a later run is within tolerance.</p></form>`;
+    `<p class="hint">Times are in ${esc(tz)}. The schedule is listed under Schedules too. The incident opens against ${esc(R.name || 'the right side')} and clears when a later run is within tolerance.` +
+    `${[res && res.left, res && res.right].some(S => S && S.kind === 'qlik') ? ' The watch keeps the Qlik key you have now; when it expires, the watch fails and says so.' : ''}</p></form>`;
 }
 async function rcxWatchSave() {
   const f = $('#rcxWatch .rcx-wform'), res = rcx.result; if (!f || !res) return;
@@ -19434,7 +19448,7 @@ async function rcxWatchSave() {
   if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { rcxHint('The alert address does not look like an email address.', 'err'); f.email.focus(); return; }
   const btn = f.querySelector('.rcx-wsave'); btn.disabled = true; btn.textContent = 'Saving…';
   try {
-    const r = await postJSON(`${API_BASE}/data-quality/reconcile`, HEADERS, { app_id: APP_ID, action: 'watch',
+    const r = await postJSON(`${API_BASE}/data-quality/reconcile`, rcxHdr(), { app_id: APP_ID, action: 'watch',
       left_key: (res.left || {}).dataset_key || rcx.left, right_key: (res.right || {}).dataset_key || rcx.right,
       schedule_expression: rcxCronOf(freq, at, dow), timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
       tolerance_pct: tol, email: email || undefined });
@@ -19448,7 +19462,7 @@ async function rcxWatchSave() {
 async function rcxWatchState(enabled) {
   const w = rcx.watch; if (!w) return;
   try {
-    const r = await postJSON(`${API_BASE}/data-quality/reconcile`, HEADERS, { app_id: APP_ID, action: 'watch_state', pair_id: w.pair_id, enabled });
+    const r = await postJSON(`${API_BASE}/data-quality/reconcile`, rcxHdr(), { app_id: APP_ID, action: 'watch_state', pair_id: w.pair_id, enabled });
     rcx.watch = r.watch || rcx.watch; rcxPaintWatch(); rcxRecentWatched(true);
   } catch (e) { rcxHint(rcxErrText(e), 'err'); }
 }
@@ -19459,7 +19473,7 @@ async function rcxUnwatch() {
 The schedule goes; the comparisons already made keep their history, and an open incident on the pair stays until it is dismissed.`,
       { title: 'Stop watching', danger: true, okLabel: 'Stop watching' })) return;
   try {
-    await postJSON(`${API_BASE}/data-quality/reconcile`, HEADERS, { app_id: APP_ID, action: 'unwatch', pair_id: w.pair_id });
+    await postJSON(`${API_BASE}/data-quality/reconcile`, rcxHdr(), { app_id: APP_ID, action: 'unwatch', pair_id: w.pair_id });
     rcx.watch = null; rcx.watchOpen = false; rcxPaintWatch(); rcxRecentWatched(false);
     rcxHint('No longer watched.');
   } catch (e) { rcxHint(rcxErrText(e), 'err'); }
@@ -19486,7 +19500,7 @@ async function rcxExplain(regen) {
   aiBusy(btn, true, 'Reading the result…');
   aiThinking(out, `Reading the counts, the key, what the differences have in common and the trend for ${(res.left || {}).name || rcxName(rcx.left)} and ${(res.right || {}).name || rcxName(rcx.right)}. No row values are sent.`, { title, anchor: btn });
   try {
-    const r = await postJSON(`${API_BASE}/data-quality/reconcile`, HEADERS, { app_id: APP_ID, action: 'explain', pair_id: res.pair_id, recon_id: res.recon_id, regenerate: !!regen, actor: EMAIL || undefined });
+    const r = await postJSON(`${API_BASE}/data-quality/reconcile`, rcxHdr(), { app_id: APP_ID, action: 'explain', pair_id: res.pair_id, recon_id: res.recon_id, regenerate: !!regen, actor: EMAIL || undefined });
     aiAnswer(out, aiMd(r.explanation), aiFoot(r, 'rcx-ai-regen'), { title, anchor: btn });
   } catch (e) { aiFail(out, rcxErrText(e), { title, anchor: btn }); }
   finally { aiBusy(btn, false); }
@@ -19498,7 +19512,7 @@ async function rcxShowLast(l, r) {
   const stage = $('#rcxStage'); stage.style.display = ''; stage.innerHTML = dqSkeleton('Loading the last result', 4);
   rcx.watch = null; rcx.watchOpen = false;
   try {
-    const s = await postJSON(`${API_BASE}/data-quality/reconcile`, HEADERS, { app_id: APP_ID, action: 'status', pair_id: p.pair_id, recon_id: p.last.recon_id });
+    const s = await postJSON(`${API_BASE}/data-quality/reconcile`, rcxHdr(), { app_id: APP_ID, action: 'status', pair_id: p.pair_id, recon_id: p.last.recon_id });
     if (s.result) { rcx.result = s.result; rcx.run = null; rcxPaintResult(); rcxLoadHistory(p.pair_id); }
     else stage.style.display = 'none';
   } catch (e) { stage.innerHTML = rcxFailHtml('Could not load the last result', rcxErrText(e)); }
@@ -19521,7 +19535,7 @@ function rcxResultHtml(res, hist) {
                 c.changed ? `${rcxN(c.changed)} changed` : ''].filter(Boolean);
   const sub = diff === 0 ? `${rcxN(c.carried)} rows, identical on both sides` : bits.join(' · ');
   const side = (S, cls) => `<div class="rcx-hside ${cls}"><span class="ifr-dsi" aria-hidden="true">${srcIcon(S.kind)}</span>` +
-    `<div><b>${esc(S.name || S.dataset_key || '')}</b><span>${esc(sourceLabel(S.kind) || S.kind || '')} · ${esc([S.schema, S.table].filter(Boolean).join('.'))} · ${rcxN(S.rows)} rows</span></div></div>`;
+    `<div><b>${esc(S.name || S.dataset_key || '')}</b><span>${esc(sourceLabel(S.kind) || S.kind || '')} · ${esc(S.kind === 'qlik' ? 'read out of the app' : [S.schema, S.table].filter(Boolean).join('.'))} · ${rcxN(S.rows)} rows</span></div></div>`;
   const keyTxt = (key.left || []).join(' + ') + ((key.right || []).join(' + ') !== (key.left || []).join(' + ') ? ` ↔ ${(key.right || []).join(' + ')}` : '');
   const how = RCX_KEY_HOW[key.how] || '';
   const strip = (res.columns || []).map(col => {
@@ -20485,8 +20499,8 @@ const GD_SHOTS = {
   "heatmap": [1124, 1282, "eaa67f551b"],
   "history-p": [1600, 1164, "cfca32980f"],
   "history-q": [1600, 979, "539a02e628"],
-  "incidents-p": [1600, 1107, "7afba110c2"],
-  "incidents-q": [1600, 1107, "d7c78ac125"],
+  "incidents-p": [1600, 1163, "d257df8b88"],
+  "incidents-q": [1600, 1163, "8acb69c159"],
   "lineage-app": [1600, 1141, "8605e85254"],
   "lineage-source": [1600, 1129, "cc5e81a146"],
   "onprem-file": [1600, 1156, "244201089c"],
@@ -21537,7 +21551,7 @@ function buildGuides() {
   G.push({
     id: 'reconcile', cat: 'Explore', icon: 'copy', tint: '#38bdf8',
     title: 'Reconcile two datasets', sub: 'Do they agree? Which rows carried over, changed or went missing, and where the lost ones went',
-    keywords: 'reconcile reconciliation compare agree match diff difference missing extra changed rows key bronze silver gold stages migration replica copy flow watch schedule tolerance divergence drift incident explain ai',
+    keywords: 'reconcile reconciliation compare agree match diff difference missing extra changed rows key bronze silver gold stages migration replica copy flow watch schedule tolerance divergence drift incident explain ai qlik app table',
     open: { tab: 'medallion', label: 'Open Reconcile' },
     sections: [
       { h: 'What it answers', body:
@@ -21571,9 +21585,9 @@ function buildGuides() {
             `Both reach ${go('incidents', 'Incidents')}, email, and Slack or Teams like every other incident, and the incident's next step opens the pair here. The schedule is listed under ${go('schedules', 'Schedules')} too, where it can be paused.`) },
       { h: 'Explain with AI', body:
           p(`${ui('Explain with AI')} asks Claude what the result means, from the facts alone: the counts, the key, which columns changed, what the differing rows have in common, the load window and the trend. It never sees a row or a value, so a column marked as personal data costs nothing to explain. The answer is kept with the run; ${ui('Regenerate')} asks again.`) },
-      { h: 'Not yet', body:
-          list(
-            `Qlik app tables as a side. Today both sides are database or warehouse tables with a saved connection; a dataset without one says so when you press Reconcile.`) },
+      { h: 'Qlik app tables', body:
+          p(`Inside a Qlik app, the app's own tables can be a side: the picker lists them with the source datasets. An app table is the one side whose rows do leave where they live. The engine cannot hash the way the databases do, so the table is read out of the app into the worker, as an assessment reads it, and compared from there; a million rows take a few minutes to read.`) +
+          note(`From the portal the picker leaves app tables out: it holds no key that opens an app. A watch on a pair with an app table keeps the Qlik key you had when you set it; when that key expires, the watch fails and says so.`) },
     ],
   });
 
@@ -21596,6 +21610,7 @@ function buildGuides() {
           ['Compliance exposure', 'By exposure', 'A high or critical compliance finding, such as card numbers in clear text'],
           ['Stale', 'Warning', 'The dataset has not been assessed for seven days'],
           ['Source signals', 'Warning or Major', `Found by source monitoring between runs. ${see('source-monitoring', 'Source monitoring')}`],
+          ['Diverged from its pair', 'Warning, then Major', `A pair watched in Reconcile has more rows differing than its watch allows; ten times over makes it major. Its companion, Reconcile could not run, opens when a watched comparison could not happen. ${see('reconcile', 'Reconcile')}`],
         ]) },
       { h: 'The list', body:
           p(`Incidents opens on four tiles: what is ${ui('Open')}, what is ${ui('Unacknowledged')}, what has closed in the last 30 days, and the total. Each says how that has moved, with a line of the last 30 days. Press a tile to show only those. ${showme('inc-board')}`) +
