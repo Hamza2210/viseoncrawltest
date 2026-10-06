@@ -3745,6 +3745,23 @@
   .dpp-st { display: inline-block; padding: 1px 9px; margin-right: 6px; border-radius: 999px; font-size: 11.5px; font-weight: 700; }
   .dpp-st.ok { background: var(--ok-bg); color: var(--ok); } .dpp-st.bad { background: var(--err-bg); color: var(--err); }
   .dpp-st.off { background: var(--idle-bg); color: var(--idle); }
+  .dpp-st.warn { background: var(--run-bg); color: var(--run); }
+  .dpp-changed { padding: 10px 12px; border-radius: 10px; background: var(--run-bg); font-size: 13px; line-height: 1.55; }
+  .dpp-changed ul { margin: 6px 0 2px; padding-left: 18px; }
+  .dpp-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+  .dpp-copysel { max-width: 260px; padding: 6px 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--card); color: var(--text); font: inherit; font-size: 12.5px; }
+  .dpp-ck { padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--card-2); font-size: 13px; line-height: 1.55; }
+  .dpp-ck.ok { border-color: color-mix(in srgb, var(--ok) 50%, var(--border)); }
+  .dpp-ck.bad { border-color: color-mix(in srgb, var(--err) 50%, var(--border)); }
+  .dpp-ck ul { margin: 6px 0 0; padding-left: 18px; }
+  .dpp-ck .hint { margin: 4px 0 0; }
+  .dpp-ov { display: inline-flex; align-items: center; gap: 4px; padding: 0 8px; border: 1px solid var(--border); border-radius: 999px; background: none;
+    color: var(--muted); font: inherit; font-size: 11px; font-weight: 700; line-height: 1.7; cursor: pointer; box-shadow: none; }
+  .dpp-ov svg { width: 11px; height: 11px; flex: none; }
+  .dpp-ov.ok { color: #5fd39b; border-color: color-mix(in srgb, #30d67f 45%, transparent); background: color-mix(in srgb, #30d67f 12%, transparent); }
+  .dpp-ov.warn { color: #f5c451; border-color: color-mix(in srgb, #f5b73d 45%, transparent); background: color-mix(in srgb, #f5b73d 12%, transparent); }
+  .dpp-ov.bad { color: #ff9090; border-color: color-mix(in srgb, #ff5d5d 45%, transparent); background: color-mix(in srgb, #ff5d5d 11%, transparent); }
+  .dpp-ov:hover { filter: brightness(1.15); }
   .dpp-link { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
   .dpp-link input { flex: 1 1 280px; min-width: 0; padding: 7px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--card); color: var(--text);
     font: 12px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
@@ -9668,6 +9685,18 @@ const TRUST_META = {
 };
 function _nowIso() { return new Date().toISOString(); }
 // A read-only badge (empty when no flag) - carries the note + who/when in its tooltip.
+/** A dataset's Data Passport on its Overview row: its score while valid, or what has become of it. */
+function ppOvChip(d) {
+  const p = d && d.passport;
+  if (!p || !p.state || p.state === 'superseded') return '';
+  const ic = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7 3v6c0 4.4-3 7.9-7 9-4-1.1-7-4.6-7-9V6l7-3z"/></svg>';
+  const band = { ready: ['ok', 'ready for AI'], caveats: ['warn', 'ready with caveats'], not_ready: ['bad', 'not ready for AI'] }[p.band] || ['off', 'not scored'];
+  const [cls, text, tip] = p.state === 'valid' ? [band[0], `Passport ${p.score}`, `Data Passport: AI readiness ${p.score} of 100, ${band[1]}. Valid until ${ppDay(p.validUntil)}.`]
+    : p.state === 'changed' ? ['warn', 'Passport: data changed', `The data has changed since its Data Passport was issued (seen ${ppDay(p.changedAt)}). Open it to see what changed.`]
+    : p.state === 'expired' ? ['off', 'Passport expired', `Its Data Passport expired on ${ppDay(p.validUntil)}.`]
+    : ['bad', 'Passport revoked', 'Its Data Passport was revoked.'];
+  return ` <button type="button" class="dpp-ov ${cls}" data-ppopen="${esc(d.key)}" data-tip="${esc(tip)}" aria-label="${esc(tip)}">${ic}${esc(text)}</button>`;
+}
 function trustBadge(key) {
   // Visible to EVERYONE including portal members: a member who submitted a run for approval needs to
   // see the verdict. It is read-only by construction (trustMenu is the only way to change it, and the
@@ -10956,7 +10985,7 @@ function renderHealthTable(datasets) {
     // only show a source chip for actual source datasets (parquet/redshift/…). The Qlik-app marker
     // lives in the dataset detail instead.
     const srcChip = isSourceDataset(d) ? sourceChip(d.sourceFormat) : '';
-    const tb = trustBadge(d.key);
+    const tb = trustBadge(d.key) + ppOvChip(d);
     const draftChip = (PORTAL && d.unapproved) ? ' <span class="tag na" data-tip="No approved run yet - awaiting approval">Draft</span>' : '';
     return `<tr class="dash-row" data-key="${esc(d.key)}" data-name="${esc(d.name)}">
         <td class="ds-cell"><div class="ds-name-line">${esc(d.name)}</div><div class="ds-meta">${srcChip}${stageBadge(d.key)}${tb}${draftChip}${notesBadge(d.key)}${tagChips(d.key, 'chips')}${ownerChip(d.key)}${tagChips(d.key, 'add')}</div></td>
@@ -10980,6 +11009,15 @@ function renderHealthTable(datasets) {
       tr.classList.add('sel');
       selectDataset(tr.getAttribute('data-key'), tr.getAttribute('data-name'));
       dsxReveal();                // it opens above the list, so bring it to where the reader is
+    }));
+  $('#dashTableWrap').querySelectorAll('button[data-ppopen]').forEach(b =>
+    b.addEventListener('click', e => {
+      e.stopPropagation();
+      const tr = b.closest('.dash-row');
+      $('#dashTableWrap').querySelectorAll('.dash-row').forEach(x => x.classList.remove('sel'));
+      if (tr) tr.classList.add('sel');
+      selectDataset(b.dataset.ppopen, tr ? tr.getAttribute('data-name') : '', 'passport');
+      dsxReveal();
     }));
   $('#dashTableWrap').querySelectorAll('button[data-rerun]').forEach(b =>
     b.addEventListener('click', e => { e.stopPropagation(); reRunTable(b.dataset.rerun, b.dataset.fmt, b.dataset.prefix); }));
@@ -14309,7 +14347,7 @@ function initAssistantTab() {
 // get_run_report), so the card count is not the skill count. MCP_SKILLS is the real total from
 // mcp/tools.py, and mcp/test_parity.py asserts the two agree - so this number cannot rot the way
 // the deck's "17 skills" chip did. Add a tool there, bump this, and add it to a card below.
-const MCP_SKILLS = 28;
+const MCP_SKILLS = 29;
 // The full registry, in registration order: [tool name, title, read|acts, surface scope].
 // mcp/test_parity.py asserts these names AND their read/acts flags against mcp/tools.py, so this
 // list cannot drift from what an assistant can actually call. A blank scope means every
@@ -14317,6 +14355,7 @@ const MCP_SKILLS = 28;
 const MCP_SKILL_LIST = [
   ['whoami', 'Who am I / what can I see', 'read', ''],
   ['list_datasets', 'List datasets', 'read', ''],
+  ['get_dataset_passport', 'Is this dataset certified for AI?', 'read', ''],
   ['get_dataset', 'Get one dataset', 'read', ''],
   ['get_run_report', 'Get a run’s report', 'read', ''],
   ['get_dataset_trend', 'Score trend over time', 'read', ''],
@@ -14401,6 +14440,9 @@ function mcpCapsHtml() {
     ['🏅', 'Governance',
       'Trust verdicts, medallion stage, owners and tags, so an assistant knows what is endorsed before it trusts it.',
       '&ldquo;which datasets are deprecated, and why?&rdquo;'],
+    ['🛂', 'Data Passport',
+      'Whether a dataset is certified for AI right now, its readiness score with the reason for each part, and what changed if its passport has lapsed.',
+      '&ldquo;can I train a model on customers?&rdquo;'],
     ['📐', 'Rules &amp; metadata',
       'The active pinned ruleset, the metadata-quality score, and which sources have saved credentials.',
       '&ldquo;what rules is orders actually scored against?&rdquo;'],
@@ -19938,7 +19980,7 @@ function rcxBalanceHtml(c, L, R) {
 // A dataset's Passport tab. Stage 1: the evidence a passport is issued on, measured where the data
 // lives by the worker (dq/passport.py), and the AI-readiness score the API makes from it. Members
 // look; an admin or the dataset's owner chooses the sensitive columns and the target, and prepares.
-let pp = { key: '', data: null, poll: null, busy: false, err: '', form: null };
+let pp = { key: '', data: null, poll: null, busy: false, err: '', form: null, ck: null, ckPoll: null, ckBusy: false, ckErr: '' };
 const PP_PHASE = {
   queued: 'Starting a worker', connecting: 'Connecting to the source', profiling: 'Reading the table',
   fingerprinting: 'Fingerprinting the data', groups: 'Comparing completeness across groups',
@@ -19953,7 +19995,7 @@ const ppCls = s => (s == null ? 'off' : s >= 85 ? 'ok' : s >= 70 ? 'warn' : 'bad
 async function loadDsPassport(panel) {
   const key = dashSelected && dashSelected.key;
   if (!key) return;
-  if (pp.key !== key) pp = { key, data: null, poll: null, busy: false, err: '', form: null };
+  if (pp.key !== key) pp = { key, data: null, poll: null, busy: false, err: '', form: null, ck: null, ckPoll: null, ckBusy: false, ckErr: '' };
   panel.innerHTML = dqSkeleton('Loading the passport', 4);
   try {
     pp.data = await postJSON(`${API_BASE}/data-quality/passport`, ppHdr(), { app_id: APP_ID, action: 'get', dataset_key: key });
@@ -19962,9 +20004,12 @@ async function loadDsPassport(panel) {
     return;
   }
   pp.form = null;
+  pp.ck = pp.data.lastCheck || null;
   ppPaint();
   const j = pp.data.job;
   if (j && (j.state === 'queued' || j.state === 'running') && pp.poll !== j.job_id) ppPoll(j.job_id);
+  const cj = pp.ck && pp.ck.job;
+  if (cj && (cj.state === 'queued' || cj.state === 'running') && pp.ckPoll !== cj.job_id) ppCheckPoll(cj.job_id);
 }
 /** The tab's panel, only while it is this dataset's Passport tab that is showing. */
 function ppPanel() {
@@ -20150,6 +20195,8 @@ document.addEventListener('click', e => {
   if (t.dataset.pp === 'prepare') ppPrepare();
   else if (t.dataset.pp === 'issue') ppIssue();
   else if (t.dataset.pp === 'revoke') ppRevoke(t.dataset.id);
+  else if (t.dataset.pp === 'checkself') ppCheck('');
+  else if (t.dataset.pp === 'dl') ppDownload(t.dataset.id, t.dataset.f);
   else if (t.dataset.pp === 'copy') {
     agtCopyText(t.dataset.v || '').then(ok => { const was = t.textContent; t.textContent = ok ? 'Copied' : 'Could not copy'; setTimeout(() => { t.textContent = was; }, 1400); });
   }
@@ -20158,7 +20205,9 @@ document.addEventListener('click', e => {
 document.addEventListener('change', e => {
   const t = e.target.closest('[data-pp]');
   if (!t || !t.closest('#dsPanel')) return;
-  const f = ppForm(), k = t.dataset.pp;
+  const k = t.dataset.pp;
+  if (k === 'checkcopy') { if (t.value) ppCheck(t.value); return; }
+  const f = ppForm();
   if (k === 'sens' && t.value) { if (!f.sens.includes(t.value)) f.sens.push(t.value); if (f.target === t.value) f.target = ''; ppPaint(); }
   else if (k === 'target') f.target = t.value;
   else if (k === 'validity') f.validity = t.value;
@@ -20319,12 +20368,14 @@ function qrSvg(text, px) {
 }
 
 // ---- Issuing: the signed passport, its link, its QR code and its badge ----
-const PP_STATE = { valid: ['Valid', 'ok'], expired: ['Expired', 'off'], revoked: ['Revoked', 'bad'] };
+const PP_STATE = { valid: ['Valid', 'ok'], changed: ['Changed since certified', 'warn'], expired: ['Expired', 'off'],
+  revoked: ['Revoked', 'bad'], superseded: ['Replaced', 'off'] };
 const PP_BADGE = { ready: ['ready for AI', '#16a34a'], caveats: ['ready with caveats', '#d97706'], not_ready: ['not ready for AI', '#dc2626'] };
 /** The badge as the API draws it, drawn here too so the preview needs no round trip. */
 function ppBadgeSvg(p) {
   const st = (p.status || {}).state;
   const [value, fill] = st === 'revoked' ? ['revoked', '#b91c1c'] : st === 'expired' ? ['expired', '#6b7280']
+    : st === 'superseded' ? ['superseded', '#6b7280'] : st === 'changed' ? ['data changed', '#d97706']
     : [`${p.score} ${(PP_BADGE[p.band] || [''])[0]}`.trim(), (PP_BADGE[p.band] || [0, '#6b7280'])[1]];
   const label = 'Data Passport', lw = 10 + Math.floor(label.length * 6.6), vw = 10 + Math.floor(value.length * 6.6);
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${lw + vw}" height="20" role="img" aria-label="${label}: ${esc(value)}">` +
@@ -20332,21 +20383,52 @@ function ppBadgeSvg(p) {
     `<g fill="#fff" font-family="Verdana,DejaVu Sans,sans-serif" font-size="11"><text x="5" y="14">${label}</text><text x="${lw + 5}" y="14">${esc(value)}</text></g></svg>`;
 }
 function ppDay(iso) { const d = new Date(iso); return isNaN(d) ? String(iso || '') : d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }); }
+/** The passport the dataset stands on now: the newest one still valid, or valid but for a change in the data. */
+function ppCurrent(d) {
+  return ((d && d.passports) || []).find(p => ['valid', 'changed'].includes((p.status || {}).state)) || null;
+}
+const ppName = k => ((dashDatasets.find(x => x.key === k) || {}).name) || String(k || '').split('/').pop();
+/** The latest check, running or done: of the data itself, or of a copy elsewhere in the workspace. */
+function ppCheckHtml() {
+  const c = pp.ck;
+  if (pp.ckErr) return `<p class="dpp-why err" role="alert">${esc(pp.ckErr)}</p>`;
+  if (!c || !c.job) return '';
+  const j = c.job, self = !j.copy_key || j.copy_key === pp.key, who = self ? 'the data' : ppName(j.copy_key);
+  if (j.state === 'queued' || j.state === 'running') {
+    return `<div class="dpp-ck run" role="status">Checking ${esc(who)} against the passport: ${esc(j.detail || PP_PHASE[j.phase] || 'working')}…</div>`;
+  }
+  if (j.state === 'failed') return `<div class="dpp-ck bad" role="alert">The check of ${esc(who)} failed: ${esc(j.error || j.detail || 'the worker did not say why')}</div>`;
+  const k = c.check;
+  if (!k || !k.result) return '';
+  const r = k.result, bad = (r.columns || []).filter(x => x.status !== 'same');
+  const head = self ? (r.match ? 'The data is exactly as certified.' : 'The data has changed since it was certified.')
+    : (r.match ? `${esc(k.copy_name || who)} matches the passport.` : `${esc(k.copy_name || who)} is not the certified data.`);
+  return `<div class="dpp-ck ${r.match ? 'ok' : 'bad'}"><b>${head}</b> ${self && r.match ? `${rcxN((r.rows || {}).actual)} rows and ${(r.columns || []).length} columns, fingerprinted again.` : esc(r.summary)}` +
+    (bad.length ? `<ul>${bad.slice(0, 8).map(x => `<li>${esc(x.text)}</li>`).join('')}${bad.length > 8 ? `<li>and ${bad.length - 8} more</li>` : ''}</ul>` : '') +
+    ((r.extra || []).length ? `<p class="hint">Not in the passport: ${r.extra.slice(0, 8).map(x => `<code>${esc(x)}</code>`).join(' ')}${r.extra.length > 8 ? ' and more' : ''}</p>` : '') +
+    `<p class="hint">Checked ${esc(rcxWhen(k.checked_at))}${k.checked_by ? ` by ${esc(k.checked_by)}` : ''}, by fingerprinting it again. Only counts and sums were read.</p></div>`;
+}
 function ppPassportsHtml(d) {
-  const list = d.passports || [], cur = list.find(p => (p.status || {}).state === 'valid'), ev = d.evidence;
+  const list = d.passports || [], cur = ppCurrent(d), ev = d.evidence;
   let html = '';
   if (cur) {
     const badgeUrl = `${API_BASE}/passport/v1/${cur.id}/badge.svg`;
     const md = `[![Data Passport](${badgeUrl})](${cur.pageUrl})`, snip = `<a href="${cur.pageUrl}"><img src="${badgeUrl}" alt="Data Passport"></a>`;
     html += `<div class="dpp-cur"><div class="dpp-qr">${qrSvg(cur.pageUrl, 128)}</div><div class="dpp-cur-t">` +
-      `<p class="dpp-cur-h"><span class="dpp-st ok">Valid</span> Issued ${esc(ppDay(cur.issuedAt))}${cur.issuedBy ? ` by ${esc(cur.issuedBy)}` : ''}, until ${esc(ppDay(cur.validUntil))}. ` +
+      `<p class="dpp-cur-h">${cur.status.state === 'changed' ? '<span class="dpp-st warn">Changed since certified</span>' : '<span class="dpp-st ok">Valid</span>'} ` +
+      `Issued ${esc(ppDay(cur.issuedAt))}${cur.issuedBy ? ` by ${esc(cur.issuedBy)}` : ''}, until ${esc(ppDay(cur.validUntil))}. ` +
       `Scored ${esc(cur.score)} when issued; ${cur.details ? 'its findings and columns are public' : 'only its summary is public'}.</p>` +
+      (cur.status.state === 'changed' ? `<div class="dpp-changed" role="note"><b>The data has changed since this passport was issued.</b> ` +
+        `Seen by ${esc(cur.status.by || 'monitoring')}, ${esc(ppDay(cur.status.at))}. Its public page says so.` +
+        `${(cur.status.reasons || []).length ? `<ul>${cur.status.reasons.map(r => `<li>${esc(r)}</li>`).join('')}</ul>` : ''}` +
+        `Check the data to be sure${d.canManage ? ', or issue a new passport' : ''}.</div>` : '') +
       `<div class="dpp-link"><input readonly value="${esc(cur.pageUrl)}" aria-label="The passport's link">` +
       `<button type="button" class="dsx-btn lngb" data-pp="copy" data-v="${esc(cur.pageUrl)}">Copy link</button>` +
       `<a class="dsx-btn lngb" href="${esc(cur.pageUrl)}" target="_blank" rel="noopener">Open the public page</a></div>` +
       `<div class="dpp-badge"><span class="dpp-badge-img">${ppBadgeSvg(cur)}</span>` +
       `<button type="button" class="linkbtn lngb" data-pp="copy" data-v="${esc(md)}">Copy as Markdown</button>` +
       `<button type="button" class="linkbtn lngb" data-pp="copy" data-v="${esc(snip)}">Copy as HTML</button></div>` +
+      ppToolsHtml(d, cur) + ppCheckHtml() +
       (d.canManage ? `<button type="button" class="linkbtn lngb dpp-revoke" data-pp="revoke" data-id="${esc(cur.id)}">Revoke…</button>` : '') + `</div></div>`;
   }
   if (d.canManage && ev && d.eligible !== false) {
@@ -20356,7 +20438,7 @@ function ppPassportsHtml(d) {
       `<p class="hint">${d.signing ? `Signed now with the platform's key, valid for ${esc(f.validity)} days or until revoked. Anyone with its link reads ` +
         (details ? 'the summary, every finding, the columns and who issued it.' : "a summary: the dataset's name and size, the scores and the fingerprint.") +
         (f.show && d.restricted ? ' A restricting tag guards this dataset, so its details stay private.' : '') +
-        (cur ? ' The current passport stays valid until it expires or is revoked.' : '')
+        (cur ? ' It replaces the current passport, whose link will then say so and point to the new one.' : '')
         : 'Signing is not set up on the server yet, so a passport cannot be issued.'}</p></div>`;
   }
   const older = list.filter(p => p !== cur);
@@ -20368,6 +20450,58 @@ function ppPassportsHtml(d) {
       `</ul></details>`;
   }
   return html ? `<section class="dpp-card dpp-issue"><h3>The passport</h3>${html}</section>` : '';
+}
+/** Check the data, or a copy; download the passport or its Croissant file. */
+function ppToolsHtml(d, cur) {
+  const ck = pp.ck && pp.ck.job, running = !!(ck && (ck.state === 'queued' || ck.state === 'running'));
+  const copies = (dashDatasets || []).filter(x => x.key !== pp.key && !x.isUpload)
+    .sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
+  return `<div class="dpp-tools">` +
+    `<button type="button" class="dsx-btn lngb" data-pp="checkself"${running || pp.ckBusy ? ' disabled' : ''} data-tip="Fingerprint the data again and compare it with the passport, column by column">Check the data now</button>` +
+    (copies.length ? `<select class="dpp-copysel" data-pp="checkcopy" aria-label="Check a copy of this data against the passport"${running || pp.ckBusy ? ' disabled' : ''}>` +
+      `<option value="">Check a copy…</option>${copies.map(x => `<option value="${esc(x.key)}">${esc(x.name || x.key)}</option>`).join('')}</select>` : '') +
+    `<button type="button" class="linkbtn lngb" data-pp="dl" data-f="jws" data-id="${esc(cur.id)}">Download the passport</button>` +
+    `<button type="button" class="linkbtn lngb" data-pp="dl" data-f="croissant" data-id="${esc(cur.id)}" data-tip="The passport as Croissant metadata, which Hugging Face, Kaggle and OpenML read">Download Croissant</button>` +
+    (cur.details ? `<a class="linkbtn lngb" href="${esc(cur.pageUrl)}#check" target="_blank" rel="noopener">Check a copy outside the workspace</a>` : '') + `</div>`;
+}
+async function ppCheck(copyKey) {
+  const cur = ppCurrent(pp.data);
+  if (!cur || pp.ckBusy) return;
+  pp.ckBusy = true; pp.ckErr = ''; ppPaint();
+  try {
+    const r = await postJSON(`${API_BASE}/data-quality/passport`, ppHdr(), { app_id: APP_ID, action: 'check', dataset_key: pp.key,
+      passport_id: cur.id, copy_key: copyKey || undefined, actor: EMAIL || undefined });
+    pp.ck = { job: { job_id: r.jobId, state: 'queued', phase: 'queued', detail: 'Waiting for a worker', copy_key: copyKey || pp.key }, check: null };
+    pp.ckBusy = false; ppPaint(); ppCheckPoll(r.jobId);
+  } catch (e) { pp.ckBusy = false; pp.ckErr = rcxErrText(e); ppPaint(); }
+}
+async function ppCheckPoll(jobId) {
+  const key = pp.key, started = Date.now();
+  pp.ckPoll = jobId;
+  while (pp.ckPoll === jobId && pp.key === key && Date.now() - started < 30 * 60 * 1000) {
+    await new Promise(r => setTimeout(r, window.__ppFast ? 50 : 2500));
+    if (pp.ckPoll !== jobId || pp.key !== key) return;
+    let s;
+    try { s = await postJSON(`${API_BASE}/data-quality/passport`, ppHdr(), { app_id: APP_ID, action: 'check_status', dataset_key: key, job_id: jobId }); }
+    catch (e) { continue; }
+    pp.ck = { job: Object.assign({ copy_key: (pp.ck && pp.ck.job && pp.ck.job.copy_key) || key }, s.job), check: s.check };
+    if (s.job.state === 'done' || s.job.state === 'failed') {
+      if (s.passports) pp.data.passports = s.passports;    // a check of the data itself can change the passport's status
+      pp.ckPoll = null; ppPaint(); return;
+    }
+    ppPaint();
+  }
+}
+async function ppDownload(id, format) {
+  pp.ckErr = '';
+  try {
+    const r = await postJSON(`${API_BASE}/data-quality/passport`, ppHdr(), { app_id: APP_ID, action: 'export', dataset_key: pp.key, passport_id: id, format });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([r.content], { type: r.type }));
+    a.download = r.filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  } catch (e) { pp.ckErr = rcxErrText(e); ppPaint(); }
 }
 async function ppIssue() {
   const d = pp.data, f = ppForm();
@@ -21238,7 +21372,7 @@ const GD_SHOTS = {
   "onprem-file": [1600, 1156, "244201089c"],
   "overview-top-p": [1600, 609, "2906120567"],
   "overview-top-q": [1600, 584, "5d61e45e4c"],
-  "passport": [1600, 2553, "4e6dabdfa1"],
+  "passport": [1600, 2589, "dc6f4fde93"],
   "profile": [1600, 526, "104f28f43a"],
   "quality-space": [1600, 812, "7bfbdb7881"],
   "records-policy": [1600, 433, "0850fe5c47"],
@@ -22333,7 +22467,7 @@ function buildGuides() {
   G.push({
     id: 'passport', cat: 'Governance', icon: 'shield', tint: '#34d399',
     title: 'Data Passport: AI readiness', sub: 'How fit a dataset is for AI to use, from evidence measured where the data lives',
-    keywords: 'passport ai readiness ready fit evidence certificate fairness bias parity completeness groups representation outcome sensitive gender age region country duplicates fingerprint article 10 sign signed issue revoke qr badge verify jwt',
+    keywords: 'passport ai readiness ready fit evidence certificate fairness bias parity completeness groups representation outcome sensitive gender age region country duplicates fingerprint article 10 sign signed issue revoke qr badge verify jwt changed expired replaced superseded monitoring check copy croissant hugging face kaggle mcp assistant',
     open: { tab: 'dashboard', label: 'Open the Overview' },
     sections: [
       { h: 'What it answers', body:
@@ -22343,15 +22477,27 @@ function buildGuides() {
                 `Choose the <b>sensitive columns</b>: the characteristics people are grouped by, such as gender, age or region. The ones the compliance scan marked as special-category data, and the ones named like such a characteristic, are suggested.`,
                 `Optionally name a <b>target</b>: an outcome, such as an approval or a tier, whose rates are compared across those groups.`,
                 `Press ${ui('Prepare the evidence')}. A worker reads the table where it lives, a handful of times, counting only; the steps light up as it goes.`) +
-          shot('passport', `${n(1)} The AI-readiness score and its band. ${n(2)} The five parts, each with its weight, its score and why. ${n(3)} What the evidence found. ${n(4)} The passport: its link, QR code and badge.`) },
+          shot('passport', `${n(1)} The AI-readiness score and its band. ${n(2)} The five parts, each with its weight, its score and why. ${n(3)} What the evidence found. ${n(4)} The passport: its link, QR code and badge, a check of the data or of a copy, and its downloads.`) },
       { h: 'Issue the passport', body:
           steps(`With the evidence prepared, press ${ui('Sign and issue the passport')}. It is signed there and then, and valid for the days set, or until it is revoked.`,
                 `Share it: copy its link, show its QR code, or copy its badge as Markdown or HTML for a README, a wiki or a report. The badge always shows where it stands now.`,
-                `When the data or the judgement changes, issue a new one. ${ui('Revoke…')} withdraws a passport at once, with a reason that anyone with its link will read.`) +
+                `When the data or the judgement changes, issue a new one: it replaces the current passport, whose link then says so and points to the new one. ${ui('Revoke…')} withdraws a passport at once, with a reason that anyone with its link will read.`) +
           note(`Who can read what: anyone with the link reads a summary, the dataset's name and size, the scores and the fingerprint. Tick <b>Show findings and column names on the public page</b> to add the findings, the columns and who issued it. A dataset guarded by a restricting tag never shows its details. Deleting a dataset revokes its passports, saying so.`) },
-      { h: 'Check a passport', body:
-          p(`The link opens a public page, with no sign-in, that checks the passport's signature in the reader's own browser against the key Data Assurance publishes, and says where it stands now: valid, expired or revoked. A passport changed after it was issued fails the check and the page says not to rely on it.`) +
+      { h: 'When the data changes', body:
+          p(`A passport certifies the data as it was when the evidence was measured. It turns <b>Changed since certified</b> as soon as something sees the data move on:`) +
+          list(`${see('source-monitoring', 'Source monitoring')} sees a column added or removed, an exact row count move, a catalog's row estimate move by more than half a percent, a file rewritten, or newer records arrive.`,
+               `An assessment run counts a different number of rows.`,
+               `A check of the data finds it differs.`) +
+          p(`The passport's public page, its badge and its chip on the ${go('dashboard', 'Overview')} all say so, and the Passport tab lists what changed. Press ${ui('Check the data now')} to fingerprint the data again: a difference names the columns that changed, and an exact match clears a change the cheaper signals reported. After the days it is valid for, a passport expires.`) },
+      { h: 'Check a passport, and a copy', body:
+          p(`The link opens a public page, with no sign-in, that checks the passport's signature in the reader's own browser against the key Data Assurance publishes, and says where it stands now: valid, changed since certified, expired, replaced or revoked. A passport altered after it was issued fails the check and the page says not to rely on it.`) +
+          p(`<b>Check your copy</b>: when a passport shows its details, its page writes the one query that computes its fingerprint on any of twelve engines. Run it on your copy, paste the row it returns, and the page compares it with the signed passport, column by column. The query and the comparison are worked out in the browser; nothing is sent anywhere.`) +
+          p(`Inside the workspace, ${ui('Check a copy…')} on the Passport tab picks another dataset, such as a replica or an export, and a worker fingerprints it and compares it the same way.`) +
           p(`A passport is a standard JSON Web Token signed with ES256, so anyone can also verify it with an ordinary JWT library and the public key the page links to.`) },
+      { h: 'Take it with you', body:
+          list(`${ui('Download Croissant')}: the passport as Croissant metadata, the JSON-LD format Hugging Face, Kaggle and OpenML read, with its findings in the responsible-AI vocabulary. A passport that shows its details has a public Croissant file too, linked from its page.`,
+               `${ui('Download the passport')}: the signed passport itself, to keep beside the data.`,
+               `An AI assistant connected to Data Assurance over ${see('ai-assistant', 'MCP')} can ask whether a dataset is certified before it uses it, and hears why not: "its passport expired", or "212 rows were added since it was certified".`) },
       { h: 'Reading the score', body:
           table(['Part', 'Weight', 'What it measures'], [
             ['Quality', '40%', 'The latest assessment\'s score, capped at 60 when its quality gate failed, less two points for each percent of rows that are exact duplicates'],

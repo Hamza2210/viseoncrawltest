@@ -28,6 +28,11 @@
   .state.valid { border-color: color-mix(in srgb, var(--ok) 45%, var(--border)); }
   .state.valid .ic { background: var(--ok-bg); color: var(--ok); }
   .state.expired .ic { background: var(--idle-bg); color: var(--idle); }
+  .state.changed { border-color: color-mix(in srgb, var(--run) 50%, var(--border)); }
+  .state.changed .ic { background: var(--run-bg); color: var(--run); }
+  .state.superseded .ic { background: var(--idle-bg); color: var(--idle); }
+  .state ul { margin: 6px 0 0; padding-left: 18px; font-size: 13px; color: var(--text); }
+  .state a { color: var(--accent); font-weight: 600; }
   .state.revoked, .state.bad { border-color: color-mix(in srgb, var(--err) 50%, var(--border)); }
   .state.revoked .ic, .state.bad .ic { background: var(--err-bg); color: var(--err); }
   .sig { display: flex; align-items: flex-start; gap: 10px; padding: 10px 14px; border-radius: 10px; font-size: 13px; margin-top: 12px; }
@@ -62,6 +67,24 @@
   .acts a { color: var(--accent); font-weight: 600; text-decoration: none; }
   .acts a:hover { text-decoration: underline; }
   .loading { color: var(--muted); }
+  .ck-row { display: flex; flex-wrap: wrap; gap: 10px 16px; margin: 10px 0; }
+  .ck-row label, .ck-paste { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
+  .ck-row label { flex: 1 1 200px; }
+  select, input[type=text], textarea { font: inherit; color: var(--text); background: var(--card-2); border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px; }
+  textarea { width: 100%; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12.5px; resize: vertical; }
+  select:focus-visible, input:focus-visible, textarea:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  pre.sql { margin: 0; max-height: 240px; overflow: auto; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--card-2); font-size: 12px; white-space: pre; }
+  .ck-acts { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 8px 0 14px; }
+  button { font: inherit; font-weight: 650; font-size: 13px; color: var(--text); background: var(--card-2); border: 1px solid var(--border); border-radius: 8px; padding: 7px 14px; cursor: pointer; }
+  button:hover { border-color: var(--accent); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .ck-out { margin-top: 12px; }
+  .ck-sum { display: flex; gap: 10px; align-items: flex-start; padding: 10px 14px; border-radius: 10px; font-size: 13.5px; }
+  .ck-sum.ok { background: var(--ok-bg); } .ck-sum.bad { background: var(--err-bg); } .ck-sum.warn { background: var(--run-bg); }
+  table.ck { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12.5px; }
+  table.ck th, table.ck td { text-align: left; padding: 5px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  table.ck th { color: var(--muted); font-weight: 600; }
+  table.ck td.st { white-space: nowrap; font-weight: 700; } table.ck td.st.ok { color: var(--ok); } table.ck td.st.bad { color: var(--err); }
   @media (max-width: 600px) { .parts li { grid-template-columns: 1fr 60px; } .parts .bar { grid-column: 1 / -1; grid-row: 2; } }
 </style>
 </head>
@@ -87,6 +110,24 @@
     mysql: 'MySQL', sqlserver: 'SQL Server', synapse: 'Azure Synapse', fabric: 'Microsoft Fabric', oracle: 'Oracle', athena: 'Qlik Open Lakehouse',
     s3: 'Amazon S3', gcs: 'Google Cloud Storage', azureblob: 'Azure Blob', qlik: 'Qlik app table' };
   const BAND = { ready: ['Ready for AI', 'ok'], caveats: ['Ready with caveats', 'warn'], not_ready: ['Not ready for AI', 'bad'] };
+  // Each engine's spelling of the fingerprint, copied from the worker's own SQL dialects by
+  // scripts/passport_sql_templates.py; __COL__ is where the quoted column goes.
+  const FP = /*FP-TEMPLATES*/{"algorithm":"dq-fp-1","engines":[["snowflake","Snowflake"],["databricks","Databricks"],["redshift","Amazon Redshift"],["bigquery","Google BigQuery"],["postgres","PostgreSQL"],["mysql","MySQL"],["sqlserver","SQL Server"],["synapse","Azure Synapse"],["fabric","Microsoft Fabric"],["oracle","Oracle"],["athena","Amazon Athena"],["duckdb","DuckDB"]],"t":{
+    "snowflake":{"quote":"dq","present_text":"NULLIF(TRIM(__COL__::VARCHAR), '')","fp":{"number":"ROUND(__COL__::FLOAT, 6)","bool":"CASE WHEN __COL__ THEN 1 ELSE 0 END","date":"DATE_PART(EPOCH_SECOND, __COL__::TIMESTAMP)","timestamp":"DATE_PART(EPOCH_SECOND, __COL__::TIMESTAMP)","text":"TO_NUMBER(SUBSTR(MD5(NULLIF(TRIM(__COL__::VARCHAR), '')), 1, 8), 'XXXXXXXX')"}},
+    "databricks":{"quote":"bt","present_text":"NULLIF(TRIM(CAST(__COL__ AS STRING)), '')","fp":{"number":"ROUND(CAST(__COL__ AS DOUBLE), 6)","bool":"CASE WHEN __COL__ THEN 1 ELSE 0 END","date":"unix_timestamp(CAST(__COL__ AS TIMESTAMP))","timestamp":"unix_timestamp(CAST(__COL__ AS TIMESTAMP))","text":"CAST(CONV(SUBSTR(md5(NULLIF(TRIM(CAST(__COL__ AS STRING)), '')), 1, 8), 16, 10) AS BIGINT)"}},
+    "redshift":{"quote":"dq","present_text":"NULLIF(BTRIM(__COL__::VARCHAR), '')","fp":{"number":"ROUND(__COL__::FLOAT8, 6)","bool":"CASE WHEN __COL__ THEN 1 ELSE 0 END","date":"EXTRACT(EPOCH FROM __COL__::TIMESTAMP)","timestamp":"EXTRACT(EPOCH FROM __COL__::TIMESTAMP)","text":"STRTOL(SUBSTRING(MD5(NULLIF(BTRIM(__COL__::VARCHAR), '')), 1, 8), 16)"}},
+    "bigquery":{"quote":"bq","present_text":"NULLIF(TRIM(CAST(__COL__ AS STRING)), '')","fp":{"number":"ROUND(SAFE_CAST(__COL__ AS FLOAT64), 6)","bool":"CASE WHEN __COL__ THEN 1 ELSE 0 END","date":"UNIX_SECONDS(SAFE_CAST(__COL__ AS TIMESTAMP))","timestamp":"UNIX_SECONDS(SAFE_CAST(__COL__ AS TIMESTAMP))","text":"CAST(CONCAT('0x', SUBSTR(TO_HEX(MD5(NULLIF(TRIM(CAST(__COL__ AS STRING)), ''))), 1, 8)) AS INT64)"}},
+    "postgres":{"quote":"dq","present_text":"NULLIF(BTRIM(__COL__::VARCHAR), '')","fp":{"number":"ROUND(__COL__::FLOAT8, 6)","bool":"CASE WHEN __COL__ THEN 1 ELSE 0 END","date":"EXTRACT(EPOCH FROM __COL__::TIMESTAMP)","timestamp":"EXTRACT(EPOCH FROM __COL__::TIMESTAMP)","text":"(('x' || SUBSTR(MD5(NULLIF(BTRIM(__COL__::VARCHAR), '')), 1, 8))::BIT(32)::BIGINT)"}},
+    "mysql":{"quote":"bt","present_text":"NULLIF(TRIM(CAST(__COL__ AS CHAR)), '')","fp":{"number":"ROUND(CAST(__COL__ AS DOUBLE), 6)","bool":"CASE WHEN __COL__ THEN 1 ELSE 0 END","date":"UNIX_TIMESTAMP(CAST(__COL__ AS DATETIME))","timestamp":"UNIX_TIMESTAMP(CAST(__COL__ AS DATETIME))","text":"CAST(CONV(SUBSTR(MD5(NULLIF(TRIM(CAST(__COL__ AS CHAR)), '')), 1, 8), 16, 10) AS UNSIGNED)"}},
+    "sqlserver":{"quote":"br","present_text":"NULLIF(LTRIM(RTRIM(CAST(__COL__ AS NVARCHAR(MAX)))), '')","fp":{"number":"ROUND(CAST(__COL__ AS FLOAT), 6)","bool":"CASE WHEN __COL__ THEN 1 ELSE 0 END","date":"DATEDIFF_BIG(SECOND, '1970-01-01', CAST(__COL__ AS DATETIME2))","timestamp":"DATEDIFF_BIG(SECOND, '1970-01-01', CAST(__COL__ AS DATETIME2))","text":"CONVERT(BIGINT, CONVERT(VARBINARY(4), SUBSTRING(LOWER(CONVERT(VARCHAR(32), HASHBYTES('MD5', CAST(NULLIF(LTRIM(RTRIM(CAST(__COL__ AS NVARCHAR(MAX)))), '') AS VARCHAR(MAX))), 2)), 1, 8), 2))"}},
+    "synapse":{"quote":"br","present_text":"NULLIF(LTRIM(RTRIM(CAST(__COL__ AS NVARCHAR(MAX)))), '')","fp":{"number":"ROUND(CAST(__COL__ AS FLOAT), 6)","bool":"CASE WHEN __COL__ THEN 1 ELSE 0 END","date":"DATEDIFF_BIG(SECOND, '1970-01-01', CAST(__COL__ AS DATETIME2))","timestamp":"DATEDIFF_BIG(SECOND, '1970-01-01', CAST(__COL__ AS DATETIME2))","text":"CONVERT(BIGINT, CONVERT(VARBINARY(4), SUBSTRING(LOWER(CONVERT(VARCHAR(32), HASHBYTES('MD5', CAST(NULLIF(LTRIM(RTRIM(CAST(__COL__ AS NVARCHAR(MAX)))), '') AS VARCHAR(MAX))), 2)), 1, 8), 2))"}},
+    "fabric":{"quote":"br","present_text":"NULLIF(LTRIM(RTRIM(CAST(__COL__ AS NVARCHAR(MAX)))), '')","fp":{"number":"ROUND(CAST(__COL__ AS FLOAT), 6)","bool":"CASE WHEN __COL__ THEN 1 ELSE 0 END","date":"DATEDIFF_BIG(SECOND, '1970-01-01', CAST(__COL__ AS DATETIME2))","timestamp":"DATEDIFF_BIG(SECOND, '1970-01-01', CAST(__COL__ AS DATETIME2))","text":"CONVERT(BIGINT, CONVERT(VARBINARY(4), SUBSTRING(LOWER(CONVERT(VARCHAR(32), HASHBYTES('MD5', CAST(NULLIF(LTRIM(RTRIM(CAST(__COL__ AS NVARCHAR(MAX)))), '') AS VARCHAR(MAX))), 2)), 1, 8), 2))"}},
+    "oracle":{"quote":"dq","present_text":"TRIM(CAST(__COL__ AS VARCHAR2(4000)))","fp":{"number":"ROUND(CAST(__COL__ AS BINARY_DOUBLE DEFAULT NULL ON CONVERSION ERROR), 6)","bool":"CASE WHEN __COL__ THEN 1 ELSE 0 END","date":"((CAST(__COL__ AS DATE) - DATE '1970-01-01') * 86400)","timestamp":"((CAST(__COL__ AS DATE) - DATE '1970-01-01') * 86400)","text":"TO_NUMBER(SUBSTR(LOWER(RAWTOHEX(STANDARD_HASH(TRIM(CAST(__COL__ AS VARCHAR2(4000))), 'MD5'))), 1, 8), 'XXXXXXXX')"}},
+    "athena":{"quote":"dq","present_text":"NULLIF(TRIM(CAST(__COL__ AS VARCHAR)), '')","fp":{"number":"ROUND(TRY_CAST(__COL__ AS DOUBLE), 6)","bool":"CASE WHEN __COL__ THEN 1 ELSE 0 END","date":"to_unixtime(TRY_CAST(__COL__ AS TIMESTAMP))","timestamp":"to_unixtime(TRY_CAST(__COL__ AS TIMESTAMP))","text":"from_base(substr(lower(to_hex(md5(to_utf8(NULLIF(TRIM(CAST(__COL__ AS VARCHAR)), ''))))), 1, 8), 16)"}},
+    "duckdb":{"quote":"dq","present_text":"NULLIF(TRIM(__COL__::VARCHAR), '')","fp":{"number":"ROUND(__COL__::FLOAT8, 6)","bool":"CASE WHEN __COL__ THEN 1 ELSE 0 END","date":"epoch(__COL__::TIMESTAMP)","timestamp":"epoch(__COL__::TIMESTAMP)","text":"(('0x' || substr(md5(NULLIF(TRIM(__COL__::VARCHAR), '')), 1, 8))::BIGINT)"}}
+  }}/*END-FP-TEMPLATES*/;
+  const QUOTE = { dq: s => '"' + s.replace(/"/g, '""') + '"', bt: s => '`' + s.replace(/`/g, '``') + '`',
+    bq: s => '`' + s.replace(/`/g, '') + '`', br: s => '[' + s.replace(/]/g, ']]') + ']' };
   const cls = s => (s == null ? 'off' : s >= 85 ? 'ok' : s >= 70 ? 'warn' : 'bad');
 
   function b64uBytes(s) {
@@ -114,12 +155,105 @@
     } catch (e) { return { ok: false, why: 'The signature could not be checked.', kid: header.kid }; }
   }
 
+  /** The one query that computes this passport's fingerprint on an engine, from the signed columns. */
+  function verifySql(cols, engine, table) {
+    const t = FP.t[engine], q = QUOTE[t.quote], sel = ['COUNT(*) AS n'];
+    cols.forEach((c, i) => {
+      const j = i + 1, qc = q(String(c.name));
+      sel.push(`COUNT(${(c.family === 'text' ? t.present_text : '__COL__').split('__COL__').join(qc)}) AS c${j}`);
+      if (c.kind && t.fp[c.family]) sel.push(`SUM(${t.fp[c.family].split('__COL__').join(qc)}) AS f${j}`);
+    });
+    return 'SELECT ' + sel.join(',\n       ') + '\nFROM ' + table;
+  }
+  /** The numbers in whatever a SQL client copies: tab, comma or pipe separated, with or without a header. */
+  function pastedValues(text) {
+    return String(text || '').split(/[\s,;|]+/).filter(Boolean)
+      .filter(t => /^[+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?$/.test(t) || /^(null|none)$/i.test(t))
+      .map(t => (/^(null|none)$/i.test(t) ? null : t));
+  }
+  const isInt = s => /^[+-]?\d+(\.0*)?$/.test(String(s).trim());
+  const bigOf = s => BigInt(String(s).trim().replace(/^\+/, '').split('.')[0]);
+  /** Two sums agree: hashes and booleans exactly, everything else to a millionth, or a billionth of its size. */
+  function sameSum(kind, a, b) {
+    a = a == null ? '0' : String(a).trim(); b = b == null ? '0' : String(b).trim();
+    if ((kind === 'sum_hash32' || kind === 'sum_bool') && isInt(a) && isInt(b)) return bigOf(a) === bigOf(b);
+    const fa = Number(a), fb = Number(b);
+    if (!isFinite(fa) || !isFinite(fb)) return a === b;
+    return Math.abs(fa - fb) <= Math.max(1e-6, 1e-9 * Math.max(Math.abs(fa), Math.abs(fb)));
+  }
+  const sameCount = (a, b) => a != null && b != null && isInt(a) && isInt(b) && bigOf(a) === bigOf(b);
+  /** The pasted row against the signed fingerprint, column by column. */
+  function compareCopy(fp, values) {
+    const cols = fp.columns || [];
+    const want = 1 + cols.length + cols.filter(c => c.kind && FP.t.duckdb.fp[c.family]).length;
+    if (values.length !== want) return { error: `The query returns ${want} numbers; ${values.length} were pasted. Copy the one row it returns, without thousands separators.` };
+    let k = 0;
+    const rows = values[k++], rowsSame = sameCount(rows, fp.rows), out = [];
+    cols.forEach(c => {
+      const nn = values[k++], what = [];
+      if (!sameCount(nn, c.nonnull)) what.push(`${nn == null ? 'no' : num(nn)} values, against ${num(c.nonnull)} certified`);
+      if (c.kind && FP.t.duckdb.fp[c.family]) { const f = values[k++]; if (!sameSum(c.kind, c.sum, f)) what.push('its values differ'); }
+      out.push({ name: c.name, same: !what.length, what: what.join('; ') });
+    });
+    const differ = out.filter(c => !c.same).length;
+    return { rows, rowsSame, cols: out, differ, match: rowsSame && !differ };
+  }
+  function checkHtml(pay) {
+    const fp = pay.fingerprint || {};
+    if (!pay.details || !(fp.columns || []).length) {
+      return `<section class="card" id="check"><h2>Check your copy</h2><p class="hint">This passport keeps its columns private, so a copy cannot be checked from this page. ` +
+        `Its owner can check a copy from inside their workspace.</p></section>`;
+    }
+    return `<section class="card" id="check"><h2>Check your copy</h2>` +
+      `<p class="hint">Is your copy of this data exactly what was certified? Run one query on it, wherever it is, and paste the row it returns. ` +
+      `The query and the comparison are worked out here, in your browser, from the signed passport: nothing is sent anywhere.</p>` +
+      `<div class="ck-row"><label>Engine<select id="ckEngine">${FP.engines.map(([k, l]) => `<option value="${esc(k)}">${esc(l)}</option>`).join('')}</select></label>` +
+      `<label>Your table<input type="text" id="ckTable" placeholder="schema.table" spellcheck="false" autocomplete="off"></label></div>` +
+      `<pre class="sql" id="ckSql" aria-label="The query to run"></pre>` +
+      `<div class="ck-acts"><button type="button" id="ckCopy">Copy the query</button><span class="hint" id="ckCopied" aria-live="polite"></span></div>` +
+      `<label class="ck-paste" for="ckPaste">The row it returns</label><textarea id="ckPaste" rows="3" spellcheck="false" placeholder="Paste the result here"></textarea>` +
+      `<div class="ck-acts"><button type="button" class="primary" id="ckRun">Compare with the passport</button></div><div class="ck-out" id="ckOut" aria-live="polite"></div></section>`;
+  }
+  function wireCheck(pay) {
+    const eng = document.getElementById('ckEngine');
+    if (!eng) return;
+    const cols = (pay.fingerprint || {}).columns || [];
+    const tbl = document.getElementById('ckTable'), sql = document.getElementById('ckSql');
+    const paint = () => { sql.textContent = verifySql(cols, eng.value, tbl.value.trim() || 'your_table'); };
+    eng.addEventListener('change', paint); tbl.addEventListener('input', paint); paint();
+    document.getElementById('ckCopy').addEventListener('click', async () => {
+      const said = document.getElementById('ckCopied');
+      try { await navigator.clipboard.writeText(sql.textContent); said.textContent = 'Copied.'; } catch (e) { said.textContent = 'Select the query and copy it.'; }
+    });
+    document.getElementById('ckRun').addEventListener('click', () => {
+      const r = compareCopy(pay.fingerprint || {}, pastedValues(document.getElementById('ckPaste').value)), box = document.getElementById('ckOut');
+      if (r.error) { box.innerHTML = `<div class="ck-sum warn"><span aria-hidden="true">!</span><span>${esc(r.error)}</span></div>`; return; }
+      const fp = pay.fingerprint || {};
+      const head = r.match
+        ? `<div class="ck-sum ok"><span aria-hidden="true">✓</span><span><b>Your copy matches the passport exactly:</b> ${num(fp.rows)} rows, and every one of its ${r.cols.length} columns.</span></div>`
+        : `<div class="ck-sum bad"><span aria-hidden="true">✕</span><span><b>Your copy is not the data that was certified.</b> ` +
+          [r.rowsSame ? '' : `It has ${num(r.rows)} rows, against ${num(fp.rows)}.`, r.differ ? `${r.differ} of ${r.cols.length} columns differ.` : ''].filter(Boolean).join(' ') + `</span></div>`;
+      box.innerHTML = head + `<table class="ck"><thead><tr><th>Column</th><th>Result</th><th></th></tr></thead><tbody>` +
+        r.cols.map(c => `<tr><td><code>${esc(c.name)}</code></td><td class="st ${c.same ? 'ok' : 'bad'}">${c.same ? 'Matches' : 'Differs'}</td><td>${esc(c.what)}</td></tr>`).join('') + `</tbody></table>`;
+    });
+  }
+
   function stateHtml(st, sig) {
     if (sig && sig.ok === false) {
       return `<section class="card state bad"><span class="ic" aria-hidden="true">!</span><div><b>Do not rely on this passport</b><span>${esc(sig.why)}</span></div></section>`;
     }
     if (st.state === 'revoked') return `<section class="card state revoked"><span class="ic" aria-hidden="true">✕</span><div><b>Revoked on ${esc(day(st.at))}</b><span>${esc(st.reason || 'Withdrawn by its issuer.')}</span></div></section>`;
+    if (st.state === 'superseded') {
+      const href = `?id=${encodeURIComponent(st.by || '')}${q.get('api') ? '&api=' + encodeURIComponent(q.get('api')) : ''}`;
+      return `<section class="card state superseded"><span class="ic" aria-hidden="true">↻</span><div><b>Replaced on ${esc(day(st.at))}</b>` +
+        `<span>Its owner has issued a newer passport for this dataset. <a href="${esc(href)}">Open the current passport</a></span></div></section>`;
+    }
     if (st.state === 'expired') return `<section class="card state expired"><span class="ic" aria-hidden="true">⏲</span><div><b>Expired on ${esc(day(st.at))}</b><span>It described the data as it was when issued; ask its owner for a current one.</span></div></section>`;
+    if (st.state === 'changed') {
+      const why = (st.reasons || []).length ? `<ul>${st.reasons.map(r => `<li>${esc(r)}</li>`).join('')}</ul>` : '';
+      return `<section class="card state changed"><span class="ic" aria-hidden="true">!</span><div><b>The data has changed since it was certified</b>` +
+        `<span>Seen by ${esc(st.by || 'monitoring')} on ${esc(day(st.at))}. Everything below describes the data as it was when issued; ask its owner to check it again or issue a new passport.</span>${why}</div></section>`;
+    }
     return `<section class="card state valid"><span class="ic" aria-hidden="true">✓</span><div><b>Valid until ${esc(day(st.until))}</b><span>Unless it is revoked first. This status is checked now; everything below is as it was signed.</span></div></section>`;
   }
   function sigHtml(sig) {
@@ -153,18 +287,22 @@
     html += readinessHtml(pay.readiness || {});
     if (f) {
       const list = (title, items) => items && items.length ? `<h3>${title}</h3><ul class="find">${items.map(t => `<li>${esc(t)}</li>`).join('')}</ul>` : '';
-      const d = f.duplicates || {};
-      html += `<section class="card"><h2>What the evidence found</h2>` + list('Completeness across groups', f.parity) + list('Representation', f.representation) + list('Outcomes', f.outcomes) +
+      const d = f.duplicates || {}, gc = pay.groups_compared || {};
+      const groups = (gc.sensitive || []).length ? `<h3>Groups compared</h3><p>${gc.sensitive.map(c => `<code>${esc(c)}</code>`).join(', ')}${gc.target ? `; the outcome <code>${esc(gc.target)}</code>` : ''}</p>` : '';
+      html += `<section class="card"><h2>What the evidence found</h2>` + groups + list('Completeness across groups', f.parity) + list('Representation', f.representation) + list('Outcomes', f.outcomes) +
         (d.measured ? `<h3>Duplicates</h3><p>${d.exact ? `${num(d.exact)} rows are exact duplicates of others.` : 'No row is an exact duplicate of another.'}</p>` : '') +
         ((pay.columns || []).length ? `<h3>Columns</h3><div class="cols">${pay.columns.map(c => `<code>${esc(c.name)}</code>`).join('')}</div>` : '') + `</section>`;
     }
     html += `<section class="card"><h2>Fingerprint</h2><dl class="grid"><div><dt>Rows</dt><dd>${num(fp.rows)}</dd></div><div><dt>Algorithm</dt><dd><code>${esc(fp.algorithm)}</code></dd></div>` +
       `<div><dt>Digest</dt><dd><code>${esc(fp.digest)}</code></dd></div><div><dt>Schema</dt><dd><code>${esc(fp.schema_hash)}</code></dd></div></dl>` +
       `<p class="hint">The same data gives the same fingerprint on any engine. It is what a copy of this data is checked against.</p></section>`;
+    if (sig && sig.ok !== false) html += checkHtml(pay);
     html += `<section class="card"><h2>Check it yourself</h2><p class="hint">This passport is a standard JSON Web Token, signed with ES256. Any JWT library can verify it with the published key; the page above already has.</p>` +
-      `<div class="acts"><a href="#" id="dl">Download the signed passport</a><a href="${esc(API)}/passport/v1/keys" target="_blank" rel="noopener">The public key (JWK Set)</a></div>` +
+      `<div class="acts"><a href="#" id="dl">Download the signed passport</a><a href="${esc(API)}/passport/v1/keys" target="_blank" rel="noopener">The public key (JWK Set)</a>` +
+      (pay.details ? `<a href="${esc(API)}/passport/v1/${esc(encodeURIComponent(ID))}/croissant.json" target="_blank" rel="noopener">Croissant metadata, for ML tools</a>` : '') + `</div>` +
       `<p class="hint">Measured ${esc(day((pay.evidence || {}).measured_at))}. A passport is evidence for a judgement, such as one under the EU AI Act's Article 10, not the judgement itself.</p></section>`;
     box.innerHTML = html;
+    wireCheck(pay);
     const dl = document.getElementById('dl');
     if (dl) dl.addEventListener('click', e => {
       e.preventDefault();
