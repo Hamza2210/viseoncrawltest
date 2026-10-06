@@ -3738,6 +3738,31 @@
   .dpp-acts { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
   .dpp-acts .hint { margin: 0; }
   @media (max-width: 700px) { .dpp-part { grid-template-columns: 1fr 70px; } .dpp-bar { grid-column: 1 / -1; grid-row: 2; } }
+  .dpp-issue h3 { margin-bottom: 12px; }
+  .dpp-cur { display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-start; margin-bottom: 14px; }
+  .dpp-qr { flex: none; padding: 6px; border-radius: 10px; background: #fff; line-height: 0; }
+  .dpp-cur-t { flex: 1 1 360px; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+  .dpp-cur-h { margin: 0; font-size: 13px; line-height: 1.55; }
+  .dpp-st { display: inline-block; padding: 1px 9px; margin-right: 6px; border-radius: 999px; font-size: 11.5px; font-weight: 700; }
+  .dpp-st.ok { background: var(--ok-bg); color: var(--ok); } .dpp-st.bad { background: var(--err-bg); color: var(--err); }
+  .dpp-st.off { background: var(--idle-bg); color: var(--idle); }
+  .dpp-link { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .dpp-link input { flex: 1 1 280px; min-width: 0; padding: 7px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--card); color: var(--text);
+    font: 12px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .dpp-link a.dsx-btn { display: inline-flex; align-items: center; height: 34px; padding: 0 14px; border: 1px solid var(--border); border-radius: 10px;
+    background: var(--card-2); color: var(--text); font-size: 13px; font-weight: 650; white-space: nowrap; text-decoration: none; }
+  .dpp-link a.dsx-btn:hover { border-color: color-mix(in srgb, var(--accent) 65%, var(--border)); background: color-mix(in srgb, var(--accent) 10%, var(--card-2)); }
+  .dpp-issue .linkbtn { margin-left: 0; font-size: 12.5px; }
+  .dpp-badge { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; }
+  .dpp-badge-img { line-height: 0; }
+  .dpp-revoke { align-self: flex-start; color: var(--err); }
+  .dpp-issue-row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+  .dpp-issue-row .hint { flex: 1 1 320px; margin: 0; }
+  .dpp-older { margin-top: 14px; font-size: 13px; }
+  .dpp-older summary { cursor: pointer; color: var(--muted); }
+  .dpp-older ul { margin: 8px 0 0; padding-left: 18px; }
+  .dpp-older li { margin: 4px 0; }
+  .dpp-older a { margin-left: 6px; color: var(--accent); }
   /* Quality Space 3D galaxy */
   .galaxy-card { position: relative; background: radial-gradient(120% 130% at 30% 0%, #131a2e 0%, #0a0e1a 55%, #070a12 100%);
     border-color: #1e2740; }
@@ -19963,6 +19988,7 @@ function ppPaint() {
   if (running) html += ppLoaderHtml(j.phase, j.detail);
   else if (rd && ev) html += ppScoreHtml(rd, ev) + ppFindingsHtml(ev) + ppGroupsHtml(ev) + ppFingerprintHtml(ev);
   else html += ppIntroHtml(d, j);
+  if (!running) html += ppPassportsHtml(d);
   html += ppSettingsHtml(d, running) + `</div>`;
   panel.innerHTML = html;
 }
@@ -20123,6 +20149,11 @@ document.addEventListener('click', e => {
   const t = e.target.closest('[data-pp]');
   if (!t || !t.closest('#dsPanel') || t.disabled) return;
   if (t.dataset.pp === 'prepare') ppPrepare();
+  else if (t.dataset.pp === 'issue') ppIssue();
+  else if (t.dataset.pp === 'revoke') ppRevoke(t.dataset.id);
+  else if (t.dataset.pp === 'copy') {
+    agtCopyText(t.dataset.v || '').then(ok => { const was = t.textContent; t.textContent = ok ? 'Copied' : 'Could not copy'; setTimeout(() => { t.textContent = was; }, 1400); });
+  }
   else if (t.dataset.pp === 'unsens') { const f = ppForm(); f.sens = f.sens.filter(c => c !== t.dataset.c); ppPaint(); }
 });
 document.addEventListener('change', e => {
@@ -20134,6 +20165,241 @@ document.addEventListener('change', e => {
   else if (k === 'validity') f.validity = t.value;
   else if (k === 'show') f.show = t.checked;
 });
+
+// ---- QR codes, drawn as SVG: byte mode, error correction M, versions 1 to 10 ----
+// The standard construction (ISO/IEC 18004): data codewords padded, split into blocks with
+// Reed-Solomon error correction over GF(256), interleaved, laid in a zigzag around the finder,
+// timing and alignment patterns, masked with the pattern of least penalty, format and version
+// bits written. Checked module for module against a reference encoder in test_passport_tab.py.
+const QR_ECC_M = [-1, 10, 16, 26, 18, 24, 16, 18, 22, 22, 26];   // error-correction codewords per block, level M
+const QR_BLOCKS_M = [-1, 1, 1, 1, 2, 2, 4, 4, 4, 5, 5];          // blocks, level M
+function qrRawModules(ver) {
+  let r = (16 * ver + 128) * ver + 64;
+  if (ver >= 2) { const n = Math.floor(ver / 7) + 2; r -= (25 * n - 10) * n - 55; if (ver >= 7) r -= 36; }
+  return r;
+}
+function qrMul(x, y) {
+  let z = 0;
+  for (let i = 7; i >= 0; i--) { z = ((z << 1) ^ ((z >>> 7) * 0x11D)) & 0xFF; z ^= ((y >>> i) & 1) * x; }
+  return z;
+}
+function qrDivisor(deg) {
+  const r = new Array(deg).fill(0); r[deg - 1] = 1;
+  let root = 1;
+  for (let i = 0; i < deg; i++) {
+    for (let j = 0; j < deg; j++) { r[j] = qrMul(r[j], root); if (j + 1 < deg) r[j] ^= r[j + 1]; }
+    root = qrMul(root, 0x02);
+  }
+  return r;
+}
+function qrRemainder(data, div) {
+  const r = new Array(div.length).fill(0);
+  for (const b of data) { const f = b ^ r.shift(); r.push(0); div.forEach((c, i) => { r[i] ^= qrMul(c, f); }); }
+  return r;
+}
+function qrAlignments(ver) {
+  if (ver === 1) return [];
+  const n = Math.floor(ver / 7) + 2, size = ver * 4 + 17;
+  const step = Math.ceil((ver * 4 + 4) / (n * 2 - 2)) * 2, out = [6];
+  for (let pos = size - 7; out.length < n; pos -= step) out.splice(1, 0, pos);
+  return out;
+}
+const QR_MASK = [(x, y) => (x + y) % 2 === 0, (x, y) => y % 2 === 0, (x, y) => x % 3 === 0, (x, y) => (x + y) % 3 === 0,
+  (x, y) => (Math.floor(x / 3) + Math.floor(y / 2)) % 2 === 0, (x, y) => x * y % 2 + x * y % 3 === 0,
+  (x, y) => (x * y % 2 + x * y % 3) % 2 === 0, (x, y) => ((x + y) % 2 + x * y % 3) % 2 === 0];
+/** { size, version, mask, m: rows of booleans } for `text`; `forceMask` is for testing. */
+function qrMatrix(text, forceMask) {
+  const bytes = Array.from(new TextEncoder().encode(String(text)));
+  let ver = 1;
+  const dataCw = v => Math.floor(qrRawModules(v) / 8) - QR_ECC_M[v] * QR_BLOCKS_M[v];
+  while (ver <= 10 && 4 + (ver < 10 ? 8 : 16) + bytes.length * 8 > dataCw(ver) * 8) ver++;
+  if (ver > 10) throw new Error('too long for a QR code');
+  const cap = dataCw(ver), bits = [];
+  const put = (v, n) => { for (let i = n - 1; i >= 0; i--) bits.push((v >>> i) & 1); };
+  put(4, 4); put(bytes.length, ver < 10 ? 8 : 16); bytes.forEach(b => put(b, 8));
+  put(0, Math.min(4, cap * 8 - bits.length)); put(0, (8 - bits.length % 8) % 8);
+  for (let pad = 0xEC; bits.length < cap * 8; pad ^= 0xEC ^ 0x11) put(pad, 8);
+  const data = [];
+  for (let i = 0; i < bits.length; i += 8) data.push(bits.slice(i, i + 8).reduce((a, b) => (a << 1) | b, 0));
+  const nb = QR_BLOCKS_M[ver], el = QR_ECC_M[ver], raw = Math.floor(qrRawModules(ver) / 8);
+  const nShort = nb - raw % nb, shortLen = Math.floor(raw / nb), div = qrDivisor(el), blocks = [];
+  for (let i = 0, k = 0; i < nb; i++) {
+    const dat = data.slice(k, k + shortLen - el + (i < nShort ? 0 : 1));
+    k += dat.length;
+    const ecc = qrRemainder(dat, div);
+    if (i < nShort) dat.push(0);
+    blocks.push(dat.concat(ecc));
+  }
+  const words = [];
+  for (let i = 0; i < blocks[0].length; i++) blocks.forEach((b, j) => { if (i !== shortLen - el || j >= nShort) words.push(b[i]); });
+  const size = ver * 4 + 17;
+  const m = [...Array(size)].map(() => new Array(size).fill(false)), fn = [...Array(size)].map(() => new Array(size).fill(false));
+  const set = (x, y, dark) => { m[y][x] = dark; fn[y][x] = true; };
+  for (let i = 0; i < size; i++) { set(6, i, i % 2 === 0); set(i, 6, i % 2 === 0); }
+  const finder = (cx, cy) => {
+    for (let dy = -4; dy <= 4; dy++) for (let dx = -4; dx <= 4; dx++) {
+      const x = cx + dx, y = cy + dy, d = Math.max(Math.abs(dx), Math.abs(dy));
+      if (x >= 0 && x < size && y >= 0 && y < size) set(x, y, d !== 2 && d !== 4);
+    }
+  };
+  finder(3, 3); finder(size - 4, 3); finder(3, size - 4);
+  const al = qrAlignments(ver), na = al.length;
+  for (let i = 0; i < na; i++) for (let j = 0; j < na; j++) {
+    if ((i === 0 && j === 0) || (i === 0 && j === na - 1) || (i === na - 1 && j === 0)) continue;
+    for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) set(al[i] + dx, al[j] + dy, Math.max(Math.abs(dx), Math.abs(dy)) !== 1);
+  }
+  const format = mask => {
+    const dat = mask;                                 // level M is 00, so the data is the mask alone
+    let rem = dat;
+    for (let i = 0; i < 10; i++) rem = (rem << 1) ^ ((rem >>> 9) * 0x537);
+    const fb = ((dat << 10) | rem) ^ 0x5412, bit = i => ((fb >>> i) & 1) !== 0;
+    for (let i = 0; i <= 5; i++) set(8, i, bit(i));
+    set(8, 7, bit(6)); set(8, 8, bit(7)); set(7, 8, bit(8));
+    for (let i = 9; i < 15; i++) set(14 - i, 8, bit(i));
+    for (let i = 0; i < 8; i++) set(size - 1 - i, 8, bit(i));
+    for (let i = 8; i < 15; i++) set(8, size - 15 + i, bit(i));
+    set(8, size - 8, true);
+  };
+  format(0);
+  if (ver >= 7) {
+    let rem = ver;
+    for (let i = 0; i < 12; i++) rem = (rem << 1) ^ ((rem >>> 11) * 0x1F25);
+    const vb = (ver << 12) | rem;
+    for (let i = 0; i < 18; i++) { const dark = ((vb >>> i) & 1) !== 0, a = size - 11 + i % 3, c = Math.floor(i / 3); set(a, c, dark); set(c, a, dark); }
+  }
+  let i = 0;
+  for (let right = size - 1; right >= 1; right -= 2) {
+    if (right === 6) right = 5;
+    for (let vert = 0; vert < size; vert++) for (let j = 0; j < 2; j++) {
+      const x = right - j, up = ((right + 1) & 2) === 0, y = up ? size - 1 - vert : vert;
+      if (!fn[y][x] && i < words.length * 8) { m[y][x] = ((words[i >>> 3] >>> (7 - (i & 7))) & 1) !== 0; i++; }
+    }
+  }
+  const applyMask = k => { for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) if (!fn[y][x] && QR_MASK[k](x, y)) m[y][x] = !m[y][x]; };
+  const penalty = () => {
+    let p = 0, dark = 0;
+    const line = get => {
+      for (let a = 0; a < size; a++) {
+        let run = 1;
+        for (let b = 1; b <= size; b++) {
+          if (b < size && get(a, b) === get(a, b - 1)) run++;
+          else { if (run >= 5) p += 3 + run - 5; run = 1; }
+        }
+        for (let b = 0; b + 10 < size; b++) {
+          const w = [...Array(11)].map((_, t) => get(a, b + t));
+          const f1 = [1, 0, 1, 1, 1, 0, 1, 0, 0, 0, 0], f2 = [0, 0, 0, 0, 1, 0, 1, 1, 1, 0, 1];
+          if (w.every((v, t) => v === !!f1[t]) || w.every((v, t) => v === !!f2[t])) p += 40;
+        }
+      }
+    };
+    line((a, b) => m[a][b]); line((a, b) => m[b][a]);
+    for (let y = 0; y + 1 < size; y++) for (let x = 0; x + 1 < size; x++) {
+      const c = m[y][x];
+      if (c === m[y][x + 1] && c === m[y + 1][x] && c === m[y + 1][x + 1]) p += 3;
+    }
+    m.forEach(row => row.forEach(v => { if (v) dark++; }));
+    const total = size * size;
+    p += (Math.ceil(Math.abs(dark * 20 - total * 10) / total) - 1) * 10;
+    return p;
+  };
+  let mask = forceMask;
+  if (mask == null) {
+    let best = Infinity;
+    for (let k = 0; k < 8; k++) { applyMask(k); format(k); const p = penalty(); if (p < best) { best = p; mask = k; } applyMask(k); }
+  }
+  applyMask(mask); format(mask);
+  return { size, version: ver, mask, m };
+}
+/** A QR code as SVG, with the four-module quiet zone the standard asks for. */
+function qrSvg(text, px) {
+  const q = qrMatrix(text), n = q.size + 8;
+  let d = '';
+  for (let y = 0; y < q.size; y++) for (let x = 0; x < q.size; x++) if (q.m[y][x]) d += `M${x + 4} ${y + 4}h1v1h-1z`;
+  return `<svg class="dpp-qrsvg" viewBox="0 0 ${n} ${n}" width="${px}" height="${px}" shape-rendering="crispEdges" role="img" aria-label="QR code for the passport's link">` +
+    `<rect width="${n}" height="${n}" fill="#fff"/><path d="${d}" fill="#000"/></svg>`;
+}
+
+// ---- Issuing: the signed passport, its link, its QR code and its badge ----
+const PP_STATE = { valid: ['Valid', 'ok'], expired: ['Expired', 'off'], revoked: ['Revoked', 'bad'] };
+const PP_BADGE = { ready: ['ready for AI', '#16a34a'], caveats: ['ready with caveats', '#d97706'], not_ready: ['not ready for AI', '#dc2626'] };
+/** The badge as the API draws it, drawn here too so the preview needs no round trip. */
+function ppBadgeSvg(p) {
+  const st = (p.status || {}).state;
+  const [value, fill] = st === 'revoked' ? ['revoked', '#b91c1c'] : st === 'expired' ? ['expired', '#6b7280']
+    : [`${p.score} ${(PP_BADGE[p.band] || [''])[0]}`.trim(), (PP_BADGE[p.band] || [0, '#6b7280'])[1]];
+  const label = 'Data Passport', lw = 10 + Math.floor(label.length * 6.6), vw = 10 + Math.floor(value.length * 6.6);
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${lw + vw}" height="20" role="img" aria-label="${label}: ${esc(value)}">` +
+    `<rect width="${lw + vw}" height="20" rx="3" fill="#1f2937"/><rect x="${lw}" width="${vw}" height="20" rx="3" fill="${fill}"/><rect x="${lw}" width="4" height="20" fill="${fill}"/>` +
+    `<g fill="#fff" font-family="Verdana,DejaVu Sans,sans-serif" font-size="11"><text x="5" y="14">${label}</text><text x="${lw + 5}" y="14">${esc(value)}</text></g></svg>`;
+}
+function ppDay(iso) { const d = new Date(iso); return isNaN(d) ? String(iso || '') : d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }); }
+function ppPassportsHtml(d) {
+  const list = d.passports || [], cur = list.find(p => (p.status || {}).state === 'valid'), ev = d.evidence;
+  let html = '';
+  if (cur) {
+    const badgeUrl = `${API_BASE}/passport/v1/${cur.id}/badge.svg`;
+    const md = `[![Data Passport](${badgeUrl})](${cur.pageUrl})`, snip = `<a href="${cur.pageUrl}"><img src="${badgeUrl}" alt="Data Passport"></a>`;
+    html += `<div class="dpp-cur"><div class="dpp-qr">${qrSvg(cur.pageUrl, 128)}</div><div class="dpp-cur-t">` +
+      `<p class="dpp-cur-h"><span class="dpp-st ok">Valid</span> Issued ${esc(ppDay(cur.issuedAt))}${cur.issuedBy ? ` by ${esc(cur.issuedBy)}` : ''}, until ${esc(ppDay(cur.validUntil))}. ` +
+      `Scored ${esc(cur.score)} when issued; ${cur.details ? 'its findings and columns are public' : 'only its summary is public'}.</p>` +
+      `<div class="dpp-link"><input readonly value="${esc(cur.pageUrl)}" aria-label="The passport's link">` +
+      `<button type="button" class="dsx-btn lngb" data-pp="copy" data-v="${esc(cur.pageUrl)}">Copy link</button>` +
+      `<a class="dsx-btn lngb" href="${esc(cur.pageUrl)}" target="_blank" rel="noopener">Open the public page</a></div>` +
+      `<div class="dpp-badge"><span class="dpp-badge-img">${ppBadgeSvg(cur)}</span>` +
+      `<button type="button" class="linkbtn lngb" data-pp="copy" data-v="${esc(md)}">Copy as Markdown</button>` +
+      `<button type="button" class="linkbtn lngb" data-pp="copy" data-v="${esc(snip)}">Copy as HTML</button></div>` +
+      (d.canManage ? `<button type="button" class="linkbtn lngb dpp-revoke" data-pp="revoke" data-id="${esc(cur.id)}">Revoke…</button>` : '') + `</div></div>`;
+  }
+  if (d.canManage && ev && d.eligible !== false) {
+    const f = ppForm(), details = f.show && !d.restricted;
+    html += `<div class="dpp-issue-row"><button type="button" class="dsx-btn primary" data-pp="issue"${!d.signing || pp.busy ? ' disabled' : ''}>` +
+      `${pp.busy ? 'Signing…' : cur ? 'Issue a new passport' : 'Sign and issue the passport'}</button>` +
+      `<p class="hint">${d.signing ? `Signed now with the platform's key, valid for ${esc(f.validity)} days or until revoked. Anyone with its link reads ` +
+        (details ? 'the summary, every finding, the columns and who issued it.' : "a summary: the dataset's name and size, the scores and the fingerprint.") +
+        (f.show && d.restricted ? ' A restricting tag guards this dataset, so its details stay private.' : '') +
+        (cur ? ' The current passport stays valid until it expires or is revoked.' : '')
+        : 'Signing is not set up on the server yet, so a passport cannot be issued.'}</p></div>`;
+  }
+  const older = list.filter(p => p !== cur);
+  if (older.length) {
+    html += `<details class="dpp-older"><summary>${older.length} earlier passport${older.length === 1 ? '' : 's'}</summary><ul>` +
+      older.map(p => { const [lbl, c] = PP_STATE[(p.status || {}).state] || ['Unknown', 'off'];
+        return `<li><span class="dpp-st ${c}">${lbl}</span> Issued ${esc(ppDay(p.issuedAt))}, scored ${esc(p.score)}` +
+          `${(p.status || {}).state === 'revoked' && p.status.reason ? `: ${esc(p.status.reason)}` : ''} <a href="${esc(p.pageUrl)}" target="_blank" rel="noopener">Open</a></li>`; }).join('') +
+      `</ul></details>`;
+  }
+  return html ? `<section class="dpp-card dpp-issue"><h3>The passport</h3>${html}</section>` : '';
+}
+async function ppIssue() {
+  const d = pp.data, f = ppForm();
+  if (!d || pp.busy) return;
+  const v = parseInt(f.validity, 10);
+  if (!(v >= 1 && v <= 365)) { pp.err = 'Valid for is a number of days, from 1 to 365.'; ppPaint(); return; }
+  const details = f.show && !d.restricted, name = (dashSelected && dashSelected.name) || 'this dataset';
+  if (!await dqConfirm(`Issue a passport for ${name}?\n\nIt is signed now and valid for ${v} days, or until it is revoked. ` +
+      `Anyone with its link will be able to read ${details ? 'the summary, every finding, the columns and who issued it' : "a summary: the dataset's name and size, the scores and the fingerprint"}.`,
+      { title: 'Issue the passport', okLabel: 'Sign and issue' })) return;
+  pp.busy = true; pp.err = ''; ppPaint();
+  try {
+    const c = await postJSON(`${API_BASE}/data-quality/passport`, ppHdr(), { app_id: APP_ID, action: 'config', dataset_key: pp.key,
+      sensitive_columns: f.sens, target_column: f.target || '', validity_days: v, show_details: !!f.show });
+    d.config = c.config;
+    const r = await postJSON(`${API_BASE}/data-quality/passport`, ppHdr(), { app_id: APP_ID, action: 'issue', dataset_key: pp.key, actor: EMAIL || undefined });
+    d.passports = [r.passport].concat((d.passports || []));
+  } catch (e) { pp.err = rcxErrText(e); }
+  pp.busy = false; ppPaint();
+}
+async function ppRevoke(id) {
+  const d = pp.data;
+  const reason = await dqPrompt('Why is it being revoked? Anyone with its link will read this.', '', { title: 'Revoke the passport', okLabel: 'Revoke', danger: true });
+  if (reason == null) return;
+  try {
+    const r = await postJSON(`${API_BASE}/data-quality/passport`, ppHdr(), { app_id: APP_ID, action: 'revoke', dataset_key: pp.key, passport_id: id,
+      reason: reason.trim(), actor: EMAIL || undefined });
+    d.passports = (d.passports || []).map(p => (p.id === id ? r.passport : p));
+  } catch (e) { pp.err = rcxErrText(e); }
+  ppPaint();
+}
 
 // ===================== Quality Space: interactive 3D galaxy of datasets =====================
 // Every dataset is a glowing orb: x = quality score, y = data volume (log), z = medallion stage;
@@ -20973,7 +21239,7 @@ const GD_SHOTS = {
   "onprem-file": [1600, 1156, "244201089c"],
   "overview-top-p": [1600, 609, "2906120567"],
   "overview-top-q": [1600, 584, "5d61e45e4c"],
-  "passport": [1600, 2152, "d93ca8a37b"],
+  "passport": [1600, 2553, "4e6dabdfa1"],
   "profile": [1600, 526, "104f28f43a"],
   "quality-space": [1600, 812, "7bfbdb7881"],
   "records-policy": [1600, 433, "0850fe5c47"],
@@ -22068,7 +22334,7 @@ function buildGuides() {
   G.push({
     id: 'passport', cat: 'Governance', icon: 'shield', tint: '#34d399',
     title: 'Data Passport: AI readiness', sub: 'How fit a dataset is for AI to use, from evidence measured where the data lives',
-    keywords: 'passport ai readiness ready fit evidence certificate fairness bias parity completeness groups representation outcome sensitive gender age region country duplicates fingerprint article 10',
+    keywords: 'passport ai readiness ready fit evidence certificate fairness bias parity completeness groups representation outcome sensitive gender age region country duplicates fingerprint article 10 sign signed issue revoke qr badge verify jwt',
     open: { tab: 'dashboard', label: 'Open the Overview' },
     sections: [
       { h: 'What it answers', body:
@@ -22078,7 +22344,15 @@ function buildGuides() {
                 `Choose the <b>sensitive columns</b>: the characteristics people are grouped by, such as gender, age or region. The ones the compliance scan marked as special-category data, and the ones named like such a characteristic, are suggested.`,
                 `Optionally name a <b>target</b>: an outcome, such as an approval or a tier, whose rates are compared across those groups.`,
                 `Press ${ui('Prepare the evidence')}. A worker reads the table where it lives, a handful of times, counting only; the steps light up as it goes.`) +
-          shot('passport', `${n(1)} The AI-readiness score and its band. ${n(2)} The five parts, each with its weight, its score and why. ${n(3)} What the evidence found. ${n(4)} The settings.`) },
+          shot('passport', `${n(1)} The AI-readiness score and its band. ${n(2)} The five parts, each with its weight, its score and why. ${n(3)} What the evidence found. ${n(4)} The passport: its link, QR code and badge.`) },
+      { h: 'Issue the passport', body:
+          steps(`With the evidence prepared, press ${ui('Sign and issue the passport')}. It is signed there and then, and valid for the days set, or until it is revoked.`,
+                `Share it: copy its link, show its QR code, or copy its badge as Markdown or HTML for a README, a wiki or a report. The badge always shows where it stands now.`,
+                `When the data or the judgement changes, issue a new one. ${ui('Revoke…')} withdraws a passport at once, with a reason that anyone with its link will read.`) +
+          note(`Who can read what: anyone with the link reads a summary, the dataset's name and size, the scores and the fingerprint. Tick <b>Show findings and column names on the public page</b> to add the findings, the columns and who issued it. A dataset guarded by a restricting tag never shows its details. Deleting a dataset revokes its passports, saying so.`) },
+      { h: 'Check a passport', body:
+          p(`The link opens a public page, with no sign-in, that checks the passport's signature in the reader's own browser against the key Data Assurance publishes, and says where it stands now: valid, expired or revoked. A passport changed after it was issued fails the check and the page says not to rely on it.`) +
+          p(`A passport is a standard JSON Web Token signed with ES256, so anyone can also verify it with an ordinary JWT library and the public key the page links to.`) },
       { h: 'Reading the score', body:
           table(['Part', 'Weight', 'What it measures'], [
             ['Quality', '40%', 'The latest assessment\'s score, capped at 60 when its quality gate failed, less two points for each percent of rows that are exact duplicates'],

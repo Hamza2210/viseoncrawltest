@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Data Passport</title>
+<style>
+  :root {
+    --bg: #0a0e1a; --card: #131a2e; --card-2: #0e1526; --border: #223052; --text: #e8ebf3; --muted: #94a2be;
+    --accent: #5b8cff; --ok: #34d399; --ok-bg: rgba(52,211,153,.14); --run: #fbbf24; --run-bg: rgba(251,191,36,.14);
+    --err: #fb7185; --err-bg: rgba(251,113,133,.15); --idle: #94a2be; --idle-bg: #1a2338;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.55 "Segoe UI", system-ui, -apple-system, sans-serif; }
+  main { max-width: 860px; margin: 0 auto; padding: 32px 20px 56px; }
+  header { display: flex; align-items: center; gap: 12px; margin-bottom: 22px; }
+  header .mark { width: 38px; height: 38px; display: grid; place-items: center; border-radius: 10px; background: linear-gradient(135deg, #34d399, #5b8cff); }
+  header .mark svg { width: 22px; height: 22px; }
+  header h1 { margin: 0; font-size: 20px; font-weight: 800; letter-spacing: -.01em; }
+  header p { margin: 0; font-size: 12.5px; color: var(--muted); }
+  .card { padding: 18px 20px; border: 1px solid var(--border); border-radius: 14px; background: var(--card); margin-bottom: 14px; }
+  .card h2 { margin: 0 0 10px; font-size: 13px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .state { display: flex; align-items: center; gap: 14px; }
+  .state .ic { flex: none; width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; font-size: 22px; font-weight: 800; }
+  .state b { display: block; font-size: 19px; }
+  .state span { font-size: 13px; color: var(--muted); }
+  .state.valid { border-color: color-mix(in srgb, var(--ok) 45%, var(--border)); }
+  .state.valid .ic { background: var(--ok-bg); color: var(--ok); }
+  .state.expired .ic { background: var(--idle-bg); color: var(--idle); }
+  .state.revoked, .state.bad { border-color: color-mix(in srgb, var(--err) 50%, var(--border)); }
+  .state.revoked .ic, .state.bad .ic { background: var(--err-bg); color: var(--err); }
+  .sig { display: flex; align-items: flex-start; gap: 10px; padding: 10px 14px; border-radius: 10px; font-size: 13px; margin-top: 12px; }
+  .sig.ok { background: var(--ok-bg); } .sig.bad { background: var(--err-bg); color: var(--err); } .sig.wait { background: var(--idle-bg); color: var(--muted); }
+  .sig code { font-size: 11.5px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px 20px; }
+  .grid dt { font-size: 11.5px; color: var(--muted); }
+  .grid dd { margin: 2px 0 0; font-weight: 650; overflow-wrap: anywhere; }
+  .ready { display: flex; align-items: center; gap: 18px; margin-bottom: 14px; }
+  .dial { position: relative; flex: none; width: 88px; height: 88px; display: grid; place-items: center; }
+  .dial svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .dial .bg { fill: none; stroke: var(--border); stroke-width: 7; }
+  .dial .fg { fill: none; stroke: var(--idle); stroke-width: 7; stroke-linecap: round; }
+  .dial.ok .fg { stroke: var(--ok); } .dial.warn .fg { stroke: var(--run); } .dial.bad .fg { stroke: var(--err); }
+  .dial b { position: relative; margin-top: -8px; font-size: 26px; font-weight: 800; }
+  .dial span { position: absolute; bottom: 20px; font-size: 10px; color: var(--muted); }
+  .band { margin: 0; font-size: 18px; } .band.ok { color: var(--ok); } .band.warn { color: var(--run); } .band.bad { color: var(--err); }
+  .parts { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 9px; }
+  .parts li { display: grid; grid-template-columns: minmax(150px, 230px) 1fr 70px; align-items: center; gap: 4px 12px; font-size: 13px; }
+  .parts .bar { height: 8px; border-radius: 4px; background: var(--card-2); overflow: hidden; }
+  .parts .bar i { display: block; height: 100%; background: var(--idle); }
+  .parts li.ok .bar i { background: var(--ok); } .parts li.warn .bar i { background: var(--run); } .parts li.bad .bar i { background: var(--err); }
+  .parts b { text-align: right; } .parts li.off { color: var(--muted); }
+  .parts p { grid-column: 1 / -1; margin: 0; font-size: 12.5px; color: var(--muted); }
+  ul.find { margin: 0; padding-left: 20px; } ul.find li { margin: 2px 0; }
+  h3 { margin: 14px 0 6px; font-size: 12px; font-weight: 700; color: var(--muted); }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; overflow-wrap: anywhere; }
+  .cols { display: flex; flex-wrap: wrap; gap: 6px; }
+  .cols code { padding: 2px 7px; border: 1px solid var(--border); border-radius: 6px; font-size: 12px; background: var(--card-2); }
+  .hint { color: var(--muted); font-size: 12.5px; }
+  .acts { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 6px; }
+  .acts a { color: var(--accent); font-weight: 600; text-decoration: none; }
+  .acts a:hover { text-decoration: underline; }
+  .loading { color: var(--muted); }
+  @media (max-width: 600px) { .parts li { grid-template-columns: 1fr 60px; } .parts .bar { grid-column: 1 / -1; grid-row: 2; } }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <span class="mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v6c0 4.4-3 7.9-7 9-4-1.1-7-4.6-7-9V6l7-3z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg></span>
+    <div><h1>Data Passport</h1><p>How fit a dataset is for AI to use, from evidence measured where the data lives. Issued with Data Assurance.</p></div>
+  </header>
+  <div id="pp" aria-live="polite"><p class="loading">Reading the passport…</p></div>
+</main>
+<script>
+(function () {
+  'use strict';
+  const q = new URLSearchParams(location.search);
+  const API = (q.get('api') || 'https://i1jwcc4bx4.execute-api.eu-west-1.amazonaws.com/dev').replace(/\/+$/, '');
+  const ID = (q.get('id') || '').trim();
+  const box = document.getElementById('pp');
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const num = n => (n == null ? '-' : Number(n).toLocaleString('en-GB'));
+  const day = iso => { const d = new Date(iso); return isNaN(d) ? String(iso || '') : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }); };
+  const SOURCE = { snowflake: 'Snowflake', databricks: 'Databricks', redshift: 'Amazon Redshift', bigquery: 'Google BigQuery', postgres: 'PostgreSQL',
+    mysql: 'MySQL', sqlserver: 'SQL Server', synapse: 'Azure Synapse', fabric: 'Microsoft Fabric', oracle: 'Oracle', athena: 'Qlik Open Lakehouse',
+    s3: 'Amazon S3', gcs: 'Google Cloud Storage', azureblob: 'Azure Blob', qlik: 'Qlik app table' };
+  const BAND = { ready: ['Ready for AI', 'ok'], caveats: ['Ready with caveats', 'warn'], not_ready: ['Not ready for AI', 'bad'] };
+  const cls = s => (s == null ? 'off' : s >= 85 ? 'ok' : s >= 70 ? 'warn' : 'bad');
+
+  function b64uBytes(s) {
+    const t = s.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((s.length + 3) % 4);
+    const bin = atob(t), out = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+    return out;
+  }
+  const b64uJson = s => JSON.parse(new TextDecoder().decode(b64uBytes(s)));
+
+  /** Verify an ES256 JWS against the published keys, in this browser: not taking our word for it. */
+  async function verify(jws, keys) {
+    const parts = String(jws || '').split('.');
+    if (parts.length !== 3) return { ok: false, why: 'This is not a signed passport.' };
+    let header;
+    try { header = b64uJson(parts[0]); } catch (e) { return { ok: false, why: 'This is not a signed passport.' }; }
+    if (header.alg !== 'ES256') return { ok: false, why: 'It is signed with an algorithm Data Assurance does not use.' };
+    const jwk = (keys || []).find(k => k.kid === header.kid);
+    if (!jwk) return { ok: false, why: 'It was signed with a key Data Assurance does not publish.', kid: header.kid };
+    if (!(window.crypto && crypto.subtle)) return { ok: null, why: 'This browser cannot check signatures here.', kid: header.kid };
+    try {
+      const key = await crypto.subtle.importKey('jwk', { kty: 'EC', crv: 'P-256', x: jwk.x, y: jwk.y, ext: true }, { name: 'ECDSA', namedCurve: 'P-256' }, false, ['verify']);
+      const ok = await crypto.subtle.verify({ name: 'ECDSA', hash: 'SHA-256' }, key, b64uBytes(parts[2]), new TextEncoder().encode(parts[0] + '.' + parts[1]));
+      return ok ? { ok: true, kid: header.kid } : { ok: false, why: 'The signature does not match: this passport has been altered since it was issued.', kid: header.kid };
+    } catch (e) { return { ok: false, why: 'The signature could not be checked.', kid: header.kid }; }
+  }
+
+  function stateHtml(st, sig) {
+    if (sig && sig.ok === false) {
+      return `<section class="card state bad"><span class="ic" aria-hidden="true">!</span><div><b>Do not rely on this passport</b><span>${esc(sig.why)}</span></div></section>`;
+    }
+    if (st.state === 'revoked') return `<section class="card state revoked"><span class="ic" aria-hidden="true">✕</span><div><b>Revoked on ${esc(day(st.at))}</b><span>${esc(st.reason || 'Withdrawn by its issuer.')}</span></div></section>`;
+    if (st.state === 'expired') return `<section class="card state expired"><span class="ic" aria-hidden="true">⏲</span><div><b>Expired on ${esc(day(st.at))}</b><span>It described the data as it was when issued; ask its owner for a current one.</span></div></section>`;
+    return `<section class="card state valid"><span class="ic" aria-hidden="true">✓</span><div><b>Valid until ${esc(day(st.until))}</b><span>Unless it is revoked first. This status is checked now; everything below is as it was signed.</span></div></section>`;
+  }
+  function sigHtml(sig) {
+    if (!sig) return `<div class="sig wait">Checking the signature…</div>`;
+    if (sig.ok) return `<div class="sig ok"><span aria-hidden="true">✓</span><span>Signature verified in your browser, with the key Data Assurance publishes (<code>${esc(String(sig.kid).slice(0, 12))}…</code>). Nothing below has changed since it was issued.</span></div>`;
+    if (sig.ok === null) return `<div class="sig wait">${esc(sig.why)}</div>`;
+    return `<div class="sig bad"><span aria-hidden="true">✕</span><span>${esc(sig.why)}</span></div>`;
+  }
+  function readinessHtml(r) {
+    const s = r.score, band = BAND[r.band] || ['Not measured', 'off'];
+    const R = 34, C = 2 * Math.PI * R, fill = s == null ? 0 : (s / 100) * C;
+    return `<section class="card"><h2>AI readiness</h2><div class="ready"><div class="dial ${cls(s)}" role="img" aria-label="AI readiness ${s == null ? 'not measured' : s + ' out of 100'}">` +
+      `<svg viewBox="0 0 80 80" aria-hidden="true"><circle cx="40" cy="40" r="${R}" class="bg"/><circle cx="40" cy="40" r="${R}" class="fg" stroke-dasharray="${fill.toFixed(1)} ${C.toFixed(1)}" transform="rotate(-90 40 40)"/></svg>` +
+      `<b>${s == null ? '-' : esc(s)}</b><span>of 100</span></div><h3 class="band ${band[1]}">${esc(band[0])}</h3></div>` +
+      `<ul class="parts">${(r.parts || []).map(p => `<li class="${p.measured ? cls(p.score) : 'off'}"><span>${esc(p.label)} <small class="hint">${esc(p.weight)}%</small></span>` +
+        `<span class="bar" aria-hidden="true"><i style="width:${p.measured ? Math.max(2, Number(p.score) || 0) : 0}%"></i></span><b>${p.measured ? esc(p.score) : 'Not measured'}</b>` +
+        `${p.reason ? `<p>${esc(p.reason)}</p>` : ''}</li>`).join('')}</ul></section>`;
+  }
+  function render(doc, sig) {
+    const st = doc.status || {}, jws = doc.jws || '';
+    let pay = {};
+    try { pay = b64uJson(jws.split('.')[1] || ''); } catch (e) { pay = {}; }
+    const ds = pay.dataset || {}, as = pay.assessment || {}, fp = pay.fingerprint || {}, f = pay.findings || null;
+    let html = stateHtml(st, sig);
+    html += `<section class="card"><h2>The dataset</h2><dl class="grid">` +
+      `<div><dt>Dataset</dt><dd>${esc(ds.name)}</dd></div><div><dt>Organisation</dt><dd>${esc(pay.org)}</dd></div>` +
+      `<div><dt>Source</dt><dd>${esc(SOURCE[ds.source] || ds.source || '-')}</dd></div><div><dt>Rows</dt><dd>${num(ds.rows)}</dd></div>` +
+      `<div><dt>Columns</dt><dd>${num(ds.columns)}</dd></div><div><dt>Quality score</dt><dd>${as.score == null ? '-' : esc(as.score)}${as.gate_passed === false ? ' (gate failed)' : ''}</dd></div>` +
+      `<div><dt>Personal data</dt><dd>${esc(((pay.personal_data || {}).grade || 'not assessed').replace(/_/g, ' ').toLowerCase())}</dd></div>` +
+      `<div><dt>Issued</dt><dd>${esc(day(pay.issued_at))}${pay.issued_by ? ` by ${esc(pay.issued_by)}` : ''}</dd></div></dl>${sigHtml(sig)}</section>`;
+    html += readinessHtml(pay.readiness || {});
+    if (f) {
+      const list = (title, items) => items && items.length ? `<h3>${title}</h3><ul class="find">${items.map(t => `<li>${esc(t)}</li>`).join('')}</ul>` : '';
+      const d = f.duplicates || {};
+      html += `<section class="card"><h2>What the evidence found</h2>` + list('Completeness across groups', f.parity) + list('Representation', f.representation) + list('Outcomes', f.outcomes) +
+        (d.measured ? `<h3>Duplicates</h3><p>${d.exact ? `${num(d.exact)} rows are exact duplicates of others.` : 'No row is an exact duplicate of another.'}</p>` : '') +
+        ((pay.columns || []).length ? `<h3>Columns</h3><div class="cols">${pay.columns.map(c => `<code>${esc(c.name)}</code>`).join('')}</div>` : '') + `</section>`;
+    }
+    html += `<section class="card"><h2>Fingerprint</h2><dl class="grid"><div><dt>Rows</dt><dd>${num(fp.rows)}</dd></div><div><dt>Algorithm</dt><dd><code>${esc(fp.algorithm)}</code></dd></div>` +
+      `<div><dt>Digest</dt><dd><code>${esc(fp.digest)}</code></dd></div><div><dt>Schema</dt><dd><code>${esc(fp.schema_hash)}</code></dd></div></dl>` +
+      `<p class="hint">The same data gives the same fingerprint on any engine. It is what a copy of this data is checked against.</p></section>`;
+    html += `<section class="card"><h2>Check it yourself</h2><p class="hint">This passport is a standard JSON Web Token, signed with ES256. Any JWT library can verify it with the published key; the page above already has.</p>` +
+      `<div class="acts"><a href="#" id="dl">Download the signed passport</a><a href="${esc(API)}/passport/v1/keys" target="_blank" rel="noopener">The public key (JWK Set)</a></div>` +
+      `<p class="hint">Measured ${esc(day((pay.evidence || {}).measured_at))}. A passport is evidence for a judgement, such as one under the EU AI Act's Article 10, not the judgement itself.</p></section>`;
+    box.innerHTML = html;
+    const dl = document.getElementById('dl');
+    if (dl) dl.addEventListener('click', e => {
+      e.preventDefault();
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([jws], { type: 'application/jose' }));
+      a.download = (pay.jti || 'passport') + '.jws';
+      document.body.appendChild(a); a.click(); a.remove();
+    });
+  }
+  async function main() {
+    if (!/^dp_[A-Za-z0-9_-]{22}$/.test(ID)) {
+      box.innerHTML = `<section class="card state bad"><span class="ic" aria-hidden="true">?</span><div><b>No passport here</b><span>The link has no passport id, or not a whole one. Check it was copied in full.</span></div></section>`;
+      return;
+    }
+    let doc, keys;
+    try {
+      const [a, b] = await Promise.all([fetch(`${API}/passport/v1/${ID}`), fetch(`${API}/passport/v1/keys`)]);
+      if (a.status === 404) {
+        box.innerHTML = `<section class="card state bad"><span class="ic" aria-hidden="true">?</span><div><b>No passport has this id</b><span>It may have been mistyped, or never issued.</span></div></section>`;
+        return;
+      }
+      if (!a.ok) throw new Error('status ' + a.status);
+      doc = await a.json();
+      keys = b.ok ? ((await b.json()).keys || []) : [];
+    } catch (e) {
+      box.innerHTML = `<section class="card state bad"><span class="ic" aria-hidden="true">!</span><div><b>The passport could not be read</b><span>Try again in a moment.</span></div></section>`;
+      return;
+    }
+    render(doc, null);
+    const sig = await verify(doc.jws, keys);
+    render(doc, sig);
+    document.title = 'Data Passport' + (sig.ok ? ' · ' + ((b64uJson(doc.jws.split('.')[1]).dataset || {}).name || '') : '');
+  }
+  main();
+})();
+</script>
+</body>
+</html>
