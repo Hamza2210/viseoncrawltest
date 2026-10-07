@@ -20433,9 +20433,13 @@ function ppPassportsHtml(d) {
   }
   if (d.canManage && ev && d.eligible !== false) {
     const f = ppForm(), details = f.show && !d.restricted;
-    html += `<div class="dpp-issue-row"><button type="button" class="dsx-btn primary" data-pp="issue"${!d.signing || pp.busy ? ' disabled' : ''}>` +
+    // Data scoring below 70 is not fit for AI, so it gets no passport: the API refuses it too.
+    const notReady = !!(d.readiness && d.readiness.band === 'not_ready');
+    html += `<div class="dpp-issue-row"><button type="button" class="dsx-btn primary" data-pp="issue"${!d.signing || notReady || pp.busy ? ' disabled' : ''}>` +
       `${pp.busy ? 'Signing…' : cur ? 'Issue a new passport' : 'Sign and issue the passport'}</button>` +
-      `<p class="hint">${d.signing ? `Signed now with the platform's key, valid for ${esc(f.validity)} days or until revoked. Anyone with its link reads ` +
+      `<p class="hint">${notReady ? `A passport is issued only for data ready for AI, scoring 70 or more. This dataset scores ${esc(d.readiness.score)}: ` +
+        'fix what the parts above say, prepare the evidence again, then issue.'
+        : d.signing ? `Signed now with the platform's key, valid for ${esc(f.validity)} days or until revoked. Anyone with its link reads ` +
         (details ? 'the summary, every finding, the columns and who issued it.' : "a summary: the dataset's name and size, the scores and the fingerprint.") +
         (f.show && d.restricted ? ' A restricting tag guards this dataset, so its details stay private.' : '') +
         (cur ? ' It replaces the current passport, whose link will then say so and point to the new one.' : '')
@@ -20505,7 +20509,7 @@ async function ppDownload(id, format) {
 }
 async function ppIssue() {
   const d = pp.data, f = ppForm();
-  if (!d || pp.busy) return;
+  if (!d || pp.busy || (d.readiness && d.readiness.band === 'not_ready')) return;
   const v = parseInt(f.validity, 10);
   if (!(v >= 1 && v <= 365)) { pp.err = 'Valid for is a number of days, from 1 to 365.'; ppPaint(); return; }
   const details = f.show && !d.restricted, name = (dashSelected && dashSelected.name) || 'this dataset';
@@ -22479,9 +22483,10 @@ function buildGuides() {
                 `Press ${ui('Prepare the evidence')}. A worker reads the table where it lives, a handful of times, counting only; the steps light up as it goes.`) +
           shot('passport', `${n(1)} The AI-readiness score and its band. ${n(2)} The five parts, each with its weight, its score and why. ${n(3)} What the evidence found. ${n(4)} The passport: its link, QR code and badge, a check of the data or of a copy, and its downloads.`) },
       { h: 'Issue the passport', body:
-          steps(`With the evidence prepared, press ${ui('Sign and issue the passport')}. It is signed there and then, and valid for the days set, or until it is revoked.`,
+          steps(`With the evidence prepared and a score of 70 or more, press ${ui('Sign and issue the passport')}. It is signed there and then, and valid for the days set, or until it is revoked.`,
                 `Share it: copy its link, show its QR code, or copy its badge as Markdown or HTML for a README, a wiki or a report. The badge always shows where it stands now.`,
                 `When the data or the judgement changes, issue a new one: it replaces the current passport, whose link then says so and points to the new one. ${ui('Revoke…')} withdraws a passport at once, with a reason that anyone with its link will read.`) +
+          note(`A dataset that scores below 70, <b>Not ready for AI</b>, cannot have a passport. Fix what the parts of its score say, prepare the evidence again, and issue once it scores 70 or more.`) +
           note(`Who can read what: anyone with the link reads a summary, the dataset's name and size, the scores and the fingerprint. Tick <b>Show findings and column names on the public page</b> to add the findings, the columns and who issued it. A dataset guarded by a restricting tag never shows its details. Deleting a dataset revokes its passports, saying so.`) },
       { h: 'When the data changes', body:
           p(`A passport certifies the data as it was when the evidence was measured. It turns <b>Changed since certified</b> as soon as something sees the data move on:`) +
@@ -22506,7 +22511,7 @@ function buildGuides() {
             ['Personal data', '15%', 'The compliance grade'],
             ['Freshness and ownership', '10%', 'Whether it was assessed in the last week, and whether it has an owner'],
           ]) +
-          note(`A part that was not measured, such as representation when no sensitive column is named, is left out of the score rather than counted as zero. 85 and over reads <b>Ready for AI</b>, 70 to 84 <b>Ready with caveats</b>, below 70 <b>Not ready for AI</b>.`) },
+          note(`A part that was not measured, such as representation when no sensitive column is named, is left out of the score rather than counted as zero. 85 and over reads <b>Ready for AI</b>, 70 to 84 <b>Ready with caveats</b>, below 70 <b>Not ready for AI</b>, which no passport is issued for.`) },
       { h: 'What the evidence measures', body:
           list(
             `<b>Completeness across groups</b>: for each column and each group of a sensitive or few-valued column, how complete it is there against everywhere else. Said when the gap is ten points or more and the group holds at least thirty rows and one percent of the table: "phone is 59% complete where country = 'DE', against 94% everywhere else".`,
