@@ -3722,11 +3722,11 @@
   .dpp-meta { margin: 6px 0 0; font-size: 11.5px; color: var(--muted); }
   .dpp-set code { padding: 1px 6px; border: 1px solid var(--border); border-radius: 5px; font-size: 11.5px; }
   .dpp-set-intro { margin: -4px 0 0; font-size: 13px; line-height: 1.55; color: var(--muted); }
-  .dpp-sg { margin-top: 18px; }
-  .dpp-sg + .dpp-sg { margin-top: 30px; }
-  .dpp-sg-h { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 12px; padding-bottom: 10px; }
-  .dpp-card .dpp-sg-h h4 { margin: 0; }
-  .dpp-when { padding: 2px 9px; border: 1px solid var(--border); border-radius: 999px; font-size: 11.5px; color: var(--muted); }
+  .dpp-set-intro + .dpp-srow { margin-top: 12px; }
+  .dpp-issue-set { margin-top: 4px; }
+  .dpp-cur + .dpp-issue-set { margin-top: 20px; border-top: 1px solid var(--border); }
+  .dpp-card .dpp-issue-set h4 { margin: 16px 0 6px; }
+  .dpp-issue-set .dpp-issue-row { padding-top: 14px; border-top: 1px solid color-mix(in srgb, var(--border) 75%, transparent); }
   .dpp-srow { display: grid; grid-template-columns: minmax(200px, 330px) minmax(0, 1fr); gap: 8px 36px; padding: 14px 0;
     border-top: 1px solid color-mix(in srgb, var(--border) 75%, transparent); }
   .dpp-sl b { font-size: 13.5px; font-weight: 700; }
@@ -20005,7 +20005,7 @@ function rcxBalanceHtml(c, L, R) {
 // A dataset's Passport tab. Stage 1: the evidence a passport is issued on, measured where the data
 // lives by the worker (dq/passport.py), and the AI-readiness score the API makes from it. Members
 // look; an admin or the dataset's owner chooses the sensitive columns and the target, and prepares.
-let pp = { key: '', data: null, poll: null, busy: false, err: '', form: null, ck: null, ckPoll: null, ckBusy: false, ckErr: '' };
+let pp = { key: '', data: null, poll: null, busy: false, err: '', issueErr: '', form: null, ck: null, ckPoll: null, ckBusy: false, ckErr: '' };
 const PP_PHASE = {
   queued: 'Starting a worker', connecting: 'Connecting to the source', profiling: 'Reading the table',
   fingerprinting: 'Fingerprinting the data', groups: 'Comparing completeness across groups',
@@ -20020,7 +20020,7 @@ const ppCls = s => (s == null ? 'off' : s >= 85 ? 'ok' : s >= 70 ? 'warn' : 'bad
 async function loadDsPassport(panel) {
   const key = dashSelected && dashSelected.key;
   if (!key) return;
-  if (pp.key !== key) pp = { key, data: null, poll: null, busy: false, err: '', form: null, ck: null, ckPoll: null, ckBusy: false, ckErr: '' };
+  if (pp.key !== key) pp = { key, data: null, poll: null, busy: false, err: '', issueErr: '', form: null, ck: null, ckPoll: null, ckBusy: false, ckErr: '' };
   panel.innerHTML = dqSkeleton('Loading the passport', 4);
   try {
     pp.data = await postJSON(`${API_BASE}/data-quality/passport`, ppHdr(), { app_id: APP_ID, action: 'get', dataset_key: key });
@@ -20154,34 +20154,31 @@ function ppFingerprintHtml(ev) {
     `<p class="hint">The same data gives the same fingerprint on any engine: each column's values summed by a rule every engine computes alike. It is what a copy is checked against.</p>` +
     `<p class="dpp-meta">${rcxN(ev.queries)} queries · ${((ev.elapsed_ms || 0) / 1000).toFixed(1)} s${ev.measured_at ? ' · ' + esc(rcxWhen(ev.measured_at)) : ''}</p></section>`;
 }
-/** The settings, in two groups: what the evidence measures (used when it is prepared) and what an
- *  issued passport says (used when one is issued), each with what it does beside it. */
+/** One setting: its name and what it does, beside its control. Shared by the evidence settings and
+ *  the issue box, so both read the same way. */
+function ppRow(label, help, control, tag) {
+  return `<div class="dpp-srow"><div class="dpp-sl"><b>${label}</b>${tag ? `<span class="dpp-tag">${tag}</span>` : ''}` +
+    `<p>${help}</p></div><div class="dpp-sc">${control}</div></div>`;
+}
+/** What the evidence measures, each setting with what it does beside it, ending on Prepare, which uses
+ *  them. What a passport says (how long it lasts, its public page) sits with Sign and issue instead. */
 function ppSettingsHtml(d, running) {
   const f = ppForm(), cols = (d.columns || []).map(c => c.name);
   const why = Object.fromEntries(((d.suggestions || {}).sensitive || []).map(s => [s.column, s.why]));
   const targets = ((d.suggestions || {}).targets || []).map(t => t.column);
-  const row = (label, help, control, tag) => `<div class="dpp-srow"><div class="dpp-sl"><b>${label}</b>${tag ? `<span class="dpp-tag">${tag}</span>` : ''}` +
-    `<p>${help}</p></div><div class="dpp-sc">${control}</div></div>`;
-  const group = (title, when, body) => `<div class="dpp-sg"><div class="dpp-sg-h"><h4>${title}</h4><span class="dpp-when">${when}</span></div>${body}</div>`;
   const HELP = {
     sens: 'The characteristics people are grouped by, such as gender, age or region. The evidence compares every column\'s completeness across ' +
           'their groups, and how well each group is represented, so a gap is found before a model learns it.',
     target: 'A column holding a result, such as approved, churned or a loyalty tier. Its rates are compared across the groups above, to show whether ' +
             'one group gets a different result from the rest.',
-    days: 'How long an issued passport stays valid before it expires, from 1 to 365 days. It lapses sooner if the data changes, and can be revoked at any time.',
-    show: 'What anyone holding the passport\'s link can read on its public page.',
   };
-  const SUMMARY = 'The dataset\'s name and size, its scores, its personal-data grade and its fingerprint.';
-  const DETAILS = 'Adds every finding, the column names and who issued it, a Croissant file, and lets anyone check their copy of the data on the page.';
+  const has = !!d.evidence;
+  const intro = `<p class="dpp-set-intro">What the evidence measures. ${has ? 'A change takes effect when the evidence is prepared again.' : 'They take effect when the evidence is prepared.'}</p>`;
   if (!d.canManage) {
     const chipsRo = f.sens.length ? `<div class="dpp-chips">${f.sens.map(c => `<span class="dpp-chip ro">${esc(c)}</span>`).join('')}</div>` : '<span class="dpp-ro">None</span>';
-    return `<section class="dpp-card dpp-set"><h3>Settings</h3>` +
-      group('What the evidence measures', 'Used when the evidence is prepared',
-        row('Sensitive columns', HELP.sens, chipsRo) +
-        row('Outcome to compare', HELP.target, `<span class="dpp-ro">${f.target ? esc(f.target) : 'None'}</span>`, 'Optional')) +
-      group('What the passport says', 'Used when a passport is issued',
-        row('Valid for', HELP.days, `<span class="dpp-ro">${esc(f.validity)} days</span>`) +
-        row('Public page', HELP.show, `<span class="dpp-ro">${f.show && !d.restricted ? 'Summary and details' : 'Summary only'}</span>`)) +
+    return `<section class="dpp-card dpp-set"><h3>Evidence settings</h3>${intro}` +
+      ppRow('Sensitive columns', HELP.sens, chipsRo) +
+      ppRow('Outcome to compare', HELP.target, `<span class="dpp-ro">${f.target ? esc(f.target) : 'None'}</span>`, 'Optional') +
       `<p class="dpp-who">Only an admin or the dataset's owner${d.owner ? ` (${esc(d.owner)})` : ''} can change these or prepare the evidence.</p></section>`;
   }
   const chips = f.sens.map(c => `<span class="dpp-chip" ${why[c] ? `data-tip="${esc(why[c])}"` : ''}>${esc(c)}<button type="button" class="lngb" data-pp="unsens" data-c="${esc(c)}" aria-label="Remove ${esc(c)}">×</button></span>`).join('');
@@ -20195,35 +20192,23 @@ function ppSettingsHtml(d, running) {
   const targetCtl = `<select id="ppTarget" data-pp="target" aria-label="Outcome to compare"><option value=""${f.target ? '' : ' selected'}>None: no outcome compared</option>` +
     (tSugg.length ? `<optgroup label="A few values each: likely outcomes">${tSugg.map(opt).join('')}</optgroup>` : '') +
     (tRest.length ? `<optgroup label="Other columns">${tRest.map(opt).join('')}</optgroup>` : '') + `</select>`;
-  const daysCtl = `<label class="dpp-days"><input id="ppValid" type="number" min="1" max="365" value="${esc(f.validity)}" data-pp="validity" aria-label="Valid for, in days"> days</label>`;
-  const showCtl = `<div class="dpp-opts" role="radiogroup" aria-label="Public page">` +
-    `<label class="dpp-opt"><input type="radio" name="ppShow" value="0" data-pp="show"${f.show && !d.restricted ? '' : ' checked'}><b>Summary only</b><span>${SUMMARY}</span></label>` +
-    `<label class="dpp-opt${d.restricted ? ' off' : ''}"><input type="radio" name="ppShow" value="1" data-pp="show"${f.show && !d.restricted ? ' checked' : ''}${d.restricted ? ' disabled' : ''}>` +
-    `<b>Summary and details</b><span>${d.restricted ? 'Not available: a restricting tag guards this dataset, so only its summary can be public.' : DETAILS}</span></label></div>`;
-  const has = !!d.evidence;
   const blocked = !d.eligible ? (d.reason || 'This dataset cannot have a passport.') : running ? 'The evidence is being prepared now.' : '';
-  return `<section class="dpp-card dpp-set"><h3>Settings</h3>` +
-    `<p class="dpp-set-intro">Two kinds of setting: what the evidence measures, which takes effect when it is prepared, and what an issued passport says, which takes effect the next time one is issued.</p>` +
-    group('What the evidence measures', 'Used when the evidence is prepared',
-      row('Sensitive columns', HELP.sens, sensCtl) +
-      row('Outcome to compare', HELP.target, targetCtl, 'Optional') +
-      `<div class="dpp-sact"><button type="button" class="dsx-btn primary" data-pp="prepare"${blocked || pp.busy ? ' disabled' : ''}>` +
-      `${pp.busy ? 'Starting…' : has ? 'Prepare the evidence again' : 'Prepare the evidence'}</button>` +
-      `<span class="hint">${esc(blocked || 'A worker reads the table where it lives, a few times, counting only.')}</span></div>`) +
-    group('What the passport says', 'Used when a passport is issued',
-      row('Valid for', HELP.days, daysCtl) +
-      row('Public page', HELP.show, showCtl)) +
+  return `<section class="dpp-card dpp-set"><h3>Evidence settings</h3>${intro}` +
+    ppRow('Sensitive columns', HELP.sens, sensCtl) +
+    ppRow('Outcome to compare', HELP.target, targetCtl, 'Optional') +
+    `<div class="dpp-sact"><button type="button" class="dsx-btn primary" data-pp="prepare"${blocked || pp.busy ? ' disabled' : ''}>` +
+    `${pp.busy ? 'Starting…' : has ? 'Prepare the evidence again' : 'Prepare the evidence'}</button>` +
+    `<span class="hint">${esc(blocked || 'A worker reads the table where it lives, a few times, counting only.')}</span></div>` +
     (pp.err ? `<p class="dpp-why err" role="alert">${esc(pp.err)}</p>` : '') + `</section>`;
 }
 async function ppPrepare() {
   const d = pp.data, f = ppForm();
   if (!d || pp.busy) return;
-  const v = parseInt(f.validity, 10);
-  if (!(v >= 1 && v <= 365)) { pp.err = 'Valid for is a number of days, from 1 to 365.'; ppPaint(); return; }
   pp.busy = true; pp.err = ''; ppPaint();
   try {
+    // The evidence settings only: the passport's validity and public page are saved when one is issued.
     const c = await postJSON(`${API_BASE}/data-quality/passport`, ppHdr(), { app_id: APP_ID, action: 'config', dataset_key: pp.key,
-      sensitive_columns: f.sens, target_column: f.target || '', validity_days: v, show_details: !!f.show });
+      sensitive_columns: f.sens, target_column: f.target || '' });
     d.config = c.config; d.configSaved = true;
     const r = await postJSON(`${API_BASE}/data-quality/passport`, ppHdr(), { app_id: APP_ID, action: 'prepare', dataset_key: pp.key });
     d.job = { job_id: r.jobId, state: 'queued', phase: 'queued', detail: 'Waiting for a worker' };
@@ -20269,8 +20254,8 @@ document.addEventListener('change', e => {
   const f = ppForm();
   if (k === 'sens' && t.value) { if (!f.sens.includes(t.value)) f.sens.push(t.value); if (f.target === t.value) f.target = ''; ppPaint(); }
   else if (k === 'target') f.target = t.value;
-  else if (k === 'validity') { f.validity = t.value; ppIssueRowRefresh(); }
-  else if (k === 'show') { f.show = t.value === '1' && t.checked; ppIssueRowRefresh(); }
+  else if (k === 'validity') f.validity = t.value;
+  else if (k === 'show') f.show = t.value === '1' && t.checked;
 });
 
 // ---- QR codes, drawn as SVG: byte mode, error correction M, versions 1 to 10 ----
@@ -20467,26 +20452,31 @@ function ppCheckHtml() {
     ((r.extra || []).length ? `<p class="hint">Not in the passport: ${r.extra.slice(0, 8).map(x => `<code>${esc(x)}</code>`).join(' ')}${r.extra.length > 8 ? ' and more' : ''}</p>` : '') +
     `<p class="hint">Checked ${esc(rcxWhen(k.checked_at))}${k.checked_by ? ` by ${esc(k.checked_by)}` : ''}, by fingerprinting it again. Only counts and sums were read.</p></div>`;
 }
-/** Sign and issue, with what the new passport will be: how long it lasts and what its link shows. */
+/** Issuing: the two things only a passport has (how long it lasts, what its public page shows),
+ *  each explained, then Sign and issue, which uses them. */
 function ppIssueRowHtml(d, cur) {
-  const f = ppForm(), details = f.show && !d.restricted;
+  const f = ppForm();
   // Data scoring below 70 is not fit for AI, so it gets no passport: the API refuses it too.
   const notReady = !!(d.readiness && d.readiness.band === 'not_ready');
-  return `<div class="dpp-issue-row"><button type="button" class="dsx-btn primary" data-pp="issue"${!d.signing || notReady || pp.busy ? ' disabled' : ''}>` +
+  const SUMMARY = 'The dataset\'s name and size, its scores, its personal-data grade and its fingerprint.';
+  const DETAILS = 'Adds every finding, the column names and who issued it, a Croissant file, and lets anyone check their copy of the data on the page.';
+  const daysCtl = `<label class="dpp-days"><input id="ppValid" type="number" min="1" max="365" value="${esc(f.validity)}" data-pp="validity" aria-label="Valid for, in days"> days</label>`;
+  const showCtl = `<div class="dpp-opts" role="radiogroup" aria-label="Public page">` +
+    `<label class="dpp-opt"><input type="radio" name="ppShow" value="0" data-pp="show"${f.show && !d.restricted ? '' : ' checked'}><b>Summary only</b><span>${SUMMARY}</span></label>` +
+    `<label class="dpp-opt${d.restricted ? ' off' : ''}"><input type="radio" name="ppShow" value="1" data-pp="show"${f.show && !d.restricted ? ' checked' : ''}${d.restricted ? ' disabled' : ''}>` +
+    `<b>Summary and details</b><span>${d.restricted ? 'Not available: a restricting tag guards this dataset, so only its summary can be public.' : DETAILS}</span></label></div>`;
+  // With a passport above, a heading sets the next one apart; with none, the card's own title is enough.
+  return `<div class="dpp-issue-set">${cur ? '<h4>A new passport</h4>' : ''}` +
+    ppRow('Valid for', 'How long the passport stays valid before it expires, from 1 to 365 days. It lapses sooner if the data changes, and can be revoked at any time.', daysCtl) +
+    ppRow('Public page', 'What anyone holding the passport\'s link can read on its public page.', showCtl) +
+    `<div class="dpp-issue-row"><button type="button" class="dsx-btn primary" data-pp="issue"${!d.signing || notReady || pp.busy ? ' disabled' : ''}>` +
     `${pp.busy ? 'Signing…' : cur ? 'Issue a new passport' : 'Sign and issue the passport'}</button>` +
     `<p class="hint">${notReady ? `A passport is issued only for data ready for AI, scoring 70 or more. This dataset scores ${esc(d.readiness.score)}: ` +
       'fix what the parts above say, prepare the evidence again, then issue.'
-      : d.signing ? `Signed now with the platform's key, valid for ${esc(f.validity)} days or until revoked. Anyone with its link reads ` +
-      (details ? 'the summary, every finding, the columns and who issued it.' : "a summary: the dataset's name and size, the scores and the fingerprint.") +
-      (f.show && d.restricted ? ' A restricting tag guards this dataset, so its details stay private.' : '') +
-      (cur ? ' It replaces the current passport, whose link will then say so and point to the new one.' : '')
-      : 'Signing is not set up on the server yet, so a passport cannot be issued.'}</p></div>`;
-}
-/** Redraw the issue row alone: the settings quote into it, and redrawing the whole panel would
- *  remove the input that still has focus, whose blur then fires a second change mid-redraw. */
-function ppIssueRowRefresh() {
-  const row = ppPanel() && ppPanel().querySelector('.dpp-issue-row');
-  if (row) row.outerHTML = ppIssueRowHtml(pp.data, ppCurrent(pp.data));
+      : d.signing ? 'Signed with the platform\'s key when you press it, with the settings above.' +
+        (cur ? ' It replaces the current passport, whose link will then say so and point to the new one.' : '')
+      : 'Signing is not set up on the server yet, so a passport cannot be issued.'}</p></div>` +
+    (pp.issueErr ? `<p class="dpp-why err" role="alert">${esc(pp.issueErr)}</p>` : '') + `</div>`;
 }
 function ppPassportsHtml(d) {
   const list = d.passports || [], cur = ppCurrent(d), ev = d.evidence;
@@ -20578,19 +20568,20 @@ async function ppIssue() {
   const d = pp.data, f = ppForm();
   if (!d || pp.busy || (d.readiness && d.readiness.band === 'not_ready')) return;
   const v = parseInt(f.validity, 10);
-  if (!(v >= 1 && v <= 365)) { pp.err = 'Valid for is a number of days, from 1 to 365.'; ppPaint(); return; }
+  if (!(v >= 1 && v <= 365)) { pp.issueErr = 'Valid for is a number of days, from 1 to 365.'; ppPaint(); return; }
   const details = f.show && !d.restricted, name = (dashSelected && dashSelected.name) || 'this dataset';
   if (!await dqConfirm(`Issue a passport for ${name}?\n\nIt is signed now and valid for ${v} days, or until it is revoked. ` +
       `Anyone with its link will be able to read ${details ? 'the summary, every finding, the columns and who issued it' : "a summary: the dataset's name and size, the scores and the fingerprint"}.`,
       { title: 'Issue the passport', okLabel: 'Sign and issue' })) return;
-  pp.busy = true; pp.err = ''; ppPaint();
+  pp.busy = true; pp.issueErr = ''; ppPaint();
   try {
+    // The passport settings only: the evidence settings belong to Prepare, and the evidence was measured with what it used.
     const c = await postJSON(`${API_BASE}/data-quality/passport`, ppHdr(), { app_id: APP_ID, action: 'config', dataset_key: pp.key,
-      sensitive_columns: f.sens, target_column: f.target || '', validity_days: v, show_details: !!f.show });
+      validity_days: v, show_details: !!f.show });
     d.config = c.config;
     const r = await postJSON(`${API_BASE}/data-quality/passport`, ppHdr(), { app_id: APP_ID, action: 'issue', dataset_key: pp.key, actor: EMAIL || undefined });
     d.passports = [r.passport].concat((d.passports || []));
-  } catch (e) { pp.err = rcxErrText(e); }
+  } catch (e) { pp.issueErr = rcxErrText(e); }
   pp.busy = false; ppPaint();
 }
 async function ppRevoke(id) {
@@ -21443,7 +21434,7 @@ const GD_SHOTS = {
   "onprem-file": [1600, 1156, "244201089c"],
   "overview-top-p": [1600, 609, "2906120567"],
   "overview-top-q": [1600, 584, "5d61e45e4c"],
-  "passport": [1600, 3288, "00bc0ac101"],
+  "passport": [1600, 3230, "6eed9c1878"],
   "profile": [1600, 526, "104f28f43a"],
   "quality-space": [1600, 812, "7bfbdb7881"],
   "records-policy": [1600, 433, "0850fe5c47"],
@@ -22548,13 +22539,13 @@ function buildGuides() {
                 `Choose the <b>sensitive columns</b>: the characteristics people are grouped by, such as gender, age or region. The ones the compliance scan marked as special-category data, and the ones named like such a characteristic, are suggested.`,
                 `Optionally name a <b>target</b>: an outcome, such as an approval or a tier, whose rates are compared across those groups.`,
                 `Press ${ui('Prepare the evidence')}. A worker reads the table where it lives, a handful of times, counting only; the steps light up as it goes.`) +
-          shot('passport', `${n(1)} The AI-readiness score and its band. ${n(2)} The five parts, each with its weight, its score and why. ${n(3)} What the evidence found. ${n(4)} The passport: its link, QR code and badge, a check of the data or of a copy, and its downloads.`) },
+          shot('passport', `${n(1)} The AI-readiness score and its band. ${n(2)} The five parts, each with its weight, its score and why. ${n(3)} What the evidence found. ${n(4)} The passport: its link, QR code and badge, a check of the data or of a copy, its downloads, and how long the next one lasts and what its public page shows.`) },
       { h: 'Issue the passport', body:
-          steps(`With the evidence prepared and a score of 70 or more, press ${ui('Sign and issue the passport')}. It is signed there and then, and valid for the days set, or until it is revoked.`,
+          steps(`With the evidence prepared and a score of 70 or more, choose how long the passport stays valid and what its public page shows, then press ${ui('Sign and issue the passport')}. It is signed there and then, and valid for the days chosen, or until it is revoked.`,
                 `Share it: copy its link, show its QR code, or copy its badge as Markdown or HTML for a README, a wiki or a report. The badge always shows where it stands now.`,
                 `When the data or the judgement changes, issue a new one: it replaces the current passport, whose link then says so and points to the new one. ${ui('Revoke…')} withdraws a passport at once, with a reason that anyone with its link will read.`) +
           note(`A dataset that scores below 70, <b>Not ready for AI</b>, cannot have a passport. Fix what the parts of its score say, prepare the evidence again, and issue once it scores 70 or more.`) +
-          note(`Who can read what: anyone with the link reads a summary, the dataset's name and size, the scores and the fingerprint. Choose <b>Summary and details</b> under <b>Public page</b> in the settings to add the findings, the columns and who issued it. A dataset guarded by a restricting tag never shows its details. Deleting a dataset revokes its passports, saying so.`) },
+          note(`Who can read what: anyone with the link reads a summary, the dataset's name and size, the scores and the fingerprint. Choose <b>Summary and details</b> under <b>Public page</b>, above the issue button, to add the findings, the columns and who issued it. A dataset guarded by a restricting tag never shows its details. Deleting a dataset revokes its passports, saying so.`) },
       { h: 'When the data changes', body:
           p(`A passport certifies the data as it was when the evidence was measured. It turns <b>Changed since certified</b> as soon as something sees the data move on:`) +
           list(`${see('source-monitoring', 'Source monitoring')} sees a column added or removed, an exact row count move, a catalog's row estimate move by more than half a percent, a file rewritten, or newer records arrive.`,
