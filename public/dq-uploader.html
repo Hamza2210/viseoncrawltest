@@ -6978,9 +6978,17 @@ const _GATE_REQ = {
   matches_reference: 'Must match the reference data', authoritative_lookup: 'Must be in the authoritative list',
   representation: 'Must be written one consistent way', format_stability: "Must keep to the column's usual format",
   rule: 'Must satisfy this consistency rule',
+  record: 'Every mandatory value must be present', freshness: 'The newest record must be within its freshness limit',
+  extract_freshness: 'The extract must be within its freshness limit', record_recency: 'Must fall inside the recency window',
+  row_count_floor: 'The table must hold at least the expected number of rows',
+  row_count_ceiling: 'The table must not exceed the expected number of rows',
+  no_empty_columns: 'No column may be entirely empty', record_exists_in_reference: 'Must exist in the reference data',
 };
-// The checks that are about the table rather than one column.
-const _GATE_WHOLE = { primary_key: 'Primary key', whole_record: 'Whole rows', no_future_dates: 'Dates' };
+// The checks that are about the table rather than one column. (A report written before each date
+// column had its own future-dates check names it without a column, hence 'Dates'.)
+const _GATE_WHOLE = { primary_key: 'Primary key', whole_record: 'Whole rows', no_future_dates: 'Dates',
+  record: 'Whole records', freshness: 'Freshness', extract_freshness: 'Freshness', row_count_floor: 'Row count',
+  row_count_ceiling: 'Row count', no_empty_columns: 'Empty columns', record_exists_in_reference: 'Reference data' };
 // Where the failed records' own rule can say it more exactly ("Must be one of: ...", "Must be ≥ 0").
 const _GATE_EXACT = new Set(['format', 'range', 'date_range', 'length', 'domain', 'type']);
 const GATE_SHOW = 6;                                     // rows on show before "Show N more"
