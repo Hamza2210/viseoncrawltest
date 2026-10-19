@@ -22624,7 +22624,7 @@ function buildGuides() {
     sections: [
       { h: 'Where the rules come from', body:
           p(`On a dataset's first run, rules are inferred from the data itself: types, formats, which columns must be filled, ranges, allowed values and keys. Where possible they are enriched with AI, then <b>pinned</b>, so every later run is scored against the same rules. A drop in score then reflects the data, not moving goalposts.`) +
-          (Q || ADMIN ? note(`Runs on an on-premises agent pin their inferred rules on the first run without an AI step, because the agent never calls out to an AI service. Add AI rules to those datasets from our side with Review rules with AI.`) : '') },
+          (Q || ADMIN ? note(`Runs on an on-premises agent are enriched with AI on the first run too: the agent sends us a summary of the columns, never a value, and we ask the AI for it. An agent whose service sets <code>DQ_AGENT_AI_RULES</code> to <code>off</code> pins its inferred rules without that step; add AI rules to its datasets with Review rules with AI.`) : '') },
       { h: 'See the active rules', body:
           p(`Open the dataset and choose the ${ui('Rules')} tab. Each column has a row that says its rules in plain words, such as ${ui('Required')}, ${ui('Not in the future')} or ${ui('One of 5 values')}, with its severity. Open a row to change them. ${showme('ds-rules')}`) +
           shot('rules-tab', `${n(1)} How many columns and rules, and the primary key. ${n(2)} A column's rules, in words. ${n(3)} A column opened: its type, severity and weight, then each of its rules. ${n(4)} ${ui('＋ Add a rule')} adds one that suits the column.`) +
@@ -23265,14 +23265,15 @@ ${HDRS}
   if (Q || ADMIN) G.push({
     id: 'agents', cat: 'On-premises', icon: 'server', tint: '#34d399',
     title: 'Set up an on-premises agent', sub: 'Assess databases and files your network keeps to itself',
-    keywords: 'agent on premises on-prem windows service install firewall outbound https proxy secrets.json icacls read paths allow list unc share parquet csv register download config revoke upgrade',
+    keywords: 'agent on premises on-prem windows service install firewall outbound https proxy secrets.json icacls read paths allow list unc share parquet csv register download config revoke upgrade ai rules suggestions',
     open: { tab: 'agents', label: 'Open Agents' },
     sections: [
       { h: 'What it is', body:
           p(`A small Windows service that runs on a machine inside your network. Every 15 seconds it asks us over HTTPS whether there is work. When there is, it connects to the database or opens the file <b>locally</b>, assesses it, and uploads the results. Nothing ever connects in to it.`) +
           list(`Database passwords stay in a file on that machine. We hold a pointer, never the value.`,
                `A file is opened where it sits and never sent to us. Parquet and CSV are assessed in place, without loading them into memory.`,
-               `Every job is checked before it runs, and the agent refuses anything that is not an assessment, or a file outside the folders you allowed.`) },
+               `Every job is checked before it runs, and the agent refuses anything that is not an assessment, or a file outside the folders you allowed.`,
+               `On a dataset's first run it asks us for AI rule suggestions, sending a summary of the columns: counts, ranges and the shape of a few values, never a value. Set <code>DQ_AGENT_AI_RULES</code> to <code>off</code> in the service definition to stop it.`) },
       { h: 'What your IT team needs to allow', body: list(
           `<b>A host:</b> 64-bit Windows Server 2016 or later, or Windows 10 or 11, with about 1 vCPU, 2 GB of free memory and 400 MB of disk, that can reach the database or file share.`,
           `<b>Outbound HTTPS (port 443)</b> to <code>${esc(apiHost)}</code>, and to Amazon S3 in eu-west-1 (<code>*.s3.eu-west-1.amazonaws.com</code>) for uploading results. No inbound rule of any kind.`,
