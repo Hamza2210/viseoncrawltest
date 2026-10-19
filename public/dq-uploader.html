@@ -4933,17 +4933,21 @@
       <div class="card src-res" id="databricksResult" data-face="result" hidden><div class="src-res-hd"><span class="src-res-when" data-res-when></span><span class="src-res-acts"><button type="button" class="btn-sm" data-srcact="rerun" data-key="databricks">↻ Run again</button><button type="button" class="btn-sm" data-srcact="history" data-key="databricks">View in History →</button></span></div><div id="databricksResultBody"></div></div>
     </div>
 
-    <!-- ===== Source: PostgreSQL ===== -->
+    <!-- ===== Source: Oracle ===== -->
     <div id="src-oracle" class="source-body" style="display:none;">
       <div class="card" data-face="form">
         <h2>Oracle <span class="src-tag betatag">Beta</span></h2>
         <p class="src-note">Read an Oracle table or view with a read-only user. Checks push down as
           SQL so only counts and a capped sample of failing rows return. The listener must be
-          reachable from our worker.</p>
+          reachable from our worker, or from an on-premises agent you run inside your own network.</p>
         <p class="src-note">Oracle stores unquoted names in upper case, so <code>hr.employees</code>
           and <code>HR.EMPLOYEES</code> both work. Note that Oracle treats an empty string as NULL,
           so a blank cell is counted as missing by Completeness.</p>
         <div class="src-form">
+          <div class="src-field full"><label>Runs on <span class="hint">(where the assessment executes)</span></label>
+            <select data-f="agent" data-agentsel="oracle"><option value="">Direct from the cloud worker</option></select>
+            <p class="hint" data-agenthint="oracle" style="display:none;margin:6px 0 0"></p>
+          </div>
           <div class="src-field"><label>Host</label><input data-f="host" placeholder="db.example.com"></div>
           <div class="src-field"><label>Port</label><input data-f="port" placeholder="1521" value="1521"></div>
           <div class="src-field"><label>Connect using</label>
@@ -4961,7 +4965,7 @@
       <div class="card src-res" id="oracleResult" data-face="result" hidden><div class="src-res-hd"><span class="src-res-when" data-res-when></span><span class="src-res-acts"><button type="button" class="btn-sm" data-srcact="rerun" data-key="oracle">↻ Run again</button><button type="button" class="btn-sm" data-srcact="history" data-key="oracle">View in History →</button></span></div><div id="oracleResultBody"></div></div>
     </div>
 
-    <!-- ===== Source: PostgreSQL ===== -->
+    <!-- ===== Source: Qlik On Premise Files (on-premises agent only) ===== -->
     <div id="src-agentfile" class="source-body" style="display:none;">
       <div class="card" data-face="form">
         <h2>Qlik On Premise Files <span class="src-tag betatag">Beta</span></h2>
@@ -5026,8 +5030,12 @@
     <div id="src-mysql" class="source-body" style="display:none;">
       <div class="card" data-face="form">
         <h2>MySQL <span class="src-tag betatag">Beta</span></h2>
-        <p class="src-note">Read a MySQL table with a read-only user. In MySQL the database <em>is</em> the schema. The endpoint must be reachable from our worker.</p>
+        <p class="src-note">Read a MySQL table with a read-only user. In MySQL the database <em>is</em> the schema. The endpoint must be reachable from our worker, or from an on-premises agent you run inside your own network.</p>
         <div class="src-form">
+          <div class="src-field full"><label>Runs on <span class="hint">(where the assessment executes)</span></label>
+            <select data-f="agent" data-agentsel="mysql"><option value="">Direct from the cloud worker</option></select>
+            <p class="hint" data-agenthint="mysql" style="display:none;margin:6px 0 0"></p>
+          </div>
           <div class="src-field"><label>Host</label><input data-f="host" placeholder="db.example.com"></div>
           <div class="src-field"><label>Port</label><input data-f="port" placeholder="3306" value="3306"></div>
           <div class="src-field"><label>Database</label><input data-f="database" placeholder="analytics"></div>
@@ -10623,6 +10631,7 @@ function tagSkipReason(s) {
     not_a_rerunnable_source: 'not a re-runnable source',
     no_saved_credentials: `no saved credentials for its ${(s && s.source) || 'source'} connection`,
     incomplete_credentials: 'its saved credentials are missing required fields',
+    runs_on_agent: 'runs on an on-premises agent, which a tag run cannot reach from the cloud - run it from its source or on a schedule',
   };
   return (s && map[s.reason]) || (s && s.reason) || 'not runnable';
 }
@@ -17673,8 +17682,11 @@ async function srcLaunch(key, statusEl, endpoint, body, words, extra) {
     return;
   }
   srcRunState[key].pollPrefix = res.resultPrefix;
-  await pollInto(res.resultPrefix, bodyEl, Object.assign({ stage: key, stageSeq: seq, statusEl, tabbed: true },
-    extra ? extra(res) : {}));
+  // A run queued for an agent is followed by its job as well as its prefix. Every other run happens
+  // on our own worker, where even a failure writes a result; an agent can decline a job outright,
+  // and a declined job writes nothing, so the prefix alone would leave the wait running for ever.
+  await pollInto(res.resultPrefix, bodyEl, Object.assign({ stage: key, stageSeq: seq, statusEl, tabbed: true,
+    agentJob: agentJobOf(res) }, extra ? extra(res) : {}));
 }
 /** What a run is of, for the loader: the table, or the file at the end of a path or URL. */
 function _srcTarget(b) {
@@ -17993,7 +18005,8 @@ function agtInstructions(agent, issued) {
                 + 'local file at all, and changing it afterwards means editing the service:');
   add('code', 'dq-agent-service.cmd INSTALL "D:\\data;\\\\fs01\\finance"');
   add('agt-li', '5. For a database source, put the password in secrets.json in the same folder, '
-              + 'then run dq-agent-service.cmd RESTART. It never leaves that machine.');
+              + 'under the kind of database and "default", such as "oracle/default", then run '
+              + 'dq-agent-service.cmd RESTART. It never leaves that machine.');
   add('agt-li', '6. Within a minute ' + label + ' shows a green dot and "online" in the list '
               + 'below. That is the whole installation.');
 
@@ -18320,6 +18333,23 @@ function loadAgentsForSources() {
 //: anything - otherwise a freshly registered agent is missing from every source form until reload.
 function invalidateAgents() { _dqAgentsPromise = null; }
 
+//: The databases an agent can reach, i.e. the forms that carry Runs on. One list, because the form,
+//: the run check and the launch wording all have to agree on it. The agent ships a driver for each.
+const AGENT_DB_SOURCES = new Set(['postgres', 'sqlserver', 'oracle', 'mysql', 'progress']);
+
+//: The entry in the agent's secrets.json that a database's password goes under. `default` is the
+//: documented one; the agent also accepts an entry named for the saved connection itself, for a
+//: machine that holds more than one password for the same kind of database.
+function agentSecretKey(source, profileId) { return `${source}/${profileId || 'default'}`; }
+
+//: The agent and job behind a run that was QUEUED rather than started: an agent-routed launch
+//: replies with `agent:<tenant>/<agent>/<job>` where a cloud run's ECS task arn would be. Read from
+//: there because that job id is the agent's own, and it is the one the job-status lookup needs.
+function agentJobOf(res) {
+  const m = /^agent:[^/]+\/([^/]+)\/(.+)$/.exec(String((res && res.taskArn) || ''));
+  return m ? { agentId: m[1], jobId: m[2] } : null;
+}
+
 function _agentHint(key) {
   // Everything is found RELATIVE to the select rather than by source name, because the same
   // control now appears in two different forms - the source tab and the schedule form - and an
@@ -18344,9 +18374,10 @@ function _agentHint(key) {
   if (pw) { pw.disabled = true; pw.value = ''; pw.placeholder = 'Held on the agent'; }
   hint.style.display = '';
   // The same line sits under a database form and a file form. Only a database has a password to
-  // reassure anyone about; what matters for a file is that it stays where it is.
+  // reassure anyone about; what matters for a file is that it stays where it is. The database
+  // line names the exact entry, because that file is typed by hand on a machine we never see.
   const where = pw
-    ? `The password lives in that machine's own credential file and is never sent to us.`
+    ? `The password lives in that machine's own credential file, secrets.json, under "${agentSecretKey(sel.dataset.agentsel)}", and is never sent to us.`
     : `The agent opens the file where it sits, and the file itself never leaves that machine.`;
   hint.textContent = agent.health === 'online'
     ? `This runs on ${agent.name}, inside your network. ${where}`
@@ -18440,7 +18471,7 @@ function selectSource(key) {
   const saveWrap = document.getElementById('srcSaveWrap');
   if (saveWrap) saveWrap.style.display = 'none';   // saving moved into the credential-profile control
   if (show) updateSourceRunState(key);
-  if (bodyKey === 'postgres' || bodyKey === 'sqlserver' || bodyKey === 'progress' || bodyKey === 'agentfile') renderAgentSelect(bodyKey);
+  if (AGENT_DB_SOURCES.has(bodyKey) || bodyKey === 'agentfile') renderAgentSelect(bodyKey);
   srcSyncFaces();
 }
 
@@ -18531,9 +18562,12 @@ function applyCredProfile(key) {
     const el = body.querySelector(`[data-f="${f}"]`);
     if (el && !secretF.has(f)) el.value = v;
   });
+  // A profile saved on an agent has just set Runs on, so the password box and the line under it
+  // follow: "Held on the agent", rather than an editable box the saved connection would ignore.
+  if (body.querySelector(`[data-agentsel="${key}"]`)) _agentHint(key);
   (SRC_SECRET_FIELDS[key] || []).forEach(f => {
     const el = body.querySelector(`[data-f="${f}"]`);
-    if (el) { el.value = ''; el.placeholder = p.hasSecrets ? 'Using saved profile' : ''; }
+    if (el && !el.disabled) { el.value = ''; el.placeholder = p.hasSecrets ? 'Using saved profile' : ''; }
   });
   activeProfile[key] = pid;
   updateSourceRunState(key);
@@ -18550,7 +18584,12 @@ async function saveCredProfileAs(key) {
       { app_id: APP_ID, source: key, action: 'save', name, config: cfg });
     activeProfile[key] = r.id;
     await renderCredProfiles(key);
-    setCredMsg(key, `Saved profile “${name}”.`);
+    // Saved to run on an agent, the one thing left to do is on that machine, so say exactly what.
+    const agent = AGENT_DB_SOURCES.has(key) && cfg.agent
+      ? ((_dqAgentsSeen.find(a => a.id === cfg.agent) || {}).name || cfg.agent) : '';
+    setCredMsg(key, agent
+      ? `Saved profile “${name}”, to run on ${agent}. Its password goes in that machine's secrets.json under "${agentSecretKey(key)}", or under "${agentSecretKey(key, r.id)}" if this connection needs a password of its own there.`
+      : `Saved profile “${name}”.`);
   } catch (e) { setCredMsg(key, 'Could not save: ' + e.message, true); }
 }
 
@@ -18682,6 +18721,28 @@ function updateSourceRunState(key) {
     delete btn.dataset.tip;
   }
 }
+// A database runs on an agent through its SAVED connection, never through the form alone: the server
+// sends the job to the agent named by the credential pointer that connection holds, and there is no
+// password to send instead. So Runs on and the applied connection have to agree. Otherwise the run
+// quietly goes somewhere other than the form says, or fails with "Password is required" about a box
+// that reads "Held on the agent". Returns what is wrong, or '' to go ahead.
+function agentRunProblem(key, cfg) {
+  if (!AGENT_DB_SOURCES.has(key)) return '';
+  const chosen = cfg.agent || '';
+  const prof = (credProfiles[key] || []).find(p => p.id === cfg._credProfile);
+  const saved = (prof && prof.config && prof.config.agent) || '';
+  if (!chosen && !saved) return '';                       // a cloud run, as always
+  const name = id => { const a = _dqAgentsSeen.find(x => x.id === id); return a ? a.name : id; };
+  if (!prof) {
+    return `Save this connection first (Save current as…, with ${name(chosen)} chosen under Runs on), then run it. `
+      + `Its password is never typed here: it stays on that machine, in secrets.json under "${agentSecretKey(key)}".`;
+  }
+  if (chosen === saved) return '';
+  return saved
+    ? `“${prof.name}” was saved to run on ${name(saved)}. Choose ${name(saved)} under Runs on, or save the connection again to change where it runs.`
+    : `“${prof.name}” was saved to run from the cloud worker. Save it again with ${name(chosen)} chosen under Runs on to run it there.`;
+}
+
 function runSource(key) {
   const statusEl = document.querySelector(`[data-status="${key}"]`);
   if (!statusEl) return;
@@ -18709,6 +18770,13 @@ function runSource(key) {
   }
   // The applied credential profile (if any) supplies the secrets server-side at run time.
   cfg._credProfile = activeProfile[key] || null;
+  const onAgent = agentRunProblem(key, cfg);
+  if (onAgent) {
+    statusEl.className = 'src-status err';
+    statusEl.textContent = onAgent;
+    srcShowFace(key, 'form');
+    return;
+  }
   if (key === 'athena') { runAthena(cfg, statusEl); return; }       // wired end-to-end
   if (key === 'oracle') { runOracle(cfg, statusEl); return; }       // wired end-to-end
   if (key === 'redshift') { runRedshift(cfg, statusEl); return; }   // wired end-to-end
@@ -18863,6 +18931,17 @@ async function runDatabricks(cfg, statusEl) {
     started: 'Inferring the ruleset from a sample, then scoring the whole table in Databricks.' });
 }
 
+// How a database run is described while it starts. One bound to an agent waits for that machine's
+// next poll, so it is QUEUED rather than started: saying it started would have somebody watching a
+// spinner for the first fifteen seconds of every run, wondering what is wrong.
+function dbLaunchWords(cfg, name, where, started) {
+  return cfg.agent
+    ? { launch: `Queuing the ${name} assessment for the agent`,
+        started: `Queued for the agent. It starts on that machine's next poll, usually within 15 seconds, then scores the whole table in ${where}.`,
+        steps: ['Queue', 'Assess on the agent', 'Results'] }
+    : { launch: `Launching ${name} assessment`, started };
+}
+
 // Launch a full-table Oracle assessment, then poll + render its result.
 async function runOracle(cfg, statusEl) {
   // One field holds the connect identifier and a select says which KIND it is, because a user
@@ -18880,9 +18959,8 @@ async function runOracle(cfg, statusEl) {
     ruleset_augment: collectSourceRefsAugment() || undefined,
     credential_profile: cfg._credProfile || undefined,
   };
-  return srcLaunch('oracle', statusEl, 'oracle-assessment', body, {
-    launch: 'Launching Oracle assessment',
-    started: 'Inferring the ruleset from a sample, then scoring the whole table in Oracle.' });
+  return srcLaunch('oracle', statusEl, 'oracle-assessment', body, dbLaunchWords(cfg, 'Oracle', 'Oracle',
+    'Inferring the ruleset from a sample, then scoring the whole table in Oracle.'));
 }
 
 // A QVD is not read in place the way parquet and CSV are: the agent has to load the whole file into
@@ -18927,13 +19005,11 @@ async function runAgentFile(cfg, statusEl) {
   // "Queued", not "started": the agent polls, so a run waits for its next poll rather than
   // beginning the moment the button is pressed. Saying started would have somebody watching a
   // spinner and wondering what is wrong for the first fifteen seconds of every run.
+  // The job is followed as well as the result (srcLaunch), so a refusal ends the wait.
   return srcLaunch('agentfile', statusEl, 'agent-file-assessment', body, {
     launch: 'Queueing the file for the agent',
     started: 'Queued for the agent. It starts on that machine\'s next poll, usually within fifteen seconds.',
-    steps: ['Queue', 'Assess on the agent', 'Results'] },
-    // The job id travels with the poll so a refusal can end it. Every other source runs on our own
-    // worker, where a failure writes a result; only an agent can decline to run at all.
-    res => ({ agentJob: { agentId: cfg.agent, jobId: res.jobId } }));
+    steps: ['Queue', 'Assess on the agent', 'Results'] });
 }
 
 // Launch a full-table PostgreSQL assessment, then poll + render its result.
@@ -18948,9 +19024,8 @@ async function runPostgres(cfg, statusEl) {
     ruleset_augment: collectSourceRefsAugment() || undefined,
     credential_profile: cfg._credProfile || undefined,
   };
-  return srcLaunch('postgres', statusEl, 'postgres-assessment', body, {
-    launch: 'Launching PostgreSQL assessment',
-    started: 'Inferring the ruleset from a sample, then scoring the whole table in Postgres.' });
+  return srcLaunch('postgres', statusEl, 'postgres-assessment', body, dbLaunchWords(cfg, 'PostgreSQL', 'Postgres',
+    'Inferring the ruleset from a sample, then scoring the whole table in Postgres.'));
 }
 
 // Launch a full-table MySQL assessment, then poll + render its result.
@@ -18965,9 +19040,8 @@ async function runMySQL(cfg, statusEl) {
     ruleset_augment: collectSourceRefsAugment() || undefined,
     credential_profile: cfg._credProfile || undefined,
   };
-  return srcLaunch('mysql', statusEl, 'mysql-assessment', body, {
-    launch: 'Launching MySQL assessment',
-    started: 'Inferring the ruleset from a sample, then scoring the whole table in MySQL.' });
+  return srcLaunch('mysql', statusEl, 'mysql-assessment', body, dbLaunchWords(cfg, 'MySQL', 'MySQL',
+    'Inferring the ruleset from a sample, then scoring the whole table in MySQL.'));
 }
 
 // Launch a full-table SQL Server assessment, then poll + render its result.
@@ -18982,21 +19056,15 @@ async function runSQLServer(cfg, statusEl) {
     ruleset_augment: collectSourceRefsAugment() || undefined,
     credential_profile: cfg._credProfile || undefined,
   };
-  return srcLaunch('sqlserver', statusEl, 'sqlserver-assessment', body, {
-    launch: 'Launching SQL Server assessment',
-    started: 'Inferring the ruleset from a sample, then scoring the whole table in SQL Server.' });
+  return srcLaunch('sqlserver', statusEl, 'sqlserver-assessment', body, dbLaunchWords(cfg, 'SQL Server', 'SQL Server',
+    'Inferring the ruleset from a sample, then scoring the whole table in SQL Server.'));
 }
 
 // Launch a full-table Progress OpenEdge assessment on the chosen agent, then poll + render its
 // result. The password is never sent: the saved connection bound to the agent supplies a pointer
-// to the agent's own secrets.json, and that pointer is what sends the job to the agent.
+// to the agent's own secrets.json, and that pointer is what sends the job to the agent. A run
+// without that saved connection never gets here (agentRunProblem).
 async function runProgress(cfg, statusEl) {
-  if (!cfg._credProfile) {
-    statusEl.className = 'src-status err';
-    statusEl.textContent = 'Save this connection first (with the agent chosen under Runs on), then run it. '
-      + 'The password stays on the agent, in its secrets.json as progress/default.';
-    return;
-  }
   const body = {
     app_id: APP_ID || undefined,
     host: cfg.host, port: Number(cfg.port), database: cfg.database, user: cfg.user, table: cfg.table,
@@ -19006,9 +19074,7 @@ async function runProgress(cfg, statusEl) {
     ruleset_augment: collectSourceRefsAugment() || undefined,
     credential_profile: cfg._credProfile,
   };
-  return srcLaunch('progress', statusEl, 'progress-assessment', body, {
-    launch: 'Queuing the Progress OpenEdge assessment for the agent',
-    started: 'Queued for the agent. It starts on its next poll, usually within 15 seconds, then scores the whole table in OpenEdge.' });
+  return srcLaunch('progress', statusEl, 'progress-assessment', body, dbLaunchWords(cfg, 'Progress OpenEdge', 'OpenEdge', ''));
 }
 
 // Launch a full-table Azure Synapse assessment, then poll + render its result.
@@ -21513,7 +21579,7 @@ const GD_SHOTS = {
   "records-policy": [1600, 433, "0850fe5c47"],
   "rules-tab": [1600, 1301, "c843b0e52d"],
   "run-result": [1600, 1381, "27d7222b2c"],
-  "runs-on-agent": [1600, 1090, "167a7715e0"],
+  "runs-on-agent": [1600, 1100, "8445708325"],
   "schedule-form-p": [1600, 1133, "b82b8c3aca"],
   "schedule-form-q": [1600, 1181, "2240ecc99a"],
   "schedule-list": [1600, 776, "8070908fef"],
@@ -21784,7 +21850,7 @@ function apxCalls() {
       answer: [['launched', 'One entry per dataset started: its <code>dataset_key</code>, and its <code>resultPrefix</code>, the folder to ask after it with.'],
                ['launchedCount', 'How many started.'],
                ['runId', 'The run id all of them share.'],
-               ['skipped', 'Tagged datasets that could not run, each with a <code>reason</code>: <code>no_saved_credentials</code>, <code>incomplete_credentials</code>, <code>no_prior_run</code>, <code>not_a_rerunnable_source</code> or <code>qlik_needs_live_bearer</code>.'],
+               ['skipped', 'Tagged datasets that could not run, each with a <code>reason</code>: <code>no_saved_credentials</code>, <code>incomplete_credentials</code>, <code>no_prior_run</code>, <code>not_a_rerunnable_source</code>, <code>runs_on_agent</code> or <code>qlik_needs_live_bearer</code>.'],
                ['wouldLaunch', 'In a dry run, in place of <code>launched</code> (and <code>wouldLaunchCount</code> for <code>launchedCount</code>): what would have started.']],
       errors: [['404', 'No dataset carries the tag.'],
                ['400', 'None of the tagged datasets can run; <code>detail.skipped</code> says why.'],
@@ -22335,7 +22401,8 @@ function buildGuides() {
                `Source monitoring, which only covers datasets whose last run used a saved profile`) +
           tip(`If a dataset is skipped with "no saved credentials" when you run it by tag or monitor it, run it once more with a saved profile applied.`) },
       (Q || ADMIN) ? { h: 'Databases behind an agent', body:
-          p(`For PostgreSQL, SQL Server or Progress OpenEdge reached through an on-premises agent, choose the machine under ${ui('Runs on')}. The password box greys out and reads ${ui('Held on the agent')}: the password lives in a file on that machine, and the profile only points at it. See ${see('agents', 'Set up an on-premises agent')}.`) +
+          p(`For PostgreSQL, SQL Server, Oracle, MySQL or Progress OpenEdge reached through an on-premises agent, choose the machine under ${ui('Runs on')} and save the connection with ${ui('Save current as…')}: a run on an agent always uses a saved connection. The password box greys out and reads ${ui('Held on the agent')}: the password lives in a file on that machine, and the profile only points at it. See ${see('agents', 'Set up an on-premises agent')}.`) +
+          note(`A connection saved on an agent runs on its own, from ${go('history', 'Assessment history')} or on a schedule. Tag runs, source monitoring and Reconcile all run in the cloud, so they skip it and say why.`) +
           shot('runs-on-agent', `PostgreSQL run on an agent: ${ui('Runs on')} names the machine, and the password box reads ${ui('Held on the agent')}.`) } : null,
     ],
   });
@@ -23115,6 +23182,7 @@ ${HDRS}
           `<b>An administrator account</b> on the machine, to install the service.`,
           `<b>A read-only database login</b> for each database, with access to exactly the tables to assess.`,
           `<b>For Progress OpenEdge:</b> the 64-bit OpenEdge ODBC driver on the agent's machine (it comes with the OpenEdge SQL client), and SQL access to the database through its SQL broker. Reads take no record locks, so the application is never kept waiting.`,
+          `<b>For PostgreSQL, SQL Server, Oracle or MySQL:</b> nothing to install. The agent carries their drivers, and Oracle connects in thin mode, so no Oracle client is needed either.`,
           `<b>Read access to the file share</b>, if you assess files. The service runs as LocalSystem, which reaches the network as the <i>computer</i> account, so either grant that account read on the share or run the service as a domain user.`) },
       { h: 'Register it and download', body: steps(
           `In ${go('agents', 'Agents')}, type a name for the machine, such as "Acme DC1", and press ${ui('Register')}. ${showme('agents')}`,
@@ -23131,20 +23199,23 @@ ${HDRS}
 dq-agent-service.cmd START`) +
           note(`A folder covers everything beneath it. For a network share, use the UNC path (<code>&#92;&#92;fs01&#92;finance</code>) rather than a mapped drive letter, which a service often cannot see.`) },
       { h: 'Database passwords', body:
-          steps(`Create <code>secrets.json</code> beside <code>dq-agent.exe</code>. Each key is <code>source/profile</code>; use <code>default</code> unless told otherwise.`,
+          steps(`Create <code>secrets.json</code> beside <code>dq-agent.exe</code>. Each key is the kind of database and <code>default</code>, such as <code>oracle/default</code>.`,
                 `Lock it down so only the service and administrators can read it.`,
                 `Restart the service so it picks the file up.`) +
           code(`{
   "postgres/default":  { "password": "the-read-only-password" },
   "sqlserver/default": { "password": "the-read-only-password" },
-  "progress/default": { "password": "the-read-only-password" }
+  "oracle/default":    { "password": "the-read-only-password" },
+  "mysql/default":     { "password": "the-read-only-password" },
+  "progress/default":  { "password": "the-read-only-password" }
 }
 
 icacls secrets.json /inheritance:r /grant:r "SYSTEM:(R)" /grant:r "Administrators:(R)"
 dq-agent-service.cmd RESTART`) +
-          p(`Changing a password later means editing this file and restarting. It never involves us.`) },
+          p(`Changing a password later means editing this file and restarting. It never involves us.`) +
+          note(`One machine, two databases of the same kind with different passwords: keep <code>default</code> for one, and give the other its connection's own key. Saving that connection says exactly what the key is, for example <code>oracle/3fa2c1d4e5f6</code>.`) },
       { h: 'Point a source at it', body: list(
-          `<b>A database:</b> open PostgreSQL, SQL Server or Progress OpenEdge and choose the machine under ${ui('Runs on')}. The password box reads ${ui('Held on the agent')}. The host is resolved from the agent's machine, so a private name such as <code>db.internal</code> is correct.`,
+          `<b>A database:</b> open PostgreSQL, SQL Server, Oracle, MySQL or Progress OpenEdge, choose the machine under ${ui('Runs on')}, and save the connection with ${ui('Save current as…')}. The password box reads ${ui('Held on the agent')}. The host is resolved from the agent's machine, so a private name such as <code>db.internal</code> is correct.`,
           `<b>A file:</b> choose ${ui('Qlik On Premise Files')}, pick the agent, and give the path as that machine sees it, such as <code>D:&#92;data&#92;sales.parquet</code> or <code>&#92;&#92;fs01&#92;finance&#92;sales.parquet</code>.`,
           `Press Run. The status reads <i>queued for the agent</i>, and the job starts on its next poll, usually within 15 seconds. Results appear with every other source, marked On Premise.`,
           `Schedules work the same way. If the agent is offline when one fires, the job waits for it.`) +
@@ -24139,11 +24210,15 @@ async function reRunTable(tableName, sourceFormat, resultPrefix) {
           if (typeof selectSource === 'function') selectSource(card);
           const seq = srcRunBegin(card, { msg: `Re-assessing ${tableName || 'the dataset'}`,
             sub: 'Reconnecting with the saved credentials for this connection…' });
-          srcRunLaunched(card, r.runId, 'Inferring the ruleset from a sample, then scoring the whole table.');
+          // A connection saved on an agent re-runs there, and is followed by its job as well (srcLaunch).
+          const job = agentJobOf(r);
+          srcRunLaunched(card, r.runId, job
+            ? 'Queued for the agent. It starts on that machine\'s next poll, usually within 15 seconds.'
+            : 'Inferring the ruleset from a sample, then scoring the whole table.');
           const bodyEl = document.getElementById(`${card}ResultBody`);
           if (r.resultPrefix && bodyEl) {
             srcRunState[card].pollPrefix = r.resultPrefix;
-            pollInto(r.resultPrefix, bodyEl, { stage: card, stageSeq: seq, tabbed: true });
+            pollInto(r.resultPrefix, bodyEl, { stage: card, stageSeq: seq, tabbed: true, agentJob: job });
           } else {
             srcRunFail(card, 'The re-run started, but its result cannot be followed here. It will appear in Assessment history when it finishes.');
           }
@@ -24861,6 +24936,7 @@ const WATCH_REASON = {
   no_saved_credentials: 'No saved credential profile resolves for this dataset, so there is nothing to reconnect with. Re-run it once with a saved profile.',
   incomplete_credentials: 'The saved credentials are missing a field this source needs.',
   no_prior_run: 'Never assessed, so there is no source to poll yet.',
+  runs_on_agent: 'Runs on an on-premises agent inside your network, which monitoring cannot reach from the cloud. Schedule its assessment to keep watch on it.',
   not_monitorable: 'This dataset cannot be polled.',
 };
 
