@@ -4717,6 +4717,7 @@
             <button type="button" class="source-card" data-source="oracle"><span class="src-ico" data-ico="oracle"></span><span class="sc-name">Oracle</span><span class="src-tag betatag">Beta</span></button>
             <button type="button" class="source-card" data-source="postgres"><span class="src-ico" data-ico="postgres"></span><span class="sc-name">PostgreSQL</span><span class="src-tag betatag">Beta</span></button>
             <button type="button" class="source-card" data-source="sqlserver"><span class="src-ico" data-ico="sqlserver"></span><span class="sc-name">SQL Server</span><span class="src-tag betatag">Beta</span></button>
+            <button type="button" class="source-card" data-source="progress"><span class="src-ico" data-ico="progress"></span><span class="sc-name">Progress OpenEdge</span><span class="src-tag betatag">Beta</span></button>
             <button type="button" class="source-card" data-source="mysql"><span class="src-ico" data-ico="mysql"></span><span class="sc-name">MySQL</span><span class="src-tag betatag">Beta</span></button>
           </div>
         </div>
@@ -5067,6 +5068,32 @@
         <div class="src-status" data-status="sqlserver"></div>
       </div>
       <div class="card src-res" id="sqlserverResult" data-face="result" hidden><div class="src-res-hd"><span class="src-res-when" data-res-when></span><span class="src-res-acts"><button type="button" class="btn-sm" data-srcact="rerun" data-key="sqlserver">↻ Run again</button><button type="button" class="btn-sm" data-srcact="history" data-key="sqlserver">View in History →</button></span></div><div id="sqlserverResultBody"></div></div>
+    </div>
+
+    <!-- ===== Source: Progress OpenEdge (on-premises agent only) ===== -->
+    <div id="src-progress" class="source-body" style="display:none;">
+      <div class="card" data-face="form">
+        <h2>Progress OpenEdge <span class="src-tag betatag">Beta</span></h2>
+        <p class="src-note">Read a table from an OpenEdge database through its SQL broker, on an on-premises agent inside your network: the OpenEdge ODBC driver lives on that machine, and so does the password, in the agent's <code>secrets.json</code> as <code>progress/default</code>. Reads take no record locks, so the application is never kept waiting. OpenEdge SQL has no regular expressions, so format checks are reported as not evaluated; every other DAMA dimension is assessed over every row.</p>
+        <div class="src-form">
+          <div class="src-field full"><label>Runs on <span class="hint">(the agent that can reach the database)</span></label>
+            <select data-f="agent" data-agentsel="progress"><option value="">Choose an agent</option></select>
+            <p class="hint" data-agenthint="progress" style="display:none;margin:6px 0 0"></p>
+          </div>
+          <div class="src-field"><label>Host</label><input data-f="host" placeholder="dc1.example.local"></div>
+          <div class="src-field"><label>SQL broker port</label><input data-f="port" type="number" min="1" placeholder="20931"></div>
+          <div class="src-field"><label>Database</label><input data-f="database" placeholder="wms"></div>
+          <div class="src-field"><label>User</label><input data-f="user" placeholder="dq_reader"></div>
+          <div class="src-field"><label>Password</label><input data-f="password" type="password" disabled placeholder="Held on the agent"></div>
+          <div class="src-field"><label>Schema</label><input data-f="schema" placeholder="PUB" value="PUB"></div>
+          <div class="src-field"><label>Table</label><input data-f="table" placeholder="order-line"></div>
+          <div class="src-field"><label>ODBC driver <span class="hint">(optional)</span></label><input data-f="driver" placeholder="Newest OpenEdge driver installed"></div>
+          <div class="src-field"><label>Sample rows <span class="hint">(optional)</span></label><input data-f="sample_rows" type="number" min="1" placeholder="Empty = whole table"></div>
+        </div>
+        <button type="button" class="src-run" data-runsource="progress">Run assessment</button>
+        <div class="src-status" data-status="progress"></div>
+      </div>
+      <div class="card src-res" id="progressResult" data-face="result" hidden><div class="src-res-hd"><span class="src-res-when" data-res-when></span><span class="src-res-acts"><button type="button" class="btn-sm" data-srcact="rerun" data-key="progress">↻ Run again</button><button type="button" class="btn-sm" data-srcact="history" data-key="progress">View in History →</button></span></div><div id="progressResultBody"></div></div>
     </div>
 
     <!-- ===== Source: Microsoft Fabric (Warehouse / Lakehouse SQL analytics endpoint) ===== -->
@@ -5973,6 +6000,7 @@
           <option value="postgres">PostgreSQL</option>
           <option value="mysql">MySQL</option>
           <option value="sqlserver">SQL Server</option>
+          <option value="progress">Progress OpenEdge</option>
           <option value="synapse">Azure Synapse</option>
           <option value="fabric">Microsoft Fabric</option>
           <option value="bigquery">Google BigQuery</option>
@@ -6332,14 +6360,14 @@ function tagClass(s) { return ({ green: 'green', amber: 'amber', red: 'red' })[s
 const SOURCE_FMT_LABEL = {
   qlik: 'Qlik Table', athena: 'Qlik Open Lakehouse', redshift: 'Amazon Redshift', snowflake: 'Snowflake', databricks: 'Databricks',
   oracle: 'Oracle', postgres: 'PostgreSQL', mysql: 'MySQL', sqlserver: 'SQL Server', synapse: 'Azure Synapse',
-  fabric: 'Microsoft Fabric',
+  fabric: 'Microsoft Fabric', progress: 'Progress OpenEdge',
   bigquery: 'Google BigQuery', gcs: 'Google Cloud Storage', azureblob: 'Azure Blob',
   s3: 'Amazon S3', parquet: 'Parquet file', csv: 'CSV file', tsv: 'TSV file',
   json: 'JSON file', ndjson: 'JSON file', qvd: 'QVD file', excel: 'Excel file', sharepoint: 'SharePoint',
 };
 const SOURCE_FMT_ICON = {
   qlik: '📊', athena: '🧊', redshift: '🟥', snowflake: '❄️', databricks: '🧱', s3: '🪣',
-  oracle: '🟥', postgres: '🐘', mysql: '🐬', sqlserver: '🗄️', synapse: '🔷', bigquery: '🔷',
+  oracle: '🟥', postgres: '🐘', mysql: '🐬', sqlserver: '🗄️', progress: '🟢', synapse: '🔷', bigquery: '🔷',
   gcs: '🪣', azureblob: '🟦', fabric: '🟩',
   parquet: '📦', csv: '📄', tsv: '📄', json: '📄', ndjson: '📄', qvd: '📄', excel: '📊', sharepoint: '📁',
 };
@@ -6386,6 +6414,11 @@ const SOURCE_FMT_SVG = {
     '<ellipse cx="12" cy="5.4" rx="6.3" ry="2.1" fill="#c9313a"/>' +
     '<path d="M5.7 5.4 L5.7 18.6 Q12 20.9 18.3 18.6 L18.3 5.4" fill="none"/>' +
     '<path d="M5.7 11 Q12 13.3 18.3 11" fill="none"/><path d="M5.7 14.8 Q12 17.1 18.3 14.8" fill="none"/></g>'),
+  // Progress OpenEdge: a green database cylinder with a forward chevron
+  progress: _svg('<g stroke="#2e7d32" stroke-width="1.2">' +
+    '<ellipse cx="12" cy="5.4" rx="6.3" ry="2.1" fill="#5ce500"/>' +
+    '<path d="M5.7 5.4 L5.7 18.6 Q12 20.9 18.3 18.6 L18.3 5.4" fill="#43b02a"/>' +
+    '<path d="M10.2 9.6 L13.6 12.6 L10.2 15.6" fill="none" stroke="#ffffff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></g>'),
   // Azure Synapse: azure-blue hexagon with three connected nodes (a "synapse")
   synapse: _svg('<path d="M12 2.6 L20 7 L20 17 L12 21.4 L4 17 L4 7 Z" fill="#0f4a8a" stroke="#50e6ff" stroke-width="1.4" stroke-linejoin="round"/>' +
     '<g stroke="#9cdcff" stroke-width="1.2"><line x1="8.4" y1="9" x2="15.6" y2="9"/><line x1="8.4" y1="9" x2="12" y2="15.4"/><line x1="15.6" y1="9" x2="12" y2="15.4"/></g>' +
@@ -17386,6 +17419,8 @@ const SOURCE_REQUIRED = {
   postgres: ['host', 'database', 'user', 'schema', 'table'],
   mysql: ['host', 'database', 'user', 'table'],
   sqlserver: ['host', 'database', 'user', 'schema', 'table'],
+  // The agent is not optional here: OpenEdge's driver and the password both live on it.
+  progress: ['agent', 'host', 'port', 'database', 'user', 'schema', 'table'],
   synapse: ['host', 'database', 'user', 'schema', 'table'],
   // The first connector whose required fields depend on an answer in the form: an Entra service
   // principal has no user or password at all, and demanding one would be nonsense.
@@ -17399,7 +17434,7 @@ const SOURCE_REQUIRED = {
 };
 const SOURCE_LABEL = { agentfile: 'Qlik On Premise Files', athena: 'Qlik Open Lakehouse', redshift: 'Amazon Redshift', s3: 'Amazon S3', snowflake: 'Snowflake',
   databricks: 'Databricks', oracle: 'Oracle', postgres: 'PostgreSQL', mysql: 'MySQL', sqlserver: 'SQL Server',
-  synapse: 'Azure Synapse', fabric: 'Microsoft Fabric', bigquery: 'Google BigQuery', sharepoint: 'SharePoint / OneDrive',
+  progress: 'Progress OpenEdge', synapse: 'Azure Synapse', fabric: 'Microsoft Fabric', bigquery: 'Google BigQuery', sharepoint: 'SharePoint / OneDrive',
   gcs: 'Google Cloud Storage', azureblob: 'Azure Blob / ADLS',
   'source-watch': 'Source monitoring' };
 
@@ -17408,7 +17443,7 @@ const SOURCE_LABEL = { agentfile: 'Qlik On Premise Files', athena: 'Qlik Open La
 const srcRefsState = { lookups: [], integrity: [], accuracy: {}, warehouse: false };
 // Athena counts as a warehouse here: reference-table integrity and accuracy checks work,
 // because a join to another table in the same catalog is just more SQL.
-const _WAREHOUSE_SRC = new Set(['athena', 'redshift', 'snowflake', 'databricks', 'oracle', 'postgres', 'mysql', 'sqlserver', 'synapse', 'fabric']);
+const _WAREHOUSE_SRC = new Set(['athena', 'redshift', 'snowflake', 'databricks', 'oracle', 'postgres', 'mysql', 'sqlserver', 'progress', 'synapse', 'fabric']);
 
 /** SOURCE_REQUIRED may be a list or, where the answer depends on the form, a function of it. */
 function requiredFields(key, cfg) {
@@ -18300,7 +18335,9 @@ function _agentHint(key) {
   const agent = _dqAgentsSeen.find(a => a.id === sel.value);
   if (!agent) {
     hint.style.display = 'none';
-    if (pw) { pw.disabled = false; pw.placeholder = ''; }
+    // A Progress password is never typed here, agent chosen or not: it lives on the agent.
+    const heldOnAgent = sel.dataset.agentsel === 'progress';
+    if (pw) { pw.disabled = heldOnAgent; pw.placeholder = heldOnAgent ? 'Held on the agent' : ''; }
     return;
   }
   // The password field is DISABLED rather than hidden. Hidden, an operator types it into the
@@ -18329,7 +18366,10 @@ async function renderAgentSelect(kind, key) {
   sel.innerHTML = '';
   const none = document.createElement('option');
   none.value = '';
-  none.textContent = kind === 'agentfile' ? 'Choose an agent' : 'Direct from the cloud worker';
+  // A Progress database is only ever reached from an agent (its ODBC driver lives there), so like
+  // the on-premises file source it offers no cloud option.
+  const agentOnly = kind === 'agentfile' || kind === 'progress';
+  none.textContent = agentOnly ? 'Choose an agent' : 'Direct from the cloud worker';
   sel.appendChild(none);
   agents.forEach(a => {
     const o = document.createElement('option');
@@ -18347,7 +18387,7 @@ async function renderAgentSelect(kind, key) {
   // an option there, it is the entire source, so its card comes off the picker instead and the
   // field stays put for when one is registered.
   const field = sel.closest('.src-field');
-  if (field && kind !== 'agentfile') field.style.display = agents.length ? '' : 'none';
+  if (field && !agentOnly) field.style.display = agents.length ? '' : 'none';
   const card = document.getElementById('agentFileCard');
   if (card) card.style.display = agents.length ? '' : 'none';
   // Same reasoning for the schedule form's own entry: without an agent the source cannot run at
@@ -18401,12 +18441,12 @@ function selectSource(key) {
   const saveWrap = document.getElementById('srcSaveWrap');
   if (saveWrap) saveWrap.style.display = 'none';   // saving moved into the credential-profile control
   if (show) updateSourceRunState(key);
-  if (bodyKey === 'postgres' || bodyKey === 'sqlserver' || bodyKey === 'agentfile') renderAgentSelect(bodyKey);
+  if (bodyKey === 'postgres' || bodyKey === 'sqlserver' || bodyKey === 'progress' || bodyKey === 'agentfile') renderAgentSelect(bodyKey);
   srcSyncFaces();
 }
 
 // ---- Per-app credential PROFILES (named connections; secrets applied server-side) -------
-const SRC_SECRET_FIELDS = { redshift: [], s3: ['access_key', 'secret_key'], snowflake: ['password'], databricks: ['token'], oracle: ['password'], postgres: ['password'], mysql: ['password'], sqlserver: ['password'], synapse: ['password'], bigquery: ['credentials_json'], sharepoint: ['client_secret'], gcs: ['credentials_json'], azureblob: ['connection_string'],
+const SRC_SECRET_FIELDS = { redshift: [], s3: ['access_key', 'secret_key'], snowflake: ['password'], databricks: ['token'], oracle: ['password'], postgres: ['password'], mysql: ['password'], sqlserver: ['password'], progress: ['password'], synapse: ['password'], bigquery: ['credentials_json'], sharepoint: ['client_secret'], gcs: ['credentials_json'], azureblob: ['connection_string'],
   // Both, because either can be the secret in play depending on the chosen mode.
   fabric: ['password', 'client_secret'],
   // Nothing secret in either of these - Athena is reached with IAM, and the agent reads the file
@@ -18680,6 +18720,7 @@ function runSource(key) {
   if (key === 'postgres') { runPostgres(cfg, statusEl); return; }    // wired end-to-end
   if (key === 'mysql') { runMySQL(cfg, statusEl); return; }          // wired end-to-end
   if (key === 'sqlserver') { runSQLServer(cfg, statusEl); return; }  // wired end-to-end
+  if (key === 'progress') { runProgress(cfg, statusEl); return; }    // wired end-to-end (agent only)
   if (key === 'synapse') { runSynapse(cfg, statusEl); return; }      // wired end-to-end
   if (key === 'fabric') { runFabric(cfg, statusEl); return; }        // wired end-to-end
   if (key === 'bigquery') { runBigQuery(cfg, statusEl); return; }    // wired end-to-end
@@ -18947,6 +18988,30 @@ async function runSQLServer(cfg, statusEl) {
     started: 'Inferring the ruleset from a sample, then scoring the whole table in SQL Server.' });
 }
 
+// Launch a full-table Progress OpenEdge assessment on the chosen agent, then poll + render its
+// result. The password is never sent: the saved connection bound to the agent supplies a pointer
+// to the agent's own secrets.json, and that pointer is what sends the job to the agent.
+async function runProgress(cfg, statusEl) {
+  if (!cfg._credProfile) {
+    statusEl.className = 'src-status err';
+    statusEl.textContent = 'Save this connection first (with the agent chosen under Runs on), then run it. '
+      + 'The password stays on the agent, in its secrets.json as progress/default.';
+    return;
+  }
+  const body = {
+    app_id: APP_ID || undefined,
+    host: cfg.host, port: Number(cfg.port), database: cfg.database, user: cfg.user, table: cfg.table,
+    schema: cfg.schema || undefined, driver: cfg.driver || undefined,
+    sample_rows: cfg.sample_rows ? Number(cfg.sample_rows) : undefined,
+    notify_email: EMAIL || undefined,
+    ruleset_augment: collectSourceRefsAugment() || undefined,
+    credential_profile: cfg._credProfile,
+  };
+  return srcLaunch('progress', statusEl, 'progress-assessment', body, {
+    launch: 'Queuing the Progress OpenEdge assessment for the agent',
+    started: 'Queued for the agent. It starts on its next poll, usually within 15 seconds, then scores the whole table in OpenEdge.' });
+}
+
 // Launch a full-table Azure Synapse assessment, then poll + render its result.
 async function runSynapse(cfg, statusEl) {
   const body = {
@@ -19088,6 +19153,7 @@ document.querySelectorAll('.source-card:not(.soon)').forEach(c => c.addEventList
 const SRC_WORDS = { athena: 'iceberg glue athena aws', redshift: 'aws', databricks: 'unity catalog delta spark',
   bigquery: 'gcp google', synapse: 'azure microsoft dedicated pool', fabric: 'azure microsoft onelake',
   postgres: 'postgresql pg', sqlserver: 'mssql azure sql t-sql microsoft', mysql: 'mariadb',
+  progress: 'openedge abl 4gl on premise agent',
   s3: 'aws bucket object', sharepoint: 'microsoft office graph excel', gcs: 'google gcp bucket object',
   azureblob: 'adls microsoft container', agentfile: 'on premise agent network share parquet csv',
   file: 'upload csv tsv parquet json ndjson qvd computer', excel: 'xlsx xlsm spreadsheet workbook upload' };
@@ -22270,7 +22336,7 @@ function buildGuides() {
                `Source monitoring, which only covers datasets whose last run used a saved profile`) +
           tip(`If a dataset is skipped with "no saved credentials" when you run it by tag or monitor it, run it once more with a saved profile applied.`) },
       (Q || ADMIN) ? { h: 'Databases behind an agent', body:
-          p(`For PostgreSQL or SQL Server reached through an on-premises agent, choose the machine under ${ui('Runs on')}. The password box greys out and reads ${ui('Held on the agent')}: the password lives in a file on that machine, and the profile only points at it. See ${see('agents', 'Set up an on-premises agent')}.`) +
+          p(`For PostgreSQL, SQL Server or Progress OpenEdge reached through an on-premises agent, choose the machine under ${ui('Runs on')}. The password box greys out and reads ${ui('Held on the agent')}: the password lives in a file on that machine, and the profile only points at it. See ${see('agents', 'Set up an on-premises agent')}.`) +
           shot('runs-on-agent', `PostgreSQL run on an agent: ${ui('Runs on')} names the machine, and the password box reads ${ui('Held on the agent')}.`) } : null,
     ],
   });
@@ -23049,6 +23115,7 @@ ${HDRS}
           `<b>A proxy</b>, if outbound traffic needs one: set <code>HTTPS_PROXY</code>, and <code>AWS_CA_BUNDLE</code> for a private certificate authority, in the service definition.`,
           `<b>An administrator account</b> on the machine, to install the service.`,
           `<b>A read-only database login</b> for each database, with access to exactly the tables to assess.`,
+          `<b>For Progress OpenEdge:</b> the 64-bit OpenEdge ODBC driver on the agent's machine (it comes with the OpenEdge SQL client), and SQL access to the database through its SQL broker. Reads take no record locks, so the application is never kept waiting.`,
           `<b>Read access to the file share</b>, if you assess files. The service runs as LocalSystem, which reaches the network as the <i>computer</i> account, so either grant that account read on the share or run the service as a domain user.`) },
       { h: 'Register it and download', body: steps(
           `In ${go('agents', 'Agents')}, type a name for the machine, such as "Acme DC1", and press ${ui('Register')}. ${showme('agents')}`,
@@ -23070,14 +23137,15 @@ dq-agent-service.cmd START`) +
                 `Restart the service so it picks the file up.`) +
           code(`{
   "postgres/default":  { "password": "the-read-only-password" },
-  "sqlserver/default": { "password": "the-read-only-password" }
+  "sqlserver/default": { "password": "the-read-only-password" },
+  "progress/default": { "password": "the-read-only-password" }
 }
 
 icacls secrets.json /inheritance:r /grant:r "SYSTEM:(R)" /grant:r "Administrators:(R)"
 dq-agent-service.cmd RESTART`) +
           p(`Changing a password later means editing this file and restarting. It never involves us.`) },
       { h: 'Point a source at it', body: list(
-          `<b>A database:</b> open PostgreSQL or SQL Server and choose the machine under ${ui('Runs on')}. The password box reads ${ui('Held on the agent')}. The host is resolved from the agent's machine, so a private name such as <code>db.internal</code> is correct.`,
+          `<b>A database:</b> open PostgreSQL, SQL Server or Progress OpenEdge and choose the machine under ${ui('Runs on')}. The password box reads ${ui('Held on the agent')}. The host is resolved from the agent's machine, so a private name such as <code>db.internal</code> is correct.`,
           `<b>A file:</b> choose ${ui('Qlik On Premise Files')}, pick the agent, and give the path as that machine sees it, such as <code>D:&#92;data&#92;sales.parquet</code> or <code>&#92;&#92;fs01&#92;finance&#92;sales.parquet</code>.`,
           `Press Run. The status reads <i>queued for the agent</i>, and the job starts on its next poll, usually within 15 seconds. Results appear with every other source, marked On Premise.`,
           `Schedules work the same way. If the agent is offline when one fires, the job waits for it.`) +
@@ -24030,7 +24098,7 @@ async function assessEntireApp() {
 // Qlik app tables re-run in place (the extension holds the bearer); every other source is
 // routed to its Data-from-Source card to re-enter details + run (pinned rules still apply).
 const _SRC_CARD_BY_FMT = { redshift: 'redshift', snowflake: 'snowflake', databricks: 'databricks',
-  oracle: 'oracle', postgres: 'postgres', mysql: 'mysql', sqlserver: 'sqlserver', synapse: 'synapse', fabric: 'fabric', bigquery: 'bigquery',
+  oracle: 'oracle', postgres: 'postgres', mysql: 'mysql', sqlserver: 'sqlserver', progress: 'progress', synapse: 'synapse', fabric: 'fabric', bigquery: 'bigquery',
   gcs: 'gcs', azureblob: 'azureblob', sharepoint: 'sharepoint', s3: 's3' };
 // Send the user to the upload form to re-assess an uploaded dataset, and tell them the one
 // thing that decides whether they get a NEW RUN of this dataset or a whole new dataset.
@@ -24552,6 +24620,14 @@ const SCHED_SOURCE_FIELDS = {
     { f: 'database', label: 'Database' }, { f: 'user', label: 'User' },
     { f: 'password', label: 'Password', type: 'password' },
     { f: 'schema', label: 'Schema', value: 'dbo' }, { f: 'table', label: 'Table' },
+    { f: 'sample_rows', label: 'Sample rows', type: 'number' },
+  ],
+  // No password: a Progress schedule runs with a saved connection bound to an agent, which holds it.
+  progress: [
+    { f: 'host', label: 'Host' }, { f: 'port', label: 'SQL broker port', type: 'number' },
+    { f: 'database', label: 'Database' }, { f: 'user', label: 'User' },
+    { f: 'schema', label: 'Schema', value: 'PUB' }, { f: 'table', label: 'Table' },
+    { f: 'driver', label: 'ODBC driver (optional)' },
     { f: 'sample_rows', label: 'Sample rows', type: 'number' },
   ],
   fabric: [
