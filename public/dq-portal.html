@@ -1564,6 +1564,11 @@
   .tag-adv { background: var(--idle-bg); color: var(--muted); }
   .rule-sug-lbl { display: flex; flex-direction: column; gap: 4px; cursor: pointer; }
   .rule-sug.rule-adv .rule-sug-lbl { cursor: default; }
+  /* What a suggestion would fail today, from the profile: a quiet line, and a red one when that
+     is most of what the rule checks (a format the values are not written in, say). */
+  .rule-impact { margin: 8px 0 0; font-size: 12.5px; line-height: 1.45; color: var(--muted); }
+  .rule-impact.warn { color: var(--err); }
+  .rule-impact .tag { margin-right: 7px; vertical-align: 1px; }
   .rule-edit { display: flex; flex-wrap: wrap; gap: 8px 14px; margin-top: 9px; }
   .rule-edit-field { display: flex; flex-direction: column; gap: 4px; }
   .rule-edit-field label { font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
@@ -15936,6 +15941,56 @@ function _augCol(aug) {
   if (aug && aug.columns) { const col = Object.keys(aug.columns)[0]; if (col) return { col, obj: aug.columns[col] }; }
   return null;
 }
+
+// What a suggested rule would fail TODAY, from its column's profile facts (the review's `facts`),
+// or null when they cannot say. The same reckoning as dq/ai_review.suggestion_impact, which drops
+// such a rule from the automatic AI step; test_rules_tab.py compares the two. Worked out here so an
+// edit is judged as it is typed: a format the values do not use fails every one of them.
+const RULE_FAIL_MOST = 0.5;
+function ruleImpact(aug, facts) {
+  const ac = _augCol(aug);
+  if (!ac || Object.keys(aug.columns).length !== 1) return null;
+  const p = (facts || {})[ac.col], rule = ac.obj || {};
+  if (!p || !(p.profiled > 0)) return null;
+  const rows = p.profiled, missing = Number.isInteger(p.missing) ? p.missing : 0;
+  const present = Math.max(rows - missing, 0);
+  const num = x => typeof x === 'number' && isFinite(x);
+  const out = (failing, of, basis) => {
+    failing = Math.max(0, Math.min(Math.floor(failing + 0.5), of));
+    return { failing, of, share: of ? Math.floor(failing / of * 10000 + 0.5) / 10000 : 0, basis };
+  };
+  if (rule.format) {
+    if (!p.formatMatch || !present) return null;
+    return out(present * (100 - Number(p.formatMatch[rule.format] || 0)) / 100, present, 'values');
+  }
+  if (rule.mandatory === true) return out(missing, rows, 'rows');
+  if (rule.unique === true) return Number.isInteger(p.distinct) && present ? out(present - p.distinct, present, 'values') : null;
+  for (const [lo, hi, plo, phi] of [['min_length', 'max_length', 'minLength', 'maxLength'], ['min', 'max', 'min', 'max']]) {
+    const a = rule[lo], b = rule[hi];
+    if (a == null && b == null) continue;
+    const x = p[plo], y = p[phi];
+    if (!(num(x) && num(y) && present)) return null;
+    if ((!num(a) || a <= x) && (!num(b) || b >= y)) return out(0, present, 'values');      // every value inside
+    if ((num(a) && a > y) || (num(b) && b < x)) return out(present, present, 'values');   // every value outside
+    return null;                                                                            // it cuts through them
+  }
+  return null;
+}
+// The line under a suggestion saying what it would fail today: quiet, or a warning when that is
+// most of what the rule checks. '' when the profile cannot say.
+function ruleImpactHtml(imp, facts, col, rowCount) {
+  if (!imp) return '';
+  const p = (facts || {})[col] || {};
+  const pct = imp.share * 100;
+  const pctTxt = imp.failing === 0 ? '0%' : pct < 1 ? 'under 1%' : (pct > 99 && pct < 100) ? 'over 99%' : `${Math.round(pct)}%`;
+  const what = imp.basis === 'rows' ? 'rows' : 'values present';
+  const sample = (rowCount && p.profiled && p.profiled < rowCount) ? ` in the ${Number(p.profiled).toLocaleString()} rows profiled` : '';
+  if (imp.failing === 0) return `Nothing in today's data would fail it${sample}.`;
+  const line = `Today it would fail ${imp.failing.toLocaleString()} of ${imp.of.toLocaleString()} ${what} (${pctTxt})${sample}.`;
+  return imp.share >= RULE_FAIL_MOST
+    ? `<span class="tag red">Would fail most rows</span>${esc(line)} Check it before pinning: the data does not look like this today.`
+    : esc(line);
+}
 function _ruleFieldControl(i, f, meta, val, optional) {
   const id = `re-${i}-${f}`;
   let input;
@@ -16050,12 +16105,18 @@ function renderRuleReview(r, outEl, prefix, regen) {
     const head = s.applyable ? `<label class="rule-sug-lbl" for="${cbId}">${headInner}</label>`
       : `<span class="rule-sug-lbl">${headInner}</span>`;
     const editor = s.applyable ? renderRuleEditor(s, i) : '';
+    // What it would fail today, kept current as it is edited (the input handler below).
+    const ac = s.applyable ? _augCol(s.augment) : null;
+    const imp = s.applyable ? ruleImpact(s.augment, r.facts) : null;
+    s._most = !!(imp && imp.share >= RULE_FAIL_MOST);
+    const impact = s.applyable
+      ? `<p class="rule-impact${s._most ? ' warn' : ''}" data-impact-i="${i}"${imp ? '' : ' hidden'}>${ruleImpactHtml(imp, r.facts, ac && ac.col, r.rowCount)}</p>` : '';
     // Advisory rules that map to a concrete column rule can be promoted to editable.
     const promote = (!s.applyable && s.promotable)
       ? `<button type="button" class="rule-promote" data-i="${i}" style="align-self:flex-start;margin-top:5px;">Make editable</button>` : '';
     return `<div class="rule-sug${s.applyable ? '' : ' rule-adv'}">
         <span class="rule-acc-cell">${acc}</span>
-        <span class="rule-sug-body">${head}${editor}${promote}</span>
+        <span class="rule-sug-body">${head}${editor}${impact}${promote}</span>
       </div>`;
   }).join('');
   const rerun = rerun0;
@@ -16064,6 +16125,7 @@ function renderRuleReview(r, outEl, prefix, regen) {
   // "Apply & re-run now" only when the run can be re-launched (app table / file).
   const applyBar = anyApplyable
     ? `<div class="actions" style="margin-top:12px;align-items:center;gap:8px;">
+         <button type="button" class="btn-sm rule-selall">Select all</button>
          <button class="rule-pin" disabled>Pin selected to ruleset</button>
          ${canRerun ? `<button class="rule-apply" disabled>Apply &amp; re-run now</button>` : ``}
          <span class="hint" id="ruleApplyNote">Tick the suggestions to pin${canRerun ? ' or re-run' : ''}.</span>
@@ -16078,11 +16140,37 @@ function renderRuleReview(r, outEl, prefix, regen) {
   const note = outEl.querySelector('#ruleApplyNote');
   const chosenAugs = () => [...outEl.querySelectorAll('.rule-acc:checked')]
     .map(cb => sug[+cb.dataset.i]).filter(Boolean).map(s => s.augment);
+  // Select all takes every suggestion that can be pinned EXCEPT one that would fail most of what it
+  // checks today: that one waits for a person to tick it on purpose, and the note says so.
+  const selAll = outEl.querySelector('.rule-selall');
+  const boxes = () => [...outEl.querySelectorAll('.rule-acc')];
+  const most = cb => { const s = sug[+cb.dataset.i]; return !!(s && s._most); };
   const update = () => {
     const n = outEl.querySelectorAll('.rule-acc:checked').length;
     if (applyBtn) { applyBtn.disabled = !n; applyBtn.textContent = n ? `Apply ${n} & re-run now` : 'Apply & re-run now'; }
     if (pinBtn && pinBtn.dataset.done !== '1') { pinBtn.disabled = !n; pinBtn.textContent = n ? `Pin ${n} selected to ruleset` : 'Pin selected to ruleset'; }
-    if (note && note.dataset.sticky !== '1') note.textContent = n ? `${n} selected.` : `Tick the suggestions to pin${canRerun ? ' or re-run' : ''}.`;
+    const left = boxes().filter(cb => most(cb) && !cb.checked).length;
+    if (note && note.dataset.sticky !== '1') note.textContent = n
+      ? `${n} selected.` + (left ? ` ${left} left out: ${left === 1 ? 'it' : 'they'} would fail most rows today.` : '')
+      : `Tick the suggestions to pin${canRerun ? ' or re-run' : ''}.`;
+    const pick = boxes().filter(cb => !most(cb));
+    if (selAll) selAll.textContent = (pick.length && pick.every(cb => cb.checked)) ? 'Clear selection' : 'Select all';
+  };
+  if (selAll) selAll.addEventListener('click', () => {
+    const clear = selAll.textContent === 'Clear selection';
+    (clear ? boxes() : boxes().filter(cb => !most(cb))).forEach(cb => {
+      cb.checked = !clear;
+      const s = sug[+cb.dataset.i]; if (s) s._checked = !clear;
+    });
+    update();
+  });
+  // A ticked rule that would fail most of what it checks today goes through only on purpose.
+  const confirmMost = async verb => {
+    const risky = [...outEl.querySelectorAll('.rule-acc:checked')].map(cb => sug[+cb.dataset.i]).filter(s => s && s._most);
+    if (!risky.length) return true;
+    const names = risky.map(s => `${(s.columns || []).join(', ')}: ${s.title || s.kind}`).join('; ');
+    return dqConfirm(`${risky.length === 1 ? 'This rule' : `These ${risky.length} rules`} would fail most rows today (${names}). ${verb} anyway?`,
+      { title: 'Check before you ' + verb.toLowerCase(), danger: true, okLabel: `${verb} anyway`, cancelLabel: 'Go back' });
   };
   outEl.querySelectorAll('.rule-acc').forEach(cb => cb.addEventListener('change', () => {
     const s = sug[+cb.dataset.i]; if (s) s._checked = cb.checked;      // remember across re-renders
@@ -16101,6 +16189,11 @@ function renderRuleReview(r, outEl, prefix, regen) {
     const ac = _augCol(s.augment); if (!ac) return;
     applyRuleEdit(ac.obj, el.dataset.editF, el.value);
     s._edited = true; s._checked = true;
+    // Judged again as typed: switching the format to one the values use clears the warning.
+    const imp = ruleImpact(s.augment, r.facts);
+    s._most = !!(imp && imp.share >= RULE_FAIL_MOST);
+    const line = outEl.querySelector(`.rule-impact[data-impact-i="${i}"]`);
+    if (line) { line.innerHTML = ruleImpactHtml(imp, r.facts, ac.col, r.rowCount); line.hidden = !imp; line.classList.toggle('warn', s._most); }
     const cb = outEl.querySelector(`.rule-acc[data-i="${i}"]`);
     if (cb && !cb.checked) cb.checked = true;
     const flag = outEl.querySelector(`.rule-edited[data-edited-i="${i}"]`);
@@ -16114,8 +16207,12 @@ function renderRuleReview(r, outEl, prefix, regen) {
     s.augment = JSON.parse(JSON.stringify(s.editAugment || { columns: {} }));
     rerender();
   }));
-  if (applyBtn) applyBtn.addEventListener('click', () => applyRulesAndRerun(rerun, mergeAugments(chosenAugs())));
-  if (pinBtn) pinBtn.addEventListener('click', () => pinSelectedRules(prefix, mergeAugments(chosenAugs()), pinBtn, note));
+  if (applyBtn) applyBtn.addEventListener('click', async () => {
+    if (await confirmMost('Apply')) applyRulesAndRerun(rerun, mergeAugments(chosenAugs()));
+  });
+  if (pinBtn) pinBtn.addEventListener('click', async () => {
+    if (await confirmMost('Pin')) pinSelectedRules(prefix, mergeAugments(chosenAugs()), pinBtn, note);
+  });
   wireFoot();
   update();
 }
@@ -21541,7 +21638,7 @@ const GD_SHOTS = {
   "admin-tags": [1600, 1095, "db660355f0"],
   "admin-users": [1600, 792, "5fe189e3d0"],
   "agents": [1600, 809, "68e531d6b9"],
-  "ai-review": [1600, 1199, "343bfb93ac"],
+  "ai-review": [1600, 1567, "a911f7935a"],
   "alert-channels": [1600, 707, "ce27567a3f"],
   "app-tables": [1600, 1377, "9eeda98170"],
   "approvals": [1600, 691, "e9fc97c6b8"],
@@ -22536,10 +22633,11 @@ function buildGuides() {
       { h: 'Review rules with AI', body:
           steps(
             `Press ${ui('Review rules with AI')}. Suggestions come from Claude Haiku 4.5 on Amazon Bedrock, and open in a panel above the rules in effect, so you can compare the two. Press the button again to fold the panel away.`,
-            `Tick the suggestions you want. Each one says which columns it covers and why, and most can be edited before you accept them. An <b>advisory</b> one can be turned into an editable rule with ${ui('Make editable')}.`,
+            `Tick the suggestions you want, or press ${ui('Select all')}. Each one says which columns it covers, why, and what it would fail in today's data, and most can be edited before you accept them. An <b>advisory</b> one can be turned into an editable rule with ${ui('Make editable')}.`,
+            `A suggestion marked ${ui('Would fail most rows')} does not fit the data as it is written today, such as a phone format the numbers are not stored in. ${ui('Select all')} leaves it out, and pinning it asks you first. Changing its values updates the line as you type.`,
             `Press ${ui('Pin selected to ruleset')}. The rules apply automatically on the dataset's next assessment, with no further AI call.`,
             `Or press ${ui('Apply & re-run now')}, which appears when the run can be launched again from here, such as ${Q ? 'an app table or ' : ''}an uploaded file that is still stored.`) +
-          shot('ai-review', `${n(1)} Tick the suggestions you want, editing their values first if you like. ${n(2)} An advisory suggestion is guidance to apply yourself. ${n(3)} ${ui('Pin selected to ruleset')}. ${n(4)} ${ui('Regenerate')} asks for a fresh set.`) +
+          shot('ai-review', `${n(1)} Tick the suggestions you want, editing their values first if you like. ${n(2)} One that would fail most of today's data is marked, and says how much. ${n(3)} An advisory suggestion is guidance to apply yourself. ${n(4)} ${ui('Select all')} ticks every one that is not marked. ${n(5)} ${ui('Pin selected to ruleset')}. ${n(6)} ${ui('Regenerate')} asks for a fresh set.`) +
           note(`The AI only ever sees column names, aggregate statistics and masked value shapes (an email reads like <code>aaaa@aaa.aaa</code>). It never sees your values.`) +
           tip(`To write a rule of your own, open its column in the Rules tab and press ${ui('＋ Add a rule')}.`) },
       { h: 'Edit or remove rules', body:
