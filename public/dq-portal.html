@@ -2468,6 +2468,8 @@
   .agt-token .agt-li { margin-top: 5px; padding-left: 16px; text-indent: -16px; }
   .agt-token .agt-fine { font-size: 12.5px; color: var(--muted); margin-top: 8px; }
   .agt-token .agt-fine + code { margin-top: 5px; }
+  /* A file to copy as it is (secrets.json): its lines kept, and scrolled sideways rather than wrapped. */
+  .agt-token code.agt-pre { white-space: pre; overflow-x: auto; overflow-wrap: normal; }
   .agt-empty { color: var(--muted); font-size: 13px; padding: 10px 2px; }
   /* A run that produced nothing. Deliberately not the same as a low score: one is the data being
      bad, which is a result, and the other is the assessment never having happened. */
@@ -18219,11 +18221,44 @@ function agtInstructions(agent, issued) {
                 + 'the INSTALL line instead of the plain one above. Left out, the agent reads no '
                 + 'local file at all, and changing it afterwards means editing the service:');
   add('code', 'dq-agent-service.cmd INSTALL "D:\\data;\\\\fs01\\finance"');
-  add('agt-li', '5. For a database source, put the password in secrets.json in the same folder, '
-              + 'under the kind of database and "default", such as "oracle/default", then run '
-              + 'dq-agent-service.cmd RESTART. It never leaves that machine.');
+  add('agt-li', '5. For a database source, create secrets.json in the same folder, as below under '
+              + '"Database passwords: secrets.json", then run dq-agent-service.cmd RESTART.');
   add('agt-li', '6. Within a minute ' + label + ' shows a green dot and "online" in the list '
               + 'below. That is the whole installation.');
+
+  // The one file installed by hand on a machine we never see, so it is spelled out whole: what it
+  // is, where it goes, its exact shape, and how to lock it down. The keys are agentSecretKey's.
+  add('agt-h', 'Database passwords: secrets.json');
+  add(null, 'A small text file holding the password of each database this agent connects to. '
+          + 'Viseon never stores or sees these passwords: a saved connection only names an entry '
+          + 'in this file, and the agent reads it on this machine when a run starts. An agent that '
+          + 'only reads files does not need one.');
+  add('agt-li', 'Where: in the install folder, beside dq-agent.exe and agent.config, named exactly '
+              + 'secrets.json. In Notepad choose "Save as type: All files", or it is saved as '
+              + 'secrets.json.txt and the agent cannot find it.');
+  add('agt-li', 'Format: JSON. One entry per kind of database, named after the kind and "default", '
+              + 'each holding the password of the read-only login the connection in Viseon uses. '
+              + 'Keep only the lines for the databases this machine connects to, and leave no comma '
+              + 'after the last one:');
+  card.appendChild(agtEl('code', 'agt-pre', [
+    '{',
+    '  "postgres/default":  { "password": "the-read-only-password" },',
+    '  "sqlserver/default": { "password": "the-read-only-password" },',
+    '  "oracle/default":    { "password": "the-read-only-password" },',
+    '  "mysql/default":     { "password": "the-read-only-password" },',
+    '  "progress/default":  { "password": "the-read-only-password" }',
+    '}'].join('\n')));
+  add('agt-fine', 'For example, a machine that only reaches one Oracle database needs just:');
+  card.appendChild(agtEl('code', 'agt-pre', '{\n  "oracle/default": { "password": "the-read-only-password" }\n}'));
+  add('agt-li', 'Two databases of the same kind with different passwords: keep "default" for one, '
+              + 'and give the other its connection\'s own entry. Saving that connection in Viseon says '
+              + 'exactly what the entry is called, for example "oracle/3fa2c1d4e5f6".');
+  add('agt-li', 'Lock it down so only the service and administrators can read it, then restart the '
+              + 'agent so it reads the file:');
+  add('code', 'icacls secrets.json /inheritance:r /grant:r "SYSTEM:(R)" /grant:r "Administrators:(F)"');
+  add('code', 'dq-agent-service.cmd RESTART');
+  add('agt-fine', 'Changing a password later is the same: edit the file and restart. Nothing changes '
+                + 'in Viseon, and the password never leaves this machine.');
 
   add('agt-h', 'On a machine that already has the agent');
   add('agt-li', '1. Put agent.config in the install folder, replacing the one already there.');
@@ -18233,8 +18268,8 @@ function agtInstructions(agent, issued) {
   add('agt-h', 'Stopping and checking it');
   add('agt-li', 'Is it running:');
   add('code', 'dq-agent-service.cmd STATUS');
-  add('agt-li', 'Stop it. Anything queued for this agent waits until it is back rather than '
-              + 'being lost, so stopping it is safe at any time:');
+  add('agt-li', 'Stop it. It finishes the job it is on first. While it is stopped, Run in Viseon says '
+              + 'the agent is offline instead of starting, and a scheduled run waits until it is back:');
   add('code', 'dq-agent-service.cmd STOP');
   add('agt-li', 'Stop it and unregister the service entirely:');
   add('code', 'dq-agent-service.cmd REMOVE');
@@ -23433,7 +23468,7 @@ dq-agent-service.cmd START`) +
   "progress/default":  { "password": "the-read-only-password" }
 }
 
-icacls secrets.json /inheritance:r /grant:r "SYSTEM:(R)" /grant:r "Administrators:(R)"
+icacls secrets.json /inheritance:r /grant:r "SYSTEM:(R)" /grant:r "Administrators:(F)"
 dq-agent-service.cmd RESTART`) +
           p(`Changing a password later means editing this file and restarting. It never involves us.`) +
           note(`One machine, two databases of the same kind with different passwords: keep <code>default</code> for one, and give the other its connection's own key. Saving that connection says exactly what the key is, for example <code>oracle/3fa2c1d4e5f6</code>.`) },
