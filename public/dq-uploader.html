@@ -1627,6 +1627,14 @@
     border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--border)); background: color-mix(in srgb, var(--accent) 9%, var(--card));
     font-size: 11.5px; font-weight: 500; }
   .rx-chip.key { border-color: color-mix(in srgb, #ffcf4d 38%, var(--border)); background: color-mix(in srgb, #ffcf4d 11%, var(--card)); }
+  /* A rule that came from the AI. The ✦ is drawn here rather than written into the chip, so its words
+     stay the rule's own, and its alternative text says where it came from to a screen reader. */
+  .rx-chip.ai { border-color: color-mix(in srgb, #a78bfa 50%, var(--border)); background: color-mix(in srgb, #a78bfa 13%, var(--card)); }
+  .rx-chip.ai::before { content: "✦"; content: "✦" / "Suggested by AI: "; margin-right: 4px; color: #a78bfa; }
+  .rx-type.ai::after { content: " ✦"; content: " ✦" / ", suggested by AI"; color: #a78bfa; }
+  .rx-ai-line { display: flex; align-items: baseline; gap: 7px; margin: -2px 0 10px; font-size: 12.5px; color: var(--muted); }
+  .rx-ai-i { flex: none; color: var(--muted); opacity: .6; }
+  .rx-ai-line.on .rx-ai-i { color: #a78bfa; opacity: 1; }
   .rx-none { margin: 0; font-size: 12.5px; font-style: italic; color: var(--muted); }
   .rx-mark { flex: none; display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 700; color: var(--accent2); }
   .rx-mark::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--accent2); }
@@ -7572,34 +7580,92 @@ function _rxSpan(lo, hi, unit, from, upto) {
   if (b) return `${upto || 'At most'} ${_rxNum(hi)}${u(hi)}`;
   return '';
 }
-/** What a column's rules say, as chips: [text, tooltip, extra class]. */
+/** What a column's rules say, as chips: [text, tooltip, extra class, the rule's fields]. The fields
+ *  are what say whether a chip's rule came from the AI ('pk' for the key). */
 function rxChips(spec, pk) {
   const c = [];
-  if (pk) c.push(['🔑 Key', 'Part of the primary key', 'key']);
-  RX_FLAGS.forEach(([f, l, d]) => { if (spec[f] === true) c.push([l, d]); });
-  if (_rxSet(spec.format)) c.push([RX_FORMATS[spec.format] || spec.format, _FX_FMT[spec.format] ? `For example ${_FX_FMT[spec.format]}` : '']);
+  if (pk) c.push(['🔑 Key', 'Part of the primary key', 'key', ['pk']]);
+  RX_FLAGS.forEach(([f, l, d]) => { if (spec[f] === true) c.push([l, d, '', [f]]); });
+  if (_rxSet(spec.format)) c.push([RX_FORMATS[spec.format] || spec.format, _FX_FMT[spec.format] ? `For example ${_FX_FMT[spec.format]}` : '', '', ['format']]);
   const av = _rxVals(spec.allowed_values);
-  if (av.length) c.push([av.length === 1 ? `Only ${av[0]}` : `One of ${av.length} values`, av.join(', ')]);
-  const r = _rxSpan(spec.min, spec.max); if (r) c.push([r, 'Range']);
-  const d = _rxSpan(spec.min_date, spec.max_date, '', 'From', 'Until'); if (d) c.push([d, 'Date range']);
-  const l = _rxSpan(spec.min_length, spec.max_length, 'character'); if (l) c.push([l, 'Length']);
-  if (_rxSet(spec.regex)) c.push(['Pattern', String(spec.regex)]);
-  if (_rxSet(spec.scale)) c.push([`${spec.scale} decimal place${+spec.scale === 1 ? '' : 's'}`, 'Decimal places']);
-  if (_rxSet(spec.weight) && +spec.weight !== 1) c.push([`Weight ${spec.weight}`, 'How much its rules count in the score']);
+  if (av.length) c.push([av.length === 1 ? `Only ${av[0]}` : `One of ${av.length} values`, av.join(', '), '', ['allowed_values']]);
+  const r = _rxSpan(spec.min, spec.max); if (r) c.push([r, 'Range', '', ['min', 'max']]);
+  const d = _rxSpan(spec.min_date, spec.max_date, '', 'From', 'Until'); if (d) c.push([d, 'Date range', '', ['min_date', 'max_date']]);
+  const l = _rxSpan(spec.min_length, spec.max_length, 'character'); if (l) c.push([l, 'Length', '', ['min_length', 'max_length']]);
+  if (_rxSet(spec.regex)) c.push(['Pattern', String(spec.regex), '', ['regex']]);
+  if (_rxSet(spec.scale)) c.push([`${spec.scale} decimal place${+spec.scale === 1 ? '' : 's'}`, 'Decimal places', '', ['scale']]);
+  if (_rxSet(spec.weight) && +spec.weight !== 1) c.push([`Weight ${spec.weight}`, 'How much its rules count in the score', '', ['weight']]);
   return c;
 }
 const _rxRuleCount = spec => rxChips(spec, false).filter(([t]) => !/^Weight /.test(t)).length;
+
+// ---- Where the rules came from ----
+// The pin records which rules the dataset's first run took from the AI, and which were accepted in
+// Review rules with AI (dq/runner.py SOURCES_KEY); each is marked ✦. A mark lasts while the rule
+// still says what was pinned: one changed here, even before it is saved, is the person's.
+const RX_FROM = { ai: "Suggested by AI on the dataset's first run", review: 'Suggested by AI and accepted in Review rules with AI' };
+const _rxSame = (a, b) => JSON.stringify(a === undefined ? null : a) === JSON.stringify(b === undefined ? null : b);
+const _rxSameKey = (a, b) => _rxSame((a || []).slice().sort(), (b || []).slice().sort());
+/** 'ai', 'review' or '': where the rule in these fields of a column came from. */
+function rxFrom(rx, col, fields) {
+  const src = rx.ai && rx.ai.sources, pin = rx.pinned || rx.base;
+  if (!src) return '';
+  if (fields[0] === 'pk') {
+    const k = src.primary_key;
+    return k && _rxSameKey(rx.state.primaryKey, k.columns) && _rxSameKey(pin.primaryKey, k.columns) ? k.source : '';
+  }
+  const marks = (src.columns || {})[col] || {}, now = rx.state.columns[col] || {}, was = pin.columns[col] || {};
+  const f = fields.find(x => marks[x] && _rxSet(now[x]) && _rxSame(now[x], was[x]));
+  return f ? marks[f] : '';
+}
+/** The line above the columns: whether the rules were enriched with AI, and what ✦ marks. */
+function rxAiLineHtml(rx) {
+  const ai = rx.ai || {}, src = ai.sources, s = rx.state;
+  const n = { ai: 0, review: 0 };
+  Object.keys(s.columns).forEach(col => {
+    const spec = s.columns[col] || {};
+    rxChips(spec, _rxPk(s, col)).forEach(([t, , , f]) => { const w = !/^Weight /.test(t) && rxFrom(rx, col, f); if (w) n[w]++; });
+    const w = _rxSet(spec.type) && rxFrom(rx, col, ['type']); if (w) n[w]++;
+  });
+  const rules = k => `${n[k]} rule${n[k] === 1 ? '' : 's'}`;
+  const notKept = 'Rules saved before 20 October 2026 do not record whether they came from the AI.';
+  let t;
+  if (!src) {
+    t = ai.enriched ? `Enriched with AI on its first run. ${notKept}` : 'Its first run added no AI rules. Review rules with AI can suggest some.';
+  } else if (n.ai) {
+    t = `Enriched with AI on its first run: ✦ marks the ${rules('ai')} it added` +
+      (n.review ? `, and the ${rules('review')} accepted from Review rules with AI.` : '.');
+  } else {
+    t = {
+      applied: 'Enriched with AI on its first run, though those rules have since been changed or removed.',
+      nothing: 'AI checked its rules on the first run and had nothing to add that the data bears out.',
+      failed: 'The AI step failed on its first run, so its rules come from the data alone.',
+      off: 'AI rule suggestions were switched off for its first run, so its rules come from the data alone.',
+    }[ai.step] || 'None of its rules came from the AI on its first run.';
+    if (n.review) t += ` ✦ marks the ${rules('review')} accepted from Review rules with AI.`;
+    else if (ai.step === 'failed' || ai.step === 'off') t += ' Review rules with AI can suggest some.';
+    if (src.complete === false) t += ' ' + notKept;
+  }
+  const on = src ? n.ai + n.review > 0 : !!ai.enriched;
+  return `<p class="rx-ai-line${on ? ' on' : ''}" data-ai-step="${esc(ai.step || '')}">` +
+    `<span class="rx-ai-i" aria-hidden="true">✦</span><span>${esc(t)}</span></p>`;
+}
 
 // ---- Drawing ----
 function rxRowHtml(rx, col, i) {
   const spec = rx.state.columns[col] || {}, open = rx.ui.open.includes(col), pk = _rxPk(rx.state, col);
   const t = RX_TYPES.find(x => x[0] === spec.type), sev = spec.severity || 'major', dirty = rxColDirty(rx, col);
-  const chips = rxChips(spec, pk);
+  const chips = rxChips(spec, pk), typeFrom = _rxSet(spec.type) ? rxFrom(rx, col, ['type']) : '';
+  const chip = ([x, tip, cls, f]) => {
+    const from = rxFrom(rx, col, f), tt = from ? (tip ? `${tip}. ${RX_FROM[from]}` : RX_FROM[from]) : tip;
+    return `<span class="rx-chip${cls ? ' ' + cls : ''}${from ? ' ai' : ''}"${from ? ` data-from="${from}"` : ''}${tt ? ` data-tip="${esc(tt)}"` : ''}>${esc(x)}</span>`;
+  };
   return `<div class="rx-col${open ? ' open' : ''}${dirty ? ' edited' : ''}" data-col="${esc(col)}" role="listitem">` +
     `<button type="button" class="rx-row lngb" data-rx="toggle" aria-expanded="${open}" aria-controls="rx-ed-${i}">` +
       `<span class="rx-chev" aria-hidden="true"></span>${_rxIco(spec.type)}` +
-      `<span class="rx-id"><span class="rx-name">${esc(col)}</span><span class="rx-type">${t ? t[1] : spec.type ? esc(spec.type) : 'No type set'}</span></span>` +
-      `<span class="rx-chips">${chips.length ? chips.map(([x, tip, cls]) => `<span class="rx-chip${cls ? ' ' + cls : ''}"${tip ? ` data-tip="${esc(tip)}"` : ''}>${esc(x)}</span>`).join('')
+      `<span class="rx-id"><span class="rx-name">${esc(col)}</span><span class="rx-type${typeFrom ? ' ai' : ''}"` +
+        `${typeFrom ? ` data-from="${typeFrom}" data-tip="${esc(RX_FROM[typeFrom])}"` : ''}>${t ? t[1] : spec.type ? esc(spec.type) : 'No type set'}</span></span>` +
+      `<span class="rx-chips">${chips.length ? chips.map(chip).join('')
         : '<span class="rx-none">No rules</span>'}</span>` +
       (dirty ? '<span class="rx-mark" data-tip="Changed, and not saved yet">Edited</span>' : '') +
       `<span class="rx-sev ${esc(sev)}"${spec.severity ? '' : ' data-default="1" data-tip="Major, the default"'}>${esc((RX_SEV.find(x => x[0] === sev) || [sev, sev])[1])}</span>` +
@@ -7736,7 +7802,8 @@ function rxTopHtml(rx) {
       `<circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6"/></svg><input type="search" data-rx="q" placeholder="Find a column" aria-label="Find a column" value="${esc(rx.ui.q)}"></label>` +
       `<span class="rx-filt" role="group" aria-label="Show">${fb('all', 'All', cols.length)}${fb('blocker', 'Blockers', blk)}` +
       `${ch.cols.length || rx.ui.filter === 'edited' ? fb('edited', 'Edited', ch.cols.length) : ''}</span>` +
-      `<button type="button" class="linkbtn lngb rx-all" data-rx="all">${cols.length && cols.every(c => rx.ui.open.includes(c)) ? 'Close all' : 'Open all'}</button></div></div>`;
+      `<button type="button" class="linkbtn lngb rx-all" data-rx="all">${cols.length && cols.every(c => rx.ui.open.includes(c)) ? 'Close all' : 'Open all'}</button></div></div>` +
+    rxAiLineHtml(rx);
 }
 function rxNotesHtml(rx) {
   let h = '';
@@ -8126,12 +8193,17 @@ async function editActiveRules(prefix, outEl) {
       .map(([col, vals]) => ({ col, values: Array.isArray(vals) ? vals.map(String) : [] })),
   };
   const loaded = _rxStateCanon(state);
-  let rx = { prefix, root: outEl, state, base: _rxClone(state), loaded, ui: { open: [], q: '', filter: 'all', refs: false } };
+  // Where the rules came from (rxFrom): sources is null for a pin from before that was recorded.
+  const ai = { enriched: !!data.aiEnriched, step: data.aiStep || null, sources: data.ruleSources || null };
+  // `pinned` stays as loaded, while `base` moves on a save: a rule changed and saved is queued, not
+  // pinned, and is the person's from then on.
+  let rx = { prefix, root: outEl, state, base: _rxClone(state), pinned: _rxClone(state), loaded, ai,
+             ui: { open: [], q: '', filter: 'all', refs: false } };
   // Changes not saved last time are put back, unless the rules moved underneath them meanwhile.
   const draft = rxDrafts[prefix];
   if (draft && rxChanges(draft).n) {
     if (draft.loaded === loaded) {
-      rx = Object.assign(draft, { root: outEl });
+      rx = Object.assign(draft, { root: outEl, ai });
       rx.state.hasPending = rx.base.hasPending = state.hasPending;
       rx.ui.restored = true;
       rx.ui.dropped = false;
@@ -21674,7 +21746,7 @@ const GD_SHOTS = {
   "profile": [1600, 526, "104f28f43a"],
   "quality-space": [1600, 812, "7bfbdb7881"],
   "records-policy": [1600, 433, "0850fe5c47"],
-  "rules-tab": [1600, 1301, "c843b0e52d"],
+  "rules-tab": [1600, 1344, "b4dfa30a3e"],
   "run-result": [1600, 1381, "27d7222b2c"],
   "runs-on-agent": [1600, 1100, "8445708325"],
   "schedule-form-p": [1600, 1133, "b82b8c3aca"],
@@ -22627,7 +22699,8 @@ function buildGuides() {
           (Q || ADMIN ? note(`Runs on an on-premises agent are enriched with AI on the first run too: the agent sends us a summary of the columns, never a value, and we ask the AI for it. An agent whose service sets <code>DQ_AGENT_AI_RULES</code> to <code>off</code> pins its inferred rules without that step; add AI rules to its datasets with Review rules with AI.`) : '') },
       { h: 'See the active rules', body:
           p(`Open the dataset and choose the ${ui('Rules')} tab. Each column has a row that says its rules in plain words, such as ${ui('Required')}, ${ui('Not in the future')} or ${ui('One of 5 values')}, with its severity. Open a row to change them. ${showme('ds-rules')}`) +
-          shot('rules-tab', `${n(1)} How many columns and rules, and the primary key. ${n(2)} A column's rules, in words. ${n(3)} A column opened: its type, severity and weight, then each of its rules. ${n(4)} ${ui('＋ Add a rule')} adds one that suits the column.`) +
+          p(`The line above the columns says whether the rules were enriched with AI on the dataset's first run. ✦ marks each rule that came from the AI, and each one accepted from Review rules with AI; hover over a rule to see which. A rule you change is yours, and loses its mark.`) +
+          shot('rules-tab', `${n(1)} How many columns and rules, and the primary key. ${n(2)} Whether the rules were enriched with AI; ✦ marks each rule that came from it. ${n(3)} A column's rules, in words. ${n(4)} A column opened: its type, severity and weight, then each of its rules. ${n(5)} ${ui('＋ Add a rule')} adds one that suits the column.`) +
           tip(`${ui('Find a column')} searches by name, and ${ui('Blockers')} shows only the columns that can fail the quality gate.`) },
       { h: 'Review rules with AI', body:
           steps(
