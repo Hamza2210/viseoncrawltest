@@ -18593,9 +18593,14 @@ function _agentHint(key) {
   const where = pw
     ? `The password lives in that machine's own credential file, secrets.json, under "${agentSecretKey(sel.dataset.agentsel)}", and is never sent to us.`
     : `The agent opens the file where it sits, and the file itself never leaves that machine.`;
+  // Not online: a run pressed now is refused with the same advice (the API's _dq_agent_offline_message),
+  // so say it before anybody presses. Only a schedule waits for the agent to come back.
+  const scheduled = key.startsWith('sched-');
   hint.textContent = agent.health === 'online'
     ? `This runs on ${agent.name}, inside your network. ${where}`
-    : `This runs on ${agent.name}, which is ${agent.health}. Runs will queue until it polls again.`;
+    : scheduled
+      ? `This runs on ${agent.name}, which is ${agent.health}. A scheduled run waits until it is back.`
+      : `This runs on ${agent.name}, which is ${agent.health}. Start its Viseon Data Assurance Agent service before running.`;
 }
 
 async function renderAgentSelect(kind, key) {
