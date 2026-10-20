@@ -7621,7 +7621,8 @@ function rxFrom(rx, col, fields) {
 }
 /** The line above the columns: whether the rules were enriched with AI, and what ✦ marks. */
 function rxAiLineHtml(rx) {
-  const ai = rx.ai || {}, src = ai.sources, s = rx.state;
+  if (!rx.ai) return '';
+  const ai = rx.ai, src = ai.sources, s = rx.state;
   const n = { ai: 0, review: 0 };
   Object.keys(s.columns).forEach(col => {
     const spec = s.columns[col] || {};
@@ -8194,8 +8195,9 @@ async function editActiveRules(prefix, outEl) {
       .map(([col, vals]) => ({ col, values: Array.isArray(vals) ? vals.map(String) : [] })),
   };
   const loaded = _rxStateCanon(state);
-  // Where the rules came from (rxFrom): sources is null for a pin from before that was recorded.
-  const ai = { enriched: !!data.aiEnriched, step: data.aiStep || null, sources: data.ruleSources || null };
+  // Where the rules came from (rxFrom): sources is null for a pin from before that was recorded, and
+  // the whole of it is null from an API that does not say, which shows no line rather than a wrong one.
+  const ai = 'aiEnriched' in data ? { enriched: !!data.aiEnriched, step: data.aiStep || null, sources: data.ruleSources || null } : null;
   // `pinned` stays as loaded, while `base` moves on a save: a rule changed and saved is queued, not
   // pinned, and is the person's from then on.
   let rx = { prefix, root: outEl, state, base: _rxClone(state), pinned: _rxClone(state), loaded, ai,
