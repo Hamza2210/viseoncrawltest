@@ -3391,6 +3391,12 @@
   .mq-pii-tag { font-size: 10px; font-weight: 700; padding: 1px 7px; border-radius: 999px; margin-left: 4px; }
   .mq-pii-tag.pii { color: #7fdcaf; background: color-mix(in srgb, var(--ok) 16%, transparent); }
   .mq-pii-tag.unl { color: #f5c451; background: color-mix(in srgb, var(--run) 16%, transparent); }
+  /* Whether the column's values are redacted from the failed records and the report. */
+  .mq-pii-red { font-size: 10px; font-weight: 700; padding: 1px 7px; border-radius: 999px; margin-left: 4px;
+    border: 1px solid var(--border); color: var(--muted); }
+  .mq-pii-red::before { content: "🔒 "; }
+  .mq-pii-red.shown::before { content: ""; }
+  .mq-pii-red.soon { border-style: dashed; }
   .mq-pii-btns { display: inline-flex; gap: 6px; flex: none; }
   .mq-lab { font-size: 10.5px; padding: 3px 9px; border-radius: 6px; border: 1px solid var(--border);
     background: var(--card); color: var(--muted); cursor: pointer; }
@@ -12613,7 +12619,24 @@ function metadataQuality(profile) {
   // Phone-ish: not a date, mostly digits/()+-/space, and ≥10 actual digits (excludes 8-digit dates).
   const isPhone = v => { const s = String(v).trim(); return !isDate(s) && /^\+?[\d()\s-]{9,}$/.test(s) && s.replace(/\D/g, '').length >= 10; };
   const piiFindings = [];
-  names.forEach(nm => {
+  // The worker decides what is personal data, and so what is redacted (dq/compliance/lens.py): by
+  // its values, its name, a Confirm PII, or the organisation's framework, less what somebody marked
+  // Not PII. Its reasons come with the profile, and when they do they are the whole answer, so this
+  // panel and the failed records cannot disagree. An older report has none, and is read as before.
+  const basis = profile && profile.pii_basis && typeof profile.pii_basis === 'object' ? profile.pii_basis : null;
+  if (basis) {
+    const lower = {}, cleared = new Set((profile.pii_cleared || []).map(s => String(s).toLowerCase()));
+    Object.keys(basis).forEach(c => { lower[String(c).toLowerCase()] = basis[c] || []; });
+    names.forEach(nm => {
+      const why = lower[String(nm).toLowerCase()];
+      if (!why) return;
+      const msg = why.includes('values') ? 'its values look like personal data'
+        : why.includes('framework') ? 'your compliance framework marks it as personal data'
+        : why.includes('label') && !why.includes('name') ? 'marked as personal data' : 'name suggests personal data';
+      piiFindings.push({ col: nm, msg, redacted: !cleared.has(String(nm).toLowerCase()),
+                         firm: why.includes('values') || why.includes('framework') });
+    });
+  } else names.forEach(nm => {
     // The compliance lens is authoritative: it detects by VALUE (checksum-verified) as well as by
     // name, and it is what drove redaction - so a column it flagged must appear here even though
     // its sample values are now hidden from the local heuristics below.
@@ -12699,25 +12722,45 @@ function renderMetadataPanel(profile, key) {
   }).join('');
   const labels = key ? entryFor(key).pii : {};
   const detected = mq.pii || [];
-  const notPii = detected.filter(f => labels[f.col] === 'not_pii');            // dismissed false positives
-  const shown = detected.filter(f => labels[f.col] !== 'not_pii');            // confirmed PII or unlabelled
+  // From a report that says what was redacted (f.redacted is set): whether a column's values are
+  // redacted now, and whether they will be on the next run, which a label changed since decides.
+  // Not PII lifts redaction only from a column flagged by its name; one whose values look personal,
+  // or that the framework declares, stays redacted.
+  const said = detected.some(f => f.redacted !== undefined);
+  const next = f => labels[f.col] === 'not_pii' ? !!f.firm : true;
+  const settledNotPii = f => labels[f.col] === 'not_pii' && !(said && (next(f) || f.redacted));
+  const notPii = detected.filter(settledNotPii);                               // dismissed false positives
+  const shown = detected.filter(f => !settledNotPii(f));                      // confirmed PII or unlabelled
   const unlabelled = shown.filter(f => !labels[f.col]);
+  const state = f => {
+    if (!said) return '';
+    const now = !!f.redacted, then = next(f);
+    const [t, cls, tip] = then
+      ? (now ? ['values redacted', 'red', 'Its values are kept out of the failed records and the report']
+             : ['redacted from the next run', 'red soon', 'This run kept its values; the next run redacts them'])
+      : (now ? ['shown from the next run', 'shown soon', 'Marked Not PII: the next run keeps its values']
+             : ['values shown', 'shown', 'Marked Not PII, so its values are kept']);
+    return ` <span class="mq-pii-red ${cls}" data-tip="${esc(tip)}">${t}</span>`;
+  };
   let piiHtml = '';
   if (shown.length || notPii.length) {
     const statusTxt = unlabelled.length ? `${unlabelled.length} to review` : (shown.length ? 'all labelled' : '');
     const rowsHtml = shown.map(f => {
       const lab = labels[f.col];
-      const tag = lab === 'pii' ? `<span class="mq-pii-tag pii">✓ PII</span>` : `<span class="mq-pii-tag unl">unlabelled</span>`;
+      const tag = lab === 'pii' ? `<span class="mq-pii-tag pii">✓ PII</span>`
+        : lab === 'not_pii' ? `<span class="mq-pii-tag unl">marked Not PII</span>` : `<span class="mq-pii-tag unl">unlabelled</span>`;
+      const msg = lab === 'not_pii' && f.firm ? `${f.msg}, so it stays redacted` : f.msg;
       const btns = key ? `<span class="mq-pii-btns">` +
         (lab === 'pii' ? '' : `<button type="button" class="mq-lab" data-piiset="pii" data-col="${esc(f.col)}">Confirm PII</button>`) +
-        `<button type="button" class="mq-lab" data-piiset="not_pii" data-col="${esc(f.col)}">Not PII</button>` +
+        (lab === 'not_pii' ? '' : `<button type="button" class="mq-lab" data-piiset="not_pii" data-col="${esc(f.col)}">Not PII</button>`) +
         (lab ? `<button type="button" class="mq-lab" data-piiset="" data-col="${esc(f.col)}">Clear</button>` : '') + `</span>` : '';
-      return `<li><span class="mq-pii-col"><strong>${esc(f.col)}</strong> - ${esc(f.msg)} ${tag}</span>${btns}</li>`;
+      return `<li><span class="mq-pii-col"><strong>${esc(f.col)}</strong> - ${esc(msg)} ${tag}${state(f)}</span>${btns}</li>`;
     }).join('');
     piiHtml = `<div class="mq-pii"><div class="mq-pii-hd">🔒 Sensitivity - ${shown.length} column${shown.length === 1 ? '' : 's'} likely hold personal data${statusTxt ? ` · ${statusTxt}` : ''}</div>` +
       (shown.length ? `<ul class="mq-pii-list">${rowsHtml}</ul>` : '') +
-      (notPii.length ? `<div class="hint" style="margin-top:2px;">${notPii.length} column${notPii.length === 1 ? '' : 's'} marked “not PII” (hidden).</div>` : '') +
-      `<div class="hint" style="margin-top:4px;">Advisory - labelling is governance, not counted against the structural score.</div></div>`;
+      (notPii.length ? `<div class="hint" style="margin-top:2px;">${notPii.length} column${notPii.length === 1 ? '' : 's'} marked “not PII” (hidden${said ? ', values shown' : ''}).</div>` : '') +
+      (said ? `<div class="hint" style="margin-top:4px;">Personal data is redacted from the failed records and the report. Not PII shows a column's values from the next run, unless the values themselves look like personal data. Labelling does not count against the structural score.</div>`
+        : `<div class="hint" style="margin-top:4px;">Advisory - labelling is governance, not counted against the structural score.</div>`) + `</div>`;
   }
   const ov = mq.overall;
   return `<div class="mq-panel"><div class="mq-head"><span class="mq-title">Metadata quality</span>` +
@@ -22685,7 +22728,7 @@ function buildGuides() {
       { h: 'Reading failed records', body:
           p(`The top line says how many blocker records stand between the dataset and a passing gate. Each offending record shows its row or key, the dimension, the check that failed and its severity. ${showme('ds-failed')}`) +
           shot('failed-records', `${n(1)} How many blocker records stand in the gate's way, ${n(2)} failing checks by severity, ${n(3)} the most affected columns, and ${n(4)} the records themselves.`) +
-          note(`Only the columns a check flagged are kept, plus the key that locates the row. The rest of the row reads as withheld, for example ${ui('+12 withheld')}. Detected personal data is always redacted.`) },
+          note(`Only the columns a check flagged are kept, plus the key that locates the row. The rest of the row reads as withheld, for example ${ui('+12 withheld')}. Personal data is always redacted: a column whose values look personal, whose name says it is about a person (such as <code>first_name</code> or <code>date_of_birth</code>), or that somebody marked ${ui('Confirm PII')} in the Metadata tab. ${ui('Not PII')} there shows a column's values from the next run, unless the values themselves look like personal data.`) },
       { h: 'Provisional rules', body:
           p(`${ui('⚠ Provisional')} beside Rules at the top of a dataset (${ui('⚠ Provisional - rules not yet reviewed')} on a run's report) means the rules were inferred automatically and nobody has reviewed them yet. The score is real, but look at the Rules tab before you rely on it. ${see('rules', 'Rules and AI review')}`) },
     ],
