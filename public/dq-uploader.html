@@ -2054,6 +2054,8 @@
   .sched-tagbtn .none { color: var(--muted); }
   .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
     overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+  /* On a div inside the cell, never the cell itself: a td made a flex box is no longer a table cell,
+     so it did not stretch to its row and its bottom line sat apart from the rest of the row's. */
   .sched-src { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
   .sched-src .sched-det { color: var(--muted); font-size: 11.5px; }
 
@@ -26515,7 +26517,7 @@ function renderSchedules(list) {
         <td class="hint c-freq"></td>
         <td class="hint c-next"></td>
         <td>${stateChip}</td>
-        <td class="sched-src">${tables}</td>
+        <td><div class="sched-src">${tables}</div></td>
         <td><div class="sched-acts">
           <button class="sact${on ? '' : ' on'}" data-act="toggle" data-i="${i}" data-tip="${on ? 'Pause this schedule - it stops firing but keeps its settings' : 'Resume this schedule'}">${on ? '⏸' : '▶'}<span>${on ? 'Pause' : 'Resume'}</span></button>
           <button class="sact" data-act="edit" data-i="${i}" data-tip="${s.sourceKind === 'reconcile' ? 'Open the pair in Reconcile, where its watch is changed' : 'Load this schedule into the form above'}">✎<span>Edit</span></button>
