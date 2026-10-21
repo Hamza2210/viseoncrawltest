@@ -1784,6 +1784,38 @@
   .ar-refs[open] > summary::before { transform: rotate(90deg); }
   .ar-refs > summary:hover { color: var(--fg); }
   .ar-ref-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 8px; }
+  /* A reference rule, and the picker that says where its master list is (refPickHtml): on a
+     source's Accuracy and integrity section and in the Rules tab's Reference checks. */
+  .refrule, .rx-ref-rule { display: flex; flex-direction: column; gap: 8px; margin: 0 0 10px; padding: 10px 12px;
+    border: 1px solid var(--border); border-radius: 11px; background: color-mix(in srgb, var(--card-2) 55%, transparent); }
+  .rx-ref-rule .rx-ref-row { margin-bottom: 0; }
+  .refrule-l { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .refrule-l .ar-field-x { margin-left: auto; padding: 4px 6px; }
+  .refrule .ar-fields { display: flex; flex-wrap: wrap; gap: 12px; margin: 0; }
+  .refrule .ar-fields .rule-edit-field { flex: 1 1 200px; }
+  #srcRefsBody .rule-edit-in.refrule-col { min-width: 260px; }
+  #srcRefsBody .rule-edit-in, .refp-in { height: 32px; padding: 0 10px; box-sizing: border-box; border: 1px solid var(--border);
+    border-radius: 9px; background: var(--card); color: var(--text); font: inherit; font-size: 13px; min-width: 150px; }
+  #srcRefsBody .rule-edit-in:focus, .refp-in:focus { outline: none; border-color: var(--accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
+  #srcRefsBody .refrule-grow, .refp .refp-grow { flex: 1 1 240px; min-width: 200px; }
+  .refp { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .refp-body { display: contents; }
+  .refp-seg { display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 2px; border-radius: 9px; border: 1px solid var(--border); background: var(--card); }
+  button.refp-m { height: 26px; padding: 0 10px; border: 0; border-radius: 7px; background: none; box-shadow: none; color: var(--muted);
+    font: inherit; font-size: 12.5px; font-weight: 600; white-space: nowrap; cursor: pointer; }
+  button.refp-m:hover { color: var(--text); }
+  button.refp-m[aria-checked="true"] { color: var(--text); background: color-mix(in srgb, var(--accent) 20%, transparent); }
+  button.refp-m:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  select.refp-in { appearance: none; -webkit-appearance: none; padding-right: 28px; cursor: pointer;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6'><path d='M1 1l4 4 4-4' fill='none' stroke='%2394a2be' stroke-width='1.6'/></svg>");
+    background-repeat: no-repeat; background-position: right 10px center; }
+  button.refp-up { height: 32px; padding: 0 12px; border: 1px solid color-mix(in srgb, var(--accent) 50%, var(--border)); border-radius: 9px;
+    background: transparent; box-shadow: none; color: var(--accent); font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; }
+  button.refp-up:hover:not(:disabled) { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+  button.refp-up:disabled { opacity: .6; cursor: default; }
+  .refp-st { font-size: 12px; color: var(--muted); }
+  .refp-st.err { color: var(--err); }
   .na-line { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
   .na-chip { font-size: 11px; color: var(--muted); background: var(--idle-bg); padding: 2px 8px;
     border-radius: 999px; cursor: help; }
@@ -4833,18 +4865,6 @@
         <div id="weightsGrid"></div>
         <button type="button" class="linkbtn" id="weightsReset" style="margin-top: 8px;">Reset to defaults</button>
       </details>
-      <details class="rules" style="margin-bottom: 14px;">
-        <summary class="hint">Accuracy &amp; integrity rules (optional)</summary>
-        <p class="hint" style="margin: 8px 0;">Added on top of the auto-detected rules, so nothing else is lost. Leave empty to skip.</p>
-        <div class="subhead2">Accuracy lookups</div>
-        <p class="hint" style="margin: 0 0 8px;">A column and its full set of allowed values - anything outside the list counts as inaccurate.</p>
-        <div id="accLookups"></div>
-        <button type="button" class="linkbtn" id="addLookup">+ Add lookup</button>
-        <div class="subhead2">Referential integrity</div>
-        <p class="hint" style="margin: 0 0 8px;">A column whose values must exist in a reference file - upload the reference and it's stored with this run.</p>
-        <div id="intRules"></div>
-        <button type="button" class="linkbtn" id="addIntRule">+ Add rule</button>
-      </details>
       <button id="go" disabled>Upload &amp; assess</button>
         </div>
       </div>
@@ -6641,51 +6661,6 @@ function collectWeights() {
   return changed ? w : null;       // send only when the user actually changed something
 }
 
-// accuracy-lookup + integrity-rule controls (merged onto the inferred ruleset)
-function addLookupRow(col = '', vals = '') {
-  const row = document.createElement('div');
-  row.className = 'rule-row lookup-row';
-  row.innerHTML =
-    `<input type="text" class="acc-col" placeholder="column" value="${col}">` +
-    `<input type="text" class="acc-vals" placeholder="allowed values, comma-separated" value="${vals}">` +
-    `<button type="button" class="rmv" title="remove">×</button>`;
-  row.querySelector('.rmv').addEventListener('click', () => row.remove());
-  $('#accLookups').appendChild(row);
-}
-function addIntRow() {
-  const row = document.createElement('div');
-  row.className = 'rule-row int-row';
-  row.innerHTML =
-    `<input type="text" class="int-col" placeholder="FK column">` +
-    `<input type="file" class="int-ref-file" accept=".parquet,.pq,.json,.ndjson,.jsonl,.qvd,.csv,.tsv">` +
-    `<input type="text" class="int-refcol" placeholder="reference column">` +
-    `<button type="button" class="rmv" title="remove">×</button>`;
-  row.querySelector('.rmv').addEventListener('click', () => row.remove());
-  $('#intRules').appendChild(row);
-}
-$('#addLookup').addEventListener('click', () => addLookupRow());
-$('#addIntRule').addEventListener('click', () => addIntRow());
-
-function collectAccuracyLookups() {
-  const lookups = {};
-  document.querySelectorAll('#accLookups .lookup-row').forEach(r => {
-    const col = r.querySelector('.acc-col').value.trim();
-    const vals = r.querySelector('.acc-vals').value.split(',').map(v => v.trim()).filter(Boolean);
-    if (col && vals.length) lookups[col] = vals;
-  });
-  return lookups;
-}
-function collectIntegritySpecs() {                 // raw specs incl. the reference File objects
-  const specs = [];
-  document.querySelectorAll('#intRules .int-row').forEach(r => {
-    const col = r.querySelector('.int-col').value.trim();
-    const file = r.querySelector('.int-ref-file').files[0];
-    const refcol = r.querySelector('.int-refcol').value.trim();
-    if (col && file && refcol) specs.push({ col, file, refcol });
-  });
-  return specs;
-}
-
 async function postJSON(url, headers, body) {
   const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', ...headers }, body: JSON.stringify(body), credentials: PORTAL ? 'include' : 'same-origin' });
   const text = await res.text();
@@ -7293,7 +7268,7 @@ function renderAssessment(r, bodyEl, opts) {
   // Referential integrity gets a friendlier, fuller explanation; every other
   // dimension keeps the engine's original not_assessed_reason verbatim.
   const INTEGRITY_MSG = `Referential integrity checks that a column's values all exist in a separate ` +
-    `"master" file, so it only runs when you add a reference under "Accuracy & integrity rules" above. ` +
+    `"master" list, so it only runs when you add one under "Accuracy & referential integrity" above: a table, or a file you upload or keep in S3. ` +
     `It's optional - most single-file quality checks don't need it, and leaving it off doesn't lower your score.`;
   // In the App data tab there's no place to configure lookups / reference files,
   // so accuracy and integrity get wording that doesn't point at absent controls.
@@ -7320,8 +7295,8 @@ function renderAssessment(r, bodyEl, opts) {
     precision: 'Precision measures whether numbers are recorded to the expected level of decimal detail.',
   };
   const ENABLE = {
-    accuracy: 'add an authoritative lookup or reference table under “Accuracy & integrity rules”.',
-    integrity: 'add a master / reference table for the key column under “Accuracy & integrity rules”.',
+    accuracy: 'add a list of correct values, or a system of record (a table, or a file you upload or keep in S3), under “Accuracy & referential integrity”.',
+    integrity: 'add a master list for the key column (a table, or a file you upload or keep in S3) under “Accuracy & referential integrity”.',
     precision: 'declare a required number of decimal places on a numeric column (clean decimal columns now get one inferred automatically).',
     consistency: 'add a format or allowed-values rule on a text column, or a cross-field consistency rule.',
     timeliness: 'tick “No future dates”, or set a recency window, on a date/time column.',
@@ -7600,8 +7575,17 @@ function _rxCanon(spec) {
   return JSON.stringify(o);
 }
 function _rxRefsCanon(s) {
-  const lk = (s.accuracyLookups || []).filter(l => l.col || (l.values || []).length);
-  return JSON.stringify([s.integrityRules || [], s.accuracy || {}, lk]);
+  const lk = (s.accuracyLookups || []).filter(l => l.col || (l.values || []).length || (l.file && l.file.reference_uri));
+  // The picker's own keys (_mode and the like) and an empty connection are not rules.
+  return JSON.stringify([s.integrityRules || [], s.accuracy || {}, lk],
+    (k, v) => (String(k).startsWith('_') || v === null ? undefined : v));
+}
+/** Is this dataset from a database, where a reference can also be a table beside it? Unknown
+ *  datasets keep the table: that is what this section always offered. */
+function _rxDbSource(prefix) {
+  const p = String(prefix || '').replace(/\/+$/, '') + '/';
+  const d = (dashDatasetsAll || []).find(x => x.key && p.indexOf('/' + x.key + '/') >= 0);
+  return d ? _WAREHOUSE_SRC.has(String(d.sourceFormat || '').toLowerCase()) : true;
 }
 function _rxStateCanon(s) {
   const cols = {};
@@ -7806,34 +7790,46 @@ function rxEditorHtml(rx, col) {
   return props + `<div class="rx-checks"><div class="rx-hd">Rules</div>${flags}${kinds.map(k => rxCheckRow(k, spec)).join('')}${add}</div>` + foot;
 }
 function rxRefsHtml(rx) {
-  const s = rx.state, cols = Object.keys(s.columns), acc = s.accuracy || {};
+  const s = rx.state, cols = Object.keys(s.columns), acc = s.accuracy = s.accuracy || {}, db = rx.db !== false;
   const n = (s.integrityRules || []).length + (s.accuracyLookups || []).length + (acc.reference_uri ? 1 : 0);
   const colSel = (sel, attrs) => `<select class="rx-in rx-sel" ${attrs}><option value="">Choose a column</option>` +
     cols.map(c => `<option value="${esc(c)}"${c === sel ? ' selected' : ''}>${esc(c)}</option>`).join('') + `</select>`;
-  const ir = (s.integrityRules || []).map((r, i) => `<div class="rx-ref-row">` +
-    `<input class="rx-in" data-iri="${i}" data-irf="columns" value="${esc((r.columns || []).join(', '))}" placeholder="column" aria-label="Column whose values must exist elsewhere">` +
-    `<span class="rx-to">must exist in</span>` +
-    `<input class="rx-in rx-grow" data-iri="${i}" data-irf="reference_uri" value="${esc(r.reference_uri || '')}" placeholder="schema.table" aria-label="Reference table">` +
-    `<span class="rx-to">as</span>` +
-    `<input class="rx-in" data-iri="${i}" data-irf="reference_columns" value="${esc((r.reference_columns || []).join(', '))}" placeholder="its column" aria-label="Column in the reference table">` +
-    `<button type="button" class="rx-x lngb" data-rx="irdrop" data-i="${i}" aria-label="Remove this check">✕</button></div>`).join('');
-  const lk = (s.accuracyLookups || []).map((l, i) => `<div class="rx-ref-row">` +
-    colSel(l.col || '', `data-ali="${i}" data-alf="col" aria-label="Column"`) + `<span class="rx-to">is one of</span>` +
-    _rxTags(l.values || [], `data-ali="${i}"`, 'Add a correct value') +
-    `<button type="button" class="rx-x lngb" data-rx="aldrop" data-i="${i}" aria-label="Remove this list">✕</button></div>`).join('');
+  const ir = (s.integrityRules || []).map((r, i) => `<div class="rx-ref-rule">` +
+    `<div class="rx-ref-row"><input class="rx-in" data-iri="${i}" data-irf="columns" value="${esc((r.columns || []).join(', '))}" placeholder="column" aria-label="Column whose values must exist elsewhere">` +
+      `<span class="rx-to">must exist in</span>` +
+      `<button type="button" class="rx-x lngb" data-rx="irdrop" data-i="${i}" aria-label="Remove this check">✕</button></div>` +
+    refPickHtml(r, `ir:${i}`, db, 'Where the master is') +
+    `<div class="rx-ref-row"><span class="rx-to">as its column</span><input class="rx-in" data-iri="${i}" data-irf="reference_columns" ` +
+      `value="${esc((r.reference_columns || []).join(', '))}" placeholder="the same name, if left empty" aria-label="Column in the master" list="rxRefCols-ir${i}">` +
+      refColsList(`rxRefCols-ir${i}`, r) + `</div></div>`).join('');
+  const lk = (s.accuracyLookups || []).map((l, i) => {
+    const from = l.from === 'file' ? 'file' : 'typed', f = l.file = l.file || {};
+    return `<div class="rx-ref-rule"><div class="rx-ref-row">` +
+      colSel(l.col || '', `data-ali="${i}" data-alf="col" aria-label="Column"`) + `<span class="rx-to">is one of</span>` +
+      `<span class="refp-seg" role="radiogroup" aria-label="Where the list is">` + [['typed', 'Values typed here'], ['file', 'A column of a file']].map(([m, lab]) =>
+        `<button type="button" role="radio" class="refp-m lngb" data-rx="alfrom" data-i="${i}" data-from="${m}" aria-checked="${from === m}" tabindex="${from === m ? 0 : -1}">${lab}</button>`).join('') + `</span>` +
+      `<button type="button" class="rx-x lngb" data-rx="aldrop" data-i="${i}" aria-label="Remove this list">✕</button></div>` +
+      (from === 'file'
+        ? refPickHtml(f, `lk:${i}`, false, 'Where the file is') +
+          `<div class="rx-ref-row"><span class="rx-to">its column</span><input class="rx-in" data-ali="${i}" data-alf="reference_column" value="${esc(f.reference_column || '')}" ` +
+            `placeholder="the column that holds the correct values" aria-label="The column of the file that holds the correct values" list="rxRefCols-lk${i}">${refColsList(`rxRefCols-lk${i}`, f)}</div>`
+        : `<div class="rx-ref-row">${_rxTags(l.values || [], `data-ali="${i}"`, 'Add a correct value')}</div>`) + `</div>`;
+  }).join('');
   const field = (f, label, ph) => `<label class="rx-prop"><span class="rx-pl">${label}</span><input class="rx-in rx-grow" data-accf="${f}" ` +
-    `value="${esc(f === 'reference_uri' ? (acc[f] || '') : (acc[f] || []).join(', '))}" placeholder="${esc(ph)}"></label>`;
+    `value="${esc((acc[f] || []).join(', '))}" placeholder="${esc(ph)}" list="rxRefCols-sor"></label>`;
   const none = t => `<p class="rx-none">${t}</p>`;
   return `<details class="rx-refs"${rx.ui.refs ? ' open' : ''}><summary><span class="rx-chev" aria-hidden="true"></span>` +
       `<span class="rx-refs-t">Reference checks</span><span class="rx-refs-n${n ? ' on' : ''}">${n ? `${n} set up` : 'Optional'}</span>` +
       `<span class="rx-refs-d">Check values against other data, for the accuracy and referential integrity dimensions</span></summary>` +
     `<div class="rx-refs-body">` +
-      `<section class="rx-ref"><h4>Must exist in another table</h4><p class="hint">A column's values must be found in a reference (master) table in the same warehouse.</p>` +
+      `<section class="rx-ref"><h4>Must exist in a master list</h4><p class="hint">A column's values must be found in a master list: ` +
+        `${db ? 'a table in the same database, ' : ''}a file in your reference library, or a file in your own S3.</p>` +
         `${ir || none('None yet.')}<button type="button" class="rx-add lngb" data-rx="iradd">＋ Add a check</button></section>` +
-      `<section class="rx-ref"><h4>Lists of correct values</h4><p class="hint">A column and its full set of correct values. Anything outside the list counts as inaccurate.</p>` +
+      `<section class="rx-ref"><h4>Lists of correct values</h4><p class="hint">A column and its full set of correct values, typed here or taken from a column of a file. Anything outside the list counts as inaccurate.</p>` +
         `${lk || none('None yet.')}<button type="button" class="rx-add lngb" data-rx="aladd">＋ Add a list</button></section>` +
-      `<section class="rx-ref"><h4>A system of record</h4><p class="hint">Join each row to a trusted table on its key, and check that it is there and that the compared columns agree.</p>` +
-        `<div class="rx-ref-row rx-sor">${field('reference_uri', 'Reference table', 'schema.table')}${field('join_on', 'Join on', 'key column')}${field('compare_columns', 'Compare', 'columns')}</div></section>` +
+      `<section class="rx-ref"><h4>A system of record</h4><p class="hint">Join each row to a trusted ${db ? 'table or ' : ''}file on its key, and check that it is there and that the compared columns agree.</p>` +
+        `<div class="rx-ref-rule">${refPickHtml(acc, 'sor', db, 'Where the system of record is')}` +
+        `<div class="rx-ref-row rx-sor">${field('join_on', 'Join on', 'key column')}${field('compare_columns', 'Compare', 'columns')}</div>${refColsList('rxRefCols-sor', acc)}</div></section>` +
     `</div></details>`;
 }
 function rxTopHtml(rx) {
@@ -7883,6 +7879,7 @@ function rxPaint(rx) {
     rxRefsHtml(rx) + `<div class="rx-bar" role="region" aria-label="Changes not saved yet" hidden></div></div>`;
   rxFilter(rx);
   rxBar(rx);
+  refEnsureLoaded(rx.root, sel => rxRefs(rx, sel));
 }
 function _rxColEl(rx, col) { return [...rx.root.querySelectorAll('.rx-col')].find(e => e.dataset.col === col) || null; }
 /** Redraw one column, keeping focus on the control that had it (or on `want`). */
@@ -8053,7 +8050,16 @@ function rxOnClick(rx, e) {
       rxRefs(rx, '[data-irf="columns"]'); rxTouched(rx);
       break;
     case 'irdrop': rx.state.integrityRules.splice(+t.dataset.i, 1); rxRefs(rx); rxTouched(rx); break;
-    case 'aladd': rx.state.accuracyLookups.push({ col: '', values: [] }); rxRefs(rx, 'select[data-alf="col"]'); rxTouched(rx); break;
+    case 'aladd': rx.state.accuracyLookups.push({ col: '', values: [], from: 'typed' }); rxRefs(rx, 'select[data-alf="col"]'); rxTouched(rx); break;
+    case 'alfrom': {
+      const l = rx.state.accuracyLookups[+t.dataset.i];
+      if (l && (l.from === 'file' ? 'file' : 'typed') !== t.dataset.from) {
+        l.from = t.dataset.from;
+        rxRefs(rx, `[data-rx="alfrom"][data-i="${t.dataset.i}"][data-from="${t.dataset.from}"]`);
+        rxTouched(rx);
+      }
+      break;
+    }
     case 'aldrop': rx.state.accuracyLookups.splice(+t.dataset.i, 1); rxRefs(rx); rxTouched(rx); break;
     case 'save': rxSave(rx); break;
     case 'discard': rxDiscard(rx); break;
@@ -8069,6 +8075,7 @@ function rxRefs(rx, want) {
   const nu = tmp.firstElementChild;
   d.replaceWith(nu);
   if (want) { const all = nu.querySelectorAll(want); if (all.length) all[all.length - 1].focus({ preventScroll: true }); }
+  refEnsureLoaded(rx.root, sel => rxRefs(rx, sel));
 }
 function rxOnInput(rx, e) {
   const t = e.target;
@@ -8085,6 +8092,8 @@ function rxOnInput(rx, e) {
     r[t.dataset.irf] = t.dataset.irf === 'reference_uri' ? t.value.trim() : _splitList(t.value);
   } else if (t.dataset.alf === 'col') {
     const l = rx.state.accuracyLookups[+t.dataset.ali]; if (l) l.col = t.value.trim();
+  } else if (t.dataset.alf === 'reference_column') {
+    const l = rx.state.accuracyLookups[+t.dataset.ali]; if (l) (l.file = l.file || {}).reference_column = t.value.trim();
   } else if (t.dataset.accf) {
     rx.state.accuracy = rx.state.accuracy || {};
     rx.state.accuracy[t.dataset.accf] = t.dataset.accf === 'reference_uri' ? t.value.trim() : _splitList(t.value);
@@ -8141,16 +8150,26 @@ async function rxSave(rx) {
     for (const [k, v] of Object.entries(spec || {})) if (_rxSet(v)) clean[k] = v;
     if (Object.keys(clean).length) columns[c] = clean;
   }
-  // Keep only well-formed integrity rules (a child column + a reference table).
-  const integrity = (s.integrityRules || [])
-    .filter(r => (r.columns || []).length && (r.reference_uri || '').trim())
-    .map((r, i) => ({ id: r.id || `fk_${i + 1}`, columns: r.columns, reference_uri: r.reference_uri.trim(),
+  // Keep only well-formed integrity rules (a child column + a reference, a table or a file).
+  const integrity = (s.integrityRules || []).map((r, i) => ({ r, i, ref: refSaved(r) }))
+    .filter(({ r, ref }) => (r.columns || []).length && ref.reference_uri)
+    .map(({ r, i, ref }) => ({ id: r.id || `fk_${i + 1}`, columns: r.columns, ...ref,
       reference_columns: (r.reference_columns && r.reference_columns.length) ? r.reference_columns : r.columns,
       severity: r.severity || 'major', weight: r.weight || 1 }));
-  const acc = s.accuracy || {}, lookups = {};
-  (s.accuracyLookups || []).forEach(l => { if (l.col && (l.values || []).length) lookups[l.col] = l.values; });
-  const accuracy = { ...acc, reference_uri: (acc.reference_uri || '').trim(),
-    join_on: acc.join_on || [], compare_columns: acc.compare_columns || [], lookups };
+  const acc = s.accuracy || {}, lookups = {}, files = [];
+  (s.accuracyLookups || []).forEach(l => {
+    if (!l.col) return;
+    if (l.from === 'file') {
+      const f = l.file || {}, ref = refSaved(f);
+      if (ref.reference_uri && (f.reference_column || '').trim()) files.push({ column: l.col, ...ref, reference_column: f.reference_column.trim() });
+    } else if ((l.values || []).length) lookups[l.col] = l.values;
+  });
+  // Sent whole, empty values included, because the saved accuracy is merged onto the pin's: an
+  // empty one is how a connection or a file list stops applying (the API leaves empties out).
+  const sor = refSaved(acc);
+  const accuracy = { ...Object.fromEntries(Object.entries(acc).filter(([k]) => !k.startsWith('_'))),
+    reference_uri: sor.reference_uri, reference_connection: sor.reference_connection || null,
+    join_on: acc.join_on || [], compare_columns: acc.compare_columns || [], lookups, lookup_files: files };
   // The key in the dataset's own column casing (FL_DATE -> fl_date), so a case mismatch does not
   // quietly leave the key matching no column.
   const colCase = {};
@@ -8240,7 +8259,9 @@ async function editActiveRules(prefix, outEl) {
     accuracy: _rxClone(data.accuracy || {}),
     // Lookups edited as ordered rows, folded back to an object on save.
     accuracyLookups: Object.entries((data.accuracy || {}).lookups || {})
-      .map(([col, vals]) => ({ col, values: Array.isArray(vals) ? vals.map(String) : [] })),
+      .map(([col, vals]) => ({ col, from: 'typed', values: Array.isArray(vals) ? vals.map(String) : [] }))
+      .concat(((data.accuracy || {}).lookup_files || []).map(f => ({ col: f.column || '', from: 'file', values: [],
+        file: { reference_uri: f.reference_uri || '', reference_connection: f.reference_connection || null, reference_column: f.reference_column || '' } }))),
   };
   const loaded = _rxStateCanon(state);
   // Where the rules came from (rxFrom): sources is null for a pin from before that was recorded, and
@@ -8249,7 +8270,7 @@ async function editActiveRules(prefix, outEl) {
   // `pinned` stays as loaded, while `base` moves on a save: a rule changed and saved is queued, not
   // pinned, and is the person's from then on.
   let rx = { prefix, root: outEl, state, base: _rxClone(state), pinned: _rxClone(state), loaded, ai,
-             ui: { open: [], q: '', filter: 'all', refs: false } };
+             db: _rxDbSource(prefix), ui: { open: [], q: '', filter: 'all', refs: false } };
   // Changes not saved last time are put back, unless the rules moved underneath them meanwhile.
   const draft = rxDrafts[prefix];
   if (draft && rxChanges(draft).n) {
@@ -8273,7 +8294,24 @@ async function editActiveRules(prefix, outEl) {
   outEl.addEventListener('change', e => { if (outEl._rx && e.target.tagName === 'SELECT') rxOnInput(outEl._rx, e); });
   outEl.addEventListener('keydown', e => { if (outEl._rx) rxTagKey(outEl._rx, e); });
   outEl.addEventListener('focusout', e => { if (outEl._rx && e.target.dataset && e.target.dataset.rx === 'tagin') rxTagKey(outEl._rx, e); });
-  outEl.addEventListener('toggle', e => { if (outEl._rx && e.target.classList && e.target.classList.contains('rx-refs')) outEl._rx.ui.refs = e.target.open; }, true);
+  outEl.addEventListener('toggle', e => {
+    if (!outEl._rx || !e.target.classList || !e.target.classList.contains('rx-refs')) return;
+    outEl._rx.ui.refs = e.target.open;
+    if (e.target.open) refEnsureLoaded(outEl, sel => { if (outEl._rx) rxRefs(outEl._rx, sel); });
+  }, true);
+  outEl.addEventListener('keydown', e => {
+    const b = e.target.closest && e.target.closest('[data-rx="alfrom"]');
+    if (!b || !['ArrowLeft', 'ArrowRight'].includes(e.key)) return;
+    e.preventDefault();
+    const other = [...b.parentElement.querySelectorAll('[data-rx="alfrom"]')].find(x => x !== b);
+    if (other) other.click();
+  });
+  refPickWire(outEl, slot => {
+    const st = outEl._rx && outEl._rx.state;
+    if (!st) return null;
+    return slot === 'sor' ? (st.accuracy = st.accuracy || {}) : slot.startsWith('ir:') ? st.integrityRules[+slot.slice(3)]
+      : slot.startsWith('lk:') ? ((st.accuracyLookups[+slot.slice(3)] || {}).file || null) : null;
+  }, sel => { if (outEl._rx) rxRefs(outEl._rx, sel); }, () => { if (outEl._rx) rxTouched(outEl._rx); });
 }
 
 // --------------------------------------------------------------------------- //
@@ -8557,14 +8595,10 @@ goBtn.addEventListener('click', async () => {
   const face = srcFace('file', 'run');
   let trig;
   try {
-    // integrity reference files (if any) are uploaded into the same run folder
-    const intSpecs = collectIntegritySpecs();
-    const refFilesByName = {};
-    intSpecs.forEach(s => { refFilesByName[s.file.name] = s.file; });
-    const refNames = Object.keys(refFilesByName);
-
-    log('POST /data-quality/submissions', { filename: file.name, reference_filenames: refNames });
-    const subBody = { filename: file.name, reference_filenames: refNames };
+    // Master files for integrity and accuracy are chosen in the shared section (refPickHtml) and
+    // are already in the reference library, so only the dataset itself is sent here.
+    log('POST /data-quality/submissions', { filename: file.name });
+    const subBody = { filename: file.name };
     if (APP_ID) subBody.app_id = APP_ID;   // nest this run under the app (History scoping)
     const sub = await postJSON(`${API_BASE}/data-quality/submissions`, HEADERS, subBody);
     log('submission response', sub);
@@ -8574,12 +8608,6 @@ goBtn.addEventListener('click', async () => {
     log('POST file → ' + sub.upload.url);
     const code = await uploadToS3(sub.upload.url, sub.upload.fields, file, p => dqRunBar(face, p));
     log(`Storage accepted the upload (HTTP ${code})`);
-    const refUriByName = {};
-    for (const ref of (sub.references || [])) {
-      await uploadToS3(ref.upload.url, ref.upload.fields, refFilesByName[ref.filename], () => {});
-      refUriByName[ref.filename] = ref.uri;
-      log(`uploaded reference ${ref.filename}`);
-    }
     dqRunStep(face, 1, 'running');
     dqRunBar(face, null);
     dqRunSay(face, `Assessing ${file.name}`, 'Starting the assessment…');
@@ -8595,15 +8623,8 @@ goBtn.addEventListener('click', async () => {
     }
     const weights = collectWeights();
     if (weights) trigBody.dimension_weights = weights;                          // else engine defaults
-    const lookups = collectAccuracyLookups();
-    const integrity_rules = intSpecs
-      .map((s, i) => ({ id: `fk_${s.col}_${i}`, columns: [s.col],
-                        reference_uri: refUriByName[s.file.name], reference_columns: [s.refcol] }))
-      .filter(rule => rule.reference_uri);
-    const augment = {};
-    if (Object.keys(lookups).length) augment.accuracy = { lookups };
-    if (integrity_rules.length) augment.integrity_rules = integrity_rules;
-    if (Object.keys(augment).length) trigBody.ruleset_augment = augment;
+    const augment = collectSourceRefsAugment();
+    if (augment) trigBody.ruleset_augment = augment;
     log('POST /data-quality', trigBody);
     trig = await postJSON(`${API_BASE}/data-quality`, HEADERS, trigBody);
     log('trigger response', trig);
@@ -17763,11 +17784,226 @@ const SOURCE_LABEL = { agentfile: 'Qlik On Premise Files', athena: 'Qlik Open La
   'source-watch': 'Source monitoring' };
 
 // Optional Accuracy & Integrity config for a source's FIRST run (sent as a ruleset augment).
-// Lookups apply to every source; reference-table integrity/accuracy apply to warehouses.
+// Every source can check against a master FILE (refPickHtml); only a database also offers a
+// table in the same database.
 const srcRefsState = { lookups: [], integrity: [], accuracy: {}, warehouse: false };
 // Athena counts as a warehouse here: reference-table integrity and accuracy checks work,
 // because a join to another table in the same catalog is just more SQL.
 const _WAREHOUSE_SRC = new Set(['athena', 'redshift', 'snowflake', 'databricks', 'oracle', 'postgres', 'mysql', 'sqlserver', 'progress', 'synapse', 'fabric']);
+
+// ---- Reference (master) files ---------------------------------------------------------------
+// A referential integrity rule, a system of record or a list of correct values can check against a
+// master FILE, not only a table in the same database: one uploaded to this app's or workspace's
+// reference library (kept until it is deleted, and usable by any rule), or one in the
+// organisation's own S3, read with one of its saved S3 connections. The worker decides what a run
+// may read (dq/references.py) and the API says so when a rule is set. This is the one picker for
+// all of it: on a source's Accuracy and integrity section, and in the Rules tab's Reference checks.
+// A reference is an object with reference_uri and reference_connection, which is what is saved;
+// keys starting with _ are the picker's own and are never sent.
+const REF_ACCEPT = '.csv,.tsv,.parquet,.pq,.json,.ndjson,.jsonl,.xlsx,.xlsm,.xls,.qvd';
+const refLib = { files: null, loading: null, s3: null, s3loading: null, app: null };
+function _refSameApp() {
+  // A library belongs to one app or workspace: switching (the portal's org switch) starts again.
+  if (refLib.app !== APP_ID) Object.assign(refLib, { files: null, loading: null, s3: null, s3loading: null, app: APP_ID });
+}
+function refLibLoad(force) {
+  _refSameApp();
+  if (!APP_ID) { refLib.files = []; return Promise.resolve([]); }
+  if (force || (refLib.files === null && !refLib.loading)) {
+    refLib.loading = postJSON(`${API_BASE}/data-quality/reference-files`, HEADERS, { action: 'list', app_id: APP_ID })
+      .then(r => (refLib.files = (r && r.files) || []))
+      .catch(() => (refLib.files = refLib.files || []))
+      .finally(() => { refLib.loading = null; });
+  }
+  return refLib.loading || Promise.resolve(refLib.files);
+}
+function refS3Load() {
+  _refSameApp();
+  if (!APP_ID) { refLib.s3 = []; return Promise.resolve([]); }
+  if (refLib.s3 === null && !refLib.s3loading) {
+    refLib.s3loading = postJSON(`${API_BASE}/data-quality/credential-profiles`, HEADERS, { app_id: APP_ID, source: 's3', action: 'list' })
+      .then(r => (refLib.s3 = (r && r.profiles) || []))
+      .catch(() => (refLib.s3 = []))
+      .finally(() => { refLib.s3loading = null; });
+  }
+  return refLib.s3loading || Promise.resolve(refLib.s3);
+}
+const refIsFile = u => { const r = String(u || '').trim().toLowerCase(); return !!r && !r.startsWith('table:') &&
+  (r.includes('://') || r.includes('/') || r.includes('\\') || /\.(csv|tsv|txt|parquet|pq|json|ndjson|jsonl|xlsx|xlsm|xls|qvd)$/.test(r)); };
+const refName = u => { const s = String(u || '').trim(); return refIsFile(s) ? (s.replace(/[\\/]+$/, '').split(/[\\/]/).pop() || s) : s; };
+/** Where a reference is: 'table' (schema.table in the same database), 'library' or 's3'. */
+function refMode(ref, table) {
+  if (ref._mode) return ref._mode;
+  const u = String(ref.reference_uri || '').trim();
+  if (!u) return table ? 'table' : 'library';
+  if (/^s3:\/\//i.test(u)) return !ref.reference_connection && /\/_references\//.test(u) ? 'library' : 's3';
+  return refIsFile(u) || !table ? 'library' : 'table';
+}
+function refSetMode(ref, mode) {
+  // Each place keeps what was chosen there, so trying another and coming back loses nothing.
+  const cur = ref._mode || refMode(ref, true);
+  const mem = ref._mem = ref._mem || {};
+  mem[cur] = { uri: ref.reference_uri || '', conn: ref.reference_connection || null };
+  ref._mode = mode;
+  const back = mem[mode] || { uri: '', conn: null };
+  ref.reference_uri = back.uri;
+  ref.reference_connection = mode === 's3' ? back.conn : null;
+}
+/** The reference as it is saved: where it is, and the S3 connection that reads it if any. */
+function refSaved(ref) {
+  const u = String(ref.reference_uri || '').trim(), out = { reference_uri: u };
+  if (refMode(ref, true) === 's3' && ref.reference_connection) out.reference_connection = ref.reference_connection;
+  return out;
+}
+/** The columns of the chosen library file, where its header could be read when it was uploaded. */
+function refColumns(ref) {
+  const f = (refLib.files || []).find(x => x.uri === ref.reference_uri);
+  return (f && f.columns) || [];
+}
+function refColsList(id, ref) {
+  const cols = refColumns(ref);
+  return cols.length ? `<datalist id="${esc(id)}">${cols.map(c => `<option value="${esc(c)}"></option>`).join('')}</datalist>` : '';
+}
+async function _refHeader(file) {
+  // The header row of a CSV or TSV, read in the browser so a rule can offer the file's columns.
+  if (!/\.(csv|tsv)$/i.test(file.name)) return null;
+  const line = (await file.slice(0, 65536).text()).replace(/^﻿/, '').split(/\r?\n/)[0] || '';
+  const sep = /\.tsv$/i.test(file.name) ? '\t' : ',', out = [];
+  let cur = '', quoted = false;
+  for (const ch of line) {
+    if (ch === '"') quoted = !quoted;
+    else if (ch === sep && !quoted) { out.push(cur); cur = ''; }
+    else cur += ch;
+  }
+  out.push(cur);
+  return out.map(s => s.trim()).filter(Boolean).slice(0, 500);
+}
+async function refUpload(file, onProgress) {
+  if (!APP_ID) throw new Error('A reference file belongs to a Qlik app or workspace, and none is open here.');
+  const up = await postJSON(`${API_BASE}/data-quality/reference-files`, HEADERS,
+    { action: 'upload', app_id: APP_ID, filename: file.name, content_type: file.type || undefined });
+  await uploadToS3(up.upload.url, up.upload.fields, file, onProgress || (() => {}));
+  const columns = await _refHeader(file).catch(() => null);
+  const r = await postJSON(`${API_BASE}/data-quality/reference-files`, HEADERS,
+    { action: 'save', app_id: APP_ID, reference_id: up.referenceId, columns: columns || undefined });
+  refLib.files = [r.file].concat((refLib.files || []).filter(f => f.id !== r.file.id));
+  return r.file;
+}
+/** The picker for one reference. `slot` names it to its host; `table` offers a table in the same
+ *  database, which only a database source has. */
+function refPickHtml(ref, slot, table, label) {
+  // The section is shared between sources, so a table chosen on a database card can meet a file
+  // source, which has no tables to name: it falls back to the library.
+  if (refMode(ref, table) === 'table' && !table) refSetMode(ref, 'library');
+  const mode = ref._mode = refMode(ref, table);
+  const modes = (table ? [['table', 'A table here']] : []).concat([['library', 'Reference library'], ['s3', 'Your S3']]);
+  const seg = `<span class="refp-seg" role="radiogroup" aria-label="${esc(label || 'Where the master data is')}">` + modes.map(([m, l]) =>
+    `<button type="button" role="radio" class="refp-m lngb" aria-checked="${m === mode}" tabindex="${m === mode ? 0 : -1}" data-refmode="${m}">${l}</button>`).join('') + `</span>`;
+  const cur = ref.reference_uri || '';
+  let body;
+  if (mode === 'table') {
+    body = `<input class="refp-in" data-reff="table" value="${esc(cur)}" placeholder="schema.table" aria-label="The table, as schema.table" spellcheck="false">`;
+  } else if (mode === 'library') {
+    const files = refLib.files;
+    if (files === null) body = `<span class="refp-st">Loading the reference library…</span>`;
+    else {
+      const stray = cur && !files.some(f => f.uri === cur) ? `<option value="${esc(cur)}" selected>${esc(refName(cur))} (not in the library)</option>` : '';
+      body = `<select class="refp-in refp-sel" data-reff="lib" aria-label="The reference file"><option value="">${files.length ? 'Choose a file' : 'No files yet: upload one'}</option>${stray}` +
+          files.map(f => `<option value="${esc(f.uri)}"${f.uri === cur ? ' selected' : ''}>${esc(f.name)}</option>`).join('') + `</select>` +
+        `<button type="button" class="refp-up lngb" data-refact="upload">Upload a file</button>` +
+        `<input type="file" class="refp-file" accept="${REF_ACCEPT}" hidden tabindex="-1" aria-hidden="true">` +
+        `<span class="refp-st" role="status"></span>`;
+    }
+  } else {
+    const profs = refLib.s3;
+    const usable = (profs || []).filter(p => p.hasSecrets || (p.config && p.config.role_arn));
+    body = `<input class="refp-in refp-grow" data-reff="s3" value="${esc(cur)}" placeholder="s3://bucket/folder/master.csv" aria-label="The file in S3" spellcheck="false">` +
+      (profs === null ? `<span class="refp-st">Loading your S3 connections…</span>`
+        : usable.length ? `<select class="refp-in refp-sel" data-reff="conn" aria-label="The saved S3 connection that reads it"><option value="">Read with…</option>` +
+            usable.map(p => `<option value="${esc(p.id)}"${p.id === ref.reference_connection ? ' selected' : ''}>${esc(p.name || p.id)}</option>`).join('') + `</select>`
+        : `<span class="refp-st">Save an S3 connection, with its keys or a role, on the Amazon S3 source first: that is what reads the file.</span>`);
+  }
+  return `<div class="refp" data-refslot="${esc(slot)}">${seg}<span class="refp-body">${body}</span></div>`;
+}
+/** Wire every picker inside `root`, once. `resolve(slot)` gives the reference object a slot edits,
+ *  `redraw(focusSel)` repaints the host, and `touched()` says something changed. */
+function refPickWire(root, resolve, redraw, touched) {
+  if (root._refWired) return;
+  root._refWired = true;
+  const refOf = el => { const p = el.closest('.refp'); return p ? resolve(p.dataset.refslot) : null; };
+  root.addEventListener('click', e => {
+    const m = e.target.closest('[data-refmode]');
+    if (m) {
+      const ref = refOf(m), slot = m.closest('.refp').dataset.refslot;
+      if (!ref || ref._mode === m.dataset.refmode) return;
+      refSetMode(ref, m.dataset.refmode);
+      touched();
+      redraw(`.refp[data-refslot="${slot}"] [data-refmode="${m.dataset.refmode}"]`);
+      refEnsureLoaded(root, redraw);
+      return;
+    }
+    const up = e.target.closest('[data-refact="upload"]');
+    if (up) { const fi = up.parentElement.querySelector('.refp-file'); if (fi) fi.click(); }
+  });
+  root.addEventListener('keydown', e => {
+    // The places are radios: the arrow keys move between them, as in any radio group.
+    const m = e.target.closest && e.target.closest('[data-refmode]');
+    if (!m || !['ArrowLeft', 'ArrowRight'].includes(e.key)) return;
+    e.preventDefault();
+    const all = [...m.parentElement.querySelectorAll('[data-refmode]')], i = all.indexOf(m);
+    all[(i + (e.key === 'ArrowRight' ? 1 : all.length - 1)) % all.length].click();
+  });
+  const onEdit = e => {
+    const t = e.target, f = t.dataset && t.dataset.reff;
+    if (!f) return;
+    const ref = refOf(t); if (!ref) return;
+    if (f === 'conn') ref.reference_connection = t.value || null;
+    else ref.reference_uri = f === 'lib' ? t.value : t.value.trim();
+    touched();
+    if (f === 'lib' && e.type === 'change') redraw(`.refp[data-refslot="${t.closest('.refp').dataset.refslot}"] [data-reff="lib"]`);
+  };
+  root.addEventListener('input', onEdit);
+  root.addEventListener('change', async e => {
+    const t = e.target;
+    if (t.classList && t.classList.contains('refp-file')) {
+      const file = t.files && t.files[0];
+      const ref = refOf(t), p = t.closest('.refp'), slot = p && p.dataset.refslot;
+      if (!file || !ref) return;
+      const st = p.querySelector('.refp-st'), btn = p.querySelector('[data-refact="upload"]');
+      if (btn) btn.disabled = true;
+      if (st) { st.classList.remove('err'); st.textContent = `Uploading ${file.name}…`; }
+      try {
+        const saved = await refUpload(file, pct => { if (st && pct != null) st.textContent = `Uploading ${file.name}… ${Math.round(pct)}%`; });
+        ref.reference_uri = saved.uri;
+        touched();
+        redraw(`.refp[data-refslot="${slot}"] [data-reff="lib"]`);
+      } catch (err) {
+        if (btn) btn.disabled = false;
+        if (st) { st.classList.add('err'); st.textContent = `${file.name} was not uploaded. ${err.message}`; }
+      }
+      t.value = '';
+      return;
+    }
+    onEdit(e);
+  });
+}
+/** Load the library or the S3 connections the first time a picker needs them, then repaint, with
+ *  the cursor back where it was: the list arriving is not a reason to lose your place. */
+function refEnsureLoaded(root, redraw) {
+  // A picker in a section folded away asks for nothing until the section is opened.
+  const want = [...root.querySelectorAll('.refp [data-refmode][aria-checked="true"]')]
+    .filter(b => !b.closest('details:not([open])')).map(b => b.dataset.refmode);
+  const again = () => redraw(_refFocusSel(root));
+  if (want.includes('library') && refLib.files === null) refLibLoad().then(again);
+  if (want.includes('s3') && refLib.s3 === null) refS3Load().then(again);
+}
+function _refFocusSel(root) {
+  const a = document.activeElement, p = a && root.contains(a) && a.closest('.refp');
+  if (!p) return undefined;
+  const k = a.dataset.refmode ? `[data-refmode="${a.dataset.refmode}"]` : a.dataset.reff ? `[data-reff="${a.dataset.reff}"]`
+    : a.dataset.refact ? `[data-refact="${a.dataset.refact}"]` : '';
+  return k ? `.refp[data-refslot="${p.dataset.refslot}"] ${k}` : undefined;
+}
 
 /** SOURCE_REQUIRED may be a list or, where the answer depends on the form, a function of it. */
 function requiredFields(key, cfg) {
@@ -18800,9 +19036,9 @@ function selectSource(key) {
   if (bodyKey === 'fabric') wireFabricAuthToggle();
   srcSkeletonSwap(document.getElementById('src-' + bodyKey), key);
   if (key === 'excel') { const fi = $('#file'); if (fi && !fi.files.length) fi.focus(); }
-  // File has its own inline accuracy/integrity block. For every connector source, move the
-  // shared creds + refs sections INTO the active card, just above its Run button, so they
-  // read as part of the connection config rather than the result.
+  // Move the shared creds + refs sections INTO the active card, just above its Run button, so
+  // they read as part of the connection config rather than the result. A file upload has no
+  // saved connection, so it takes only the refs.
   const show = bodyKey !== 'file';
   const runBtn = show ? document.querySelector(`#src-${bodyKey} .src-run`) : null;
   // Saved-credentials NOTE sits at the top of the source card (just under the title).
@@ -18818,7 +19054,9 @@ function selectSource(key) {
   }
   const refs = document.getElementById('srcRefs');
   if (refs) {
-    if (show && runBtn) { runBtn.parentNode.insertBefore(refs, runBtn); refs.style.display = ''; srcRefsState.warehouse = _WAREHOUSE_SRC.has(key); renderSrcRefs(); }
+    // A file upload has the same section, above its Upload button.
+    const at = runBtn || (bodyKey === 'file' ? document.getElementById('go') : null);
+    if (at) { at.parentNode.insertBefore(refs, at); refs.style.display = ''; srcRefsState.warehouse = _WAREHOUSE_SRC.has(key); renderSrcRefs(); }
     else refs.style.display = 'none';
   }
   // The "Save these credentials" checkbox stays just above the Run button (below the refs).
@@ -18962,80 +19200,122 @@ async function deleteCredProfile(key) {
   setCredMsg(key, `Deleted “${p ? p.name : pid}”.`);
 }
 
-function renderSrcRefs() {
+function renderSrcRefs(focusSel) {
   const body = document.getElementById('srcRefsBody');
   if (!body) return;
+  const s = srcRefsState, wh = s.warehouse;
+  _srcRefsWire(body);
+  const x = (cls, i, label) => `<button type="button" class="ar-field-x ${cls}" data-i="${i}" aria-label="${label}" title="${label}">✕</button>`;
+  const irows = s.integrity.map((r, i) => `<div class="refrule">` +
+      `<div class="refrule-l"><input class="rule-edit-in sr-ir" data-i="${i}" data-f="columns" placeholder="column(s)" value="${esc((r.columns || []).join(', '))}" aria-label="The column whose values must exist in the master">` +
+        `<span class="hint">must exist in</span>${x('sr-ir-x', i, 'Remove this rule')}</div>` +
+      refPickHtml(r, `ir:${i}`, wh, 'Where the master is') +
+      `<div class="refrule-l"><span class="hint">as its column</span><input class="rule-edit-in sr-ir refrule-col" data-i="${i}" data-f="reference_columns" placeholder="the same name, if left empty" ` +
+        `value="${esc((r.reference_columns || []).join(', '))}" list="srcRefCols-ir${i}" aria-label="The column in the master">${refColsList(`srcRefCols-ir${i}`, r)}</div>` +
+    `</div>`).join('') || `<p class="hint" style="margin:0 0 6px;">No integrity rules yet.</p>`;
+  const lrows = s.lookups.map((l, i) => {
+    const from = l.from === 'file' ? 'file' : 'typed', f = l.file = l.file || {};
+    return `<div class="refrule">` +
+      `<div class="refrule-l"><input class="rule-edit-in sr-lk" data-i="${i}" data-f="col" placeholder="column" value="${esc(l.col || '')}" aria-label="The column">` +
+        `<span class="hint">is one of</span><span class="refp-seg" role="radiogroup" aria-label="Where the list is">` +
+        [['typed', 'Values typed here'], ['file', 'A column of a file']].map(([m, lab]) =>
+          `<button type="button" role="radio" class="refp-m lngb sr-lk-from" data-i="${i}" data-from="${m}" aria-checked="${from === m}" tabindex="${from === m ? 0 : -1}">${lab}</button>`).join('') +
+        `</span>${x('sr-lk-x', i, 'Remove this list')}</div>` +
+      (from === 'file'
+        ? refPickHtml(f, `lk:${i}`, false, 'Where the file is') +
+          `<div class="refrule-l"><span class="hint">its column</span><input class="rule-edit-in sr-lkf refrule-col" data-i="${i}" placeholder="the column that holds the correct values" ` +
+            `value="${esc(f.reference_column || '')}" list="srcRefCols-lk${i}" aria-label="The column of the file that holds the correct values">${refColsList(`srcRefCols-lk${i}`, f)}</div>`
+        : `<div class="refrule-l"><input class="rule-edit-in sr-lk refrule-grow" data-i="${i}" data-f="values" placeholder="the correct values, separated by commas" ` +
+            `value="${esc((l.values || []).join(', '))}" aria-label="The correct values"></div>`) +
+    `</div>`;
+  }).join('') || `<p class="hint" style="margin:0 0 6px;">No lists yet.</p>`;
+  const a = s.accuracy = s.accuracy || {};
+  body.innerHTML =
+    `<div class="ar-con-label">Referential integrity</div>` +
+    `<p class="hint" style="margin:0 0 8px;">A column's values must exist in a master list: ${wh ? 'a table in this database, ' : ''}a file in your reference library, or a file in your own S3.</p>` +
+    `<div>${irows}</div><div class="ar-add"><button type="button" class="btn-sm sr-ir-add">＋ Add integrity rule</button></div>` +
+    `<div class="ar-con-label" style="margin-top:16px;">Accuracy - lists of correct values</div>` +
+    `<p class="hint" style="margin:0 0 8px;">A column and its full list of correct values, typed here or taken from a column of a file. Anything outside the list counts as inaccurate.</p>` +
+    `<div>${lrows}</div><div class="ar-add"><button type="button" class="btn-sm sr-lk-add">＋ Add list</button></div>` +
+    `<div class="ar-con-label" style="margin-top:16px;">Accuracy - system of record</div>` +
+    `<p class="hint" style="margin:0 0 8px;">Join each row to a trusted ${wh ? 'table or ' : ''}file on its key, and check that it is there and that the compared columns agree.</p>` +
+    `<div class="refrule">${refPickHtml(a, 'sor', wh, 'Where the system of record is')}<div class="ar-fields">` +
+      `<span class="rule-edit-field"><label>Join on (keys)</label><input class="rule-edit-in sr-acc" data-f="join_on" placeholder="col(s)" value="${esc((a.join_on || []).join(', '))}" list="srcRefCols-sor"></span>` +
+      `<span class="rule-edit-field"><label>Compare columns</label><input class="rule-edit-in sr-acc" data-f="compare_columns" placeholder="col(s)" value="${esc((a.compare_columns || []).join(', '))}" list="srcRefCols-sor"></span>` +
+    `</div>${refColsList('srcRefCols-sor', a)}</div>`;
+  if (focusSel) { const el = body.querySelector(focusSel); if (el) el.focus({ preventScroll: true }); }
+  refEnsureLoaded(body, sel => renderSrcRefs(sel));
+}
+// Wired once on the section's body: it is redrawn on every add, remove and switch, so everything
+// is read from whatever is there when it happens.
+function _srcRefsWire(body) {
+  if (body._srWired) return;
+  body._srWired = true;
   const s = srcRefsState;
-  const lrows = s.lookups.map((l, i) => `
-    <div class="ar-ref-row">
-      <input class="rule-edit-in sr-lk" data-i="${i}" data-f="col" placeholder="column" value="${esc(l.col || '')}" style="min-width:150px;">
-      <input class="rule-edit-in sr-lk" data-i="${i}" data-f="values" placeholder="allowed values, comma-separated" value="${esc((l.values || []).join(', '))}" style="flex:1;min-width:240px;">
-      <button type="button" class="ar-field-x sr-lk-x" data-i="${i}" title="Remove">✕</button>
-    </div>`).join('') || `<p class="hint" style="margin:0 0 6px;">No lookups yet.</p>`;
-  let html = `<div class="ar-con-label">Accuracy - authoritative lookups</div>
-    <p class="hint" style="margin:0 0 8px;">A column and its full set of allowed values - anything outside the list counts as inaccurate.</p>
-    <div>${lrows}</div><div class="ar-add"><button type="button" class="btn-sm sr-lk-add">＋ Add lookup</button></div>`;
-  if (s.warehouse) {
-    const irows = s.integrity.map((r, i) => `
-      <div class="ar-ref-row">
-        <input class="rule-edit-in sr-ir" data-i="${i}" data-f="columns" placeholder="column(s)" value="${esc((r.columns || []).join(', '))}" style="min-width:130px;">
-        <span class="hint">must exist in</span>
-        <input class="rule-edit-in sr-ir" data-i="${i}" data-f="reference_uri" placeholder="schema.table" value="${esc(r.reference_uri || '')}" style="min-width:150px;">
-        <input class="rule-edit-in sr-ir" data-i="${i}" data-f="reference_columns" placeholder="ref column(s)" value="${esc((r.reference_columns || []).join(', '))}" style="min-width:130px;">
-        <button type="button" class="ar-field-x sr-ir-x" data-i="${i}" title="Remove">✕</button>
-      </div>`).join('') || `<p class="hint" style="margin:0 0 6px;">No integrity rules yet.</p>`;
-    const a = s.accuracy || {};
-    html += `<div class="ar-con-label" style="margin-top:16px;">Referential integrity</div>
-      <p class="hint" style="margin:0 0 8px;">A column's values must exist in a reference (master) table in the same warehouse.</p>
-      <div>${irows}</div><div class="ar-add"><button type="button" class="btn-sm sr-ir-add">＋ Add integrity rule</button></div>
-      <div class="ar-con-label" style="margin-top:16px;">Accuracy - system of record</div>
-      <p class="hint" style="margin:0 0 8px;">Join rows to a reference table on key column(s); checks they exist and compared columns agree.</p>
-      <div class="ar-fields">
-        <span class="rule-edit-field"><label>Reference table</label><input class="rule-edit-in sr-acc" data-f="reference_uri" placeholder="schema.table" value="${esc(a.reference_uri || '')}"></span>
-        <span class="rule-edit-field"><label>Join on (keys)</label><input class="rule-edit-in sr-acc" data-f="join_on" placeholder="col(s)" value="${esc((a.join_on || []).join(', '))}"></span>
-        <span class="rule-edit-field"><label>Compare columns</label><input class="rule-edit-in sr-acc" data-f="compare_columns" placeholder="col(s)" value="${esc((a.compare_columns || []).join(', '))}"></span>
-      </div>`;
-  }
-  body.innerHTML = html;
-  body.querySelectorAll('.sr-lk').forEach(el => el.addEventListener('input', () => {
-    const l = s.lookups[+el.dataset.i]; if (!l) return;
-    l[el.dataset.f] = el.dataset.f === 'col' ? el.value.trim() : _splitList(el.value);
-  }));
-  body.querySelectorAll('.sr-lk-x').forEach(b => b.addEventListener('click', () => { s.lookups.splice(+b.dataset.i, 1); renderSrcRefs(); }));
-  const la = body.querySelector('.sr-lk-add');
-  if (la) la.addEventListener('click', () => { s.lookups.push({ col: '', values: [] }); renderSrcRefs(); });
-  if (s.warehouse) {
-    body.querySelectorAll('.sr-ir').forEach(el => el.addEventListener('input', () => {
-      const r = s.integrity[+el.dataset.i]; if (!r) return;
-      const f = el.dataset.f; r[f] = f === 'reference_uri' ? el.value.trim() : _splitList(el.value);
-    }));
-    body.querySelectorAll('.sr-ir-x').forEach(b => b.addEventListener('click', () => { s.integrity.splice(+b.dataset.i, 1); renderSrcRefs(); }));
-    const ia = body.querySelector('.sr-ir-add');
-    if (ia) ia.addEventListener('click', () => { s.integrity.push({ id: `fk_${s.integrity.length + 1}`, columns: [], reference_uri: '', reference_columns: [] }); renderSrcRefs(); });
-    body.querySelectorAll('.sr-acc').forEach(el => el.addEventListener('input', () => {
-      s.accuracy = s.accuracy || {};
-      const f = el.dataset.f; s.accuracy[f] = f === 'reference_uri' ? el.value.trim() : _splitList(el.value);
-    }));
-  }
+  const det = body.closest('details');
+  if (det) det.addEventListener('toggle', () => { if (det.open) refEnsureLoaded(body, sel => renderSrcRefs(sel)); });
+  body.addEventListener('input', e => {
+    const t = e.target, i = +t.dataset.i;
+    if (t.classList.contains('sr-lk')) { const l = s.lookups[i]; if (l) l[t.dataset.f] = t.dataset.f === 'col' ? t.value.trim() : _splitList(t.value); }
+    else if (t.classList.contains('sr-lkf')) { const l = s.lookups[i]; if (l) (l.file = l.file || {}).reference_column = t.value.trim(); }
+    else if (t.classList.contains('sr-ir')) { const r = s.integrity[i]; if (r) r[t.dataset.f] = _splitList(t.value); }
+    else if (t.classList.contains('sr-acc')) { (s.accuracy = s.accuracy || {})[t.dataset.f] = _splitList(t.value); }
+  });
+  body.addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    const i = +b.dataset.i;
+    if (b.classList.contains('sr-ir-x')) { s.integrity.splice(i, 1); renderSrcRefs(); }
+    else if (b.classList.contains('sr-lk-x')) { s.lookups.splice(i, 1); renderSrcRefs(); }
+    else if (b.classList.contains('sr-ir-add')) {
+      let n = s.integrity.length + 1;
+      while (s.integrity.some(r => r.id === `fk_${n}`)) n++;
+      s.integrity.push({ id: `fk_${n}`, columns: [], reference_uri: '', reference_columns: [] });
+      renderSrcRefs(`.sr-ir[data-i="${s.integrity.length - 1}"][data-f="columns"]`);
+    } else if (b.classList.contains('sr-lk-add')) {
+      s.lookups.push({ col: '', values: [], from: 'typed' });
+      renderSrcRefs(`.sr-lk[data-i="${s.lookups.length - 1}"][data-f="col"]`);
+    } else if (b.classList.contains('sr-lk-from')) {
+      const l = s.lookups[i];
+      if (l && (l.from === 'file' ? 'file' : 'typed') !== b.dataset.from) {
+        l.from = b.dataset.from;
+        renderSrcRefs(`.sr-lk-from[data-i="${i}"][data-from="${b.dataset.from}"]`);
+      }
+    }
+  });
+  body.addEventListener('keydown', e => {
+    const b = e.target.closest && e.target.closest('.sr-lk-from');
+    if (!b || !['ArrowLeft', 'ArrowRight'].includes(e.key)) return;
+    e.preventDefault();
+    const other = [...b.parentElement.querySelectorAll('.sr-lk-from')].find(x => x !== b);
+    if (other) other.click();
+  });
+  refPickWire(body, slot => slot === 'sor' ? (s.accuracy = s.accuracy || {})
+      : slot.startsWith('ir:') ? s.integrity[+slot.slice(3)]
+      : slot.startsWith('lk:') ? ((s.lookups[+slot.slice(3)] || {}).file || null) : null,
+    sel => renderSrcRefs(sel), () => {});
 }
 
 // Build the ruleset augment from the source-refs section, or null if nothing set.
 function collectSourceRefsAugment() {
-  const s = srcRefsState, aug = {}, acc = {}, lookups = {};
-  s.lookups.forEach(l => { if (l.col && (l.values || []).length) lookups[l.col] = l.values; });
+  const s = srcRefsState, aug = {}, acc = {}, lookups = {}, files = [];
+  s.lookups.forEach(l => {
+    if (!l.col) return;
+    if (l.from === 'file') {
+      const f = l.file || {}, ref = refSaved(f);
+      if (ref.reference_uri && (f.reference_column || '').trim())
+        files.push({ column: l.col, ...ref, reference_column: f.reference_column.trim() });
+    } else if ((l.values || []).length) lookups[l.col] = l.values;
+  });
   if (Object.keys(lookups).length) acc.lookups = lookups;
-  if (s.warehouse) {
-    const a = s.accuracy || {};
-    if ((a.reference_uri || '').trim() && (a.join_on || []).length) {
-      acc.reference_uri = a.reference_uri.trim(); acc.join_on = a.join_on; acc.compare_columns = a.compare_columns || [];
-    }
-    const integ = (s.integrity || [])
-      .filter(r => (r.columns || []).length && (r.reference_uri || '').trim())
-      .map((r, i) => ({ id: r.id || `fk_${i + 1}`, columns: r.columns, reference_uri: r.reference_uri.trim(),
-        reference_columns: (r.reference_columns && r.reference_columns.length) ? r.reference_columns : r.columns,
-        severity: 'major', weight: 1 }));
-    if (integ.length) aug.integrity_rules = integ;
-  }
+  if (files.length) acc.lookup_files = files;
+  const a = s.accuracy || {}, sor = refSaved(a);
+  if (sor.reference_uri && (a.join_on || []).length) Object.assign(acc, sor, { join_on: a.join_on, compare_columns: a.compare_columns || [] });
+  const integ = (s.integrity || []).map((r, i) => ({ r, i, ref: refSaved(r) }))
+    .filter(({ r, ref }) => (r.columns || []).length && ref.reference_uri)
+    .map(({ r, i, ref }) => ({ id: r.id || `fk_${i + 1}`, columns: r.columns, ...ref,
+      reference_columns: (r.reference_columns && r.reference_columns.length) ? r.reference_columns : r.columns,
+      severity: 'major', weight: 1 }));
+  if (integ.length) aug.integrity_rules = integ;
   if (Object.keys(acc).length) aug.accuracy = acc;
   return Object.keys(aug).length ? aug : null;
 }
@@ -19563,6 +19843,16 @@ async function runAzureBlob(cfg, statusEl) {
 
 document.querySelectorAll('.src-ico[data-ico]').forEach(el => el.innerHTML = srcIcon(el.dataset.ico));   // brand marks on the source cards
 document.querySelectorAll('.source-card:not(.soon)').forEach(c => c.addEventListener('click', () => selectSource(c.dataset.source)));
+// The page opens on the file upload without anything being picked, so its Accuracy and referential
+// integrity section is put above its Upload button now rather than on the first pick.
+(function placeRefsOnUpload() {
+  const refs = document.getElementById('srcRefs'), go = document.getElementById('go');
+  if (!refs || !go || refs.closest('.source-body')) return;
+  go.parentNode.insertBefore(refs, go);
+  refs.style.display = '';
+  srcRefsState.warehouse = false;
+  renderSrcRefs();
+})();
 
 // The Data source menu: every connector in one searchable grid that opens over the card. Typing
 // filters it - by name, by group, and by the words people search with ("csv", "iceberg", "mssql") -
@@ -21938,9 +22228,9 @@ const GD_SHOTS = {
   "schedule-form-q": [1600, 1181, "2240ecc99a"],
   "schedule-list": [1600, 776, "8070908fef"],
   "schedule-watch": [962, 676, "27b968803e"],
-  "source-form": [1600, 1001, "e812ed29da"],
+  "source-form": [1600, 1011, "60518ad7b0"],
   "source-menu": [1600, 913, "23d4212bf0"],
-  "source-picker": [1600, 736, "ad2f24e825"],
+  "source-picker": [1600, 772, "b10b223d5e"],
   "sourcewatch": [1600, 1112, "057706a378"],
   "stages": [1600, 2150, "872ad20dd8"],
   "tag-edit-pa": [976, 1608, "8e3addbf3c"],
@@ -22723,7 +23013,7 @@ function buildGuides() {
           `<b>Iceberg tables</b> in a Glue-catalogued lakehouse are assessed in place with <b>Qlik Open Lakehouse</b>. An engine that already reads them, such as Redshift, Snowflake, Databricks or BigQuery, can assess them directly too.`) },
       { h: 'Optional settings', body: list(
           `<b>Sample rows</b> takes a random sample. Empty assesses every row.`,
-          `<b>Accuracy and referential integrity</b> adds rules for this run on top of the inferred ones: an accuracy lookup (a column and its full list of allowed values), or a referential-integrity rule (values that must exist in a reference file you upload). They light up the Accuracy and Integrity dimensions.`,
+          `<b>Accuracy and referential integrity</b> adds rules for this run on top of the inferred ones: a column whose values must exist in a master list, a list of correct values, or a system of record to agree with. Each says where its master data is: a table in the same database, a file in your <b>reference library</b> (upload it once, and any rule can use it), or a file in your own S3, read with one of your saved S3 connections. A list of correct values can be typed too. They light up the Accuracy and Integrity dimensions, and a dataset's Rules tab sets them for every run.`,
           `<b>Dimension weights</b>, on an uploaded file, decide how much each dimension counts toward the overall score, from 0 to 5. 0 leaves a dimension out.`,
           `<b>Worksheet</b>, for Excel, names the sheet or its position. Blank assesses the first one.`) },
       { h: 'Where credentials go', body:
