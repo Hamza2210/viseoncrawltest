@@ -3185,6 +3185,31 @@
     border: 1px solid transparent; border-radius: 8px; background: none; color: var(--muted); }
   .swx-exc:hover, .swx-exc:focus-visible { color: var(--text); border-color: var(--border); background: var(--card-2); }
   .swx-exc svg { width: 16px; height: 16px; }
+  /* Sources excluded from monitoring: folded away under the table, each with Include. */
+  .swx-excl { margin-top: 12px; }
+  .swx-excl-box { border: 1px solid var(--border); border-radius: 12px; background: var(--card-2); }
+  .swx-excl-box > summary { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; padding: 11px 14px;
+    cursor: pointer; list-style: none; border-radius: 12px; }
+  .swx-excl-box > summary::-webkit-details-marker { display: none; }
+  .swx-excl-box > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .swx-excl-chev { flex: none; width: 7px; height: 7px; margin: 0 3px; border-right: 2px solid var(--muted);
+    border-bottom: 2px solid var(--muted); transform: rotate(-45deg); transition: transform .18s var(--dq-ease); }
+  .swx-excl-box[open] .swx-excl-chev { transform: rotate(45deg); }
+  .swx-excl-t { font-size: 13px; font-weight: 600; }
+  .swx-excl-n { min-width: 20px; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--border); background: var(--card);
+    font-size: 11.5px; font-weight: 700; text-align: center; }
+  .swx-excl-d { flex: 1 1 260px; font-size: 12px; color: var(--muted); }
+  .swx-excl-list { display: flex; flex-direction: column; margin: 0; padding: 0 14px 6px; list-style: none; }
+  .swx-excl-row { display: flex; align-items: center; gap: 16px; padding: 9px 0; border-top: 1px solid var(--border); }
+  .swx-excl-row .swx-ds { flex: 1 1 auto; }
+  .swx-excl-row .swx-dsname { max-width: 360px; }
+  .swx-excl-row .swx-src { flex: 0 0 170px; }
+  .swx-excl-row .swx-src-l { max-width: none; }
+  button.swx-inc { flex: none; display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px; border-radius: 8px;
+    border: 1px solid var(--border); background: var(--card); box-shadow: none; color: var(--text); font: inherit; font-size: 12.5px;
+    font-weight: 600; cursor: pointer; }
+  button.swx-inc:hover, button.swx-inc:focus-visible { border-color: var(--accent); }
+  button.swx-inc svg { width: 15px; height: 15px; }
   .swx-foot { display: flex; align-items: center; justify-content: flex-end; gap: 12px; min-height: 24px; padding-top: 10px; font-size: 12px; color: var(--muted); }
   .swx-about { padding: 18px 20px; border: 1px solid var(--border); border-radius: 16px; background: var(--card); }
   .swx-about-hd { display: flex; align-items: flex-start; gap: 14px; }
@@ -5756,6 +5781,7 @@
         </div>
         <div id="watchList"><p class="dash-muted">Not checked yet.</p></div>
         <div class="swx-foot" id="swxFoot"></div>
+        <div class="swx-excl" id="swxExcluded" hidden></div>
       </section>
     </div>
 
@@ -21842,7 +21868,7 @@ const GD_SHOTS = {
   "source-form": [1600, 1001, "e812ed29da"],
   "source-menu": [1600, 913, "23d4212bf0"],
   "source-picker": [1600, 736, "ad2f24e825"],
-  "sourcewatch": [1600, 1112, "bcdfc62955"],
+  "sourcewatch": [1600, 1112, "057706a378"],
   "stages": [1600, 2150, "872ad20dd8"],
   "tag-edit-pa": [976, 1608, "8e3addbf3c"],
   "tag-edit-q": [976, 612, "9929794e2b"],
@@ -23125,8 +23151,8 @@ function buildGuides() {
       { h: 'Reading the page', body:
           p(`The tiles count the sources being monitored and how many are healthy, have a warning or are critical. A source's state is the verdict of its own open findings: a major one such as ${ui('Stopped loading')} makes it critical, and a warning such as ${ui('Stalled')} or ${ui('Unreachable')} a warning.`) +
           p(`The radar shows every source as a blip, lit each time the sweep passes it: critical nearest the centre, then warnings, then healthy, with the sources that are not monitored out on the rim. Hover over a blip for its details, and click one to find it in the table. The source list above it and the counts under it narrow the radar and the table together.`) +
-          p(`The table gives each source's state, its approximate row count, how old its newest record is and which column that came from, and when it was last checked. The eye button opts a dataset out of monitoring or back in. ${showme('watch-table')}`) +
-          shot('sourcewatch', `${n(1)} ${ui('Check now')}, ${n(2)} the radar, ${n(3)} a dataset that cannot be monitored, with the reason, ${n(4)} the button that excludes a dataset, and ${n(5)} a business date, labelled as one.`) +
+          p(`The table gives each source's state, its approximate row count, how old its newest record is and which column that came from, and when it was last checked. The eye button excludes a dataset from monitoring: it leaves the table, the radar and the counts at once, is never checked, and is listed under ${ui('Excluded from monitoring')} below the table, where ${ui('Include')} puts it back. ${showme('watch-table')}`) +
+          shot('sourcewatch', `${n(1)} ${ui('Check now')}, ${n(2)} the radar, ${n(3)} a dataset that cannot be monitored, with the reason, ${n(4)} the button that excludes a dataset, ${n(5)} a business date, labelled as one, and ${n(6)} the datasets excluded from monitoring, each with ${ui('Include')} when opened.`) +
           note(`A business date, such as an order date, says nothing about whether the source is still loading, so it is labelled as one and never used to decide that a source has stopped.`) +
           warn(`On Snowflake and Databricks, reading the newest timestamp can wake a suspended warehouse. Exclude datasets you do not want polled.`) },
     ],
@@ -25319,9 +25345,9 @@ async function loadSourceWatch() {
     swIncOk = !!inc;
     const incs = ((inc && inc.incidents) || []).filter(i => String(i.rule || '').startsWith('SOURCE_')
       && String(i.status || '').toUpperCase() === 'OPEN');
-    const items = _swItems(r, incs);
-    const lastObs = items.map(i => i.o.observed_at).filter(Boolean).sort().pop() || null;
-    swData = { items, built: r.built_at || null, lastObs, quiet: r.not_pollable || {} };
+    swData = { raw: r, incs, built: r.built_at || null, quiet: r.not_pollable || {} };
+    _swSplit();
+    const items = swData.items;
     const bad = items.filter(i => i.health === 'critical' || i.health === 'warning').length;
     const badge = $('#watchBadge');
     if (badge) { badge.textContent = bad; badge.style.display = bad ? '' : 'none'; }
@@ -25331,8 +25357,48 @@ async function loadSourceWatch() {
   }
 }
 
+// An excluded source is off the list, the radar and the counts: it is in its own section below the
+// table (_swPaintExcluded), where it can be included again. swData.raw is the last status answer, so
+// a source moves the moment Exclude or Include is pressed, and moves back if saving it fails.
+function _swSplit() {
+  const all = _swItems(swData.raw, swData.incs || []);
+  swData.items = all.filter(i => !i.info.excluded);
+  swData.excluded = all.filter(i => i.info.excluded);
+  swData.lastObs = swData.items.map(i => i.o.observed_at).filter(Boolean).sort().pop() || null;
+}
+function swMoveExcluded(key, exclude) {
+  const ds = swData && swData.raw && swData.raw.datasets;
+  if (!ds || !ds[key]) return false;
+  ds[key] = Object.assign({}, ds[key], { excluded: !!exclude });
+  if (exclude && swView.sel === key) swView.sel = '';
+  _swSplit();
+  renderSourceWatch();
+  return true;
+}
+
+function _swPaintExcluded() {
+  const el = $('#swxExcluded'); if (!el) return;
+  const ex = (swData && swData.excluded) || [];
+  el.hidden = !ex.length;
+  if (!ex.length) { el.innerHTML = ''; return; }
+  const rows = ex.slice().sort((a, b) => a.name.localeCompare(b.name)).map(it =>
+    `<li class="swx-excl-row" data-key="${esc(it.key)}">` +
+    `<span class="swx-ds"><span class="swx-dsico">${SW_ICO.db}</span><span class="swx-dsname" title="${esc(it.name)}">${esc(it.name)}</span></span>` +
+    `<span class="swx-src"><span class="swx-src-ico">${it.fmt ? srcIcon(it.fmt) : ''}</span><span class="swx-src-l">${esc(it.src)}</span></span>` +
+    `<button type="button" class="swx-inc lngb" data-watchinc="${esc(it.key)}" aria-label="Include ${esc(it.name)} in monitoring">` +
+    `${SW_ICO.eye}<span>Include</span></button></li>`).join('');
+  el.innerHTML = `<details class="swx-excl-box"${swView.exclOpen ? ' open' : ''}><summary>` +
+    `<span class="swx-excl-chev" aria-hidden="true"></span><span class="swx-excl-t">Excluded from monitoring</span>` +
+    `<span class="swx-excl-n">${ex.length}</span>` +
+    `<span class="swx-excl-d">Not on the radar or in the list, and never checked. Include one to monitor it again.</span></summary>` +
+    `<ul class="swx-excl-list">${rows}</ul></details>`;
+  const box = el.querySelector('details');
+  box.addEventListener('toggle', () => { swView.exclOpen = box.open; });
+}
+
 function renderSourceWatch() {
   if (!swData) return;
+  _swPaintExcluded();
   const items = swData.items;
   // Arriving from a dataset's Actions menu: open on that dataset, scrolled to its row.
   const want = swView.want || '';
@@ -25396,8 +25462,14 @@ function _swPaintTable() {
       (items.length ? `${items.length} source${items.length === 1 ? '' : 's'}, ${mon} monitored` : 'nothing monitored yet') +
       // Datasets that can never be polled (a file upload, a Qlik table) are counted, not listed.
       (quiet ? ` · ${quiet} with no live source to poll` : '') +
+      ((swData.excluded || []).length ? ` · ${swData.excluded.length} excluded` : '') +
       (swData.lastObs ? ` · last checked ${_watchAgeText(swData.lastObs).replace(/&amp;/g, '&')}` : '') +
       (swIncOk ? '' : ' · open findings could not be loaded, so states show the last reading only');
+  }
+  if (!items.length && (swData.excluded || []).length) {
+    el.innerHTML = `<p class="dash-muted">Every source is excluded from monitoring. Include one below to monitor it again.</p>`;
+    foot.textContent = '';
+    return;
   }
   if (!items.length) {
     el.innerHTML = `<p class="dash-muted">No source has been checked yet. A dataset becomes monitorable once it has been assessed at least once from a source with a saved credential profile - use <strong>Check now</strong> to try it.</p>`;
@@ -25700,13 +25772,21 @@ function _swTip(b) {
     const t = e.target; if (!t || !t.closest) return;
     const b = t.closest('[data-watchexc],[data-watchinc]');
     if (b) {
-      const key = b.dataset.watchexc || b.dataset.watchinc;
+      const key = b.dataset.watchexc || b.dataset.watchinc, exclude = !!b.dataset.watchexc;
+      const it = swData && [...(swData.items || []), ...(swData.excluded || [])].find(x => x.key === key);
+      const name = it ? it.name : 'The source';
       b.disabled = true;
+      const moved = swMoveExcluded(key, exclude);               // off the list and radar now, or back on
       try {
         await postJSON(`${API_BASE}/data-quality/source-watch`, HEADERS,
-          { app_id: APP_ID, action: b.dataset.watchexc ? 'exclude' : 'include', key });
+          { app_id: APP_ID, action: exclude ? 'exclude' : 'include', key });
+        watchMsg(exclude ? `${name} is excluded from monitoring.` : `${name} is monitored again.`, 'ok');
         loadSourceWatch();
-      } catch (err) { b.disabled = false; watchMsg(err.message, 'err'); }
+      } catch (err) {
+        if (moved) swMoveExcluded(key, !exclude);
+        b.disabled = false;
+        watchMsg(err.message, 'err');
+      }
       return;
     }
     const srt = t.closest('[data-swsort]');
