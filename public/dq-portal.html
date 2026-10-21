@@ -2918,6 +2918,17 @@
   .lng-nchev { flex: none; display: inline-flex; color: var(--muted); }
   .lng-nchev svg { width: 16px; height: 16px; }
   .lng-node.go:hover .lng-nchev { color: var(--accent); }
+  /* Assess, on an object nobody has assessed yet: outlined, so it reads as an offer, not a score. */
+  .lng-assess { flex: none; align-self: center; height: 28px; padding: 0 12px; cursor: pointer; border-radius: 999px;
+    border: 1px solid color-mix(in srgb, var(--accent) 55%, var(--border)); background: transparent; color: var(--accent);
+    font: inherit; font-size: 12px; font-weight: 650; white-space: nowrap; }
+  .lng-assess:hover:not(:disabled) { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+  .lng-assess:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .lng-assess:disabled { cursor: default; color: var(--muted); border-color: var(--border); }
+  /* On a card it sits in the corner beside the status, which is short, so the name keeps its width. */
+  .lng-node > .lng-assess { position: absolute; right: 12px; bottom: 10px; height: 26px; }
+  .lng-li > .lng-assess { height: 26px; padding: 0 10px; }
+  .lng-tbl td.lng-tact { width: 1%; padding-top: 5px; padding-bottom: 5px; text-align: right; }
   .lng-chip { position: absolute; z-index: 2; left: 14px; top: 14px; display: flex; align-items: center; gap: 10px; padding: 8px 14px 8px 9px;
     pointer-events: none; border: 1px solid var(--border); border-radius: 12px; background: color-mix(in srgb, var(--card) 92%, transparent); }
   .lng-chip-ico { flex: none; width: 30px; height: 30px; border-radius: 9px; display: inline-flex; align-items: center; justify-content: center;
@@ -2963,7 +2974,8 @@
   .lng-other-chev svg { width: 16px; height: 16px; }
   .lng-other.open .lng-other-chev { transform: rotate(180deg); }
   .lng-other-body { padding: 0 16px 16px; }
-  .lng-tbl-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 12px; }
+  /* relative: the hidden Action heading is placed inside it, so it scrolls with the table, not the page */
+  .lng-tbl-wrap { position: relative; overflow-x: auto; border: 1px solid var(--border); border-radius: 12px; }
   .lng-tbl { width: 100%; border-collapse: collapse; font-size: 12.5px; }
   .lng-tbl th { padding: 10px 14px; text-align: left; font-weight: 600; color: var(--muted); white-space: nowrap;
     border-bottom: 1px solid var(--border); background: var(--card-2); }
@@ -3255,7 +3267,7 @@
     transition: transform .13s ease, box-shadow .16s ease,
       background-color .13s, border-color .13s, color .13s;
   }
-  button:not(.tab):not(.side-item):not(.subtab):not(.linkbtn):not(.dchip):not(.apptab):not(.x-close):not(.banner-x):not(.mzoom):not(.sched-caret):not(.inc-kebab):not(.inc-menu-item):not(.gd-clear):not(.gd-tocb):not(.cmp-choose-card):not(.cmpx-count):not(.cmpx-chip):not(.lngb):not(.lng-tab):not(.lng-li):not(.lng-other-hd):not(.lng-copy):not(.lng-qa-btn):not(.lng-more):not(:disabled):hover,
+  button:not(.tab):not(.side-item):not(.subtab):not(.linkbtn):not(.dchip):not(.apptab):not(.x-close):not(.banner-x):not(.mzoom):not(.sched-caret):not(.inc-kebab):not(.inc-menu-item):not(.gd-clear):not(.gd-tocb):not(.cmp-choose-card):not(.cmpx-count):not(.cmpx-chip):not(.lngb):not(.lng-tab):not(.lng-li):not(.lng-other-hd):not(.lng-copy):not(.lng-qa-btn):not(.lng-more):not(.lng-assess):not(:disabled):hover,
   .btn-sm:not(:disabled):hover { transform: translateY(-1px) scale(1.03);
     box-shadow: 0 6px 18px color-mix(in srgb, var(--accent2) 26%, transparent); }
   button:not(:disabled):active, .btn-sm:not(:disabled):active { transform: translateY(0) scale(.98); box-shadow: none; }
@@ -5726,6 +5738,7 @@
             </div>
           </div>
           <div class="lin2-skip" id="srcLinSkip"></div>
+          <div class="banner" id="lngBanner" role="status"></div>
           <div id="srcLineageBody"><p class="dash-muted">Loading…</p></div>
         </div>
         <aside class="lng-side" id="lngSide" aria-label="The dataset" style="display:none;"></aside>
@@ -16808,6 +16821,8 @@ function wireLinPicker() {
   const wrap = $('#srcLinWrap');
   wrap.addEventListener('click', e => {
     const t = e.target; if (!t || !t.closest || t.closest('#lngCombo')) return;
+    const as = t.closest('.lng-assess');
+    if (as) { if (!as.disabled) lngAssess(as); return; }
     const go = t.closest('.lng-node.go, .lng-li.go, tr.go');
     // detail 0 is a click made with the keyboard: the cursor then follows to the new dataset
     if (go) { _lngPick(go.dataset.prefix, { focus: e.detail === 0 }); return; }
@@ -16946,13 +16961,68 @@ function _lngPool(d, g) {
 /** One object as drawn: the catalog's own fields, plus what the dashboard knows about it. It is
  *  matched by its exact name, among the datasets of this graph's own connection only: the prefix
  *  rule exists for Qlik's file names, and a guessed match puts someone else's score, records and
- *  lineage on this object. */
-function _lngNode(n, dir, via, pool) {
+ *  lineage on this object. `base` is the assessed dataset whose catalog read found it: its
+ *  connection is the one that can reach this object, which is how Assess gets to it. */
+function _lngNode(n, dir, via, pool, base) {
   const label = n.schema ? `${n.schema}.${n.name}` : n.name;
   const q = _linQuality(label, pool, true);
   const ds = q.m ? q.m.d : null;
   const d = ds ? (linPick.all.find(x => x.key === ds.key) || null) : null;
-  return { n, label, dir, via: via || '', q, d, ds, key: n.key || `${n.schema || ''}.${n.name}`.toLowerCase().replace(/^\./, '') };
+  return { n, label, dir, via: via || '', q, d, ds, base: base || null,
+           key: n.key || `${n.schema || ''}.${n.name}`.toLowerCase().replace(/^\./, '') };
+}
+
+// An object found here that has not been assessed can be, from here: through the connection of
+// the dataset it was found through, pointed at that object (rerun-source's schema and table), as a
+// run of its own. Procedures and functions hold no rows, so they are not offered.
+const _lngStarted = new Set();        // assessments started from here this visit, so one is not started twice
+const _lngAssessKey = it => `${it.base.key || it.base.resultPrefix}|${it.key}`;
+function _lngCanAssess(it) {
+  const b = it.base;
+  return !it.q.m && !!b && !!b.resultPrefix && !String(b.resultPrefix).includes('/_uploads/')
+    && !!_SRC_CARD_BY_FMT[String(b.sourceFormat || '').toLowerCase()] && !!it.n.name && _lngKindCls(it.n.kind) !== 'other';
+}
+function _lngAssessHtml(it) {
+  if (!_lngCanAssess(it)) return '';
+  if (_lngStarted.has(_lngAssessKey(it))) {
+    return `<button type="button" class="lng-assess" disabled title="An assessment of ${esc(it.label)} was started. Its score shows here once it has finished.">Started</button>`;
+  }
+  const via = esc(it.base.name || it.base.slug || 'the assessed dataset');
+  return `<button type="button" class="lng-assess" data-assess="${esc(it.key)}" aria-label="Assess ${esc(it.label)}" ` +
+    `data-tip="Assess it through the connection ${via} was assessed with">Assess</button>`;
+}
+async function lngAssess(btn) {
+  const st = _lngState; if (!st || !st.g) return;
+  const it = st.up.concat(st.down).find(x => x.key === btn.dataset.assess);
+  if (!it || !_lngCanAssess(it)) return;
+  const b = it.base, card = _SRC_CARD_BY_FMT[String(b.sourceFormat || '').toLowerCase()];
+  const lb = $('#lngBanner');
+  if (lb) { lb.className = 'banner'; lb.innerHTML = ''; }
+  btn.disabled = true; btn.textContent = 'Starting…';
+  const back = () => { btn.disabled = false; btn.textContent = 'Assess'; };
+  let r;
+  try {
+    r = await postJSON(`${API_BASE}/data-quality/rerun-source`, HEADERS, { result_prefix: b.resultPrefix,
+      schema: it.n.schema || undefined, table: it.n.name, notify_email: EMAIL || undefined });
+  } catch (e) {
+    back();
+    if (lb) showBanner(lb, 'err', `${it.label} was not assessed. ${e.message}`);
+    return;
+  }
+  if (!r || !r.rerun) {
+    // Its connection was typed in for that run and not saved: the source's own form takes it.
+    back();
+    switchTab('upload');
+    if (typeof selectSource === 'function') selectSource(card);
+    srcShowFace(card, 'form');
+    banner('info', `The connection ${b.name || 'that dataset'} was assessed with is not saved, so ${it.label} cannot be assessed from Lineage. ` +
+      `Enter your ${SOURCE_LABEL[card] || 'data source'} connection details here, with ${it.label} as the table, and run it.`);
+    return;
+  }
+  _lngStarted.add(_lngAssessKey(it));
+  btn.textContent = 'Started';
+  srcFollowRerun(card, r, `Assessing ${it.label}`,
+    b.name ? `Connecting with the saved connection ${b.name} was assessed with…` : 'Connecting with the saved connection…');
 }
 
 // Indirect: one step further, through each assessed dataset in between, from THAT dataset's own
@@ -16974,7 +17044,7 @@ async function _lngIndirect(direct, dir, seen, pool) {
     if (!blk || (st !== 'read' && !(dir === 'up' && st === 'not_applicable'))) { unread.push(hops[i].label); return; }
     if (blk.note) partial.push(hops[i].label);     // its catalog says it leaves some out
     (blk.nodes || []).forEach(n => {
-      const x = _lngNode(n, dir, hops[i].label, pool);
+      const x = _lngNode(n, dir, hops[i].label, pool, hops[i].d);
       if (seen.has(x.key)) return;
       seen.add(x.key);
       if (out.length >= LNG_IND_MAX) { dropped++; return; }
@@ -16997,6 +17067,7 @@ async function showSourceLineage() {
   const body = $('#srcLineageBody'), sel = linPick.sel;
   if (!sel) return;
   const d = linPick.all.find(x => x.resultPrefix === sel), label = (d && (d.name || d.slug)) || '';
+  const lb = $('#lngBanner'); if (lb) { lb.className = 'banner'; lb.innerHTML = ''; }   // it was about the graph before
   body.innerHTML = `<div class="lng-loading"><span class="spin"></span> Reading the dependency graph…</div>`;
   // The panel follows the pick at once: while it loads, and if the read fails, it describes and
   // acts on the dataset in the Dataset box, never on the one before it.
@@ -17027,7 +17098,7 @@ async function renderSourceLineage(r, label, d) {
   }
   const g = r.lineage || {}, pool = _lngPool(d, g);
   const seen = new Set([`${g.schema || ''}.${g.table || ''}`.toLowerCase().replace(/^\./, '')]);
-  const direct = (blk, dir) => ((blk || {}).nodes || []).map(n => { const x = _lngNode(n, dir, '', pool); seen.add(x.key); return x; });
+  const direct = (blk, dir) => ((blk || {}).nodes || []).map(n => { const x = _lngNode(n, dir, '', pool, d); seen.add(x.key); return x; });
   const up = direct(g.upstream, 'up'), down = direct(g.downstream, 'down');
   const [iu, id] = await Promise.all([_lngIndirect(up, 'up', seen, pool), _lngIndirect(down, 'down', seen, pool)]);
   if (linPick.sel !== sel) return;
@@ -17103,7 +17174,7 @@ function _lngNodeHtml(n) {
     `<span class="lng-nico k-${kc}">${_LNG_ICO[kc]}</span><span class="lng-nb">` +
     `<span class="lng-nname">${_lngNameHtml(it.label, it.n.schema || '')}</span><span class="lng-nsrc">${src}</span>` +
     `<span class="lng-nkind">${esc(kind)}</span><span class="lng-nst">${_lngStatusHtml(it.q)}</span></span>` +
-    (it.d ? `<span class="lng-nchev">${CMP_ICO.chev}</span>` : '') + `</div>`;
+    (it.d ? `<span class="lng-nchev">${CMP_ICO.chev}</span>` : _lngAssessHtml(it)) + `</div>`;
 }
 function _lngFocusHtml(st, n) {
   const d = st.d || {}, g = st.g, rag = _lngRagOf(d);
@@ -17178,7 +17249,7 @@ function _lngOtherHtml(st, view) {
       `<td>${esc(sourceLabel(st.g.engine))}</td><td>${esc(_lngKindLabel(it.n.kind))}</td>` +
       `<td>${m && typeof m.rows === 'number' ? numInt(m.rows) : '-'}</td>` +
       `<td>${m && m.lastSeen ? esc(_cmpDay(m.lastSeen, true)) : '-'}</td>` +
-      `<td><span class="lng-nst ${it.q.rag}">${_lngStatusHtml(it.q)}</span></td></tr>`;
+      `<td><span class="lng-nst ${it.q.rag}">${_lngStatusHtml(it.q)}</span></td><td class="lng-tact">${_lngAssessHtml(it)}</td></tr>`;
   }).join('');
   return `<section class="lng-other${lngOtherOpen ? ' open' : ''}" data-dir="${dir}">` +
     `<button type="button" class="lng-other-hd" aria-expanded="${lngOtherOpen}"><span class="lng-other-ico">${_LNG_ICO.arrow}</span>` +
@@ -17186,7 +17257,7 @@ function _lngOtherHtml(st, view) {
       `<span class="lng-other-n">${items.length}</span><span class="lng-other-chev">${_LNG_ICO.down}</span></button>` +
     `<div class="lng-other-body"${lngOtherOpen ? '' : ' hidden'}>` +
       (items.length ? `<div class="lng-tbl-wrap"><table class="lng-tbl"><thead><tr><th>Dataset</th><th>Source</th><th>Type</th>` +
-          `<th>Records</th><th>Last assessed</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table></div>`
+          `<th>Records</th><th>Last assessed</th><th>Status</th><th><span class="sr-only">Action</span></th></tr></thead><tbody>${rows}</tbody></table></div>`
         : _srcLinEmpty(blk, dir === 'up' ? 'it is built from' : 'else is built on it')) +
     `</div></section>`;
 }
@@ -17263,7 +17334,7 @@ function _lngWireCanvas(L) {
   const pair = () => { const [a, b] = [...pts.values()]; return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, d: Math.hypot(a.x - b.x, a.y - b.y) || 1 }; };
   const startDrag = (id, p) => { drag = { id, x: p.x, y: p.y, cx: lngCam.x, cy: lngCam.y }; };
   cv.addEventListener('pointerdown', e => {
-    if (e.button !== 0 || e.target.closest('.lng-node.go, .lng-nav')) return;
+    if (e.button !== 0 || e.target.closest('.lng-node.go, .lng-nav, .lng-assess')) return;
     pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
     cv.setPointerCapture(e.pointerId);
     if (pts.size === 1) startDrag(e.pointerId, pts.get(e.pointerId));
@@ -17366,7 +17437,7 @@ function _lngLi(it) {
   return `<${tag}${it.d ? ` type="button" data-prefix="${esc(it.d.resultPrefix)}"` : ''} class="lng-li${it.d ? ' go' : ''}" title="${_lngTip(it)}">` +
     `<span class="lng-nico lng-nico-sm k-${kc}">${_LNG_ICO[kc]}</span><span class="lng-li-b">` +
     `<span class="lng-li-n">${_lngNameHtml(it.label, it.n.schema || '')}</span><span class="lng-li-s">${esc(sub)}</span></span>` +
-    `<span class="lin-rag ${it.q.rag}"></span>${it.d ? `<span class="lng-li-chev">${CMP_ICO.chev}</span>` : ''}</${tag}>`;
+    `<span class="lin-rag ${it.q.rag}"></span>${it.d ? `<span class="lng-li-chev">${CMP_ICO.chev}</span>` : _lngAssessHtml(it)}</${tag}>`;
 }
 function _lngList(items, key, blk, what) {
   if (!items.length) return _srcLinEmpty(blk, what);
@@ -17440,7 +17511,8 @@ function _lngSide() {
       // is read during the run, so the two mean the same thing.
       (g.run_id ? note(`Read from the catalog ${esc(fmtWhen(g.run_id))}.`) : '') + gaps +
       note('Indirect objects are found through the assessed datasets in between, each from its own catalog read. ' +
-        'Past an object that has not been assessed, the graph stops at what this catalog records directly.' +
+        'Past an object that has not been assessed, the graph stops at what this catalog records directly. ' +
+        'Assess, on a table or view not assessed yet, runs it through the saved connection of the dataset it was found through.' +
         (st.skipped ? ` Looked up through the first ${LNG_HOP_MAX} only; ${st.skipped} more were not followed.` : '') +
         (st.dropped ? ` The first ${LNG_IND_MAX} found are shown; ${st.dropped} more are not.` : '')) +
       note('This is object dependency lineage: what the catalog records about how each object is defined. It is not pipeline lineage. A warehouse does not know which job loaded a table, so neither do we.') +
@@ -21852,7 +21924,7 @@ const GD_SHOTS = {
   "incidents-p": [1600, 1163, "d257df8b88"],
   "incidents-q": [1600, 1163, "8acb69c159"],
   "lineage-app": [1600, 1141, "8605e85254"],
-  "lineage-source": [1600, 1129, "cc5e81a146"],
+  "lineage-source": [1600, 1129, "d903b63cd1"],
   "onprem-file": [1600, 1156, "244201089c"],
   "overview-top-p": [1600, 609, "2906120567"],
   "overview-top-q": [1600, 584, "5d61e45e4c"],
@@ -22139,16 +22211,21 @@ function apxCalls() {
                ['400', 'None of the tagged datasets can run; <code>detail.skipped</code> says why.'],
                ['429', 'Too many runs in progress. Wait 30 to 60 seconds and try again.']] },
     { id: 'rerun-source', launches: true,
-      what: `Assesses one dataset again, with the connection saved for it.`,
+      what: `Assesses one dataset again, with the connection saved for it. Given a <code>table</code>, it assesses that table or view through the same connection instead.`,
       fields: [folder(`The folder of any earlier run of the dataset. <code>history</code> lists them.`), email,
-               dry(`Checks the run can be repeated (its source, and a saved connection with every field it needs) without starting it.`)],
+               dry(`Checks the run can be repeated (its source, and a saved connection with every field it needs) without starting it.`),
+               { name: 'schema', type: 'string', req: false, def: '', ph: 'reporting',
+                 desc: 'With <code>table</code>: the schema it is in (the database on MySQL and Athena, the dataset on BigQuery). Leave it out to keep the run\'s own.' },
+               { name: 'table', type: 'string', req: false, def: '', ph: 'current_orders',
+                 desc: 'Assess this table or view instead, through the same saved connection, as a dataset of its own: one the Lineage tab found built on it, for example. Leave it out to assess the run\'s own dataset again. Not for a file source.' }],
       answer: [['rerun', '<code>true</code> once started; <code>false</code> when it could not be, with a <code>reason</code>.'],
                ['resultPrefix', `The new run's folder, to ask after it with.`],
                ['runId', `The new run's id.`],
                ['reason', '<code>no_saved_credentials</code>: the dataset has no saved connection, so it cannot run unattended.'],
                ['wouldRerun', 'In a dry run: <code>true</code> when it could be repeated.']],
-      errors: [['400', 'Not a run folder, not a source that can be repeated, or the saved connection is missing fields.'],
+      errors: [['400', 'Not a run folder, not a source that can be repeated, the saved connection is missing fields, or a <code>table</code> that is no name or is on a file source.'],
                ['404', 'No such dataset, or not one you can see.'],
+               ['409', 'Its saved connection is on an on-premises agent that is offline. Start the agent\'s service, then try again.'],
                ['429', 'Too many runs in progress. Wait 30 to 60 seconds and try again.']] },
     { id: 'result',
       what: `Where a run has got to, and its verdict once it has finished. Ask every 15 to 30 seconds until <code>state</code> is no longer <code>PENDING</code> or <code>RUNNING</code>.`,
@@ -23531,7 +23608,7 @@ dq-agent-service.cmd RESTART`) +
   G.push({
     id: 'lineage', cat: 'Explore', icon: 'share', tint: '#22d3ee',
     title: 'Read the lineage', sub: pk('Where this app\'s data comes from, and what each table is built from', 'What each table is built from, and what is built on it'),
-    keywords: 'lineage upstream downstream dependencies built from built on catalog view table qlik lineage graph incomplete',
+    keywords: 'lineage upstream downstream dependencies built from built on catalog view table qlik lineage graph incomplete assess connected not assessed',
     open: { tab: 'lineage', label: 'Open Lineage' },
     sections: [
       Q ? { h: 'Two views of lineage', body:
@@ -23545,7 +23622,7 @@ dq-agent-service.cmd RESTART`) +
       { h: 'Reading the source lineage', body: steps(
           `${n(1)} Pick a dataset under ${ui('Dataset')}: type to search it by name, schema or tag, or press ${ui('Ctrl K')} to search from anywhere on the tab. ${ui('All datasets')} narrows the list by source, stage or tag. ${showme('lineage')}`,
           `${n(2)} ${ui('Downstream')} draws what is built on it, ${ui('Upstream')} what it is built from, and ${ui('Both')} the two at once.`,
-          `${n(3)} Every object shows its kind and its quality. A dashed line is indirect: one step further out, found through an assessed dataset in between. Click an object that has been assessed to follow the lineage from there.`,
+          `${n(3)} Every object shows its kind and its quality. A dashed line is indirect: one step further out, found through an assessed dataset in between. Click an object that has been assessed to follow the lineage from there. A table or view not assessed yet has ${ui('Assess')}: it runs that object through the saved connection of the dataset it was found through, and the run opens on its source's tab.`,
           `${n(4)} The other direction is listed under the graph, with each object's records, when it was last assessed and its status.`,
           `${n(5)} ${ui('Lineage info')} says how much the catalog recorded, what it may have missed, and when it was read.`) +
           shot('lineage-source', `${n(1)} The dataset, ${n(2)} which way to look, ${n(3)} what is built on it, ${n(4)} what it is built from, and ${n(5)} how complete the catalog's answer is.`) +
@@ -24477,6 +24554,28 @@ function reUploadPrompt(datasetName) {
   if (f) f.focus();
 }
 
+// A run rerun-source started, followed like any other: its source tab and connector open, and its
+// result is polled onto that connector's stage. Re-run uses it, and so does Lineage's Assess.
+function srcFollowRerun(card, r, msg, sub) {
+  switchTab('upload');
+  if (typeof selectSource === 'function') selectSource(card);
+  const seq = srcRunBegin(card, { msg, sub });
+  // A connection saved on an agent re-runs there, and is followed by its job as well (srcLaunch).
+  const job = agentJobOf(r);
+  srcRunLaunched(card, r.runId, job
+    ? 'Queued for the agent. It starts on that machine\'s next poll, usually within 15 seconds.'
+    : 'Inferring the ruleset from a sample, then scoring the whole table.');
+  const bodyEl = document.getElementById(`${card}ResultBody`);
+  if (r.resultPrefix && bodyEl) {
+    srcRunState[card].pollPrefix = r.resultPrefix;
+    pollInto(r.resultPrefix, bodyEl, { stage: card, stageSeq: seq, tabbed: true, agentJob: job });
+  } else {
+    srcRunFail(card, 'The run started, but its result cannot be followed here. It will appear in Assessment history when it finishes.');
+  }
+  const ws = document.querySelector('.src-workspace');
+  if (ws) ws.scrollIntoView({ behavior: dqReduced() ? 'auto' : 'smooth', block: 'nearest' });
+}
+
 async function reRunTable(tableName, sourceFormat, resultPrefix) {
   const fmt = (sourceFormat || '').toLowerCase();
   // An UPLOADED file has nothing to re-run from: no saved connection, and the file itself is
@@ -24492,25 +24591,7 @@ async function reRunTable(tableName, sourceFormat, resultPrefix) {
         const r = await postJSON(`${API_BASE}/data-quality/rerun-source`, HEADERS,
           { result_prefix: resultPrefix, notify_email: EMAIL || undefined });
         if (r && r.rerun) {
-          // Behave like a normal run: open the source tab and connector, and follow it on its stage.
-          switchTab('upload');
-          if (typeof selectSource === 'function') selectSource(card);
-          const seq = srcRunBegin(card, { msg: `Re-assessing ${tableName || 'the dataset'}`,
-            sub: 'Reconnecting with the saved credentials for this connection…' });
-          // A connection saved on an agent re-runs there, and is followed by its job as well (srcLaunch).
-          const job = agentJobOf(r);
-          srcRunLaunched(card, r.runId, job
-            ? 'Queued for the agent. It starts on that machine\'s next poll, usually within 15 seconds.'
-            : 'Inferring the ruleset from a sample, then scoring the whole table.');
-          const bodyEl = document.getElementById(`${card}ResultBody`);
-          if (r.resultPrefix && bodyEl) {
-            srcRunState[card].pollPrefix = r.resultPrefix;
-            pollInto(r.resultPrefix, bodyEl, { stage: card, stageSeq: seq, tabbed: true, agentJob: job });
-          } else {
-            srcRunFail(card, 'The re-run started, but its result cannot be followed here. It will appear in Assessment history when it finishes.');
-          }
-          const ws = document.querySelector('.src-workspace');
-          if (ws) ws.scrollIntoView({ behavior: dqReduced() ? 'auto' : 'smooth', block: 'nearest' });
+          srcFollowRerun(card, r, `Re-assessing ${tableName || 'the dataset'}`, 'Reconnecting with the saved credentials for this connection…');
           return;
         }
       } catch (e) { /* fall through to the redirect */ }
