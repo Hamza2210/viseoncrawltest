@@ -101,6 +101,18 @@
   .pop-i .k { margin-left: auto; font-size: 11px; color: var(--dim); }
   .pop-e { padding: 12px 10px; color: var(--muted); font-size: 12.5px; }
   .rel { position: relative; }
+  .orgsw { display: flex; align-items: center; gap: 9px; }
+  .orgsw[hidden] { display: none; }
+  .orgsw-l { color: var(--muted); font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; white-space: nowrap; }
+  .orgsw select { height: 38px; min-width: 200px; max-width: 320px; padding: 0 34px 0 12px; border-radius: 10px; cursor: pointer;
+    border: 1px solid var(--accent); background-color: rgba(15,27,56,.85); color: var(--ink); font-size: 13.5px; font-weight: 600;
+    appearance: none; -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23aecbff' d='M6 8.5 1.5 4h9z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 12px center; }
+  .orgsw select:focus { outline: none; box-shadow: 0 0 0 3px rgba(79,140,255,.25); }
+  .orgsw select option { background: #0d1a37; }
+  .orgsw select:disabled { opacity: .6; cursor: default; }
+  @media (max-width: 760px) { .orgsw-l { display: none; } .orgsw select { min-width: 140px; } }
 
   /* The whole width, at any zoom: a cap here left an empty strip on the right of a wide screen. */
   .content { padding: 20px 24px 48px; }
@@ -282,6 +294,9 @@
 
   #denied, #loading { max-width: 520px; margin: 18vh auto; text-align: center; color: var(--muted); }
   #denied h1 { color: var(--ink); }
+  #denied select, #denied button { height: 34px; margin: 8px 4px 0; padding: 0 12px; border-radius: 9px; border: 1px solid var(--line2);
+    background: #0d1a37; color: var(--ink); cursor: pointer; }
+  #denied button { border-color: var(--accent); font-weight: 600; }
 
   @media (max-width: 1240px) { .ov { grid-template-columns: 1fr; } .ov .rail { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
     .ov .rail > .card + .card { margin-top: 0; } }
@@ -303,8 +318,11 @@
   <div id="denied" hidden>
     <h1>Admin access required</h1>
     <p>You're signed in as <span id="deniedWho"></span>, but this page is for administrators.
-       <span id="deniedOrgs" hidden><br>You're working in <b id="deniedOrg"></b>. If you're an administrator of another of
-       your organisations, switch to it in the <a href="#" id="deniedApp">app</a> first.</span>
+       <span id="deniedOrgs" hidden><br>You're working in <b id="deniedOrg"></b>, where you're not an administrator.
+       <a href="#" id="deniedApp">Back to the app</a>.</span>
+       <span id="deniedSwitch" hidden><br>You're an administrator of
+         <select id="deniedSel" aria-label="An organisation you administer"></select>
+         <button type="button" id="deniedGo">Switch to it</button></span>
        <br><a href="#" id="deniedLogout">Log out</a></p>
   </div>
 
@@ -337,6 +355,12 @@
           <div class="pop" id="qres" hidden role="listbox"></div>
         </div>
         <div class="top-r">
+          <!-- Which organisation this page is managing. Shown to a super-admin, and to an admin of
+               more than one organisation; everyone else manages the only one they administer. -->
+          <label class="orgsw" id="orgSw" hidden>
+            <span class="orgsw-l">Organisation</span>
+            <select id="orgSwSel" aria-label="The organisation you are managing"></select>
+          </label>
           <div class="rel">
             <button type="button" class="iconbtn" id="bellBtn" aria-label="Needs attention" aria-expanded="false"><svg class="i" data-i="bell"></svg><span class="badge" id="bellN" hidden></span></button>
             <div class="pop" id="bellPop" hidden></div>
@@ -463,7 +487,7 @@
             <div><h2>Tag Management</h2><p id="tagsSub">Your organisation's tags, what each is for, and who may see what.</p></div></div>
           <div class="card">
             <div class="card-h"><span class="cico"><svg class="i" data-i="tag"></svg></span>
-              <div><h2>Your organisation's tags</h2><p>This is the list people choose from when tagging a dataset. Tick <b>restricts</b> to make a tag an access control: a dataset carrying it is then visible only to members granted it. Admins always see everything. A colour is worn everywhere the tag appears; <i>auto</i> keeps the colour made from its name.</p></div></div>
+              <div><h2 id="tagsCardTitle">Your organisation's tags</h2><p>This is the list people choose from when tagging a dataset. Tick <b>restricts</b> to make a tag an access control: a dataset carrying it is then visible only to members granted it. Admins always see everything. A colour is worn everywhere the tag appears; <i>auto</i> keeps the colour made from its name.</p></div></div>
             <div class="addline">
               <div class="f"><input id="tNew" placeholder="Add a tag, e.g. finance" autocomplete="off" maxlength="40" aria-label="New tag"></div>
               <span class="swatches" id="tNewSw"></span>
@@ -488,7 +512,7 @@
         <!-- ======================================================== AGENTS -->
         <section class="view" data-view="agents" hidden>
           <div class="banner"><span class="bico"><svg class="i" data-i="cloud"></svg></span>
-            <div><h2>On-premises Agents</h2><p>A small Windows service inside the customer's network: it polls for work, runs the assessment there, and keeps the database password on that machine.</p></div></div>
+            <div><h2>On-premises Agents</h2><p id="agentsSub">A small Windows service inside the customer's network: it polls for work, runs the assessment there, and keeps the database password on that machine.</p></div></div>
           <div class="card">
             <div class="card-h"><span class="cico"><svg class="i" data-i="cloud"></svg></span>
               <div><h2>Register an agent</h2><p>Registering names the machine. Its <b>config</b>, downloaded from its row, is what lets it work. See docs/ONPREM_AGENT_INSTALL.md.</p></div></div>
@@ -664,13 +688,12 @@
                                         description: t.description || '' }));
     TAG_DIRTY = false;
   }
-  // How many datasets carry each tag. Read from the workspace's own dataset tags; for a
-  // super-admin looking at another organisation in the app the counts would describe that one,
-  // so they are left out rather than shown against the wrong tags.
+  // How many datasets carry each tag, read from the workspace's own dataset tags. The tags and the
+  // counts both describe the organisation being managed (the one switched to, for a super-admin).
   async function loadCounts() {
     COUNTS = null;
     const ws = ME.workspace_id;
-    if (!ws || (IS_SUPER && ME.active_org_id && ME.home_org_id && ME.active_org_id !== ME.home_org_id)) return;
+    if (!ws) return;
     const r = await api('/data-quality/dataset-tags', { method: 'POST', body: JSON.stringify({ app_id: ws, action: 'get' }) });
     const m = new Map();
     Object.values(r.entries || {}).forEach(e => (e && e.tags || []).forEach(t => {
@@ -1195,7 +1218,7 @@
     const msg = $('#tagMsg'); msg.className = 'msg';
     const btns = [...chips.querySelectorAll('.grantchip')]; btns.forEach(b => { b.disabled = true; });
     try {
-      await api('/portal/admin/users/tags', { method: 'POST', body: JSON.stringify({ email: m.email, tags: tags }) });
+      await api('/portal/admin/users/tags', { method: 'POST', body: JSON.stringify({ email: m.email, tags: tags, org_id: MY_ORG_ID }) });
       m.tags = tags;
       show(msg, 'ok', tags.length ? 'Granted ' + m.email + ': ' + tags.join(', ') + '.' : m.email + ' now sees only unrestricted datasets.');
       await refreshActivity();
@@ -1216,7 +1239,7 @@
                      + (exposed.length === 1 ? '' : 's') + ':\n\n' + who + '\n\nGrant the tag first if they should keep access. Continue?')) return false;
       }
     }
-    const r = await api('/portal/admin/org/tags', { method: 'POST', body: JSON.stringify({ tags: cat, policy: policy }) });
+    const r = await api('/portal/admin/org/tags', { method: 'POST', body: JSON.stringify({ tags: cat, policy: policy, org_id: MY_ORG_ID }) });
     TAGS.tags = r.tags || []; TAGS.restricted_tags = r.restricted_tags || []; TAGS.policy = r.policy || 'open';
     CAT = TAGS.tags.map(t => ({ name: t.name, restricts: !!t.restricts, color: normColor(t.color), description: t.description || '' }));
     markDirty(false);
@@ -1604,28 +1627,75 @@
     $('#logout').addEventListener('click', logout); $('#deniedLogout').addEventListener('click', logout);
   }
 
+  // ------------------------------------------------------------------ which organisation
+  // This page manages ONE organisation at a time: the one the session is in, which is the same one
+  // the app shows. A super-admin can switch to any; an admin of several, to any they administer
+  // (/me gives their role in each). Switching moves the whole session, app included, and reloads.
+  const adminOrgs = () => (ME.orgs || []).filter(o => o && o.org_id && (IS_SUPER || String(o.role || '').toLowerCase() === 'admin'));
+  const activeOrg = () => String(ME.active_org_id || ME.org_id || '').toLowerCase();
+  async function switchOrg(orgId, ctl) {
+    if (ctl) ctl.disabled = true;
+    try {
+      await api('/portal/auth/switch-org', { method: 'POST', body: JSON.stringify({ org_id: orgId }) });
+    } catch (e) {
+      if (ctl) { ctl.disabled = false; ctl.title = e.message; }
+      throw e;
+    }
+    TAG_DIRTY = false;                       // asked already; the reload must not ask again
+    location.reload();
+  }
+  function wireOrgSwitch() {
+    const opts = adminOrgs(), active = activeOrg(), sel = $('#orgSwSel');
+    if (opts.length < 2) return;             // one organisation to manage: nothing to switch to
+    sel.textContent = '';
+    opts.forEach(o => { const op = el('option', null, o.name || o.org_id); op.value = o.org_id; if (o.org_id === active) op.selected = true; sel.appendChild(op); });
+    $('#orgSw').hidden = false;
+    sel.addEventListener('change', () => {
+      if (TAG_DIRTY && !confirm('Your tag changes are not saved. Switch organisation and lose them?')) { sel.value = active; return; }
+      switchOrg(sel.value, sel).catch(() => { sel.value = active; });
+    });
+  }
+  // The organisation's name in the parts of the page that belong to one organisation, so it is
+  // never a question which one a tag or an agent is being added to.
+  function nameTheOrg() {
+    const n = ME.org_name || ME.org_id || 'your organisation';
+    $('#tagsSub').textContent = n + '’s tags, what each is for, and who may see what.';
+    $('#tagsCardTitle').textContent = n + '’s tags';
+    $('#agentsSub').textContent = 'Machines registered to ' + n + '. Each is a small Windows service inside the network: it polls for work, runs the assessment there, and keeps the database password on that machine.';
+  }
+
   (async function init() {
     let me = null;
     try { me = await api('/portal/auth/me'); } catch { me = null; }
     if (!me || !me.ok || !me.user) { location.href = API_BASE + '/portal/auth/login'; return; }
-    ME = me.user; IS_SUPER = !!ME.is_super; MY_ORG_ID = String(ME.home_org_id || ME.org_id || '').toLowerCase();
+    ME = me.user; IS_SUPER = !!ME.is_super; MY_ORG_ID = activeOrg();
     $('#loading').hidden = true;
     const isAdmin = IS_SUPER || String(ME.role || '').toLowerCase() === 'admin';
     if (!isAdmin) {
       $('#deniedWho').textContent = ME.email || '';
       // Someone in several organisations is an admin of this page only in the ones they administer,
-      // so say which one they are in, and where to change it.
+      // so say which one they are in, and offer the ones they do administer.
       if ((ME.orgs || []).length > 1) {
         $('#deniedOrg').textContent = ME.org_name || ME.org_id || '';
         $('#deniedApp').href = location.origin + '/dq-portal';
         $('#deniedOrgs').hidden = false;
+        const mine = adminOrgs();
+        if (mine.length) {
+          const sel = $('#deniedSel');
+          mine.forEach(o => { const op = el('option', null, o.name || o.org_id); op.value = o.org_id; sel.appendChild(op); });
+          $('#deniedSwitch').hidden = false;
+          $('#deniedGo').addEventListener('click', () => switchOrg(sel.value, $('#deniedGo')).catch(() => {}));
+        }
       }
       $('#denied').hidden = false;
       $('#deniedLogout').addEventListener('click', e => { e.preventDefault(); location.href = API_BASE + '/portal/auth/logout'; });
       return;
     }
     wire();
-    const home = ME.home_org_name || ME.org_name || 'Data Assurance';
+    wireOrgSwitch();
+    nameTheOrg();
+    // The organisation being managed, not necessarily the person's own first one.
+    const home = ME.org_name || ME.home_org_name || 'Data Assurance';
     $('#brandOrg').textContent = home; $('#brandLogo').textContent = initial(home);
     $('#meEmail').textContent = ME.email || ''; $('#meAvatar').textContent = initial(ME.email);
     $('#meRole').textContent = IS_SUPER ? 'Super admin' : 'Administrator';
