@@ -4388,6 +4388,8 @@
   .pis-fail b { display: block; font-size: 15px; margin-bottom: 4px; color: #ffb4b4; }
   .pis-fail p { margin: 0 0 12px; color: var(--muted); }
   .pis-fail-acts { display: flex; align-items: center; gap: 12px; }
+  .pis-fail.cancelled b { color: var(--text); }
+  .pis-loader .pis-cancel { margin-top: -4px; }
   .pis-loader { display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 26px 0 18px; text-align: center; }
   .pis-loader .dq-loader { padding: 0; }
   .pis-progress { width: min(420px, 90%); height: 6px; border-radius: 4px; background: var(--idle-bg); overflow: hidden; }
@@ -24784,7 +24786,8 @@ function pisStageLoader(phase, detail) {
   st.style.display = '';
   st.innerHTML = `<div class="pis-loader">${dqLoader(PIS_PHASE[phase] || 'Working', detail || ' ')}` +
     `<div class="pis-progress" hidden><i style="width:0%"></i></div>` +
-    `<p class="hint">Every value is read where the worker can reach it. Only where each find sits is written down, never the value.</p></div>`;
+    `<p class="hint">Every value is read where the worker can reach it. Only where each find sits is written down, never the value.</p>` +
+    `<button type="button" class="linkbtn lngb pis-cancel" data-pis="cancel"${pis.run ? '' : ' hidden'}>Cancel this sweep</button></div>`;
 }
 function pisLoaderUpdate(phase, detail, pct) {
   const box = $('#pisStage .pis-loader'); if (!box) { pisStageLoader(phase, detail); return; }
@@ -24793,6 +24796,29 @@ function pisLoaderUpdate(phase, detail, pct) {
   if (sub) sub.textContent = detail || ' ';
   const pr = box.querySelector('.pis-progress');
   if (pr) { pr.hidden = pct == null; if (pct != null) pr.firstChild.style.width = Math.max(0, Math.min(100, pct)) + '%'; }
+  const cb = box.querySelector('.pis-cancel'); if (cb) cb.hidden = !pis.run;
+}
+function pisStageCancelled(s) {
+  const st = $('#pisStage'); if (!st) return;
+  const by = s && s.cancelledBy ? ` Cancelled by ${s.cancelledBy}${s.cancelledAt ? ', ' + rcxWhen(s.cancelledAt) : ''}.` : '';
+  st.style.display = '';
+  st.innerHTML = `<div class="pis-fail cancelled" role="status"><b>Sweep cancelled</b><p>${esc(((s && s.detail) || 'It was stopped before it finished.') + by)} ` +
+    `Nothing it had read was kept. Sweep again whenever you are ready.</p>` +
+    `<div class="pis-fail-acts"><button type="button" class="linkbtn lngb" data-pis="close">Close</button></div></div>`;
+}
+async function pisCancel() {
+  const run = pis.run; if (!run) return;
+  if (!await dqConfirm('Cancel this sweep?\n\nIt stops where it is, and nothing it has read is kept. You can sweep again at any time.',
+                       { title: 'Cancel the sweep', okLabel: 'Cancel the sweep', cancelLabel: 'Keep it running' })) return;
+  try {
+    await pisApi({ action: 'cancel', dataset_key: run.key, sweep_id: run.sweepId });
+  } catch (e) {
+    if (e && e.status === 409) return;                       // it finished meanwhile: the next poll shows it
+    dqAlert(rcxErrText(e), { title: 'Not cancelled' }); return;
+  }
+  if (pis.run === run) { pis.run = null; pis.busy = false; pisPaintPick(); }
+  pisStageCancelled({ detail: 'Cancelled before it finished.' });
+  pisLoadList();
 }
 function pisStageFail(title, msg) {
   const st = $('#pisStage'); if (!st) return;
@@ -24828,6 +24854,7 @@ async function pisUpload(file) {
 }
 async function pisFollow(run) {
   pis.run = run;
+  { const cb = $('#pisStage .pis-cancel'); if (cb) cb.hidden = false; }   // cancellable from the start
   const CAP_MS = 90 * 60 * 1000;
   let n = 0;
   const stop = () => { pis.busy = false; pis.run = null; pisPaintPick(); };
@@ -24841,6 +24868,7 @@ async function pisFollow(run) {
     const st = String((s && s.state) || '').toUpperCase();
     if (st === 'SUCCEEDED') { stop(); await pisOpen(run.key, run.sweepId); pisLoadList(); return; }
     if (st === 'FAILED' || st === 'ERROR') { stop(); pisStageFail('The sweep failed', s.error || 'The worker did not say why.'); pisLoadList(); return; }
+    if (st === 'CANCELLED') { stop(); pisStageCancelled(s); pisLoadList(); return; }
     if (run.job && n % 3 === 0) {
       // A job an agent declined, or that died on it, writes nothing more: ask the agent.
       const bad = await agentJobFailure(run.job);
@@ -24873,6 +24901,7 @@ async function pisOpen(key, sweepId) {
         return;
       }
       if (s && (s.state === 'FAILED' || s.state === 'ERROR')) { pisStageFail('The last sweep failed', s.error || 'The worker did not say why.'); return; }
+      if (s && s.state === 'CANCELLED') { pisStageCancelled(s); return; }
       st.style.display = 'none';
       pisHint(`${pisName(key)} has not been swept yet. Press Sweep for PII to sweep it now.`);
       return;
@@ -25094,7 +25123,7 @@ function pisTodoHtml(res) {
   return `<h4>What to do</h4><ol class="pis-todo">${items.map(i => `<li class="${i.urgent ? 'urgent' : ''}${i.done ? ' done' : ''}"><div><b>${esc(i.t)}</b><small>${esc(i.s)}</small></div>` +
     (i.btn ? `<button type="button" class="pis-rowbtn lngb" data-pis="${i.btn[0]}">${esc(i.btn[1])}</button>` : '<span></span>') + `</li>`).join('')}</ol>`;
 }
-const PIS_STATE_W = { QUEUED: 'Waiting to start', RUNNING: 'Running', FAILED: 'Failed', ERROR: 'Failed', SUCCEEDED: 'Done' };
+const PIS_STATE_W = { QUEUED: 'Waiting to start', RUNNING: 'Running', FAILED: 'Failed', ERROR: 'Failed', SUCCEEDED: 'Done', CANCELLED: 'Cancelled' };
 function pisHistoryHtml(res) {
   const h = pis.history || [];
   if (h.length < 2) return '';
@@ -25103,7 +25132,8 @@ function pisHistoryHtml(res) {
     `<td>${s.state === 'SUCCEEDED' ? pisSevHtml(s.severity) : `<span class="dash-muted">${esc(PIS_STATE_W[s.state] || s.state || '')}</span>`}</td>` +
     `<td class="pis-num">${s.findings != null ? pisPl(s.findings, 'finding') : ''}</td>` +
     `<td>${s.state === 'SUCCEEDED' && s.sweepId !== res.sweep_id ? `<button type="button" class="linkbtn lngb" data-pis="open-sweep" data-id="${esc(s.sweepId)}">Open</button>`
-        : (s.state === 'FAILED' || s.state === 'ERROR') ? `<span class="dash-muted">${esc(String(s.error || '').slice(0, 120))}</span>` : ''}</td></tr>`).join('')}</tbody></table>`;
+        : (s.state === 'FAILED' || s.state === 'ERROR') ? `<span class="dash-muted">${esc(String(s.error || '').slice(0, 120))}</span>`
+        : s.state === 'CANCELLED' ? `<span class="dash-muted">${esc(String(s.detail || '').slice(0, 120))}${s.cancelledBy ? ' ' + esc(s.cancelledBy) : ''}</span>` : ''}</td></tr>`).join('')}</tbody></table>`;
 }
 
 // ---- The list of datasets swept ----
@@ -25122,7 +25152,8 @@ function pisPaintList() {
     const l = d.latest, c = d.current;
     const run = c && (c.state === 'QUEUED' || c.state === 'RUNNING')
       ? `<span class="pis-run"><span class="spin"></span>${c.state === 'QUEUED' ? 'Waiting to start' : `Sweeping${c.rowsScanned ? `, ${pisN(c.rowsScanned)} rows read` : ''}`}</span>`
-      : c && (c.state === 'FAILED' || c.state === 'ERROR') ? `<span class="pis-run" style="color:var(--err)" data-tip="${esc(c.error || '')}">The last sweep failed</span>` : '';
+      : c && (c.state === 'FAILED' || c.state === 'ERROR') ? `<span class="pis-run" style="color:var(--err)" data-tip="${esc(c.error || '')}">The last sweep failed</span>`
+      : c && c.state === 'CANCELLED' ? `<span class="pis-run" data-tip="${esc(c.detail || '')}">The last sweep was cancelled</span>` : '';
     const nNew = l && l.changes ? (l.changes.new_serious || 0) : 0;
     return `<tr><td><span class="pis-ds"><span class="ifr-dsi" aria-hidden="true">${srcIcon(d.sourceFormat)}</span><span>${esc(d.name)}</span></span></td>` +
       `<td>${l ? pisSevHtml(l.severity) : ''}${nNew ? `<span class="pis-new" data-tip="Serious findings that are new since the sweep before">+${nNew} new</span>` : ''}</td>` +
@@ -25274,6 +25305,8 @@ async function pisSchedule(key) {
         if (res) pisOpen(res.dataset_key, t.dataset.id);
       } else if (a === 'open-ds') {
         pisOpen(t.dataset.key).then(() => { const s = $('#pisStage'); if (s) s.scrollIntoView({ behavior: dqReduced() ? 'auto' : 'smooth', block: 'start' }); });
+      } else if (a === 'cancel') {
+        pisCancel();
       } else if (a === 'close') {
         $('#pisStage').style.display = 'none';
       }
