@@ -4264,7 +4264,9 @@
   @media (max-width: 900px) { .pis-pickrow { grid-template-columns: minmax(0, 1fr); } }
   .pis-field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
   .pis-field-l { font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
-  .pis-rows { height: 50px; padding: 0 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--card-2); color: var(--text); font: inherit; font-size: 13.5px; }
+  .pis-rows { width: 190px; height: 50px; padding: 0 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--card-2); color: var(--text); font: inherit; font-size: 13.5px; }
+  .pis-rows::placeholder { color: var(--muted); }
+  .pis-field-l .pis-opt { font-weight: 400; letter-spacing: 0; text-transform: none; }
   .pis-rows:focus { outline: none; border-color: var(--accent); }
   .pis-go-wrap { display: flex; align-items: center; gap: 10px; }
   button.dsx-btn.pis-go { height: 50px; padding: 0 22px; font-size: 14px; }
@@ -6314,13 +6316,8 @@
         <div id="schPiiWrap" style="display:none;">
           <label for="schPiiDs">Dataset</label>
           <select id="schPiiDs" style="width:100%;"></select>
-          <label for="schPiiRows">Read at most</label>
-          <select id="schPiiRows" style="width:100%;">
-            <option value="100000">100,000 rows</option>
-            <option value="500000">500,000 rows</option>
-            <option value="2000000" selected>2 million rows</option>
-            <option value="10000000">10 million rows</option>
-          </select>
+          <label for="schPiiRows">Sample rows <span class="hint" style="font-weight:400;">(optional)</span></label>
+          <input type="number" id="schPiiRows" min="1" step="1" placeholder="Leave empty to read every row" />
           <p class="hint" style="margin:8px 0;">Reads every value of the dataset for personal data, through its saved connection, and lists what is new since the sweep before. A dataset read through an on-premises agent is queued for that agent. Results are on the <strong>PII sweep</strong> tab; no value found is ever stored.</p>
         </div>
 
@@ -24070,11 +24067,11 @@ ${HDRS}
     open: { tab: 'piisweep', label: 'Open PII sweep' },
     sections: [
       { h: 'What it is', body:
-          p(`An assessment judges each column from a sample. A sweep reads every value of one dataset, up to the limit you choose, and finds personal data wherever it is, including inside free text such as notes, comments and descriptions, where nobody would think to look.`) +
+          p(`An assessment judges each column from a sample. A sweep reads every value of one dataset (or a sample, if you ask for one) and finds personal data wherever it is, including inside free text such as notes, comments and descriptions, where nobody would think to look.`) +
           p(`Each find says what it is, how serious it is, and where it is: the column, the row, and the characters it occupies. The value itself is never written down; it stays in your source.`) },
       { h: 'Run one', body:
           steps(`Open ${go('piisweep', 'PII sweep')} and choose a dataset. A database or warehouse table is read again through the saved connection its last assessment used; one on an on-premises agent is read by that agent.`,
-                `Choose how many rows to read at most, then press ${ui('Sweep for PII')}.`,
+                `Leave ${ui('Sample rows')} empty to read every row, or type a number to read only that many, then press ${ui('Sweep for PII')}.`,
                 `To sweep a file that has not been assessed, or an uploaded file (uploads are not kept once assessed), press ${ui('Upload a file to sweep')}. The file is deleted once it has been read.`) +
           tip(`A Qlik app table can only be read by the app itself. Export it and upload the file to sweep it.`) },
       { h: 'Read the result', body:
@@ -24727,12 +24724,11 @@ function initGuidesTab() {
 // column, the row, the characters), never what it was. The worker reads (dq/pii_sweep.py); the API
 // starts it from the dataset's saved connection or from a file uploaded for it, and serves the result
 // with who can see the dataset. This draws the picker, the progress, the result and the list.
-let pis = { list: null, sel: '', q: '', open: false, rows: 2000000, busy: false, run: null, res: null, history: [],
+let pis = { list: null, sel: '', q: '', open: false, rowsRaw: '', busy: false, run: null, res: null, history: [],
             canDismiss: false, openF: '', sev: '', showDismissed: false, showClean: false, locAll: {}, uploadKey: '', listTimer: null };
 const PIS_SEV = ['critical', 'high', 'medium', 'low'];
 const PIS_SEV_L = { critical: 'Critical', high: 'High', medium: 'Medium', low: 'Low' };
 const PIS_SEV_VAR = { critical: 'var(--pii-crit)', high: 'var(--pii-high)', medium: 'var(--pii-med)', low: 'var(--pii-low)' };
-const PIS_ROWS = [[100000, '100,000 rows'], [500000, '500,000 rows'], [2000000, '2 million rows'], [10000000, '10 million rows']];
 const PIS_CONF = { high: 'Confirmed: it passes its checksum or exact format', medium: 'A strong match for its pattern', low: 'A likely match, worth a look' };
 const PIS_CONF_S = { high: 'Confirmed', medium: 'Strong match', low: 'Likely' };
 const PIS_ROLE = { free_text: 'hidden in free text', dedicated: 'held in the clear', named: 'known by its name' };
@@ -24757,6 +24753,16 @@ const pisBand = r => (r >= 80 ? 'critical' : r >= 60 ? 'high' : r >= 40 ? 'mediu
 const pisPct = r => { const p = 100 * (Number(r) || 0); return (p >= 10 || p === 0 ? Math.round(p) : p >= 1 ? p.toFixed(1) : p.toFixed(2)) + '%'; };
 const pisPl = (n, one, many) => `${pisN(n)} ${n === 1 ? one : (many || one + 's')}`;
 const pisApi = body => postJSON(`${API_BASE}/data-quality/pii-sweep`, HEADERS, { app_id: APP_ID, ...body });
+/**
+ * The sample typed in a "Sample rows" box: {} when it is empty (every row is read), { max_rows } for a
+ * whole number of 1 or more, and null for anything else, which the caller refuses with a reason.
+ */
+function pisSampleOf(raw) {
+  const s = String(raw == null ? '' : raw).replace(/[,\s]/g, '');
+  if (!s) return {};
+  return /^\d+$/.test(s) && Number(s) >= 1 ? { max_rows: Number(s) } : null;
+}
+const PIS_SAMPLE_ERR = 'Sample rows is a whole number of 1 or more. Leave it empty to read every row.';
 function pisDs(key) { return ((pis.list || {}).datasets || []).find(d => d.key === key) || null; }
 function pisName(key) { const d = pisDs(key); return d ? d.name : String(key || '').split('/').pop(); }
 function pisSevHtml(s, big) {
@@ -24825,8 +24831,8 @@ function pisPaintPick() {
          `<span class="rcx-pick-s">${esc(pisHowText(d))}</span></span>`
        : `<span class="rcx-pick-t"><span class="rcx-pick-n">Choose a dataset</span></span>`) +
     `<span class="rcx-caret" aria-hidden="true">▾</span></button>${pis.open ? pisPopHtml() : ''}</div></div>` +
-    `<label class="pis-field"><span class="pis-field-l">Read at most</span><select class="pis-rows" data-pis-rows>` +
-    PIS_ROWS.map(([n, l]) => `<option value="${n}"${n === pis.rows ? ' selected' : ''}>${l}</option>`).join('') + `</select></label>` +
+    `<label class="pis-field"><span class="pis-field-l">Sample rows <span class="pis-opt">(optional)</span></span>` +
+    `<input class="pis-rows" data-pis-rows type="number" min="1" step="1" inputmode="numeric" placeholder="Empty = every row" value="${esc(pis.rowsRaw)}"></label>` +
     `<div class="pis-go-wrap"><button type="button" class="dsx-btn primary pis-go" data-pis="go"${ready ? '' : ' disabled'}>` +
     `${pis.busy ? 'Sweeping…' : up ? 'Upload the file again' : 'Sweep for PII'}</button></div>`;
 }
@@ -24898,10 +24904,12 @@ async function pisStart() {
   const d = pisDs(pis.sel); if (!d || pis.busy) return;
   if (d.how === 'upload') { pis.uploadKey = d.key; $('#pisFile').click(); return; }
   if (d.how !== 'source') { pisHint('Only the Qlik app can read its tables. Export the table and upload the file to sweep it.', 'err'); return; }
+  const sample = pisSampleOf(pis.rowsRaw);
+  if (!sample) { pisHint(PIS_SAMPLE_ERR, 'err'); return; }
   pis.busy = true; pis.res = null; pisPaintPick(); pisHint('');
   pisStageLoader('queued', 'Asking for a worker');
   try {
-    const r = await pisApi({ action: 'start', dataset_key: d.key, max_rows: pis.rows });
+    const r = await pisApi({ action: 'start', dataset_key: d.key, ...sample });
     pisFollow({ key: d.key, sweepId: r.sweepId, job: agentJobOf(r), startedAt: Date.now() });
   } catch (e) { pis.busy = false; pisPaintPick(); pisStageFail('Could not start the sweep', rcxErrText(e)); }
 }
@@ -24909,13 +24917,15 @@ async function pisUpload(file) {
   if (!file || pis.busy) return;
   const key = pis.uploadKey || '';
   pis.uploadKey = '';
+  const sample = pisSampleOf(pis.rowsRaw);
+  if (!sample) { pisHint(PIS_SAMPLE_ERR, 'err'); return; }
   pis.busy = true; pis.res = null; pisPaintPick(); pisHint('');
   pisStageLoader('uploading', file.name);
   try {
     const up = await pisApi({ action: 'upload', filename: file.name, content_type: file.type || undefined, ...(key ? { dataset_key: key } : {}) });
     if (up.maxUploadBytes && file.size > up.maxUploadBytes) throw new Error(`The file is larger than the ${Math.round(up.maxUploadBytes / 1048576)} MB upload limit.`);
     await uploadToS3(up.upload.url, up.upload.fields, file, p => pisLoaderUpdate('uploading', `${file.name}: ${p}%`, p));
-    const r = await pisApi({ action: 'start', dataset_key: up.datasetKey, sweep_id: up.sweepId, input_uri: up.inputUri, max_rows: pis.rows });
+    const r = await pisApi({ action: 'start', dataset_key: up.datasetKey, sweep_id: up.sweepId, input_uri: up.inputUri, ...sample });
     pisLoaderUpdate('queued', 'Asking for a worker');
     pisFollow({ key: up.datasetKey, sweepId: r.sweepId, job: agentJobOf(r), startedAt: Date.now() });
   } catch (e) { pis.busy = false; pisPaintPick(); pisStageFail('Could not sweep the file', rcxErrText(e)); }
@@ -25007,7 +25017,7 @@ function pisPaintResult() {
       (pis.canDismiss ? `<button type="button" class="dsx-btn lngb" data-pis="delete" data-tip="Delete every sweep of this dataset">Delete sweeps</button>` : '') +
     `</div></div>`;
   const partial = res.complete ? '' : `<div class="pis-partial">This sweep read the first ${pisN(res.rows_scanned)} rows of ${res.rows_total != null ? pisN(res.rows_total) : 'more'}. ` +
-    `Personal data in the rest has not been looked for: sweep again with a higher limit to read it all.</div>`;
+    `Personal data in the rest has not been looked for: sweep again with Sample rows left empty to read every row.</div>`;
   const ident = res.identity || {};
   const tiles = `<div class="pis-tiles">` +
     `<div class="pis-tile"><div class="pis-tile-l">Rating</div><div class="pis-tile-v">${pisSevHtml(o.severity, true)}</div>` +
@@ -25385,12 +25395,12 @@ async function pisSchedule(key) {
       if (e.key === 'Escape' && pis.open) { e.preventDefault(); pisClosePick(); const b = panel.querySelector('.rcx-pick-btn'); if (b) b.focus(); }
     });
     panel.addEventListener('input', e => {
+      if (e.target.matches('[data-pis-rows]')) { pis.rowsRaw = e.target.value; pisHint(''); return; }
       if (!e.target.closest('.rcx-search')) return;
       pis.q = e.target.value;
       const opts = panel.querySelector('.rcx-opts'); if (opts) opts.innerHTML = pisOptsHtml();
     });
     panel.addEventListener('change', e => {
-      if (e.target.matches('[data-pis-rows]')) { pis.rows = parseInt(e.target.value, 10) || 2000000; return; }
       if (e.target.id === 'pisFile') { const f = e.target.files && e.target.files[0]; e.target.value = ''; if (f) pisUpload(f); }
     });
     // `.rcx-pick` alone, not under #pisPickRow: a click that opened the picker has re-drawn it, so the
@@ -25421,7 +25431,7 @@ async function populateSchPii(want) {
     if (lbl && !lbl.value.trim() && sel.value) lbl.value = `PII sweep: ${pisName(sel.value)}`;
     renderSchedulePreview();
   });
-  const rows = $('#schPiiRows'); if (rows) rows.addEventListener('change', renderSchedulePreview);
+  const rows = $('#schPiiRows'); if (rows) rows.addEventListener('input', renderSchedulePreview);
 }
 
 function switchTab(name) {
@@ -26203,6 +26213,7 @@ function resetScheduleForm() {
   schEditingName = null;
   $('#schFormTitle').textContent = 'New schedule';
   $('#schLabel').value = ''; $('#schSample').value = '';
+  if ($('#schPiiRows')) $('#schPiiRows').value = '';
   $('#schFreq').value = 'daily'; $('#schTime').value = '06:00';
   $('#schDom').value = '1'; $('#schCustom').value = '';
   _tzClose();                   // a reset while the list is open would leave it hanging
@@ -27344,7 +27355,9 @@ async function saveSchedule() {
   } else if (kind === 'pii-sweep') {
     const key = ($('#schPiiDs') && $('#schPiiDs').value) || '';
     if (!key) { schBanner('err', 'Choose the dataset to sweep.'); return; }
-    body.source = { dataset_key: key, max_rows: parseInt(($('#schPiiRows') || {}).value, 10) || 2000000 };
+    const sample = pisSampleOf(($('#schPiiRows') || {}).value);
+    if (!sample) { schBanner('err', PIS_SAMPLE_ERR); return; }
+    body.source = { dataset_key: key, ...sample };
   } else {
     const cfg = collectSchedSource();
     // When saved credentials are applied, the blank secret is injected server-side.
@@ -27838,7 +27851,8 @@ function renderSchedulePreview() {
     ? (schSelected.length + ' table' + (schSelected.length === 1 ? '' : 's'))
     : 'All tables';
   const sampleTxt = piiKind
-    ? `Up to ${Number((($('#schPiiRows') || {}).value) || 2000000).toLocaleString()} rows`
+    ? ((pisSampleOf(($('#schPiiRows') || {}).value) || {}).max_rows
+      ? `The first ${pisSampleOf($('#schPiiRows').value).max_rows.toLocaleString()} rows (a sample)` : 'Every row')
     : Number.isFinite(sampleN) && sampleN > 0
     ? sampleN.toLocaleString() + ' rows/table' : 'Whole tables';
 
@@ -27954,7 +27968,7 @@ function renderSchedules(list) {
     exp.querySelector('.v-email').textContent = s.sourceKind === 'pii-sweep' ? 'On the PII sweep tab'
       : s.email ? 'Dataset owner, else ' + s.email : 'Dataset owner, else whoever submitted it';
     exp.querySelector('.v-sample').textContent = s.sourceKind === 'pii-sweep'
-      ? `Up to ${Number(s.maxRows || 2000000).toLocaleString()} rows`
+      ? (s.maxRows ? `The first ${Number(s.maxRows).toLocaleString()} rows (a sample)` : 'Every row')
       : s.sampleRows ? `${s.sampleRows} rows` : 'Whole tables';
   });
   $('#schList').querySelectorAll('.sched-caret').forEach(c => c.addEventListener('click', () => {
@@ -28038,7 +28052,7 @@ function editSchedule(s) {
   } else if (kind === 'pii-sweep') {
     // The dataset and the row limit are all it holds; the connection is the dataset's own.
     populateSchPii(s.datasetKey || '');
-    const rows = $('#schPiiRows'); if (rows) rows.value = String(s.maxRows || 2000000);
+    const rows = $('#schPiiRows'); if (rows) rows.value = s.maxRows ? String(s.maxRows) : '';
   } else {
     schBanner('info', 'Re-enter this source’s connection details - credentials aren’t stored back into the form.');
   }
