@@ -303,6 +303,8 @@
   <div id="denied" hidden>
     <h1>Admin access required</h1>
     <p>You're signed in as <span id="deniedWho"></span>, but this page is for administrators.
+       <span id="deniedOrgs" hidden><br>You're working in <b id="deniedOrg"></b>. If you're an administrator of another of
+       your organisations, switch to it in the <a href="#" id="deniedApp">app</a> first.</span>
        <br><a href="#" id="deniedLogout">Log out</a></p>
   </div>
 
@@ -1040,8 +1042,8 @@
       else c4.appendChild(el('span', 'pill ok', 'Active'));
       tr.appendChild(c4);
       const c5 = el('td', 'acts');
-      const del = el('button', 'btn-ghost btn-x', u.pending ? 'Revoke invite' : 'Delete'); del.type = 'button';
-      if (u.is_self) { del.disabled = true; del.title = "You can't delete your own account."; }
+      const del = el('button', 'btn-ghost btn-x', u.pending ? 'Revoke invite' : 'Remove'); del.type = 'button';
+      if (u.is_self) { del.disabled = true; del.title = "You can't remove yourself."; }
       else if (u.is_super) { del.disabled = true; del.title = 'Platform super-admin: managed by configuration.'; }
       else del.addEventListener('click', () => deleteUser(u, del));
       c5.appendChild(del); tr.appendChild(c5);
@@ -1052,7 +1054,8 @@
     const m = $('#usersMsg'); m.className = 'msg'; sel.disabled = true;
     const role = sel.value, prev = u.role;
     try {
-      await api('/portal/admin/users/role', { method: 'POST', body: JSON.stringify({ email: u.email, role: role }) });
+      // The role is in one organisation: a person can belong to several, with a role in each.
+      await api('/portal/admin/users/role', { method: 'POST', body: JSON.stringify({ email: u.email, role: role, org_id: u.org_id }) });
       show(m, 'ok', 'Set ' + u.email + ' to ' + role + '.');
       const row = (USERS[u.org_id] || []).find(x => x.email === u.email); if (row) row.role = role;
       const mem = (TAGS.members || []).find(x => x.email === u.email); if (mem) mem.role = role;
@@ -1061,14 +1064,17 @@
     } catch (e) { show(m, 'err', e.message); sel.value = prev; sel.disabled = false; }
   }
   async function deleteUser(u, btn) {
+    // Removing someone takes them out of THIS organisation. Their login goes too only when it was
+    // the last one they belonged to; anywhere else they belong, they keep.
+    const where = orgName(u.org_id) || 'this organisation';
     const ask = u.pending
-      ? 'Revoke the invite for ' + u.email + '?\n\nTheir set-password link stops working and their login is removed. You can invite them again later.'
-      : 'Delete ' + u.email + '?\n\nThis removes their login and their portal access. Anything they were assigned becomes unassigned. This cannot be undone.';
+      ? 'Revoke the invite for ' + u.email + '?\n\nThey lose access to ' + where + '. If they belong to no other organisation, their set-password link stops working and their login is removed. You can invite them again later.'
+      : 'Remove ' + u.email + ' from ' + where + '?\n\nThey lose access to it, and anything they were assigned there becomes unassigned. If it is the only organisation they belong to, their login is deleted too. This cannot be undone.';
     if (!confirm(ask)) return;
     btn.disabled = true; const m = $('#usersMsg'); m.className = 'msg';
     try {
-      await api('/portal/admin/users/delete', { method: 'POST', body: JSON.stringify({ email: u.email }) });
-      show(m, 'ok', (u.pending ? 'Revoked the invite for ' : 'Deleted ') + u.email + '.');
+      await api('/portal/admin/users/delete', { method: 'POST', body: JSON.stringify({ email: u.email, org_id: u.org_id }) });
+      show(m, 'ok', (u.pending ? 'Revoked the invite for ' + u.email : 'Removed ' + u.email + ' from ' + where) + '.');
       USERS[u.org_id] = (USERS[u.org_id] || []).filter(x => x.email !== u.email);
       TAGS.members = (TAGS.members || []).filter(x => x.email !== u.email);
       await refreshActivity();
@@ -1605,7 +1611,19 @@
     ME = me.user; IS_SUPER = !!ME.is_super; MY_ORG_ID = String(ME.home_org_id || ME.org_id || '').toLowerCase();
     $('#loading').hidden = true;
     const isAdmin = IS_SUPER || String(ME.role || '').toLowerCase() === 'admin';
-    if (!isAdmin) { $('#deniedWho').textContent = ME.email || ''; $('#denied').hidden = false; return; }
+    if (!isAdmin) {
+      $('#deniedWho').textContent = ME.email || '';
+      // Someone in several organisations is an admin of this page only in the ones they administer,
+      // so say which one they are in, and where to change it.
+      if ((ME.orgs || []).length > 1) {
+        $('#deniedOrg').textContent = ME.org_name || ME.org_id || '';
+        $('#deniedApp').href = location.origin + '/dq-portal';
+        $('#deniedOrgs').hidden = false;
+      }
+      $('#denied').hidden = false;
+      $('#deniedLogout').addEventListener('click', e => { e.preventDefault(); location.href = API_BASE + '/portal/auth/logout'; });
+      return;
+    }
     wire();
     const home = ME.home_org_name || ME.org_name || 'Data Assurance';
     $('#brandOrg').textContent = home; $('#brandLogo').textContent = initial(home);

@@ -237,7 +237,8 @@
   #approvalsNav { display: none; }                    /* Approvals is admin/super-admin-only (portal) */
   body.portal-admin #approvalsNav { display: flex; }
   #portalOrgSwitchWrap { display: none; align-items: center; gap: 8px; }
-  body.portal-super #portalShell #portalOrgSwitchWrap { display: inline-flex; }
+  /* Shown only to someone who can switch: a person in more than one organisation, or a super-admin. */
+  body.portal-multiorg #portalShell #portalOrgSwitchWrap { display: inline-flex; }
   #portalOrgSwitchWrap .pos-label { color: var(--muted); font-size: 10px; font-weight: 700;
     letter-spacing: .08em; text-transform: uppercase; white-space: nowrap; }
   #portalOrgSwitch { min-width: 230px; max-width: 360px; padding: 9px 34px 9px 13px; border-radius: 9px;
@@ -4755,7 +4756,7 @@
   <div id="portalShell">
     <span class="pu-email" id="portalUserEmail"></span>
     <label id="portalOrgSwitchWrap">
-      <span class="pos-label">Viewing org</span>
+      <span class="pos-label" id="portalOrgSwitchLbl">Organisation</span>
       <select id="portalOrgSwitch" title="Switch which organisation's data you're viewing"></select>
     </label>
   </div>
@@ -24570,34 +24571,39 @@ function startCommon() {
   // missing (it returns early), so both of those still reveal the page.
   Promise.resolve(loadDashboard()).catch(() => {}).then(hideBootSplash);
 }
-// Super-admin org switcher: populate from all orgs, and on change ask the server to
-// switch the active org (server-side tenant), then reload so every tab re-fetches
-// under the newly-selected org. Only ever reached for super-admins.
-async function bootOrgSwitcher(activeOrgId) {
-  document.body.classList.add('portal-super');
+// The organisation switch: shown to someone who can choose, which is a person who belongs to more
+// than one organisation (the ones they belong to) or a super-admin (every one). /me lists them.
+// On change the server switches the session's organisation (and with it the tenant, the role and
+// the tag grant), then the page reloads so every tab re-fetches under it.
+function bootOrgSwitcher(activeOrgId, orgs, isSuper) {
   const sel = $('#portalOrgSwitch'); if (!sel) return;
-  try {
-    const r = await (await fetch(`${API_BASE}/portal/admin/orgs`, { credentials: 'include' })).json();
-    const orgs = (r && r.orgs) || [];
-    sel.innerHTML = '';
-    orgs.forEach(o => {
-      const opt = document.createElement('option');
-      opt.value = o.org_id;
-      opt.textContent = o.name || o.org_id;              // textContent → XSS-safe
-      if (o.org_id === activeOrgId) opt.selected = true;
-      sel.appendChild(opt);
+  orgs = (orgs || []).filter(o => o && o.org_id);
+  if (orgs.length < 2) return;                          // one organisation: nothing to switch to
+  document.body.classList.add('portal-multiorg');
+  const lbl = $('#portalOrgSwitchLbl'); if (lbl) lbl.textContent = isSuper ? 'Viewing org' : 'Organisation';
+  sel.innerHTML = '';
+  orgs.forEach(o => {
+    const opt = document.createElement('option');
+    opt.value = o.org_id;
+    opt.textContent = o.name || o.org_id;              // textContent → XSS-safe
+    if (o.org_id === activeOrgId) opt.selected = true;
+    sel.appendChild(opt);
+  });
+  if (!sel._wired) {
+    sel._wired = true;
+    sel.addEventListener('change', async () => {
+      sel.disabled = true;
+      try {
+        await postJSON(`${API_BASE}/portal/auth/switch-org`, {}, { org_id: sel.value });   // (url, headers, body)
+        location.reload();          // re-fetch every tab under the newly-selected org's tenant
+      } catch (e) {
+        // Refused (they were removed from it meanwhile): back to where they are, and say why.
+        sel.value = activeOrgId;
+        sel.disabled = false;
+        sel.title = e.message || 'Could not switch organisation.';
+      }
     });
-    if (!sel._wired) {
-      sel._wired = true;
-      sel.addEventListener('change', async () => {
-        sel.disabled = true;
-        try {
-          await postJSON(`${API_BASE}/portal/auth/switch-org`, {}, { org_id: sel.value });   // (url, headers, body)
-          location.reload();          // re-fetch every tab under the newly-selected org's tenant
-        } catch (e) { sel.disabled = false; }
-      });
-    }
-  } catch (e) { /* leave the switcher empty; not fatal */ }
+  }
 }
 
 // Portal: resolve the session first (server holds the key + tenant), then boot; no
@@ -24627,12 +24633,19 @@ async function bootPortal() {
   } else {
     document.body.classList.add('portal-member');   // members: trust hidden, submit-for-approval only
   }
-  if (me.user.is_super) { await bootOrgSwitcher(me.user.active_org_id || me.user.org_id); }   // super-admin org switcher
+  bootOrgSwitcher(me.user.active_org_id || me.user.org_id, me.user.orgs, !!me.user.is_super);   // shown only with more than one
   const ue = $('#portalUserEmail'); if (ue) ue.textContent = EMAIL;
   const cx = $('#ctx'); if (cx) cx.textContent = me.user.org_name ? ('Workspace: ' + me.user.org_name) : '';
   // Profile tab fields + reset-password button
   const pU = $('#profUsername'); if (pU) pU.textContent = EMAIL || '-';
-  const pO = $('#profOrg'); if (pO) pO.textContent = me.user.home_org_name || me.user.org_name || me.user.org_id || '-';
+  // The organisation they are working in now; someone in several sees the others listed after it.
+  const pO = $('#profOrg');
+  if (pO) {
+    const cur = me.user.org_name || me.user.home_org_name || me.user.org_id || '-';
+    const others = me.user.is_super ? [] : (me.user.orgs || []).filter(o => o.org_id !== (me.user.active_org_id || me.user.org_id))
+      .map(o => o.name || o.org_id);
+    pO.textContent = others.length ? `${cur} (also ${others.join(', ')})` : cur;
+  }
   const pR = $('#profRole'); if (pR) pR.textContent = me.user.is_super ? 'Super Admin' : (me.user.role || 'member');
   const rb = $('#profResetBtn');
   if (rb && !rb._wired) {
