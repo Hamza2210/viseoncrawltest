@@ -1615,7 +1615,9 @@
   .rx-fb .n { margin-left: 6px; opacity: .7; }
   .rx-tools .linkbtn { margin-left: 0; font-size: 12.5px; }
   .rx-intro { margin: 0 0 12px; font-size: 12.5px; color: var(--muted); }
-  .rx-list { display: flex; flex-direction: column; gap: 8px; }
+  /* A fixed-height list however many columns have rules: it scrolls inside itself. */
+  .rx-list { display: flex; flex-direction: column; gap: 8px; max-height: min(620px, 64vh); overflow-y: auto;
+    overscroll-behavior: contain; padding-right: 4px; scrollbar-gutter: stable; }
   .rx-col { border: 1px solid var(--border); border-radius: 12px; background: var(--card-2); transition: border-color .15s; }
   .rx-col.open { border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); }
   button.rx-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; width: 100%; min-height: 54px; padding: 10px 14px;
@@ -4340,7 +4342,9 @@
     background: var(--card-2); box-shadow: none; color: var(--text); font: inherit; font-size: 12px; font-weight: 650; cursor: pointer; }
   button.pis-fchip.on { border-color: color-mix(in srgb, var(--accent) 65%, var(--border)); background: color-mix(in srgb, var(--accent) 14%, transparent); }
   button.pis-fchip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-  .pis-tbl-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 12px; }
+  /* A fixed-height list however many findings there are: it scrolls inside itself, its header kept in view. */
+  .pis-tbl-wrap { overflow: auto; max-height: min(560px, 62vh); overscroll-behavior: contain; border: 1px solid var(--border); border-radius: 12px; }
+  .pis-tbl thead th { position: sticky; top: 0; z-index: 1; }
   table.pis-tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
   .pis-tbl th { text-align: left; padding: 9px 10px; font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--muted);
     border-bottom: 1px solid var(--border); background: var(--card-2); white-space: nowrap; }
@@ -8117,12 +8121,14 @@ function rxBarHtml(rx) {
 function rxPaint(rx) {
   rx.cols = Object.keys(rx.state.columns);
   const rows = rx.cols.map((c, i) => rxRowHtml(rx, c, i)).join('');
+  const keep = (rx.root.querySelector('.rx-list') || {}).scrollTop || 0;      // the list scrolls inside itself
   rx.root.innerHTML = `<div class="rx"><div class="rx-notes">${rxNotesHtml(rx)}</div>` +
     `<div class="rx-topw">${rxTopHtml(rx)}</div>` +
     `<p class="rx-intro">Open a column to change its rules. Nothing changes until you save, and saved rules apply on the dataset's next run.</p>` +
     (rx.cols.length ? `<div class="rx-list" role="list">${rows}</div><p class="rx-none rx-nomatch" hidden></p>`
       : `<p class="hint">No column rules are pinned for this dataset yet.</p>`) +
     rxRefsHtml(rx) + `<div class="rx-bar" role="region" aria-label="Changes not saved yet" hidden></div></div>`;
+  const list = rx.root.querySelector('.rx-list'); if (list) list.scrollTop = keep;
   rxFilter(rx);
   rxBar(rx);
   refEnsureLoaded(rx.root, sel => rxRefs(rx, sel));
@@ -8226,8 +8232,8 @@ function rxOnClick(rx, e) {
       rxRedraw(rx, col, '.rx-row');
       const all = rx.root.querySelector('.rx-all');
       if (all) all.textContent = rx.cols.every(c => o.includes(c)) ? 'Close all' : 'Open all';
-      const ed = _rxColEl(rx, col).querySelector('.rx-ed');
-      if (ed && !ed.hidden) dqIn(ed);
+      const el = _rxColEl(rx, col), ed = el && el.querySelector('.rx-ed');
+      if (ed && !ed.hidden) { dqIn(ed); dqRevealIn(rx.root.querySelector('.rx-list'), el, el); }
       break;
     }
     case 'menu': {
@@ -22395,6 +22401,16 @@ function _gxDrillOut() {
  * forced, and the class go back on. The `void el.offsetWidth` is that forced reflow and is load-
  * bearing: without it the browser coalesces both class changes into one frame and nothing plays.
  */
+/**
+ * In a box that scrolls inside itself, scroll just far enough that `last` (the bottom of what was just
+ * opened) shows, never so far that `first` (its head) goes under the top, less `offset` (a sticky header).
+ */
+function dqRevealIn(box, first, last, offset) {
+  if (!box || !first || !last) return;
+  const b = box.getBoundingClientRect(), f = first.getBoundingClientRect(), l = last.getBoundingClientRect();
+  const over = l.bottom - b.bottom;
+  if (over > 0) box.scrollTop += Math.max(0, Math.min(over + 6, f.top - b.top - (offset || 0)));
+}
 function dqIn(el, cls) {
   if (!el || !el.classList) return;
   const c = cls || 'dq-in';
@@ -25126,6 +25142,13 @@ function pisFindingsHtml(res) {
     `<div class="pis-tbl-wrap"><table class="pis-tbl"><thead><tr><th></th><th>Severity</th><th>Risk</th><th>Personal data</th><th>Column</th><th>Found in</th><th>Certainty</th></tr></thead>` +
     `<tbody>${shown.map(f => pisFindingRow(res, f)).join('')}</tbody></table></div>` + pisDismissedHtml(res);
 }
+/** Redraw the findings. `keep`: stay where the list was scrolled to (it scrolls inside itself). */
+function pisRepaintFindings(res, keep) {
+  const box = $('#pisFindings'); if (!box || !res) return;
+  const top = keep ? ((box.querySelector('.pis-tbl-wrap') || {}).scrollTop || 0) : 0;
+  box.innerHTML = pisFindingsHtml(res);
+  const w = box.querySelector('.pis-tbl-wrap'); if (w) w.scrollTop = top;
+}
 function pisFindingRow(res, f) {
   const open = pis.openF === f.id;
   const where = f.type === 'column_name' ? 'known by its name' : f.embedded ? 'hidden in free text' : 'held in the clear';
@@ -25425,14 +25448,19 @@ async function pisSchedule(key) {
         pisDelete();
       } else if (a === 'finding') {
         pis.openF = pis.openF === t.dataset.id ? '' : t.dataset.id;
-        const box = $('#pisFindings'); if (box && res) box.innerHTML = pisFindingsHtml(res);
-        const row = panel.querySelector(`tr.pis-frow[data-id="${CSS.escape(t.dataset.id)}"]`); if (row) row.focus();
+        pisRepaintFindings(res, true);
+        const row = panel.querySelector(`tr.pis-frow[data-id="${CSS.escape(t.dataset.id)}"]`);
+        if (row) {
+          row.focus({ preventScroll: true });
+          const w = row.closest('.pis-tbl-wrap'), det = row.nextElementSibling;
+          if (w) dqRevealIn(w, row, det && det.classList.contains('pis-fdetail') ? det : row, (w.querySelector('thead') || {}).offsetHeight || 0);
+        }
       } else if (a === 'sev') {
-        pis.sev = t.dataset.v || ''; const box = $('#pisFindings'); if (box && res) box.innerHTML = pisFindingsHtml(res);
+        pis.sev = t.dataset.v || ''; pisRepaintFindings(res, false);
       } else if (a === 'locs') {
-        pis.locAll[t.dataset.id] = !pis.locAll[t.dataset.id]; const box = $('#pisFindings'); if (box && res) box.innerHTML = pisFindingsHtml(res);
+        pis.locAll[t.dataset.id] = !pis.locAll[t.dataset.id]; pisRepaintFindings(res, true);
       } else if (a === 'toggle-dismissed') {
-        pis.showDismissed = !pis.showDismissed; const box = $('#pisFindings'); if (box && res) box.innerHTML = pisFindingsHtml(res);
+        pis.showDismissed = !pis.showDismissed; pisRepaintFindings(res, true);
       } else if (a === 'clean') {
         pis.showClean = true; pisPaintResult();
       } else if (a === 'label') {
