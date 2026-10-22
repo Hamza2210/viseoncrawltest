@@ -24797,9 +24797,16 @@ async function pisLoadList() {
 }
 /** How many swept datasets are rated high or critical: the nav's badge. */
 function pisBadge() {
+  pisSetBadge((((pis.list || {}).datasets) || []).filter(d => d.latest && (d.latest.severity === 'critical' || d.latest.severity === 'high')).length);
+}
+function pisSetBadge(n) {
   const b = $('#piiBadge'); if (!b) return;
-  const n = (((pis.list || {}).datasets) || []).filter(d => d.latest && (d.latest.severity === 'critical' || d.latest.severity === 'high')).length;
   b.textContent = n; b.style.display = n ? '' : 'none';
+}
+/** The same count from the moment the page opens, without the tab's list: the API counts it. */
+async function pisRefreshBadge() {
+  if (!APP_ID) return;
+  try { pisSetBadge(Number((await pisApi({ action: 'count' })).count) || 0); } catch (e) { /* best-effort */ }
 }
 
 // ---- Picking the dataset ----
@@ -25539,6 +25546,8 @@ function startCommon() {
   switchTab('dashboard');                       // Dashboard is the landing tab; sync the panels + wide layout on load
   refreshBlockerBar();                          // show open blockers immediately, on every tab
   setInterval(refreshBlockerBar, 60000);        // keep the always-visible bar current
+  pisRefreshBadge();                            // and the PII sweep's badge, without opening its tab
+  setInterval(pisRefreshBadge, 60000);
   // Hold the splash until the dashboard's FIRST load settles, so the user lands on a populated
   // screen rather than watching empty panels fill in. switchTab already started that load and
   // loadDashboard shares one in-flight promise, so this attaches to it rather than refetching.
