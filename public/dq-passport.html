@@ -272,6 +272,13 @@
         `<span class="bar" aria-hidden="true"><i style="width:${p.measured ? Math.max(2, Number(p.score) || 0) : 0}%"></i></span><b>${p.measured ? esc(p.score) : 'Not measured'}</b>` +
         `${p.reason ? `<p>${esc(p.reason)}</p>` : ''}</li>`).join('')}</ul></section>`;
   }
+  // The newest PII sweep the score was made with: its worst rating, when, and how much it read.
+  function sweepText(s) {
+    if (!s) return 'not swept';
+    const what = s.severity ? s.severity + ' at worst' : 'no personal data found';
+    const n = s.findings != null ? ` (${s.findings} finding${s.findings === 1 ? '' : 's'}${s.hidden_in_text ? `, ${s.hidden_in_text} in free text` : ''})` : '';
+    return `${what}${n}, ${day(s.swept_at)}${s.complete === false ? ', a sample of rows' : ', every row read'}`;
+  }
   function render(doc, sig) {
     const st = doc.status || {}, jws = doc.jws || '';
     let pay = {};
@@ -283,6 +290,7 @@
       `<div><dt>Source</dt><dd>${esc(SOURCE[ds.source] || ds.source || '-')}</dd></div><div><dt>Rows</dt><dd>${num(ds.rows)}</dd></div>` +
       `<div><dt>Columns</dt><dd>${num(ds.columns)}</dd></div><div><dt>Quality score</dt><dd>${as.score == null ? '-' : esc(as.score)}${as.gate_passed === false ? ' (gate failed)' : ''}</dd></div>` +
       `<div><dt>Personal data</dt><dd>${esc(((pay.personal_data || {}).grade || 'not assessed').replace(/_/g, ' ').toLowerCase())}</dd></div>` +
+      `<div><dt>PII sweep</dt><dd>${esc(sweepText((pay.personal_data || {}).pii_sweep))}</dd></div>` +
       `<div><dt>Issued</dt><dd>${esc(day(pay.issued_at))}${pay.issued_by ? ` by ${esc(pay.issued_by)}` : ''}</dd></div></dl>${sigHtml(sig)}</section>`;
     html += readinessHtml(pay.readiness || {});
     if (f) {

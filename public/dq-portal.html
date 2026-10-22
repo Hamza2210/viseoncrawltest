@@ -906,6 +906,14 @@
   .cmp-adv summary { cursor: pointer; color: var(--muted); }
   .cmp-advitem { margin: 6px 0; padding-left: 8px; border-left: 2px solid var(--border); }
   .cmp-note { font-style: italic; margin-top: 10px; }
+  .cmp-sweep { margin: 12px 0 4px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--card-2); font-size: 12.5px; }
+  .cmp-sweep h4 { margin: 0 0 6px; font-size: 13px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .cmp-sweep p { margin: 4px 0; }
+  .cmp-sweep table { width: 100%; border-collapse: collapse; margin: 8px 0 6px; }
+  .cmp-sweep th, .cmp-sweep td { padding: 5px 6px; border-top: 1px solid var(--border); text-align: left; vertical-align: top; }
+  .cmp-sweep th { border-top: 0; color: var(--muted); font-weight: 600; }
+  .cmp-sweep td small { display: block; color: var(--muted); }
+  .cmp-sweep-none { margin: 10px 0 2px; }
   .cmp-btns { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
   .cmp-btn { background: var(--card-2); border: 1px solid var(--border); border-radius: 7px; color: var(--text); cursor: pointer; padding: 4px 10px; font: inherit; font-size: 12px; }
   .cmp-btn:hover { border-color: var(--accent); }
@@ -7065,13 +7073,47 @@ function cmpCtrlHtml(ct, opts) {
       </div>
     </div>`;
 }
+const CMP_SWEEP_TAG = { critical: ['red', 'Critical'], high: ['red', 'High'], medium: ['amber', 'Medium'], low: ['green', 'Low'] };
+/**
+ * The dataset's newest PII sweep as this assessment read it (dq/compliance/lens.py pii_sweep): what it
+ * found, column by column, and whether these checks found the same. These checks judge a sample of
+ * whole values; a sweep reads every value and looks inside free text. A column it found is personal
+ * data here too, so its values are redacted like any other.
+ */
+function cmpSweepHtml(comp, key) {
+  const s = comp && comp.pii_sweep;
+  const open = k => k ? ` <button type="button" class="linkbtn lngb cmp-sweep-open" data-key="${esc(k)}">${s ? 'Open the sweep' : 'Sweep it'}</button>` : '';
+  if (!s) return key ? `<p class="hint cmp-sweep-none">No PII sweep has read every value of this dataset. A sweep also finds personal data inside free text, which these checks do not look for.${open(key)}</p>` : '';
+  const cols = (s.columns || []).filter(c => c.in_dataset !== false);
+  const tag = CMP_SWEEP_TAG[s.severity] || ['green', 'No personal data'];
+  const read = s.complete ? 'read every row' : `read the first ${Number(s.rows_scanned || 0).toLocaleString()} of ${Number(s.rows_total || 0).toLocaleString()} rows`;
+  const only = cols.filter(c => !c.assessment_finds);
+  const missed = s.not_found_by_sweep || [];
+  const rows = cols.map(c => `<tr><td><code>${esc(c.column)}</code>${c.hidden ? '<small>hidden in free text</small>' : c.name_only ? '<small>known by its name</small>' : ''}</td>` +
+    `<td>${esc((c.kinds || []).join(', '))}</td><td>${c.severity ? `<span class="tag ${(CMP_SWEEP_TAG[c.severity] || ['muted'])[0]}">${esc((CMP_SWEEP_TAG[c.severity] || [0, c.severity])[1])}</span>` : ''}</td>` +
+    `<td>${c.assessment_finds ? 'Found by these checks too' : '<b>Found only by the sweep</b>'}</td></tr>`).join('');
+  return `<div class="cmp-sweep"><h4>PII sweep <span class="tag ${tag[0]}">${esc(tag[1])}</span></h4>` +
+    `<p>The sweep of ${esc(rcxWhen(s.swept_at))} ${read} and ${cols.length ? `found personal data in ${cols.length} column${cols.length === 1 ? '' : 's'}` +
+      (only.length ? `, ${only.length === cols.length ? 'none' : `${cols.length - only.length}`} of which these checks found as well` : ', all of which these checks found as well') +
+      '. Every one is personal data here too: its values are redacted from stored samples.' : 'found no personal data.'}${open(key)}</p>` +
+    (rows ? `<table><thead><tr><th>Column</th><th>What</th><th>Rating</th><th>Here</th></tr></thead><tbody>${rows}</tbody></table>` : '') +
+    (missed.length ? `<p>These checks found personal data in ${missed.map(c => `<code>${esc(c)}</code>`).join(', ')} by its values, where the sweep found none: a finding there may have been dismissed, or the data changed since the sweep.</p>` : '') +
+    `</div>`;
+}
+// A sweep opened from a Compliance section: the PII sweep tab, on this dataset.
+document.addEventListener('click', e => {
+  const b = e.target.closest && e.target.closest('.cmp-sweep-open'); if (!b) return;
+  switchTab('piisweep');
+  pisOpen(b.dataset.key).then(() => { const s = $('#pisStage'); if (s && s.style.display !== 'none') s.scrollIntoView({ behavior: dqReduced() ? 'auto' : 'smooth', block: 'start' }); });
+});
 function compliancePanel(comp, prefix) {
   if (!comp) return '';   // no block at all (a run from before the lens shipped) - show nothing;
                           // a clean run still has a block and renders the green "no exposure" state
   if (comp.exempt) return `<div class="cmp-panel" data-prefix="${esc(prefix || '')}">
     <div class="cmp-title"><h3>Compliance</h3><span class="tag muted">Out of scope</span>
       <span class="cmp-fw">${esc(comp.framework || 'ISO/IEC 29100')}</span></div>
-    <p class="hint">${esc(comp.note || 'Marked out of scope - no compliance controls are run.')} Toggle this in ⚙ Compliance policy.</p></div>`;
+    <p class="hint">${esc(comp.note || 'Marked out of scope - no compliance controls are run.')} Toggle this in ⚙ Compliance policy.</p>
+    ${comp.pii_sweep && (comp.pii_sweep.columns || []).length ? cmpSweepHtml(comp, prefix ? datasetKeyFromPrefix(prefix) : '') : ''}</div>`;
   const key = prefix ? datasetKeyFromPrefix(prefix) : '';
   const dismissed = key ? (entryFor(key).complianceDismissed || {}) : {};
   const all = comp.controls || [];
@@ -7109,6 +7151,7 @@ function compliancePanel(comp, prefix) {
     ${controls ? `<div class="cmp-ctrls">${controls}</div>` : '<p class="hint">No active sensitive-data exposure in the scanned values.</p>'}
     ${droppedHtml}
     ${adv}
+    ${cmpSweepHtml(comp, key)}
     <p class="hint cmp-note">${esc(comp.note || '')}</p>
   </div>`;
 }
@@ -12936,10 +12979,11 @@ function metadataQuality(profile) {
       const why = lower[String(nm).toLowerCase()];
       if (!why) return;
       const msg = why.includes('values') ? 'its values look like personal data'
+        : why.includes('sweep') ? 'the PII sweep found personal data in its values'
         : why.includes('framework') ? 'your compliance framework marks it as personal data'
         : why.includes('label') && !why.includes('name') ? 'marked as personal data' : 'name suggests personal data';
       piiFindings.push({ col: nm, msg, redacted: !cleared.has(String(nm).toLowerCase()),
-                         firm: why.includes('values') || why.includes('framework') });
+                         firm: why.includes('values') || why.includes('framework') || why.includes('sweep') });
     });
   } else names.forEach(nm => {
     // The compliance lens is authoritative: it detects by VALUE (checksum-verified) as well as by
@@ -23600,7 +23644,7 @@ function buildGuides() {
             ['Quality', '40%', 'The latest assessment\'s score, capped at 60 when its quality gate failed, less two points for each percent of rows that are exact duplicates'],
             ['Completeness across groups', '20%', 'The widest gap between how complete a column is in one group and in the rest of the table, two points off per point of gap'],
             ['Representation and outcomes', '15%', 'How much of each sensitive column is unknown, whether any group is too small to learn from, how unequal the groups are, and the widest gap in the target\'s rates'],
-            ['Personal data', '15%', 'The compliance grade'],
+            ['Personal data', '15%', 'The compliance grade and the newest PII sweep, whichever is worse: the grade judges a sample of whole values, the sweep reads every value, inside free text too'],
             ['Freshness and ownership', '10%', 'Whether it was assessed in the last week, and whether it has an owner'],
           ]) +
           note(`A part that was not measured, such as representation when no sensitive column is named, is left out of the score rather than counted as zero. 85 and over reads <b>Ready for AI</b>, 70 to 84 <b>Ready with caveats</b>, below 70 <b>Not ready for AI</b>, which no passport is issued for.`) },
@@ -24068,7 +24112,8 @@ ${HDRS}
     sections: [
       { h: 'What it is', body:
           p(`An assessment judges each column from a sample. A sweep reads every value of one dataset (or a sample, if you ask for one) and finds personal data wherever it is, including inside free text such as notes, comments and descriptions, where nobody would think to look.`) +
-          p(`Each find says what it is, how serious it is, and where it is: the column, the row, and the characters it occupies. The value itself is never written down; it stays in your source.`) },
+          p(`Each find says what it is, how serious it is, and where it is: the column, the row, and the characters it occupies. The value itself is never written down; it stays in your source.`) +
+          p(`Assessments keep in step with it. From its next run, an assessment treats every column the newest sweep found personal data in as personal data too: its values are redacted from stored samples, and its Compliance section shows what the sweep found and which of it the assessment's own checks would have missed. A finding you dismiss here leaves the assessment as well. The Data Passport counts the sweep in its personal-data part.`) },
       { h: 'Run one', body:
           steps(`Open ${go('piisweep', 'PII sweep')} and choose a dataset. A database or warehouse table is read again through the saved connection its last assessment used; one on an on-premises agent is read by that agent.`,
                 `Leave ${ui('Sample rows')} empty to read every row, or type a number to read only that many, then press ${ui('Sweep for PII')}.`,
@@ -25092,8 +25137,21 @@ function pisFindingRow(res, f) {
       `<td><span data-tip="${esc(PIS_CONF[f.confidence] || '')}">${esc(PIS_CONF_S[f.confidence] || f.confidence || '')}</span></td></tr>` +
     (open ? `<tr class="pis-fdetail"><td></td><td colspan="6">${pisDetailHtml(res, f)}</td></tr>` : '');
 }
+/** What the dataset's latest assessment makes of a column, beside a sweep's finding in it. */
+function pisAssessmentLine(res, col) {
+  const av = res.assessment; if (!av) return '';
+  const basis = av.basis || {}, low = String(col).toLowerCase();
+  const why = basis[Object.keys(basis).find(c => c.toLowerCase() === low)] || [];
+  const own = why.filter(w => w !== 'sweep');
+  const by = { values: 'its values', name: 'its name', label: 'a label', framework: 'your framework' };
+  if (own.length) return `The assessment's own checks treat this column as personal data too, by ${own.map(w => by[w] || w).join(' and ')}.`;
+  if (why.includes('sweep')) return 'The assessment treats this column as personal data because a sweep found it, and redacts its values.';
+  if (av.read_this_sweep) return 'The assessment does not treat this column as personal data.';
+  return 'The assessment ran before this sweep. From its next run it treats this column as personal data and redacts its values.';
+}
 function pisDetailHtml(res, f) {
   const labelled = ((res.pii_labels || {})[f.column] || '') === 'pii';
+  const aline = pisAssessmentLine(res, f.column);
   const regs = (f.regulations || []).map(k => `<span class="pis-chip low">${esc(PIS_REG_L[k] || k)}</span>`).join('');
   const harm = String(f.harm || '');
   const locs = f.type === 'column_name'
@@ -25101,7 +25159,8 @@ function pisDetailHtml(res, f) {
     : pisLocsHtml(res, f);
   return `<div class="pis-detail"><p>${esc(f.why || '')}.${harm ? ' ' + esc(harm.charAt(0).toUpperCase() + harm.slice(1)) + '.' : ''}</p>` +
     (regs ? `<div class="pis-chips" style="margin:6px 0 10px">${regs}</div>` : '') +
-    `<p class="pis-muted">${esc(PIS_CONF[f.confidence] || '')}.${f.matches > f.cells ? ` ${pisPl(f.matches, 'find')} in ${pisPl(f.cells, 'value')}.` : ''}</p>` + locs +
+    `<p class="pis-muted">${esc(PIS_CONF[f.confidence] || '')}.${f.matches > f.cells ? ` ${pisPl(f.matches, 'find')} in ${pisPl(f.cells, 'value')}.` : ''}</p>` +
+    (aline ? `<p class="pis-muted">${esc(aline)}</p>` : '') + locs +
     `<div class="pis-detail-acts">` +
       `<button type="button" class="pis-rowbtn lngb" data-pis="label" data-col="${esc(f.column)}"${labelled ? ' disabled' : ''}>${labelled ? 'Column labelled as personal data' : 'Label the column as personal data'}</button>` +
       (pis.canDismiss ? `<button type="button" class="pis-rowbtn lngb" data-pis="dismiss" data-id="${esc(f.id)}">Not personal data: dismiss</button>` : '') +
@@ -25177,14 +25236,21 @@ function pisTodoHtml(res) {
   } else if (x.audience) {
     items.push({ done: true, t: 'Access is restricted', s: `${pisWho(x)} can open it.` });
   }
-  const labels = res.pii_labels || {};
-  const unl = [...new Set(live.map(f => f.column))].filter(c => labels[c] !== 'pii');
-  if (unl.length) {
-    items.push({ t: `Label ${pisPl(unl.length, 'column')} as personal data`,
-                 s: `So failed-record samples and previews redact ${unl.length === 1 ? 'it' : 'them'}: ${unl.slice(0, 6).join(', ')}${unl.length > 6 ? ' and more' : ''}.`,
-                 btn: ['label-all', unl.length === 1 ? 'Label it' : `Label all ${unl.length}`] });
+  // The assessment reads the newest sweep when it runs: every column with a finding is personal data
+  // to it from then on, and its values are kept out of stored samples. Nothing to label by hand.
+  const av = res.assessment, fcols = [...new Set(live.map(f => f.column))];
+  const n = pisPl(fcols.length, 'column');
+  if (!av) {
+    items.push({ t: 'Assess it, to redact these columns', s: `An assessment of this dataset treats the ${n} with a finding as personal data and keeps their values out of stored samples.` });
+  } else if (av.read_this_sweep) {
+    items.push({ done: true, t: 'The assessment redacts these columns', s: `Its latest run read this sweep: the ${n} with a finding are personal data to it, and their values stay out of stored samples.` });
   } else {
-    items.push({ done: true, t: 'Every column with a finding is labelled as personal data', s: 'Failed-record samples and previews redact them.' });
+    items.push({ t: 'Assess it again, to redact these columns', s: `The latest assessment ran before this sweep. Its next run treats the ${n} with a finding as personal data and keeps their values out of stored samples.` });
+  }
+  const swept = new Set(fcols.map(c => String(c).toLowerCase()));
+  const missed = Object.keys((av && av.basis) || {}).filter(c => (av.basis[c] || []).includes('values') && !swept.has(c.toLowerCase()));
+  if (missed.length) {
+    items.push({ t: 'Check what this sweep did not find', s: `The assessment finds personal data in ${missed.slice(0, 6).join(', ')}${missed.length > 6 ? ' and more' : ''} by its values, where this sweep found none: a finding there may have been dismissed, or the data changed since.` });
   }
   const hidden = live.filter(f => f.embedded);
   if (hidden.length) {
