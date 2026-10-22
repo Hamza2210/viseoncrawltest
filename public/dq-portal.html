@@ -4252,6 +4252,153 @@
     padding-top: 14px; border-top: 1px solid #223052; }
   .gx-filter-pop .gx-actions .hint { font-size: 11px; color: #8792a6; }
   .gx-filter-pop .gx-actions .linkbtn { font-size: 13px; }
+  /* PII sweep: one dataset read for personal data -----------------------------------------------
+     The picker at the top, a stage card that holds the progress and then the result (the rating,
+     where the finds are, what to do), and the list of datasets swept before. Severity is always a
+     word as well as a colour. */
+  #piiSweepPanel { --pii-crit: #fb7185; --pii-high: #fb923c; --pii-med: #fbbf24; --pii-low: #7aa2ff; }
+  .pis-card { padding: 18px 22px 20px; }
+  .pis-pickrow { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: end; gap: 12px; }
+  @media (max-width: 900px) { .pis-pickrow { grid-template-columns: minmax(0, 1fr); } }
+  .pis-field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .pis-field-l { font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
+  .pis-rows { height: 50px; padding: 0 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--card-2); color: var(--text); font: inherit; font-size: 13.5px; }
+  .pis-rows:focus { outline: none; border-color: var(--accent); }
+  .pis-go-wrap { display: flex; align-items: center; gap: 10px; }
+  button.dsx-btn.pis-go { height: 50px; padding: 0 22px; font-size: 14px; }
+  button.dsx-btn.pis-go:disabled { opacity: .45; cursor: default; filter: none; }
+  .pis-or { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; font-size: 12.5px; color: var(--muted); }
+  .pis-or .linkbtn { margin-left: 0; font-size: 12.5px; }
+  #piiSweepPanel .rcx-search { width: 100%; box-sizing: border-box; height: 34px; padding: 0 10px; margin-bottom: 6px; border: 1px solid var(--border); border-radius: 8px;
+    background: var(--card-2); color: var(--text); font: inherit; font-size: 13px; }
+  #piiSweepPanel .rcx-search:focus { outline: none; border-color: var(--accent); }
+  .pis-hint { margin: 12px 0 0; min-height: 1em; }
+  .pis-hint:empty { display: none; }
+  .pis-hint.err { color: var(--err); }
+  .pis-opt-tag { font-size: 10.5px; font-weight: 700; padding: 1px 7px; border-radius: 999px; color: var(--muted); border: 1px solid var(--border); white-space: nowrap; }
+  /* Severity, everywhere it appears */
+  .pis-sev { display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px; border-radius: 999px; font-size: 11.5px; font-weight: 750; white-space: nowrap;
+    color: var(--k); background: color-mix(in srgb, var(--k) 15%, transparent); border: 1px solid color-mix(in srgb, var(--k) 35%, transparent); }
+  .pis-sev::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--k); }
+  .pis-sev.critical { --k: var(--pii-crit); } .pis-sev.high { --k: var(--pii-high); } .pis-sev.medium { --k: var(--pii-med); } .pis-sev.low { --k: var(--pii-low); }
+  .pis-sev.none { --k: var(--ok); }
+  .pis-sev.big { padding: 5px 14px; font-size: 14px; }
+  /* Risk: a number out of 100 and a bar in the colour of its band */
+  .pis-risk { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
+  .pis-risk b { font-variant-numeric: tabular-nums; min-width: 2ch; text-align: right; }
+  .pis-risk-bar { position: relative; width: 64px; height: 6px; border-radius: 4px; background: var(--idle-bg); overflow: hidden; }
+  .pis-risk-bar i { position: absolute; inset: 0 auto 0 0; border-radius: 4px; background: var(--k, var(--pii-low)); }
+  .pis-risk.critical { --k: var(--pii-crit); } .pis-risk.high { --k: var(--pii-high); } .pis-risk.medium { --k: var(--pii-med); } .pis-risk.low { --k: var(--pii-low); }
+  /* The result's head and tiles */
+  .pis-head { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; justify-content: space-between; }
+  .pis-title { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .pis-title h3 { margin: 0; font-size: 17px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pis-sub { margin: 4px 0 0; font-size: 12.5px; color: var(--muted); }
+  .pis-acts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .pis-partial { margin: 12px 0 0; padding: 9px 12px; border-radius: 10px; font-size: 12.5px; border: 1px solid color-mix(in srgb, var(--run) 40%, transparent);
+    background: color-mix(in srgb, var(--run) 9%, transparent); color: var(--text); }
+  .pis-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-top: 16px; }
+  .pis-tile { padding: 12px 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--card-2); min-width: 0; }
+  .pis-tile-l { font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
+  .pis-tile-v { margin-top: 6px; font-size: 20px; font-weight: 750; font-variant-numeric: tabular-nums; }
+  .pis-tile-v small { font-size: 12px; font-weight: 600; color: var(--muted); }
+  .pis-tile-s { margin-top: 3px; font-size: 11.5px; color: var(--muted); line-height: 1.4; }
+  .pis-tile .pis-risk-bar { width: 100%; margin-top: 8px; }
+  .pis-dots { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; font-size: 11.5px; color: var(--muted); }
+  .pis-dots span::before { content: ''; display: inline-block; width: 7px; height: 7px; margin-right: 4px; border-radius: 50%; background: var(--k); }
+  .pis-dots .critical { --k: var(--pii-crit); } .pis-dots .high { --k: var(--pii-high); } .pis-dots .medium { --k: var(--pii-med); } .pis-dots .low { --k: var(--pii-low); }
+  .pis-card h4 { margin: 22px 0 10px; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  .pis-card h4 small { margin-left: 6px; font-weight: 600; letter-spacing: 0; text-transform: none; }
+  /* What changed since the previous sweep */
+  .pis-changes { margin-top: 14px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--card-2); font-size: 13px; }
+  .pis-changes.worse { border-color: color-mix(in srgb, var(--pii-crit) 45%, var(--border)); }
+  .pis-changes ul { margin: 8px 0 0; padding-left: 18px; color: var(--muted); font-size: 12.5px; }
+  .pis-changes li { margin: 3px 0; }
+  /* Categories and regulations */
+  .pis-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .pis-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 11px; border-radius: 999px; font-size: 12px; font-weight: 650;
+    border: 1px solid color-mix(in srgb, var(--k) 40%, var(--border)); background: color-mix(in srgb, var(--k) 8%, transparent); }
+  .pis-chip b { color: var(--k); font-weight: 800; }
+  .pis-chip.critical { --k: var(--pii-crit); } .pis-chip.high { --k: var(--pii-high); } .pis-chip.medium { --k: var(--pii-med); } .pis-chip.low { --k: var(--pii-low); }
+  .pis-two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 22px; }
+  @media (max-width: 1000px) { .pis-two { grid-template-columns: minmax(0, 1fr); } }
+  /* Findings */
+  .pis-filter { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  button.pis-fchip { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 11px; border: 1px solid var(--border); border-radius: 999px;
+    background: var(--card-2); box-shadow: none; color: var(--text); font: inherit; font-size: 12px; font-weight: 650; cursor: pointer; }
+  button.pis-fchip.on { border-color: color-mix(in srgb, var(--accent) 65%, var(--border)); background: color-mix(in srgb, var(--accent) 14%, transparent); }
+  button.pis-fchip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .pis-tbl-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 12px; }
+  table.pis-tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .pis-tbl th { text-align: left; padding: 9px 10px; font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--muted);
+    border-bottom: 1px solid var(--border); background: var(--card-2); white-space: nowrap; }
+  .pis-tbl td { padding: 9px 10px; border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent); vertical-align: middle; }
+  .pis-tbl tr:last-child td { border-bottom: 0; }
+  .pis-tbl tr.pis-frow { cursor: pointer; }
+  .pis-tbl tr.pis-frow:hover td { background: color-mix(in srgb, var(--accent) 5%, transparent); }
+  .pis-tbl tr.pis-frow.open td { background: color-mix(in srgb, var(--accent) 8%, transparent); }
+  .pis-what b { display: block; font-weight: 700; }
+  .pis-what small, .pis-col small { display: block; font-size: 11.5px; color: var(--muted); }
+  .pis-col code { font-size: 12px; padding: 1px 6px; border-radius: 5px; border: 1px solid var(--border); background: var(--card-2); }
+  .pis-num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .pis-caret { color: var(--muted); font-size: 11px; display: inline-block; transition: transform .15s; }
+  tr.open .pis-caret { transform: rotate(90deg); }
+  button.pis-rowbtn { height: 28px; padding: 0 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--card-2); box-shadow: none;
+    color: var(--text); font: inherit; font-size: 12px; font-weight: 650; cursor: pointer; white-space: nowrap; }
+  button.pis-rowbtn:hover:not(:disabled) { border-color: color-mix(in srgb, var(--accent) 60%, var(--border)); }
+  button.pis-rowbtn:disabled { opacity: .5; cursor: default; }
+  button.pis-rowbtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .pis-detail { padding: 6px 4px 12px; }
+  .pis-detail p { margin: 0 0 8px; font-size: 13px; line-height: 1.55; }
+  .pis-detail .pis-muted { color: var(--muted); }
+  .pis-detail-acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  .pis-dismissed td { opacity: .62; }
+  /* Where it is: each value drawn as a bar, the finds as marks at their characters. No value is shown. */
+  .pis-locs { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+  .pis-loc { display: grid; grid-template-columns: minmax(90px, 160px) minmax(120px, 1fr) minmax(150px, auto); align-items: center; gap: 12px; font-size: 12px; }
+  .pis-loc-row { font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .pis-bar { position: relative; height: 12px; border-radius: 6px; background: var(--idle-bg); border: 1px solid var(--border); overflow: hidden; }
+  .pis-bar i { position: absolute; top: 0; bottom: 0; min-width: 4px; border-radius: 3px; background: var(--k, var(--pii-low)); }
+  .pis-loc-t { color: var(--muted); white-space: nowrap; }
+  .pis-locs-more { margin-top: 6px; font-size: 12px; color: var(--muted); }
+  /* Columns, the rows that identify someone, and what to do */
+  .pis-cols { display: flex; flex-wrap: wrap; gap: 6px; }
+  .pis-colchip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 9px; font-size: 12px; border: 1px solid color-mix(in srgb, var(--k) 40%, var(--border));
+    background: color-mix(in srgb, var(--k) 7%, transparent); }
+  .pis-colchip::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--k); }
+  .pis-colchip small { color: var(--muted); }
+  .pis-colchip.critical { --k: var(--pii-crit); } .pis-colchip.high { --k: var(--pii-high); } .pis-colchip.medium { --k: var(--pii-med); } .pis-colchip.low { --k: var(--pii-low); }
+  .pis-clean { margin-top: 8px; font-size: 12px; color: var(--muted); }
+  .pis-ident { font-size: 13px; line-height: 1.55; }
+  .pis-ident ul { margin: 8px 0 0; padding-left: 18px; }
+  .pis-ident li { margin: 3px 0; }
+  ol.pis-todo { margin: 0; padding: 0; list-style: none; counter-reset: pt; display: flex; flex-direction: column; gap: 8px; }
+  ol.pis-todo li { counter-increment: pt; display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 10px 12px;
+    border: 1px solid var(--border); border-radius: 12px; background: var(--card-2); font-size: 13px; line-height: 1.5; }
+  ol.pis-todo li::before { content: counter(pt); display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; font-weight: 800; font-size: 12px;
+    background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); }
+  ol.pis-todo li.urgent::before { background: color-mix(in srgb, var(--pii-crit) 18%, transparent); color: var(--pii-crit); }
+  ol.pis-todo li.done::before { content: '✓'; background: var(--ok-bg); color: var(--ok); }
+  ol.pis-todo b { display: block; }
+  ol.pis-todo small { color: var(--muted); }
+  .pis-hist { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  .pis-hist td { padding: 6px 8px; border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent); }
+  .pis-hist tr.cur td { background: color-mix(in srgb, var(--accent) 8%, transparent); }
+  .pis-fail { padding: 18px 4px; }
+  .pis-fail b { display: block; font-size: 15px; margin-bottom: 4px; color: #ffb4b4; }
+  .pis-fail p { margin: 0 0 12px; color: var(--muted); }
+  .pis-fail-acts { display: flex; align-items: center; gap: 12px; }
+  .pis-loader { display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 26px 0 18px; text-align: center; }
+  .pis-loader .dq-loader { padding: 0; }
+  .pis-progress { width: min(420px, 90%); height: 6px; border-radius: 4px; background: var(--idle-bg); overflow: hidden; }
+  .pis-progress i { display: block; height: 100%; background: var(--grad); transition: width .4s var(--dq-ease); }
+  /* The list of datasets swept */
+  .pis-list-tbl td:first-child { max-width: 320px; }
+  .pis-ds { display: inline-flex; align-items: center; gap: 8px; min-width: 0; max-width: 100%; }
+  .pis-ds span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 650; }
+  .pis-run { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+  .pis-new { margin-left: 6px; padding: 1px 7px; border-radius: 999px; font-size: 10.5px; font-weight: 800; color: var(--pii-crit);
+    background: color-mix(in srgb, var(--pii-crit) 15%, transparent); }
 </style>
 <script id="three-inline">
 /**
@@ -4726,6 +4873,7 @@
     <div class="side-group">Monitor</div>
     <button class="side-item sub" data-tab="incidents"><span class="si-ico">🚨</span>Incidents <span class="tab-badge" id="incBadge" style="display:none;"></span></button>
     <button class="side-item sub" data-tab="compliance"><span class="si-ico">🛡️</span>Compliance <span class="tab-badge" id="cmpBadge" style="display:none;"></span></button>
+    <button class="side-item sub" data-tab="piisweep"><span class="si-ico">🔎</span>PII sweep <span class="tab-badge" id="piiBadge" style="display:none;"></span></button>
     <button class="side-item sub" data-tab="sourcewatch"><span class="si-ico">📡</span>Source monitoring <span class="tab-badge" id="watchBadge" style="display:none;"></span></button>
     <button class="side-item sub" data-tab="schedules"><span class="si-ico">⏰</span>Schedules</button>
     <button class="side-item sub" id="agentsNav" data-tab="agents"><span class="si-ico">🖥️</span>Agents</button>
@@ -5966,6 +6114,27 @@
     <div class="card rcx-card" id="rcxStage" style="display:none;" aria-live="polite"></div>
   </div>
 
+  <!-- ============ PII SWEEP ============ -->
+  <div id="piiSweepPanel" style="display:none;">
+    <div class="tab-intro">
+      <span class="tab-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="7"/><path d="m15.6 15.6 5.2 5.2"/><circle cx="10.5" cy="8.6" r="2"/><path d="M6.9 14.1c.8-1.6 2.1-2.4 3.6-2.4s2.8.8 3.6 2.4"/></svg></span>
+      <h2>PII sweep</h2>
+      <p>Read every value of a dataset for personal data, including what is hiding in free text such as notes and descriptions. Each find is located by its column, its row and where it sits in the value, and rated by severity. The values themselves are never stored or shown: they stay in your source.</p>
+    </div>
+    <!-- Everything inside #pisPickRow, #pisStage and #pisList is drawn by the PII sweep code. -->
+    <div class="card pis-card" id="pisPick">
+      <div class="pis-pickrow" id="pisPickRow"></div>
+      <div class="pis-or">Or sweep a file that has not been assessed: <button type="button" class="linkbtn lngb" data-pis="upload-new">Upload a file to sweep</button></div>
+      <p class="hint pis-hint" id="pisHint" role="status" aria-live="polite"></p>
+      <input type="file" id="pisFile" hidden accept=".csv,.tsv,.txt,.parquet,.pq,.json,.ndjson,.jsonl,.xlsx,.xlsm,.xls,.qvd">
+    </div>
+    <div class="card pis-card" id="pisStage" style="display:none;" aria-live="polite"></div>
+    <div class="card pis-card" id="pisListCard">
+      <h2>Swept datasets <button class="linkbtn" id="pisRefresh">Refresh</button></h2>
+      <div id="pisList"><p class="dash-muted">Loading…</p></div>
+    </div>
+  </div>
+
   <!-- ============ APP DATA MODEL ============ -->
   <div id="modelPanel" style="display:none;">
     <div class="banner" id="modelBanner"></div>
@@ -6082,6 +6251,7 @@
           <option value="qlik">This app's tables (Qlik)</option>
           <option value="tag">Datasets with a tag (one task)</option>
           <option value="source-watch">Source monitoring only (no assessment)</option>
+          <option value="pii-sweep">PII sweep of one dataset</option>
           <option value="athena">Qlik Open Lakehouse</option>
           <option value="redshift">Amazon Redshift</option>
           <option value="s3">Amazon S3 file</option>
@@ -6135,6 +6305,19 @@
         <div id="schWatchWrap" style="display:none;">
           <p class="hint" style="margin:8px 0;">Checks whether your sources are still <strong>loading</strong>, without assessing anything. Each check reads only catalog metadata: the row count, the column list, and the newest value of the dataset's event-time column. No rows are read and no score is produced, so this is cheap enough to run hourly against a table you assess weekly.</p>
           <p class="hint" style="margin:8px 0;">It alerts on a source that has stopped loading, lost rows, changed columns, or become unreachable. Alerts go to the dataset owner (or your organisation's alert recipients), like any other incident.</p>
+        </div>
+
+        <div id="schPiiWrap" style="display:none;">
+          <label for="schPiiDs">Dataset</label>
+          <select id="schPiiDs" style="width:100%;"></select>
+          <label for="schPiiRows">Read at most</label>
+          <select id="schPiiRows" style="width:100%;">
+            <option value="100000">100,000 rows</option>
+            <option value="500000">500,000 rows</option>
+            <option value="2000000" selected>2 million rows</option>
+            <option value="10000000">10 million rows</option>
+          </select>
+          <p class="hint" style="margin:8px 0;">Reads every value of the dataset for personal data, through its saved connection, and lists what is new since the sweep before. A dataset read through an on-premises agent is queued for that agent. Results are on the <strong>PII sweep</strong> tab; no value found is ever stored.</p>
         </div>
 
         <p class="hint" id="schAlertNote" style="margin:14px 0 0;"></p>
@@ -23816,6 +23999,39 @@ ${HDRS}
     ],
   });
 
+  // ================================================================ PII sweep
+  G.push({
+    id: 'pii-sweep', cat: 'Compliance', icon: 'shield', tint: '#fb7185',
+    title: 'Sweep a dataset for personal data', sub: 'Every value read, every find located and rated, no value kept',
+    keywords: 'pii sweep personal data hidden free text notes description card number phone email passport nhs national insurance date of birth credential password key severity risk exposure restrict label dismiss schedule export locations gdpr ccpa pci',
+    open: { tab: 'piisweep', label: 'Open PII sweep' },
+    sections: [
+      { h: 'What it is', body:
+          p(`An assessment judges each column from a sample. A sweep reads every value of one dataset, up to the limit you choose, and finds personal data wherever it is, including inside free text such as notes, comments and descriptions, where nobody would think to look.`) +
+          p(`Each find says what it is, how serious it is, and where it is: the column, the row, and the characters it occupies. The value itself is never written down; it stays in your source.`) },
+      { h: 'Run one', body:
+          steps(`Open ${go('piisweep', 'PII sweep')} and choose a dataset. A database or warehouse table is read again through the saved connection its last assessment used; one on an on-premises agent is read by that agent.`,
+                `Choose how many rows to read at most, then press ${ui('Sweep for PII')}.`,
+                `To sweep a file that has not been assessed, or an uploaded file (uploads are not kept once assessed), press ${ui('Upload a file to sweep')}. The file is deleted once it has been read.`) +
+          tip(`A Qlik app table can only be read by the app itself. Export it and upload the file to sweep it.`) },
+      { h: 'Read the result', body:
+          table(['Part', 'What it tells you'], [
+            ['Rating and risk', `The worst severity found, and a risk from 0 to 100: the riskiest finding, raised for other serious findings, for rows that identify a person, and for a dataset everyone in your organisation can open.`],
+            ['Hidden in free text', 'Findings inside text fields. A find inside free text is rated a level higher than the same kind held in its own column.'],
+            ['Rows that identify someone', 'Rows that hold enough together to single a person out, such as a name with a date of birth, with the combinations found.'],
+            ['Who can see it', 'Everyone in your organisation, or only the holders of a restricting tag, and how many people that is.'],
+            ['What changed', 'What is new, gone or more widespread since the sweep before.'],
+            ['Findings', `Each kind of personal data in each column, riskiest first, with the rules it touches (GDPR, CCPA, PCI DSS and others). Open one to see where it is: each value drawn as a bar, with a mark at the characters the find occupies.`],
+          ]) },
+      { h: 'Act on it', body:
+          p(`${ui('What to do')} lists the next steps for this dataset: restrict it with a tag, label its columns as personal data so failed-record samples redact them, clean the free text, and deal with each kind of data at source. ${ui('Export locations')} gives every location as a CSV, with no values in it.`) +
+          (ADMIN ? p(`A finding that is not personal data (test data, a product named like a person) can be dismissed with a reason. It stays set aside on later sweeps until someone restores it, and is left out of the rating.`)
+                 : note(`An admin can dismiss a finding that is not personal data.`)) },
+      { h: 'On a schedule', body:
+          p(`Press ${ui('Schedule')} on a result, or in ${go('schedules', 'Schedules')} choose ${ui('PII sweep of one dataset')}. Each scheduled sweep says what changed since the last, so new personal data shows up as new. ${see('schedules', 'Schedule checks')}`) },
+    ],
+  });
+
   // ================================================================ On-premises
   if (Q || ADMIN) G.push({
     id: 'agents', cat: 'On-premises', icon: 'server', tint: '#34d399',
@@ -24443,6 +24659,669 @@ function initGuidesTab() {
   gdUpdateNav();
 }
 
+// --- PII sweep ------------------------------------------------------------------------------------ //
+// One dataset read for personal data, value by value: what kind, how serious, and exactly where (the
+// column, the row, the characters), never what it was. The worker reads (dq/pii_sweep.py); the API
+// starts it from the dataset's saved connection or from a file uploaded for it, and serves the result
+// with who can see the dataset. This draws the picker, the progress, the result and the list.
+let pis = { list: null, sel: '', q: '', open: false, rows: 2000000, busy: false, run: null, res: null, history: [],
+            canDismiss: false, openF: '', sev: '', showDismissed: false, showClean: false, locAll: {}, uploadKey: '', listTimer: null };
+const PIS_SEV = ['critical', 'high', 'medium', 'low'];
+const PIS_SEV_L = { critical: 'Critical', high: 'High', medium: 'Medium', low: 'Low' };
+const PIS_SEV_VAR = { critical: 'var(--pii-crit)', high: 'var(--pii-high)', medium: 'var(--pii-med)', low: 'var(--pii-low)' };
+const PIS_ROWS = [[100000, '100,000 rows'], [500000, '500,000 rows'], [2000000, '2 million rows'], [10000000, '10 million rows']];
+const PIS_CONF = { high: 'Confirmed: it passes its checksum or exact format', medium: 'A strong match for its pattern', low: 'A likely match, worth a look' };
+const PIS_CONF_S = { high: 'Confirmed', medium: 'Strong match', low: 'Likely' };
+const PIS_ROLE = { free_text: 'hidden in free text', dedicated: 'held in the clear', named: 'known by its name' };
+// The same names the worker gives them (dq/pii_sweep.py CATEGORIES and REGULATIONS).
+const PIS_CAT_L = { identity: 'Identity', contact: 'Contact details', financial: 'Financial', health: 'Health',
+                    special: 'Special category', credentials: 'Credentials and secrets', online: 'Location and online identifiers' };
+const PIS_REG_L = { gdpr: 'UK GDPR and EU GDPR', gdpr_art9: 'GDPR Article 9 (special category data)', gdpr_art10: 'GDPR Article 10 (criminal offence data)',
+                    ccpa: 'CCPA and CPRA (California)', pci_dss: 'PCI DSS', hipaa: 'HIPAA (US health information)' };
+const PIS_FIX = {
+  credentials: 'Change the exposed passwords and keys now, then remove them from the data: anyone who can open this dataset can use them.',
+  financial: 'Card numbers and bank details should not sit in analytics data. Remove them at source, or keep only a token or the last four digits.',
+  health: 'Health identifiers need a lawful basis and tight access. Check this dataset is meant to hold them, and restrict it if it is.',
+  special: 'Special category data needs an explicit condition under GDPR Article 9 (or 10 for criminal records). Confirm the basis, or stop collecting it.',
+  identity: 'Names, identity numbers and dates of birth together are enough for fraud. Keep them only where a process needs them, masked elsewhere.',
+  contact: 'Contact details belong in the columns meant for them, not in notes and descriptions where nobody manages them.',
+  online: 'IP addresses and precise locations identify people too. Truncate or round them where the detail is not needed.',
+};
+const PIS_PHASE = { queued: 'Waiting for a worker', reading: 'Connecting to the data', scanning: 'Reading every value', uploading: 'Uploading the file' };
+
+const pisN = n => (n == null ? '-' : Number(n).toLocaleString());
+const pisBand = r => (r >= 80 ? 'critical' : r >= 60 ? 'high' : r >= 40 ? 'medium' : 'low');
+const pisPct = r => { const p = 100 * (Number(r) || 0); return (p >= 10 || p === 0 ? Math.round(p) : p >= 1 ? p.toFixed(1) : p.toFixed(2)) + '%'; };
+const pisPl = (n, one, many) => `${pisN(n)} ${n === 1 ? one : (many || one + 's')}`;
+const pisApi = body => postJSON(`${API_BASE}/data-quality/pii-sweep`, HEADERS, { app_id: APP_ID, ...body });
+function pisDs(key) { return ((pis.list || {}).datasets || []).find(d => d.key === key) || null; }
+function pisName(key) { const d = pisDs(key); return d ? d.name : String(key || '').split('/').pop(); }
+function pisSevHtml(s, big) {
+  return s ? `<span class="pis-sev ${s}${big ? ' big' : ''}">${PIS_SEV_L[s] || esc(s)}</span>`
+           : `<span class="pis-sev none${big ? ' big' : ''}">None found</span>`;
+}
+function pisRiskHtml(r, tip) {
+  const v = Math.max(0, Math.min(100, Math.round(Number(r) || 0)));
+  return `<span class="pis-risk ${pisBand(v)}"${tip ? ` data-tip="${esc(tip)}"` : ''}><b>${v}</b><span class="pis-risk-bar" aria-hidden="true"><i style="width:${v}%"></i></span></span>`;
+}
+/** Who can open the dataset, in words: everyone, or only the holders of a restricting tag. */
+function pisWho(x) {
+  if (!x) return '';
+  const n = x.people != null ? ` (${pisPl(x.people, 'person', 'people')})` : '';
+  if (x.audience === 'restricted') return `Only holders of ${(x.restricting_tags || []).join(', ')}${n}`;
+  if (x.audience === 'admins') return `Admins only${n}`;
+  return `Everyone in your organisation${n}`;
+}
+function pisHint(text, kind) {
+  const h = $('#pisHint'); if (!h) return;
+  h.textContent = text || ''; h.className = 'hint pis-hint' + (kind ? ' ' + kind : '');
+}
+function pisDur(sec) {
+  const s = Number(sec) || 0;
+  if (s < 60) return `${Math.max(1, Math.round(s))} second${Math.round(s) === 1 ? '' : 's'}`;
+  return `${Math.round(s / 60)} minute${Math.round(s / 60) === 1 ? '' : 's'}`;
+}
+
+async function loadPiiSweep() {
+  if (!APP_ID) { pisHint('Open this from inside a Qlik app to sweep its datasets.'); return; }
+  pisPaintPick();
+  await Promise.all([pisLoadList(), (dashEntries && Object.keys(dashEntries).length) ? null : loadDashEntries()]);
+}
+async function pisLoadList() {
+  try { pis.list = await pisApi({ action: 'datasets' }); }
+  catch (e) { const b = $('#pisList'); if (b) b.innerHTML = `<p class="dash-muted" style="color:var(--err)">${esc(rcxErrText(e))}</p>`; return; }
+  pis.canDismiss = !!pis.list.canDismiss;
+  pisPaintPick(); pisPaintList(); pisBadge();
+}
+/** How many swept datasets are rated high or critical: the nav's badge. */
+function pisBadge() {
+  const b = $('#piiBadge'); if (!b) return;
+  const n = (((pis.list || {}).datasets) || []).filter(d => d.latest && (d.latest.severity === 'critical' || d.latest.severity === 'high')).length;
+  b.textContent = n; b.style.display = n ? '' : 'none';
+}
+
+// ---- Picking the dataset ----
+function pisHowText(d) {
+  const src = sourceLabel(d.sourceFormat) || (d.how === 'upload' ? 'Uploaded file' : '');
+  return [src, d.latest ? `swept ${rcxWhen(d.latest.generated_at_utc)}` : 'not swept yet'].filter(Boolean).join(' · ');
+}
+function pisPaintPick() {
+  const row = $('#pisPickRow'); if (!row) return;
+  const d = pisDs(pis.sel), up = !!d && d.how === 'upload';
+  const ready = !!d && !pis.busy && (d.how === 'source' || up);
+  row.innerHTML = `<div class="pis-field"><span class="pis-field-l">Dataset</span><div class="rcx-pick${pis.open ? ' open' : ''}">` +
+    `<button type="button" class="rcx-pick-btn lngb${d ? '' : ' empty'}" data-pis="open" aria-haspopup="listbox" aria-expanded="${pis.open}">` +
+    (d ? `<span class="ifr-dsi" aria-hidden="true">${srcIcon(d.sourceFormat)}</span><span class="rcx-pick-t"><span class="rcx-pick-n">${esc(d.name)}</span>` +
+         `<span class="rcx-pick-s">${esc(pisHowText(d))}</span></span>`
+       : `<span class="rcx-pick-t"><span class="rcx-pick-n">Choose a dataset</span></span>`) +
+    `<span class="rcx-caret" aria-hidden="true">▾</span></button>${pis.open ? pisPopHtml() : ''}</div></div>` +
+    `<label class="pis-field"><span class="pis-field-l">Read at most</span><select class="pis-rows" data-pis-rows>` +
+    PIS_ROWS.map(([n, l]) => `<option value="${n}"${n === pis.rows ? ' selected' : ''}>${l}</option>`).join('') + `</select></label>` +
+    `<div class="pis-go-wrap"><button type="button" class="dsx-btn primary pis-go" data-pis="go"${ready ? '' : ' disabled'}>` +
+    `${pis.busy ? 'Sweeping…' : up ? 'Upload the file again' : 'Sweep for PII'}</button></div>`;
+}
+function pisOptsHtml() {
+  const q = (pis.q || '').trim().toLowerCase(), all = ((pis.list || {}).datasets || []);
+  const rank = d => (d.how === 'source' ? 0 : d.how === 'upload' ? 1 : 2);
+  const opts = all.filter(d => !q || String(d.name || '').toLowerCase().includes(q))
+    .sort((a, b) => rank(a) - rank(b) || String(a.name).localeCompare(String(b.name)));
+  if (!opts.length) return `<div class="rcx-none">${all.length ? 'No dataset matches.' : `No dataset has been assessed in this ${SCOPE_NOUN} yet. Upload a file to sweep it instead.`}</div>`;
+  return opts.map(d => `<button type="button" role="option" class="rcx-opt lngb${d.key === pis.sel ? ' sel' : ''}" data-pis="pick" data-key="${esc(d.key)}" aria-selected="${d.key === pis.sel}">` +
+    `<span class="ifr-dsi" aria-hidden="true">${srcIcon(d.sourceFormat)}</span><span class="rcx-opt-n">${esc(d.name)}</span>` +
+    (d.how === 'upload' ? `<span class="pis-opt-tag" data-tip="Its file was not kept after assessment: upload it again to sweep it">Upload again</span>`
+      : d.how === 'qlik' ? `<span class="pis-opt-tag" data-tip="Only the Qlik app can read its tables: sweep an export of it as a file">App table</span>` : '') +
+    (d.latest ? pisSevHtml(d.latest.severity) : `<span class="rcx-opt-s">${esc(sourceLabel(d.sourceFormat))}</span>`) + `</button>`).join('');
+}
+function pisPopHtml() {
+  return `<div class="rcx-pop"><input type="search" class="rcx-search" placeholder="Search datasets…" value="${esc(pis.q || '')}" aria-label="Search datasets" autocomplete="off">` +
+    `<div class="rcx-opts" role="listbox" aria-label="Datasets">${pisOptsHtml()}</div></div>`;
+}
+function pisClosePick() { if (pis.open) { pis.open = false; pis.q = ''; pisPaintPick(); } }
+
+// ---- Running one ----
+function pisStageLoader(phase, detail) {
+  const st = $('#pisStage'); if (!st) return;
+  st.style.display = '';
+  st.innerHTML = `<div class="pis-loader">${dqLoader(PIS_PHASE[phase] || 'Working', detail || ' ')}` +
+    `<div class="pis-progress" hidden><i style="width:0%"></i></div>` +
+    `<p class="hint">Every value is read where the worker can reach it. Only where each find sits is written down, never the value.</p></div>`;
+}
+function pisLoaderUpdate(phase, detail, pct) {
+  const box = $('#pisStage .pis-loader'); if (!box) { pisStageLoader(phase, detail); return; }
+  const msg = box.querySelector('.dq-loader .msg'), sub = box.querySelector('.dq-loader .sub');
+  if (msg && msg.firstChild) msg.firstChild.textContent = PIS_PHASE[phase] || 'Working';
+  if (sub) sub.textContent = detail || ' ';
+  const pr = box.querySelector('.pis-progress');
+  if (pr) { pr.hidden = pct == null; if (pct != null) pr.firstChild.style.width = Math.max(0, Math.min(100, pct)) + '%'; }
+}
+function pisStageFail(title, msg) {
+  const st = $('#pisStage'); if (!st) return;
+  st.style.display = '';
+  st.innerHTML = `<div class="pis-fail" role="alert"><b>${esc(title)}</b><p>${esc(msg)}</p>` +
+    `<div class="pis-fail-acts"><button type="button" class="linkbtn lngb" data-pis="close">Close</button></div></div>`;
+}
+async function pisStart() {
+  const d = pisDs(pis.sel); if (!d || pis.busy) return;
+  if (d.how === 'upload') { pis.uploadKey = d.key; $('#pisFile').click(); return; }
+  if (d.how !== 'source') { pisHint('Only the Qlik app can read its tables. Export the table and upload the file to sweep it.', 'err'); return; }
+  pis.busy = true; pis.res = null; pisPaintPick(); pisHint('');
+  pisStageLoader('queued', 'Asking for a worker');
+  try {
+    const r = await pisApi({ action: 'start', dataset_key: d.key, max_rows: pis.rows });
+    pisFollow({ key: d.key, sweepId: r.sweepId, job: agentJobOf(r), startedAt: Date.now() });
+  } catch (e) { pis.busy = false; pisPaintPick(); pisStageFail('Could not start the sweep', rcxErrText(e)); }
+}
+async function pisUpload(file) {
+  if (!file || pis.busy) return;
+  const key = pis.uploadKey || '';
+  pis.uploadKey = '';
+  pis.busy = true; pis.res = null; pisPaintPick(); pisHint('');
+  pisStageLoader('uploading', file.name);
+  try {
+    const up = await pisApi({ action: 'upload', filename: file.name, content_type: file.type || undefined, ...(key ? { dataset_key: key } : {}) });
+    if (up.maxUploadBytes && file.size > up.maxUploadBytes) throw new Error(`The file is larger than the ${Math.round(up.maxUploadBytes / 1048576)} MB upload limit.`);
+    await uploadToS3(up.upload.url, up.upload.fields, file, p => pisLoaderUpdate('uploading', `${file.name}: ${p}%`, p));
+    const r = await pisApi({ action: 'start', dataset_key: up.datasetKey, sweep_id: up.sweepId, input_uri: up.inputUri, max_rows: pis.rows });
+    pisLoaderUpdate('queued', 'Asking for a worker');
+    pisFollow({ key: up.datasetKey, sweepId: r.sweepId, job: agentJobOf(r), startedAt: Date.now() });
+  } catch (e) { pis.busy = false; pisPaintPick(); pisStageFail('Could not sweep the file', rcxErrText(e)); }
+}
+async function pisFollow(run) {
+  pis.run = run;
+  const CAP_MS = 90 * 60 * 1000;
+  let n = 0;
+  const stop = () => { pis.busy = false; pis.run = null; pisPaintPick(); };
+  while (pis.run === run && Date.now() - run.startedAt < CAP_MS) {
+    await new Promise(r => setTimeout(r, 3000));
+    if (pis.run !== run) return;
+    n += 1;
+    let s = null;
+    try { s = await pisApi({ action: 'status', dataset_key: run.key, sweep_id: run.sweepId }); }
+    catch (e) { continue; }                          // a transient read failure must not end the wait
+    const st = String((s && s.state) || '').toUpperCase();
+    if (st === 'SUCCEEDED') { stop(); await pisOpen(run.key, run.sweepId); pisLoadList(); return; }
+    if (st === 'FAILED' || st === 'ERROR') { stop(); pisStageFail('The sweep failed', s.error || 'The worker did not say why.'); pisLoadList(); return; }
+    if (run.job && n % 3 === 0) {
+      // A job an agent declined, or that died on it, writes nothing more: ask the agent.
+      const bad = await agentJobFailure(run.job);
+      if (bad && pis.run === run) { stop(); pisStageFail('The agent did not run this', bad.reason); pisLoadList(); return; }
+    }
+    pisLoaderUpdate(st === 'QUEUED' ? 'queued' : (s.phase || 'scanning'),
+      s.rowsScanned ? `${pisN(s.rowsScanned)} rows read so far` : (st === 'QUEUED' ? (run.job ? 'Queued for your on-premises agent' : 'Asking for a worker') : ' '));
+  }
+  if (pis.run === run) {
+    stop();
+    pisStageFail('Still running', 'The sweep is taking longer than ninety minutes. It carries on in the background, and its result appears in the list below once it is written.');
+  }
+}
+
+// ---- The result ----
+async function pisOpen(key, sweepId) {
+  const st = $('#pisStage'); if (!st) return;
+  st.style.display = '';
+  if (!pis.res || pis.res.dataset_key !== key) st.innerHTML = dqSkeleton('Loading the sweep', 4);
+  try {
+    const r = await pisApi({ action: 'result', dataset_key: key, ...(sweepId ? { sweep_id: sweepId } : {}) });
+    pis.history = r.history || [];
+    if (r.canDismiss != null) pis.canDismiss = !!r.canDismiss;
+    pis.sel = key; pisPaintPick();
+    if (!r.result) {
+      const s = r.state || pis.history[0] || null;
+      if (s && (s.state === 'QUEUED' || s.state === 'RUNNING')) {
+        pis.busy = true; pisPaintPick(); pisStageLoader(s.state === 'QUEUED' ? 'queued' : 'scanning', '');
+        pisFollow({ key, sweepId: s.sweepId, job: null, startedAt: Date.now() });
+        return;
+      }
+      if (s && (s.state === 'FAILED' || s.state === 'ERROR')) { pisStageFail('The last sweep failed', s.error || 'The worker did not say why.'); return; }
+      st.style.display = 'none';
+      pisHint(`${pisName(key)} has not been swept yet. Press Sweep for PII to sweep it now.`);
+      return;
+    }
+    if (!pis.res || pis.res.dataset_key !== key) { pis.openF = ''; pis.sev = ''; pis.locAll = {}; pis.showDismissed = false; pis.showClean = false; }
+    pis.res = r.result;
+    pisPaintResult();
+  } catch (e) { pisStageFail('Could not load the sweep', rcxErrText(e)); }
+}
+function pisRiskWhy(o, live, x) {
+  if (!live.length) return 'Nothing was found, so nothing is at risk.';
+  const top = live.reduce((a, f) => ((f.risk || 0) > (a.risk || 0) ? f : a), live[0]);
+  const serious = live.filter(f => f.severity === 'high' || f.severity === 'critical').length;
+  const more = [serious > 1 ? `${serious - 1} more serious finding${serious - 1 === 1 ? '' : 's'}` : '',
+                o.identity_rows ? 'rows that identify a person' : '',
+                // The API's rule (_dq_pii_with_exposure): open to everyone, in an organisation of more than one.
+                x && x.audience === 'everyone' && (x.members == null || x.members > 1) ? 'being open to everyone in your organisation' : ''].filter(Boolean);
+  return `Its riskiest finding is ${top.label.toLowerCase()} in ${top.column} (${top.risk})` +
+    (more.length ? `, raised for ${more.length > 1 ? more.slice(0, -1).join(', ') + ' and ' + more[more.length - 1] : more[0]}` : '') + '.';
+}
+function pisPaintResult() {
+  const res = pis.res, st = $('#pisStage'); if (!res || !st) return;
+  const o = res.overall || {}, x = res.exposure || {}, d = pisDs(res.dataset_key) || {};
+  const live = (res.findings || []).filter(f => !f.dismissed);
+  const rowsTxt = res.complete ? `all ${pisPl(res.rows_scanned, 'row')} read` : `${pisN(res.rows_scanned)} of ${res.rows_total != null ? pisN(res.rows_total) : 'more'} rows read`;
+  const bySev = o.by_severity || {};
+  const head = `<div class="pis-head"><div style="min-width:0"><div class="pis-title"><span class="ifr-dsi" aria-hidden="true">${srcIcon(d.sourceFormat || (res.source || {}).format)}</span>` +
+      `<h3>${esc(res.dataset || d.name || '')}</h3></div>` +
+      `<p class="pis-sub">Swept ${esc(rcxWhen(res.generated_at_utc))} · ${rowsTxt} · ${pisPl(o.columns_scanned, 'column')} in ${pisDur(res.seconds)}</p></div>` +
+    `<div class="pis-acts">` +
+      (d.how === 'source' ? `<button type="button" class="dsx-btn lngb" data-pis="again">Sweep again</button>`
+        : d.how === 'upload' ? `<button type="button" class="dsx-btn lngb" data-pis="again">Upload again</button>` : '') +
+      (d.how === 'source' ? `<button type="button" class="dsx-btn lngb" data-pis="schedule">${d.schedule ? 'On a schedule' : 'Schedule'}</button>` : '') +
+      `<button type="button" class="dsx-btn lngb" data-pis="export" data-tip="Every location found, as a CSV. It holds no values.">Export locations</button>` +
+      (pis.canDismiss ? `<button type="button" class="dsx-btn lngb" data-pis="delete" data-tip="Delete every sweep of this dataset">Delete sweeps</button>` : '') +
+    `</div></div>`;
+  const partial = res.complete ? '' : `<div class="pis-partial">This sweep read the first ${pisN(res.rows_scanned)} rows of ${res.rows_total != null ? pisN(res.rows_total) : 'more'}. ` +
+    `Personal data in the rest has not been looked for: sweep again with a higher limit to read it all.</div>`;
+  const ident = res.identity || {};
+  const tiles = `<div class="pis-tiles">` +
+    `<div class="pis-tile"><div class="pis-tile-l">Rating</div><div class="pis-tile-v">${pisSevHtml(o.severity, true)}</div>` +
+      `<div class="pis-dots">${PIS_SEV.filter(s => bySev[s]).map(s => `<span class="${s}">${pisN(bySev[s])} ${PIS_SEV_L[s].toLowerCase()}</span>`).join('') || 'No findings'}</div></div>` +
+    `<div class="pis-tile" data-tip="${esc(pisRiskWhy(o, live, x))}"><div class="pis-tile-l">Risk</div><div class="pis-tile-v">${pisN(o.risk || 0)}<small> / 100</small></div>` +
+      `<span class="pis-risk ${pisBand(o.risk || 0)}" style="display:block"><span class="pis-risk-bar"><i style="width:${Math.min(100, o.risk || 0)}%"></i></span></span>` +
+      `<div class="pis-tile-s">${esc(pisRiskWhy(o, live, x))}</div></div>` +
+    `<div class="pis-tile"><div class="pis-tile-l">Hidden in free text</div><div class="pis-tile-v">${pisN(o.hidden || 0)}</div>` +
+      `<div class="pis-tile-s">finding${o.hidden === 1 ? '' : 's'} inside notes, descriptions and other text</div></div>` +
+    `<div class="pis-tile"><div class="pis-tile-l">Rows with personal data</div><div class="pis-tile-v">${pisN(o.rows_with_pii || 0)}</div>` +
+      `<div class="pis-tile-s">${esc(String(o.rows_with_pii_pct || 0))}% of the rows read</div></div>` +
+    `<div class="pis-tile"><div class="pis-tile-l">Rows that identify someone</div><div class="pis-tile-v">${pisN(ident.rows || 0)}</div>` +
+      `<div class="pis-tile-s">${esc(String(ident.pct || 0))}% hold enough together to single a person out</div></div>` +
+    `<div class="pis-tile"><div class="pis-tile-l">Who can see it</div><div class="pis-tile-v" style="font-size:14px;line-height:1.35">${esc(pisWho(x) || 'Unknown')}</div>` +
+      `<div class="pis-tile-s">${x.audience === 'everyone' ? 'No restricting tag guards it' : x.audience === 'restricted' ? 'A restricting tag guards it' : ''}</div></div>` +
+    `</div>`;
+  const chips = arr => (arr || []).map(e => `<span class="pis-chip ${e.severity}" data-tip="${esc(PIS_SEV_L[e.severity] || '')}: its most serious finding"><b>${pisN(e.findings)}</b>${esc(e.label)}</span>`).join('')
+    || '<span class="dash-muted">None</span>';
+  st.style.display = '';
+  st.innerHTML = head + partial + pisChangesHtml(res) + tiles +
+    (live.length ? `<div class="pis-two"><div><h4>What kind of data</h4><div class="pis-chips">${chips(o.categories)}</div></div>` +
+                   `<div><h4>Rules it touches</h4><div class="pis-chips">${chips(o.regulations)}</div></div></div>` : '') +
+    `<div id="pisFindings">${pisFindingsHtml(res)}</div>` +
+    pisIdentityHtml(res) + pisColumnsHtml(res) + pisTodoHtml(res) + pisHistoryHtml(res);
+}
+function pisChangesHtml(res) {
+  const c = res.changes;
+  if (!c) {
+    return (pis.history || []).filter(h => h.state === 'SUCCEEDED').length <= 1
+      ? `<div class="pis-changes">This is the first sweep of this dataset. The next one will say what changed since.</div>` : '';
+  }
+  const nNew = (c.new || []).length, nRes = (c.resolved || []).length, nUp = (c.grown || []).length, nDown = (c.fell || []).length;
+  const serious = (c.new || []).filter(f => f.severity === 'high' || f.severity === 'critical').length;
+  const when = esc(rcxWhen(c.previous_at));
+  if (!nNew && !nRes && !nUp && !nDown) return `<div class="pis-changes">No change since the sweep on ${when}: the same findings, in the same number of values.</div>`;
+  const bits = [nNew ? `${nNew} new${serious ? ` (${serious} serious)` : ''}` : '', nRes ? `${nRes} gone` : '',
+                nUp ? `${nUp} more widespread` : '', nDown ? `${nDown} less widespread` : ''].filter(Boolean);
+  const li = (f, what) => `<li>${pisSevHtml(f.severity)} ${esc(f.label)} in <code>${esc(f.column)}</code> ${what}</li>`;
+  const items = [...(c.new || []).map(f => li(f, `<span class="pis-new">new</span> in ${pisPl(f.cells, 'value')}`)),
+                 ...(c.resolved || []).map(f => li(f, 'is no longer found')),
+                 ...(c.grown || []).map(f => li(f, `now in ${pisPl(f.cells, 'value')}, up from ${pisN(f.before)}`)),
+                 ...(c.fell || []).map(f => li(f, `now in ${pisPl(f.cells, 'value')}, down from ${pisN(f.before)}`))];
+  const rowsNote = c.previous_rows_scanned != null && c.previous_rows_scanned !== res.rows_scanned
+    ? ` The sweep before read ${pisN(c.previous_rows_scanned)} rows; this one read ${pisN(res.rows_scanned)}.` : '';
+  return `<div class="pis-changes${serious ? ' worse' : ''}"><b>Since the sweep on ${when}:</b> ${bits.join(', ')}.${rowsNote}` +
+    `<ul>${items.slice(0, 12).join('')}</ul></div>`;
+}
+function pisFindingsHtml(res) {
+  const all = (res.findings || []).filter(f => !f.dismissed);
+  if (!all.length) {
+    return `<h4>Findings</h4>` + dqEmpty({ icon: '✓', title: 'No personal data found',
+      body: `Nothing in the ${pisN(res.rows_scanned)} rows read matched a kind of personal data, and no column is named for one.` }) + pisDismissedHtml(res);
+  }
+  const count = s => all.filter(f => f.severity === s).length;
+  const hidden = all.filter(f => f.embedded).length;
+  const shown = pis.sev === 'hidden' ? all.filter(f => f.embedded) : pis.sev ? all.filter(f => f.severity === pis.sev) : all;
+  const chip = (v, l, n) => `<button type="button" class="pis-fchip lngb${pis.sev === v ? ' on' : ''}" data-pis="sev" data-v="${v}" aria-pressed="${pis.sev === v}">${l} <b>${pisN(n)}</b></button>`;
+  const filter = `<div class="pis-filter" role="group" aria-label="Show findings">${chip('', 'All', all.length)}` +
+    PIS_SEV.filter(count).map(s => chip(s, PIS_SEV_L[s], count(s))).join('') + (hidden ? chip('hidden', 'Hidden in free text', hidden) : '') + `</div>`;
+  return `<h4>Findings <small>riskiest first; open one to see where it is</small></h4>${filter}` +
+    `<div class="pis-tbl-wrap"><table class="pis-tbl"><thead><tr><th></th><th>Severity</th><th>Risk</th><th>Personal data</th><th>Column</th><th>Found in</th><th>Certainty</th></tr></thead>` +
+    `<tbody>${shown.map(f => pisFindingRow(res, f)).join('')}</tbody></table></div>` + pisDismissedHtml(res);
+}
+function pisFindingRow(res, f) {
+  const open = pis.openF === f.id;
+  const where = f.type === 'column_name' ? 'known by its name' : f.embedded ? 'hidden in free text' : 'held in the clear';
+  return `<tr class="pis-frow${open ? ' open' : ''}" data-pis="finding" data-id="${esc(f.id)}" tabindex="0" aria-expanded="${open}">` +
+      `<td><span class="pis-caret" aria-hidden="true">▸</span></td><td>${pisSevHtml(f.severity)}</td><td>${pisRiskHtml(f.risk)}</td>` +
+      `<td class="pis-what"><b>${esc(f.label)}</b><small>${esc(PIS_CAT_L[f.category] || f.category || '')}</small></td>` +
+      `<td class="pis-col"><code>${esc(f.column)}</code><small>${where}</small></td>` +
+      `<td class="pis-num">${pisPl(f.cells, 'value')}<small class="dash-muted" style="display:block">${pisPct(f.rate)} of the column</small></td>` +
+      `<td><span data-tip="${esc(PIS_CONF[f.confidence] || '')}">${esc(PIS_CONF_S[f.confidence] || f.confidence || '')}</span></td></tr>` +
+    (open ? `<tr class="pis-fdetail"><td></td><td colspan="6">${pisDetailHtml(res, f)}</td></tr>` : '');
+}
+function pisDetailHtml(res, f) {
+  const labelled = ((res.pii_labels || {})[f.column] || '') === 'pii';
+  const regs = (f.regulations || []).map(k => `<span class="pis-chip low">${esc(PIS_REG_L[k] || k)}</span>`).join('');
+  const harm = String(f.harm || '');
+  const locs = f.type === 'column_name'
+    ? `<p class="pis-muted">Nothing in its values matched a pattern, so there is no position to show: the column's name is the evidence. Label it, or dismiss it if the name misleads.</p>`
+    : pisLocsHtml(res, f);
+  return `<div class="pis-detail"><p>${esc(f.why || '')}.${harm ? ' ' + esc(harm.charAt(0).toUpperCase() + harm.slice(1)) + '.' : ''}</p>` +
+    (regs ? `<div class="pis-chips" style="margin:6px 0 10px">${regs}</div>` : '') +
+    `<p class="pis-muted">${esc(PIS_CONF[f.confidence] || '')}.${f.matches > f.cells ? ` ${pisPl(f.matches, 'find')} in ${pisPl(f.cells, 'value')}.` : ''}</p>` + locs +
+    `<div class="pis-detail-acts">` +
+      `<button type="button" class="pis-rowbtn lngb" data-pis="label" data-col="${esc(f.column)}"${labelled ? ' disabled' : ''}>${labelled ? 'Column labelled as personal data' : 'Label the column as personal data'}</button>` +
+      (pis.canDismiss ? `<button type="button" class="pis-rowbtn lngb" data-pis="dismiss" data-id="${esc(f.id)}">Not personal data: dismiss</button>` : '') +
+    `</div></div>`;
+}
+/** Where a finding is. Each value is drawn as a bar the width of its characters and each find as a
+ *  mark at the characters it occupies, so a reader sees a card number sitting in the middle of a
+ *  note without the note, or the number, ever reaching the page. */
+function pisLocsHtml(res, f) {
+  const locs = f.locations || [];
+  if (!locs.length) return '';
+  const byRow = new Map();
+  locs.forEach(l => { const k = String(l.row); if (!byRow.has(k)) byRow.set(k, []); byRow.get(k).push(l); });
+  const rows = [...byRow.entries()], all = !!pis.locAll[f.id], show = all ? rows : rows.slice(0, 8);
+  const lines = show.map(([ref, ls]) => {
+    const n = Math.max(1, Number(ls[0].cell_length) || 1);
+    const marks = ls.map(l => `<i style="left:${(100 * l.start / n).toFixed(2)}%;width:${(100 * l.length / n).toFixed(2)}%"></i>`).join('');
+    const t = ls.length === 1 && ls[0].whole ? `the whole value, ${pisPl(n, 'character')}`
+      : ls.length === 1 ? `characters ${pisN(ls[0].start + 1)} to ${pisN(ls[0].start + ls[0].length)} of ${pisN(n)}`
+      : `${ls.length} finds in a value of ${pisPl(n, 'character')}`;
+    const name = res.row_key ? `${res.row_key} ${ref}` : `Row ${pisN(Number(ref))}`;
+    return `<div class="pis-loc"><span class="pis-loc-row" title="${esc(name)}">${esc(name)}</span>` +
+      `<span class="pis-bar" style="--k:${PIS_SEV_VAR[f.severity] || 'var(--pii-low)'}" role="img" aria-label="${esc(t)}">${marks}</span><span class="pis-loc-t">${esc(t)}</span></div>`;
+  }).join('');
+  const more = Number(f.more_locations) || 0;
+  const tail = [rows.length > 8 ? `<button type="button" class="linkbtn lngb" data-pis="locs" data-id="${esc(f.id)}">${all ? 'Show fewer' : `Show all ${rows.length} rows listed`}</button>` : '',
+                more ? `${pisPl(more, 'more value')} hold${more === 1 ? 's' : ''} it too; the first ${pisPl(locs.length, 'find')} are listed.` : ''].filter(Boolean).join(' ');
+  return `<p class="pis-muted" style="margin-top:10px">Where it is: each bar is one value, and the marks show where in it the ${esc(String(f.label || '').toLowerCase())} sits. ` +
+    `${res.row_key ? `Rows are named by their ${esc(res.row_key)}${res.row_key_guessed ? ', which is not a declared key, so a value may name more than one row' : ''}.`
+      : 'Rows are numbered in the order the sweep read them.'}</p>` +
+    `<div class="pis-locs">${lines}</div>${tail ? `<div class="pis-locs-more">${tail}</div>` : ''}`;
+}
+function pisDismissedHtml(res) {
+  const gone = (res.findings || []).filter(f => f.dismissed);
+  if (!gone.length) return '';
+  const rows = gone.map(f => { const m = f.dismissal || {};
+    return `<tr class="pis-dismissed"><td>${pisSevHtml(f.severity)}</td><td class="pis-what"><b>${esc(f.label)}</b></td><td class="pis-col"><code>${esc(f.column)}</code></td>` +
+      `<td>${esc(m.reason || '')}<small class="dash-muted" style="display:block">${esc(m.by || '')}${m.at ? ' · ' + esc(rcxWhen(m.at)) : ''}</small></td>` +
+      `<td>${pis.canDismiss ? `<button type="button" class="pis-rowbtn lngb" data-pis="restore" data-id="${esc(f.id)}">Restore</button>` : ''}</td></tr>`; }).join('');
+  return `<h4>Dismissed <small>${pisPl(gone.length, 'finding')} set aside as not personal data, left out of the rating</small> ` +
+    `<button type="button" class="linkbtn lngb" data-pis="toggle-dismissed">${pis.showDismissed ? 'Hide' : 'Show'}</button></h4>` +
+    (pis.showDismissed ? `<div class="pis-tbl-wrap"><table class="pis-tbl"><tbody>${rows}</tbody></table></div>` : '');
+}
+function pisIdentityHtml(res) {
+  const idn = res.identity || {};
+  if (!idn.rows) return '';
+  const ex = c => (c.example_rows || []).slice(0, 5).map(r => esc(String(r))).join(', ');
+  const combos = (idn.combinations || []).map(c => `<li><b>${esc((c.labels || []).join(' + '))}</b>: ${pisPl(c.rows, 'row')}` +
+    `${(c.example_rows || []).length ? `, for example ${res.row_key ? esc(res.row_key) + ' ' : 'rows '}${ex(c)}` : ''}</li>`).join('');
+  return `<h4>Rows that identify a person <small>${pisN(idn.rows)}, ${esc(String(idn.pct))}% of the rows read</small></h4>` +
+    `<div class="pis-ident">One fact alone rarely identifies anyone. These rows hold enough together: ${esc(idn.rule || '')}.<ul>${combos}</ul></div>`;
+}
+function pisColumnsHtml(res) {
+  const cols = res.columns || [];
+  const hit = cols.filter(c => c.severity).sort((a, b) => PIS_SEV.indexOf(a.severity) - PIS_SEV.indexOf(b.severity));
+  const clean = cols.filter(c => !c.severity);
+  const cut = pis.showClean ? clean.length : 12;
+  return `<h4>Columns <small>${pisN(hit.length)} of the ${pisN(cols.length)} read hold personal data</small></h4>` +
+    `<div class="pis-cols">${hit.map(c => `<span class="pis-colchip ${c.severity}"><code>${esc(c.column)}</code><small>${esc(PIS_ROLE[c.role] || '')}</small></span>`).join('') || '<span class="dash-muted">None</span>'}</div>` +
+    (clean.length ? `<div class="pis-clean">Nothing found in ${pisPl(clean.length, 'column')}: ${clean.slice(0, cut).map(c => esc(c.column)).join(', ')}` +
+      (clean.length > cut ? ` <button type="button" class="linkbtn lngb" data-pis="clean">and ${clean.length - cut} more</button>` : '') + '.</div>' : '') +
+    `<div class="pis-clean">Text columns are read, and number columns whose names say they may be personal. Dates and measurements are not.</div>`;
+}
+function pisTodoHtml(res) {
+  const o = res.overall || {}, x = res.exposure || {}, live = (res.findings || []).filter(f => !f.dismissed);
+  if (!live.length) return '';
+  const items = [];
+  if (live.some(f => f.category === 'credentials')) items.push({ urgent: true, t: 'Change the exposed passwords and keys', s: PIS_FIX.credentials });
+  if (x.audience === 'everyone') {
+    items.push({ urgent: o.severity === 'critical' || o.severity === 'high', t: 'Restrict who can open it',
+                 s: `${pisWho(x)} can open this dataset. A restricting tag limits it to the people granted that tag.`, btn: ['restrict', 'Restrict with a tag'] });
+  } else if (x.audience) {
+    items.push({ done: true, t: 'Access is restricted', s: `${pisWho(x)} can open it.` });
+  }
+  const labels = res.pii_labels || {};
+  const unl = [...new Set(live.map(f => f.column))].filter(c => labels[c] !== 'pii');
+  if (unl.length) {
+    items.push({ t: `Label ${pisPl(unl.length, 'column')} as personal data`,
+                 s: `So failed-record samples and previews redact ${unl.length === 1 ? 'it' : 'them'}: ${unl.slice(0, 6).join(', ')}${unl.length > 6 ? ' and more' : ''}.`,
+                 btn: ['label-all', unl.length === 1 ? 'Label it' : `Label all ${unl.length}`] });
+  } else {
+    items.push({ done: true, t: 'Every column with a finding is labelled as personal data', s: 'Failed-record samples and previews redact them.' });
+  }
+  const hidden = live.filter(f => f.embedded);
+  if (hidden.length) {
+    const cols = [...new Set(hidden.map(f => f.column))];
+    items.push({ urgent: hidden.some(f => f.severity === 'critical'), t: 'Clean the free text',
+                 s: `${pisPl(hidden.length, 'finding')} sit${hidden.length === 1 ? 's' : ''} inside text fields (${cols.slice(0, 5).join(', ')}). Ask whoever fills them in to keep personal details out, and mask what is already there.` });
+  }
+  const cats = [...new Set(live.map(f => f.category))].filter(c => c !== 'credentials' && PIS_FIX[c]);
+  const worst = c => Math.min(...live.filter(f => f.category === c).map(f => PIS_SEV.indexOf(f.severity)));
+  cats.sort((a, b) => worst(a) - worst(b)).forEach(c => items.push({ t: `${PIS_CAT_L[c] || c}: deal with it at source`, s: PIS_FIX[c] }));
+  items.push({ t: 'Export where it is', s: 'A CSV of every location found: the row, the column, the kind and the characters. It holds no values.', btn: ['export', 'Export locations'] });
+  const d = pisDs(res.dataset_key) || {};
+  if (d.how === 'source' && !d.schedule) items.push({ t: 'Sweep it on a schedule', s: 'Catch new personal data as it arrives. Each sweep lists what changed since the one before.', btn: ['schedule', 'Schedule'] });
+  return `<h4>What to do</h4><ol class="pis-todo">${items.map(i => `<li class="${i.urgent ? 'urgent' : ''}${i.done ? ' done' : ''}"><div><b>${esc(i.t)}</b><small>${esc(i.s)}</small></div>` +
+    (i.btn ? `<button type="button" class="pis-rowbtn lngb" data-pis="${i.btn[0]}">${esc(i.btn[1])}</button>` : '<span></span>') + `</li>`).join('')}</ol>`;
+}
+const PIS_STATE_W = { QUEUED: 'Waiting to start', RUNNING: 'Running', FAILED: 'Failed', ERROR: 'Failed', SUCCEEDED: 'Done' };
+function pisHistoryHtml(res) {
+  const h = pis.history || [];
+  if (h.length < 2) return '';
+  return `<h4>Sweeps of this dataset</h4><table class="pis-hist"><tbody>${h.map(s => `<tr class="${s.sweepId === res.sweep_id ? 'cur' : ''}">` +
+    `<td>${esc(rcxWhen(s.requestedAt || s.updatedAt))}${s.scheduled ? ' <span class="dash-muted">· scheduled</span>' : ''}</td>` +
+    `<td>${s.state === 'SUCCEEDED' ? pisSevHtml(s.severity) : `<span class="dash-muted">${esc(PIS_STATE_W[s.state] || s.state || '')}</span>`}</td>` +
+    `<td class="pis-num">${s.findings != null ? pisPl(s.findings, 'finding') : ''}</td>` +
+    `<td>${s.state === 'SUCCEEDED' && s.sweepId !== res.sweep_id ? `<button type="button" class="linkbtn lngb" data-pis="open-sweep" data-id="${esc(s.sweepId)}">Open</button>`
+        : (s.state === 'FAILED' || s.state === 'ERROR') ? `<span class="dash-muted">${esc(String(s.error || '').slice(0, 120))}</span>` : ''}</td></tr>`).join('')}</tbody></table>`;
+}
+
+// ---- The list of datasets swept ----
+function pisPaintList() {
+  const box = $('#pisList'); if (!box) return;
+  const all = ((pis.list || {}).datasets || []);
+  const swept = all.filter(d => d.latest || d.current);
+  const never = all.filter(d => !d.latest && !d.current && d.how === 'source').length;
+  if (!swept.length) {
+    box.innerHTML = dqEmpty({ icon: '🔎', title: 'Nothing swept yet',
+      body: 'Choose a dataset above and press Sweep for PII. Each sweep is listed here with its rating, and on a schedule it says what changed since the last.' });
+    return;
+  }
+  swept.sort((a, b) => (((b.latest || {}).risk) || -1) - (((a.latest || {}).risk) || -1) || String(a.name).localeCompare(String(b.name)));
+  const rows = swept.map(d => {
+    const l = d.latest, c = d.current;
+    const run = c && (c.state === 'QUEUED' || c.state === 'RUNNING')
+      ? `<span class="pis-run"><span class="spin"></span>${c.state === 'QUEUED' ? 'Waiting to start' : `Sweeping${c.rowsScanned ? `, ${pisN(c.rowsScanned)} rows read` : ''}`}</span>`
+      : c && (c.state === 'FAILED' || c.state === 'ERROR') ? `<span class="pis-run" style="color:var(--err)" data-tip="${esc(c.error || '')}">The last sweep failed</span>` : '';
+    const nNew = l && l.changes ? (l.changes.new_serious || 0) : 0;
+    return `<tr><td><span class="pis-ds"><span class="ifr-dsi" aria-hidden="true">${srcIcon(d.sourceFormat)}</span><span>${esc(d.name)}</span></span></td>` +
+      `<td>${l ? pisSevHtml(l.severity) : ''}${nNew ? `<span class="pis-new" data-tip="Serious findings that are new since the sweep before">+${nNew} new</span>` : ''}</td>` +
+      `<td>${l ? pisRiskHtml(l.risk) : ''}</td><td class="pis-num">${l ? pisN(l.findings) : ''}</td>` +
+      `<td class="pis-num">${l ? pisN(l.hidden) : ''}</td><td class="pis-num">${l ? pisN(l.identity_rows) : ''}</td>` +
+      `<td>${esc(pisWho(d.exposure))}</td>` +
+      `<td>${l ? esc(rcxWhen(l.generated_at_utc)) : ''}${run ? (l ? '<br>' : '') + run : ''}` +
+        `${d.schedule ? `<br><span class="dash-muted">${d.schedule.state === 'DISABLED' ? 'Schedule paused' : 'On a schedule'}</span>` : ''}</td>` +
+      `<td><button type="button" class="pis-rowbtn lngb" data-pis="open-ds" data-key="${esc(d.key)}"${l ? '' : ' disabled'}>Open</button></td></tr>`;
+  }).join('');
+  box.innerHTML = `<div class="pis-tbl-wrap"><table class="pis-tbl pis-list-tbl"><thead><tr><th>Dataset</th><th>Rating</th><th>Risk</th><th>Findings</th>` +
+    `<th>Hidden in text</th><th>Identify someone</th><th>Who can see it</th><th>Last swept</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>` +
+    (never ? `<p class="hint" style="margin-top:10px">${pisPl(never, 'more dataset')} ${never === 1 ? 'has' : 'have'} not been swept yet.</p>` : '');
+  // Something under way: look again shortly, while the tab is open.
+  if (swept.some(d => d.current && (d.current.state === 'QUEUED' || d.current.state === 'RUNNING')) && !pis.listTimer) {
+    pis.listTimer = setTimeout(() => { pis.listTimer = null; const p = $('#piiSweepPanel'); if (p && p.style.display !== 'none' && !pis.run) pisLoadList(); }, 10000);
+  }
+}
+
+// ---- Acting on it ----
+function pisExport() {
+  const res = pis.res; if (!res) return;
+  // A cell that starts like a formula is quoted as text, so a column name cannot run in a spreadsheet.
+  const q = v => { let s = String(v == null ? '' : v); if (/^[=+\-@\t\r]/.test(s)) s = "'" + s; return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
+  const out = [['dataset', res.row_key || 'row', 'column', 'personal_data', 'category', 'severity', 'risk', 'hidden_in_text', 'first_character', 'length', 'value_length', 'whole_value', 'dismissed']];
+  (res.findings || []).forEach(f => (f.locations || []).forEach(l => out.push([res.dataset, l.row, f.column, f.label, PIS_CAT_L[f.category] || f.category, f.severity, f.risk,
+    f.embedded ? 'yes' : 'no', l.start + 1, l.length, l.cell_length, l.whole ? 'yes' : 'no', f.dismissed ? 'yes' : 'no'])));
+  const blob = new Blob([out.map(r => r.map(q).join(',')).join('\r\n') + '\r\n'], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `pii-locations-${String(res.dataset || 'dataset').replace(/[^A-Za-z0-9._-]+/g, '_')}-${res.sweep_id || ''}.csv`;
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 0);
+}
+async function pisLabel(cols) {
+  const res = pis.res; if (!res || !cols.length) return;
+  try {
+    for (const c of cols) {
+      await postJSON(`${API_BASE}/data-quality/dataset-tags`, HEADERS, { app_id: APP_ID, action: 'pii-label', key: res.dataset_key, pii_column: c, pii_label: 'pii' });
+    }
+    res.pii_labels = Object.assign({}, res.pii_labels || {});
+    cols.forEach(c => { res.pii_labels[c] = 'pii'; });
+    loadDashEntries().catch(() => {});
+    pisPaintResult();
+    dqDone('Labelled as personal data', `${cols.map(c => `<strong>${esc(c)}</strong>`).join(', ')} ${cols.length === 1 ? 'is' : 'are'} now labelled as personal data. ` +
+      'Failed-record samples and previews redact them from the next assessment on.');
+  } catch (e) { dqAlert(rcxErrText(e), { title: 'Not labelled' }); }
+}
+async function pisRestrict() {
+  const res = pis.res; if (!res) return;
+  if (!dashEntries || !Object.keys(dashEntries).length) await loadDashEntries();
+  await addTagTo(res.dataset_key);
+  await pisOpen(res.dataset_key, res.sweep_id);          // who can see it, again
+  pisLoadList();
+}
+async function pisDismiss(id) {
+  const res = pis.res, f = ((res && res.findings) || []).find(x => x.id === id); if (!f) return;
+  const reason = await dqPrompt(`Why is the ${String(f.label).toLowerCase()} in ${f.column} not personal data? This is recorded with your name, ` +
+    'and the finding stays set aside on later sweeps until someone restores it.', '', { title: 'Dismiss a finding', okLabel: 'Dismiss', placeholder: 'e.g. test data, synthetic' });
+  if (reason == null) return;
+  if (!String(reason).trim()) { dqAlert('Say why, so whoever reads this later knows.', { title: 'Not dismissed' }); return; }
+  try {
+    await pisApi({ action: 'dismiss', dataset_key: res.dataset_key, finding_id: id, reason: String(reason).trim() });
+    pis.openF = '';
+    await pisOpen(res.dataset_key, res.sweep_id); pisLoadList();
+  } catch (e) { dqAlert(rcxErrText(e), { title: 'Not dismissed' }); }
+}
+async function pisRestore(id) {
+  const res = pis.res; if (!res) return;
+  try { await pisApi({ action: 'restore', dataset_key: res.dataset_key, finding_id: id }); await pisOpen(res.dataset_key, res.sweep_id); pisLoadList(); }
+  catch (e) { dqAlert(rcxErrText(e), { title: 'Not restored' }); }
+}
+async function pisDelete() {
+  const res = pis.res; if (!res) return;
+  if (!await dqConfirm(`Delete every sweep of ${res.dataset}?\n\nTheir findings, dismissals and schedule go. The dataset itself, and its assessments, stay.`,
+                       { title: 'Delete sweeps', danger: true, okLabel: 'Delete' })) return;
+  try {
+    await pisApi({ action: 'delete', dataset_key: res.dataset_key });
+    pis.res = null; $('#pisStage').style.display = 'none';
+    await pisLoadList();
+    dqDone('Sweeps deleted', `Every sweep of <strong>${esc(res.dataset)}</strong> is gone.`);
+  } catch (e) { dqAlert(rcxErrText(e), { title: 'Not deleted' }); }
+}
+/** Open the Schedules form on a PII sweep of this dataset. */
+async function pisSchedule(key) {
+  const d = pisDs(key);
+  switchTab('schedules');                      // which resets the form, so fill it in after
+  if (d && d.schedule) { schBanner('info', `${d.name} is already swept on a schedule: edit it in the list.`); return; }
+  $('#schSourceKind').value = 'pii-sweep';
+  schSourceUI();
+  await populateSchPii(key);
+  $('#schLabel').value = `PII sweep: ${pisName(key)}`;
+  renderSchedulePreview();
+  const lbl = $('#schLabel'); if (lbl) lbl.focus();
+}
+
+{
+  const panel = $('#piiSweepPanel');
+  if (panel) {
+    panel.addEventListener('click', e => {
+      const t = e.target.closest('[data-pis]');
+      if (!t || t.disabled) return;
+      const a = t.dataset.pis, res = pis.res;
+      if (a === 'open') {
+        pis.open = !pis.open; pis.q = ''; pisPaintPick();
+        if (pis.open) { const s = panel.querySelector('.rcx-search'); if (s) s.focus(); }
+      } else if (a === 'pick') {
+        pis.sel = t.dataset.key; pis.open = false; pis.q = ''; pisPaintPick();
+        const d = pisDs(pis.sel);
+        pisHint(d && d.how === 'qlik' ? 'Only the Qlik app can read its tables. Export the table and upload the file to sweep it.'
+          : d && d.how === 'upload' ? 'This file was not kept after its assessment. Press the button to upload it again and sweep it.' : '');
+        if (d && (d.latest || d.current)) pisOpen(d.key);
+        const b = panel.querySelector('.rcx-pick-btn'); if (b) b.focus();
+      } else if (a === 'go') {
+        pisStart();
+      } else if (a === 'again') {
+        if (res) { pis.sel = res.dataset_key; pisStart(); }
+      } else if (a === 'upload-new') {
+        pis.uploadKey = ''; $('#pisFile').click();
+      } else if (a === 'schedule') {
+        if (res) pisSchedule(res.dataset_key);
+      } else if (a === 'export') {
+        pisExport();
+      } else if (a === 'delete') {
+        pisDelete();
+      } else if (a === 'finding') {
+        pis.openF = pis.openF === t.dataset.id ? '' : t.dataset.id;
+        const box = $('#pisFindings'); if (box && res) box.innerHTML = pisFindingsHtml(res);
+        const row = panel.querySelector(`tr.pis-frow[data-id="${CSS.escape(t.dataset.id)}"]`); if (row) row.focus();
+      } else if (a === 'sev') {
+        pis.sev = t.dataset.v || ''; const box = $('#pisFindings'); if (box && res) box.innerHTML = pisFindingsHtml(res);
+      } else if (a === 'locs') {
+        pis.locAll[t.dataset.id] = !pis.locAll[t.dataset.id]; const box = $('#pisFindings'); if (box && res) box.innerHTML = pisFindingsHtml(res);
+      } else if (a === 'toggle-dismissed') {
+        pis.showDismissed = !pis.showDismissed; const box = $('#pisFindings'); if (box && res) box.innerHTML = pisFindingsHtml(res);
+      } else if (a === 'clean') {
+        pis.showClean = true; pisPaintResult();
+      } else if (a === 'label') {
+        pisLabel([t.dataset.col]);
+      } else if (a === 'label-all') {
+        if (res) { const labels = res.pii_labels || {}; pisLabel([...new Set((res.findings || []).filter(f => !f.dismissed).map(f => f.column))].filter(c => labels[c] !== 'pii')); }
+      } else if (a === 'restrict') {
+        pisRestrict();
+      } else if (a === 'dismiss') {
+        pisDismiss(t.dataset.id);
+      } else if (a === 'restore') {
+        pisRestore(t.dataset.id);
+      } else if (a === 'open-sweep') {
+        if (res) pisOpen(res.dataset_key, t.dataset.id);
+      } else if (a === 'open-ds') {
+        pisOpen(t.dataset.key).then(() => { const s = $('#pisStage'); if (s) s.scrollIntoView({ behavior: dqReduced() ? 'auto' : 'smooth', block: 'start' }); });
+      } else if (a === 'close') {
+        $('#pisStage').style.display = 'none';
+      }
+    });
+    panel.addEventListener('keydown', e => {
+      const row = e.target.closest && e.target.closest('tr.pis-frow');
+      if (row && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); row.click(); return; }
+      if (e.key === 'Escape' && pis.open) { e.preventDefault(); pisClosePick(); const b = panel.querySelector('.rcx-pick-btn'); if (b) b.focus(); }
+    });
+    panel.addEventListener('input', e => {
+      if (!e.target.closest('.rcx-search')) return;
+      pis.q = e.target.value;
+      const opts = panel.querySelector('.rcx-opts'); if (opts) opts.innerHTML = pisOptsHtml();
+    });
+    panel.addEventListener('change', e => {
+      if (e.target.matches('[data-pis-rows]')) { pis.rows = parseInt(e.target.value, 10) || 2000000; return; }
+      if (e.target.id === 'pisFile') { const f = e.target.files && e.target.files[0]; e.target.value = ''; if (f) pisUpload(f); }
+    });
+    // `.rcx-pick` alone, not under #pisPickRow: a click that opened the picker has re-drawn it, so the
+    // button it landed on is detached by now, and only its own old ancestors are left to match.
+    document.addEventListener('click', e => { if (pis.open && !e.target.closest('.rcx-pick')) pisClosePick(); });
+    const rf = $('#pisRefresh'); if (rf) rf.addEventListener('click', pisLoadList);
+  }
+}
+
+// ---- A PII sweep on a schedule: the Schedules form's own fields for it ----
+async function populateSchPii(want) {
+  const sel = $('#schPiiDs'); if (!sel) return;
+  if (!pis.list) { try { pis.list = await pisApi({ action: 'datasets' }); } catch (e) { /* the list says why below */ } }
+  const cur = want || sel.value;
+  const ds = ((pis.list || {}).datasets || []).filter(d => d.how === 'source').sort((a, b) => String(a.name).localeCompare(String(b.name)));
+  sel.innerHTML = ds.length ? `<option value="">Choose a dataset…</option>` + ds.map(d => `<option value="${esc(d.key)}">${esc(d.name)}</option>`).join('')
+                            : `<option value="">(no dataset can be read from its source yet)</option>`;
+  if (cur && ![...sel.options].some(o => o.value === cur)) {
+    const o = document.createElement('option'); o.value = cur; o.textContent = pisName(cur); sel.appendChild(o);
+  }
+  sel.value = cur || '';
+  renderSchedulePreview();
+}
+{
+  const sel = $('#schPiiDs');
+  if (sel) sel.addEventListener('change', () => {
+    const lbl = $('#schLabel');
+    if (lbl && !lbl.value.trim() && sel.value) lbl.value = `PII sweep: ${pisName(sel.value)}`;
+    renderSchedulePreview();
+  });
+  const rows = $('#schPiiRows'); if (rows) rows.addEventListener('change', renderSchedulePreview);
+}
+
 function switchTab(name) {
   gdSpotClose();
   // Portal mode: the Qlik-only tabs don't exist here - redirect any programmatic
@@ -24470,6 +25349,7 @@ function switchTab(name) {
   $('#incidentsPanel').style.display = name === 'incidents' ? 'block' : 'none';
   $('#sourceWatchPanel').style.display = name === 'sourcewatch' ? 'block' : 'none';
   $('#complianceTab').style.display = name === 'compliance' ? 'block' : 'none';
+  $('#piiSweepPanel').style.display = name === 'piisweep' ? 'block' : 'none';
   $('#lineagePanel').style.display = name === 'lineage' ? 'block' : 'none';
   $('#profilePanel').style.display = name === 'profile' ? 'block' : 'none';
   $('#agentsPanel').style.display = name === 'agents' ? 'block' : 'none';
@@ -24499,6 +25379,7 @@ function switchTab(name) {
   if (name === 'incidents') loadIncidents();
   if (name === 'sourcewatch') loadSourceWatch();
   if (name === 'compliance') loadComplianceEstate();
+  if (name === 'piisweep') loadPiiSweep();
   if (name === 'lineage') loadLineageTab();
   if (name === 'model') loadModel();
   if (name === 'history') setHistorySub(PORTAL ? 'dataset' : 'app');   // portal has no Qlik full-app view
@@ -25534,11 +26415,16 @@ function schSourceUI() {
   const qlik = kind === 'qlik';
   const tag = kind === 'tag';
   const watch = kind === 'source-watch';        // metadata monitoring: no connector form at all
+  const pii = kind === 'pii-sweep';             // one dataset, through the connection it already has
   if ($('#schQlikFields')) $('#schQlikFields').style.display = qlik ? '' : 'none';
-  if ($('#schSourceWrap')) $('#schSourceWrap').style.display = (qlik || tag || watch) ? 'none' : 'block';
+  if ($('#schSourceWrap')) $('#schSourceWrap').style.display = (qlik || tag || watch || pii) ? 'none' : 'block';
   if ($('#schTagWrap')) $('#schTagWrap').style.display = tag ? 'block' : 'none';
   if ($('#schWatchWrap')) $('#schWatchWrap').style.display = watch ? 'block' : 'none';
+  if ($('#schPiiWrap')) $('#schPiiWrap').style.display = pii ? 'block' : 'none';
+  // A sweep sends no email: its results, and what changed, are on the PII sweep tab.
+  if ($('#schAlertNote')) $('#schAlertNote').style.display = pii ? 'none' : '';
   if (tag) populateSchTags();
+  else if (pii) populateSchPii();
   else if (!qlik && !watch) renderSchedSourceFields(kind);
 }
 if ($('#schSourceKind')) $('#schSourceKind').addEventListener('change', schSourceUI);
@@ -26349,6 +27235,10 @@ async function saveSchedule() {
   } else if (kind === 'source-watch') {
     // Nothing to collect: the server builds the target list from every dataset in this
     // workspace that has a saved credential profile.
+  } else if (kind === 'pii-sweep') {
+    const key = ($('#schPiiDs') && $('#schPiiDs').value) || '';
+    if (!key) { schBanner('err', 'Choose the dataset to sweep.'); return; }
+    body.source = { dataset_key: key, max_rows: parseInt(($('#schPiiRows') || {}).value, 10) || 2000000 };
   } else {
     const cfg = collectSchedSource();
     // When saved credentials are applied, the blank secret is injected server-side.
@@ -26376,8 +27266,11 @@ async function saveSchedule() {
     schBanner(r.action === 'updated' ? 'info' : 'ok', `Schedule ${r.action}.`);
     resetScheduleForm();
     loadSchedules();
+    if (kind === 'pii-sweep') pis.list = null;      // the PII sweep tab shows the dataset as scheduled
   } catch (e) {
-    schBanner('err', e.message);
+    // One sweep schedule per dataset, named after it: a second is a conflict, and the way on is to edit.
+    schBanner('err', kind === 'pii-sweep' && e.status === 409
+      ? 'This dataset is already swept on a schedule. Edit that schedule in the list instead.' : e.message);
   } finally {
     $('#schSave').disabled = false;
   }
@@ -26623,7 +27516,7 @@ function _tzClose() {
 // <select> stays in the DOM - hidden - and remains the single source of truth for the value.
 // Every existing read and write of #schSourceKind.value therefore keeps working as written.
 // These two are not data sources, so they have no brand mark of their own.
-const SCHED_KIND_ICON = { tag: '🏷️', 'source-watch': '👁️', reconcile: '⚖️' };
+const SCHED_KIND_ICON = { tag: '🏷️', 'source-watch': '👁️', reconcile: '⚖️', 'pii-sweep': '🔎' };
 function schedKindIcon(v) { return `<span class="skc-ic">${SCHED_KIND_ICON[v] || srcIcon(v)}</span>`; }
 
 function buildSchedKindSelect() {
@@ -26831,10 +27724,16 @@ function renderSchedulePreview() {
   const tz = ($('#schTz').value || 'UTC').trim();
   const label = $('#schLabel').value.trim();
   const sampleN = parseInt($('#schSample').value.trim(), 10);
-  const tablesTxt = schSelected.length
+  const piiKind = (($('#schSourceKind') || {}).value || '') === 'pii-sweep';
+  const piiKey = piiKind ? (($('#schPiiDs') || {}).value || '') : '';
+  const tablesTxt = piiKind
+    ? (piiKey ? `${pisName(piiKey)}, read for personal data` : 'Choose a dataset')
+    : schSelected.length
     ? (schSelected.length + ' table' + (schSelected.length === 1 ? '' : 's'))
     : 'All tables';
-  const sampleTxt = Number.isFinite(sampleN) && sampleN > 0
+  const sampleTxt = piiKind
+    ? `Up to ${Number((($('#schPiiRows') || {}).value) || 2000000).toLocaleString()} rows`
+    : Number.isFinite(sampleN) && sampleN > 0
     ? sampleN.toLocaleString() + ' rows/table' : 'Whole tables';
 
   const isRate = /^rate\(/i.test(cron);
@@ -26862,8 +27761,8 @@ function renderSchedulePreview() {
     (isRate ? '' : ` <span class="dash-muted">(${esc(tz)})</span>`) + `</div>` +
     `<div class="sp-meta">` +
     `<span class="k">Assesses</span><span>${esc(tablesTxt)}</span>` +
-    `<span class="k">Sample</span><span>${esc(sampleTxt)}</span>` +
-    `<span class="k">Alerts</span><span>Dataset owner, else whoever submitted it</span>` +
+    `<span class="k">${piiKind ? 'Rows' : 'Sample'}</span><span>${esc(sampleTxt)}</span>` +
+    `<span class="k">${piiKind ? 'Results' : 'Alerts'}</span><span>${piiKind ? 'On the PII sweep tab, with what changed since the last sweep' : 'Dataset owner, else whoever submitted it'}</span>` +
     `</div>` +
     `<div class="sp-next-h">Next ${runs.length > 1 ? runs.length + ' runs' : 'run'}</div>` +
     runsHtml;
@@ -26890,6 +27789,9 @@ function renderSchedules(list) {
       // A watched pair, set from the Reconcile tab; its Edit opens the pair there.
       : s.sourceKind === 'reconcile'
       ? `<span class="ds-tag" style="cursor:default">${SCHED_KIND_ICON.reconcile} Reconcile</span>` + detail(s.sourceSummary || '')
+      // A dataset's PII sweep; its results are on the PII sweep tab.
+      : s.sourceKind === 'pii-sweep'
+      ? `<span class="ds-tag" style="cursor:default">${SCHED_KIND_ICON['pii-sweep']} PII sweep</span>` + detail(s.sourceSummary || '')
       : isSrc
         ? sourceChip(s.sourceKind) + detail(s.sourceSummary || '')
         : sourceChip('qlik') + detail((s.tables && s.tables.length)
@@ -26936,14 +27838,18 @@ function renderSchedules(list) {
     exp.querySelector('.v-tz').textContent = s.timezone || 'UTC';
     exp.querySelector('.v-tables').textContent = s.sourceKind === 'reconcile'
       ? `Reconcile${s.sourceSummary ? ' · ' + s.sourceSummary : ''}`
+      : s.sourceKind === 'pii-sweep'
+      ? `PII sweep${s.sourceSummary ? ' · ' + s.sourceSummary : ''}`
       : (s.sourceKind && s.sourceKind !== 'qlik')
       ? `${SOURCE_LABEL[s.sourceKind] || s.sourceKind}${s.sourceSummary ? ' · ' + s.sourceSummary : ''}`
       : ((s.tables && s.tables.length) ? s.tables.join(', ') : 'All tables');
     // What the schedule will actually do. Older schedules may still carry a stored address from
     // when the form asked for one; it is shown because it IS still what those runs will use.
-    exp.querySelector('.v-email').textContent =
-      s.email ? 'Dataset owner, else ' + s.email : 'Dataset owner, else whoever submitted it';
-    exp.querySelector('.v-sample').textContent = s.sampleRows ? `${s.sampleRows} rows` : 'Whole tables';
+    exp.querySelector('.v-email').textContent = s.sourceKind === 'pii-sweep' ? 'On the PII sweep tab'
+      : s.email ? 'Dataset owner, else ' + s.email : 'Dataset owner, else whoever submitted it';
+    exp.querySelector('.v-sample').textContent = s.sourceKind === 'pii-sweep'
+      ? `Up to ${Number(s.maxRows || 2000000).toLocaleString()} rows`
+      : s.sampleRows ? `${s.sampleRows} rows` : 'Whole tables';
   });
   $('#schList').querySelectorAll('.sched-caret').forEach(c => c.addEventListener('click', () => {
     const i = c.dataset.caret, exp = $(`tr[data-exp="${i}"]`);
@@ -27023,6 +27929,10 @@ function editSchedule(s) {
   } else if (kind === 'source-watch') {
     // Nothing to restore: the target list is rebuilt from the workspace on save, and there are
     // no connection details in this form to re-enter.
+  } else if (kind === 'pii-sweep') {
+    // The dataset and the row limit are all it holds; the connection is the dataset's own.
+    populateSchPii(s.datasetKey || '');
+    const rows = $('#schPiiRows'); if (rows) rows.value = String(s.maxRows || 2000000);
   } else {
     schBanner('info', 'Re-enter this source’s connection details - credentials aren’t stored back into the form.');
   }
