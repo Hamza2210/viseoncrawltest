@@ -4219,6 +4219,8 @@
   .dq-run-meta code { font-size: 11.5px; padding: 1px 6px; border-radius: 5px; background: var(--idle-bg); color: var(--text); }
   .dq-run-note { margin: 10px 0 0; max-width: 460px; font-size: 12px; line-height: 1.5; color: var(--muted); }
   .dq-run-note:empty { display: none; }
+  .dq-run-cancel { display: block; margin: 12px auto 0; font-size: 12.5px; }
+  .dq-run-cancel[hidden] { display: none; }
   @media (prefers-reduced-motion: reduce) {
     .dq-face-out, .dq-face-in, .src-pop.opening, .src-faces.fresh [data-face-to="result"] { animation: none !important; }
     .dq-run-bar span { transition: none !important; }
@@ -6629,7 +6631,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 // ERROR = the worker could not reach the source at all (bad credentials / host /
 // permissions). It is terminal - omitting it meant pollResults' `while (true)` never
 // stopped, so a wrong password showed an assessment spinner indefinitely.
-const TERMINAL = ['SUCCEEDED', 'GATE_FAILED', 'FAILED', 'ERROR'];
+const TERMINAL = ['SUCCEEDED', 'GATE_FAILED', 'FAILED', 'ERROR', 'CANCELLED', 'ABORTED'];
 const fmtScore = n => (n == null ? '-' : Number(Number(n).toFixed(2)));
 function tagClass(s) { return ({ green: 'green', amber: 'amber', red: 'red' })[s] || ''; }
 // A friendly label + chip for the dataset's origin (source_format on the run).
@@ -7367,6 +7369,23 @@ function _gateSee(body, check, failed) {
 function renderAssessment(r, bodyEl, opts) {
   const isApp = !!(opts && opts.context === 'app');
   const body = bodyEl || $('#assessBody');
+  // CANCELLED = someone stopped it (here, or in the AWS console). ABORTED = its worker stopped
+  // without finishing. Neither is a score, an incident or an email.
+  if (r.state === 'CANCELLED') {
+    const st = r.status || {};
+    const by = st.cancelled_by ? ` by ${st.cancelled_by}` : '';
+    body.innerHTML = `<div class="headline"><span class="tag muted">Assessment cancelled</span></div>` +
+      `<p class="dash-muted" style="margin:6px 0 10px;">${esc(String(st.detail || 'It was stopped before it finished.').replace(/\.\s*$/, ''))}${esc(by)}. ` +
+      `Nothing was recorded for it: no score, no incident and no email. Run it again whenever you are ready.</p>`;
+    return;
+  }
+  if (r.state === 'ABORTED') {
+    body.innerHTML = `<div class="headline"><span class="tag red">Run stopped</span></div>` +
+      `<p class="dash-muted" style="margin:6px 0 10px;">The run stopped before it finished, so nothing was assessed. ` +
+      `Run it again; if it stops again, a sample size or a smaller table may help.</p>` +
+      `<pre>${esc((r.status && r.status.error) || 'The worker did not say why.')}</pre>`;
+    return;
+  }
   // FAILED = the run broke partway. ERROR = we never reached the source, which is almost
   // always a credential/host/permission problem, so it gets its own wording and a nudge to
   // the thing the user can actually fix.
@@ -8677,7 +8696,8 @@ function dqRunFill(f, o) {
   f.innerHTML = dqLoader(o.msg, o.sub || '') +
     `<div class="dq-run-bar${o.pct == null ? ' indet' : ''}" aria-hidden="true"><span></span></div>` +
     (steps ? `<ol class="dq-run-steps">${steps}</ol>` : '') +
-    `<div class="dq-run-meta"></div><p class="dq-run-note" role="status"></p>`;
+    `<div class="dq-run-meta"></div><p class="dq-run-note" role="status"></p>` +
+    `<button type="button" class="linkbtn lngb dq-run-cancel" hidden>Cancel this run</button>`;
   // The message and its line are what a screen reader is told as they change; the clock, which
   // ticks every second, is not.
   const say = f.querySelector('.dq-loader');
@@ -8709,7 +8729,43 @@ function dqRunClock(f, on) {
   _dqRunMeta(f);
   if (on) f._clockT = setInterval(() => { if (!f.isConnected) clearInterval(f._clockT); else _dqRunMeta(f); }, 1000);
 }
-function dqRunStop(f) { if (f) { clearInterval(f._clockT); f._clockT = 0; } }
+function dqRunStop(f) {
+  if (!f) return;
+  clearInterval(f._clockT); f._clockT = 0;
+  const c = f.querySelector('.dq-run-cancel'); if (c) c.hidden = true;
+  f._cancelPrefix = '';
+}
+/**
+ * Offer Cancel on a run face, for the run whose folder is `prefix`. `o.count` > 1 is a run of several
+ * datasets in ONE task (by tag, or a Qlik app): cancelling stops all of the ones not yet finished.
+ */
+function dqRunCancelable(f, prefix, o) {
+  if (!f || !prefix) return;
+  f._cancelPrefix = prefix;
+  f._cancelCount = (o && o.count) || 1;
+  f._cancelNoun = (o && o.noun) || 'dataset';
+  const c = f.querySelector('.dq-run-cancel');
+  if (c) { c.hidden = false; c.disabled = false; c.textContent = f._cancelCount > 1 ? 'Cancel this run' : 'Cancel this assessment'; }
+}
+async function dqRunCancelClick(btn) {
+  const f = btn.closest('.dq-run'); if (!f || !f._cancelPrefix) return;
+  const n = f._cancelCount || 1, noun = f._cancelNoun || 'dataset';
+  const msg = n > 1
+    ? `Cancel this run?\n\nOne task is assessing all ${n} ${noun}s, so the ones not finished yet all stop, and nothing is recorded for them. Any already finished keep their results.`
+    : 'Cancel this assessment?\n\nIt stops where it is, and nothing is recorded for it: no score, no incident and no email. You can run it again at any time.';
+  if (!await dqConfirm(msg, { title: n > 1 ? 'Cancel the run' : 'Cancel the assessment', okLabel: 'Cancel it', cancelLabel: 'Keep it running' })) return;
+  btn.disabled = true;
+  try {
+    await postJSON(`${API_BASE}/data-quality/run-cancel`, HEADERS, { result_prefix: f._cancelPrefix });
+    btn.hidden = true;
+    dqRunNote(f, 'Cancelling. The run stops in a moment.');
+  } catch (e) {
+    btn.disabled = false;
+    if (e && e.status === 409) return;                   // it finished meanwhile: the result arrives as usual
+    dqAlert((e && e.message) || 'Could not cancel the run.', { title: 'Not cancelled' });
+  }
+}
+document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('.dq-run-cancel'); if (b && !b.disabled) dqRunCancelClick(b); });
 function dqRunId(f, id) { if (f) { f._runId = id || ''; _dqRunMeta(f); } }
 function dqRunNote(f, text) { const n = f && f.querySelector('.dq-run-note'); if (n) n.textContent = text || ''; }
 /** Change the loader's message and/or its line underneath; null leaves either as it is. */
@@ -8749,6 +8805,7 @@ async function pollResults(resultPrefix) {
   }
   const seq = srcRunState.file.seq;
   srcRunState.file.pollPrefix = resultPrefix;
+  dqRunCancelable(srcFace('file', 'run'), resultPrefix);
   let nudged = false;
   while (true) {
     let r = null;
@@ -10933,6 +10990,7 @@ async function renderTagResults(launched) {
   const run = dqRunFace(wrap, body);
   const say = () => `${done} of ${total} dataset${total === 1 ? '' : 's'} assessed - scoring against the 9 DAMA quality dimensions.`;
   dqRunFill(run, { msg: 'Running assessment', sub: say(), pct: 0 });
+  dqRunCancelable(run, (launched[0] || {}).resultPrefix, { count: total, noun: 'dataset' });
   dqShowFace(wrap, run);
   const results = await Promise.all(launched.map(d =>
     pollResult(d.resultPrefix).then(r => { done++; dqRunBar(run, done / total * 100); dqRunSay(run, null, say()); return r; })));
@@ -18362,7 +18420,8 @@ function srcRunFail(key, message) {
   srcSyncFaces();
 }
 function _srcStatus(r, failure) {
-  if (failure || !r || r.state === 'FAILED' || r.state === 'ERROR') return 'red';
+  if (r && r.state === 'CANCELLED') return '';
+  if (failure || !r || r.state === 'FAILED' || r.state === 'ERROR' || r.state === 'ABORTED') return 'red';
   const ov = (r.summary && r.summary.overall) || {}, st = r.status || {};
   if (r.state === 'GATE_FAILED' || (st.gate && st.gate.passed === false)) return 'red';   // a failed gate outranks a green score
   return tagClass(ov.status || st.overall_status || '');
@@ -22706,7 +22765,7 @@ function apxCalls() {
     { id: 'result',
       what: `Where a run has got to, and its verdict once it has finished. Ask every 15 to 30 seconds until <code>state</code> is no longer <code>PENDING</code> or <code>RUNNING</code>.`,
       fields: [folder(`The run's folder: a <code>resultPrefix</code> from <code>run-by-tag</code>, <code>rerun-source</code> or <code>history</code>.`)],
-      answer: [['state', '<code>PENDING</code> or <code>RUNNING</code> while it works; then <code>SUCCEEDED</code> (it passed the gate), <code>GATE_FAILED</code>, <code>FAILED</code> (the run broke) or <code>ERROR</code> (the source could not be reached).'],
+      answer: [['state', '<code>PENDING</code> or <code>RUNNING</code> while it works; then <code>SUCCEEDED</code> (it passed the gate), <code>GATE_FAILED</code>, <code>FAILED</code> (the run broke), <code>ERROR</code> (the source could not be reached), <code>CANCELLED</code> (someone stopped it) or <code>ABORTED</code> (its worker stopped without finishing).'],
                ['summary', 'Once finished: the dataset, the <code>overall</code> score and status, a score per quality dimension (<code>criteria</code>), and the <code>compliance</code> grade.'],
                ['files', 'Links to the full report.']],
       errors: [['400', 'Not a run folder.'], ['404', 'No such dataset, or not one you can see.']] },
@@ -23875,6 +23934,8 @@ ${HDRS}
             [pill('GATE_FAILED', 'bad'), 'Assessed, and the data failed the gate', 'Stop, or take the failure path'],
             [pill('FAILED', 'warn'), 'The run itself broke', 'Stop, and look at the run'],
             [pill('ERROR', 'warn'), 'The source could not be reached: credentials, host or permissions', 'Stop, and check the connection'],
+            [pill('CANCELLED'), 'Someone stopped it before it finished (POST /data-quality/run-cancel, or the AWS console). Nothing was recorded', 'Stop, or start it again'],
+            [pill('ABORTED', 'warn'), 'Its worker stopped without finishing; status.error says why', 'Start it again, and look if it stops again'],
           ]) +
           warn(`A high score can still fail the gate: a blocker such as a broken key fails it whatever the average. Branch on <code>state</code>, not on the score.`) +
           more('What a finished answer looks like',
@@ -25842,6 +25903,7 @@ async function renderAppResults(tables, isFullApp) {
   const say = () => `${done} of ${total} table${total === 1 ? '' : 's'} assessed - scoring against the 9 DAMA quality dimensions.`;
   const run = dqRunFace(wrap, body);
   dqRunFill(run, { msg: `Running ${noun}`, sub: say(), pct: 0 });
+  dqRunCancelable(run, (tables[0] || {}).resultPrefix, { count: total, noun: 'table' });
   dqShowFace(wrap, run);
 
   const results = await Promise.all(tables.map(t =>
@@ -26024,6 +26086,7 @@ async function pollInto(resultPrefix, bodyEl, opts) {
   // A Data sources connector waits on its run face (opts.stage); anything else waits in the body.
   const stage = opts && opts.stage, seq = opts && opts.stageSeq;
   if (bodyEl && !stage) bodyEl.innerHTML = dqLoader('Assessing the dataset', 'Scoring against the 9 DAMA dimensions - this can take a moment for large tables.');
+  if (stage) dqRunCancelable(srcFace(stage, 'run'), resultPrefix);
   let nudged = false;
   while (true) {
     let r = null;
