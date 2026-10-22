@@ -25015,9 +25015,10 @@ function pisLocsHtml(res, f) {
     const t = ls.length === 1 && ls[0].whole ? `the whole value, ${pisPl(n, 'character')}`
       : ls.length === 1 ? `characters ${pisN(ls[0].start + 1)} to ${pisN(ls[0].start + ls[0].length)} of ${pisN(n)}`
       : `${ls.length} finds in a value of ${pisPl(n, 'character')}`;
+    const tEnc = ls.some(l => l.encoded) ? `${t}, inside base64-encoded text` : t;   // found by decoding it
     const name = res.row_key ? `${res.row_key} ${ref}` : `Row ${pisN(Number(ref))}`;
     return `<div class="pis-loc"><span class="pis-loc-row" title="${esc(name)}">${esc(name)}</span>` +
-      `<span class="pis-bar" style="--k:${PIS_SEV_VAR[f.severity] || 'var(--pii-low)'}" role="img" aria-label="${esc(t)}">${marks}</span><span class="pis-loc-t">${esc(t)}</span></div>`;
+      `<span class="pis-bar" style="--k:${PIS_SEV_VAR[f.severity] || 'var(--pii-low)'}" role="img" aria-label="${esc(tEnc)}">${marks}</span><span class="pis-loc-t">${esc(tEnc)}</span></div>`;
   }).join('');
   const more = Number(f.more_locations) || 0;
   const tail = [rows.length > 8 ? `<button type="button" class="linkbtn lngb" data-pis="locs" data-id="${esc(f.id)}">${all ? 'Show fewer' : `Show all ${rows.length} rows listed`}</button>` : '',
@@ -25146,9 +25147,9 @@ function pisExport() {
   const res = pis.res; if (!res) return;
   // A cell that starts like a formula is quoted as text, so a column name cannot run in a spreadsheet.
   const q = v => { let s = String(v == null ? '' : v); if (/^[=+\-@\t\r]/.test(s)) s = "'" + s; return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
-  const out = [['dataset', res.row_key || 'row', 'column', 'personal_data', 'category', 'severity', 'risk', 'hidden_in_text', 'first_character', 'length', 'value_length', 'whole_value', 'dismissed']];
+  const out = [['dataset', res.row_key || 'row', 'column', 'personal_data', 'category', 'severity', 'risk', 'hidden_in_text', 'first_character', 'length', 'value_length', 'whole_value', 'encoded', 'dismissed']];
   (res.findings || []).forEach(f => (f.locations || []).forEach(l => out.push([res.dataset, l.row, f.column, f.label, PIS_CAT_L[f.category] || f.category, f.severity, f.risk,
-    f.embedded ? 'yes' : 'no', l.start + 1, l.length, l.cell_length, l.whole ? 'yes' : 'no', f.dismissed ? 'yes' : 'no'])));
+    f.embedded ? 'yes' : 'no', l.start + 1, l.length, l.cell_length, l.whole ? 'yes' : 'no', l.encoded || '', f.dismissed ? 'yes' : 'no'])));
   const blob = new Blob([out.map(r => r.map(q).join(',')).join('\r\n') + '\r\n'], { type: 'text/csv' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
