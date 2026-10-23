@@ -4312,12 +4312,38 @@
   .pis-partial { margin: 12px 0 0; padding: 9px 12px; border-radius: 10px; font-size: 12.5px; border: 1px solid color-mix(in srgb, var(--run) 40%, transparent);
     background: color-mix(in srgb, var(--run) 9%, transparent); color: var(--text); }
   .pis-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-top: 16px; }
+  /* The opened dataset: five figures, a line for anything new, then one tab at a time. */
+  .pis-who { flex: none; padding: 2px 10px; border-radius: 999px; font-size: 11.5px; font-weight: 650; color: var(--muted);
+    border: 1px solid var(--border); white-space: nowrap; }
+  .pis-who.everyone { color: var(--pii-high); border-color: color-mix(in srgb, var(--pii-high) 40%, var(--border)); }
+  .pis-tile[data-tip] { cursor: help; }
+  .pis-note { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin-top: 10px; padding: 8px 12px; border-radius: 10px;
+    border: 1px solid var(--border); background: var(--card-2); font-size: 12.5px; }
+  .pis-note.worse { border-color: color-mix(in srgb, var(--pii-crit) 45%, var(--border)); }
+  .pis-note.partial { border-color: color-mix(in srgb, var(--run) 40%, transparent); }
+  .pis-note .linkbtn { margin-left: 0; font-size: 12.5px; }
+  .rd-tabs.pis-tabs { margin: 18px 0 14px; }
+  .pis-panel { min-height: 90px; }
+  .pis-panel > p.pis-muted:first-child { margin-top: 0; }
+  .pis-panel h5 { margin: 16px 0 6px; font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
+  .pis-panel h5:first-child { margin-top: 0; }
+  .pis-panel h5 small { margin-left: 6px; font-weight: 600; letter-spacing: 0; text-transform: none; }
+  .pis-panel .pis-tbl td small { display: block; color: var(--muted); font-size: 11.5px; }
+  .pis-chg tr.pis-grp td { padding: 9px 10px 5px; font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
+    color: var(--muted); background: var(--card-2); }
+  .pis-chg tr.pis-grp td small { display: inline; margin-left: 6px; letter-spacing: 0; }
+  .pis-chg td:nth-child(2) { width: 38%; } .pis-chg td:nth-child(3) { width: 24%; }
+  .pis-how { color: var(--accent); cursor: help; border-bottom: 1px dotted currentColor; }
+  .pis-findhead { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 14px; margin-bottom: 10px; }
+  .pis-findhead .pis-filter { margin: 0; }
+  .pis-findhead > .pis-muted, .pis-panel p.pis-muted { color: var(--muted); font-size: 12.5px; }
+  .pis-panel p.pis-muted { margin: 0 0 10px; line-height: 1.5; }
   .pis-tile { padding: 12px 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--card-2); min-width: 0; }
   .pis-tile-l { font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
   .pis-tile-v { margin-top: 6px; font-size: 20px; font-weight: 750; font-variant-numeric: tabular-nums; }
   .pis-tile-v small { font-size: 12px; font-weight: 600; color: var(--muted); }
   .pis-tile-s { margin-top: 3px; font-size: 11.5px; color: var(--muted); line-height: 1.4; }
-  .pis-tile .pis-risk-bar { width: 100%; margin-top: 8px; }
+  .pis-tile .pis-risk-bar { display: block; width: 100%; margin-top: 8px; }
   .pis-dots { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; font-size: 11.5px; color: var(--muted); }
   .pis-dots span::before { content: ''; display: inline-block; width: 7px; height: 7px; margin-right: 4px; border-radius: 50%; background: var(--k); }
   .pis-dots .critical { --k: var(--pii-crit); } .pis-dots .high { --k: var(--pii-high); } .pis-dots .medium { --k: var(--pii-med); } .pis-dots .low { --k: var(--pii-low); }
@@ -4388,7 +4414,7 @@
   .pis-ident { font-size: 13px; line-height: 1.55; }
   .pis-ident ul { margin: 8px 0 0; padding-left: 18px; }
   .pis-ident li { margin: 3px 0; }
-  ol.pis-todo { margin: 0; padding: 0; list-style: none; counter-reset: pt; display: flex; flex-direction: column; gap: 8px; }
+  ol.pis-todo { margin: 0; padding: 0; list-style: none; counter-reset: pt; display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 8px; }
   ol.pis-todo li { counter-increment: pt; display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 10px 12px;
     border: 1px solid var(--border); border-radius: 12px; background: var(--card-2); font-size: 13px; line-height: 1.5; }
   ol.pis-todo li::before { content: counter(pt); display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; font-weight: 800; font-size: 12px;
@@ -24136,16 +24162,18 @@ ${HDRS}
                 `To sweep a file that has not been assessed, or an uploaded file (uploads are not kept once assessed), press ${ui('Upload a file to sweep')}. The file is deleted once it has been read.`) +
           tip(`A Qlik app table can only be read by the app itself. Export it and upload the file to sweep it.`) },
       { h: 'Read the result', body:
-          table(['Part', 'What it tells you'], [
-            ['Rating and risk', `The worst severity found, and a risk from 0 to 100: the riskiest finding, raised for other serious findings, for rows that identify a person, and for a dataset everyone in your organisation can open.`],
-            ['Hidden in free text', 'Findings inside text fields. A find inside free text is rated a level higher than the same kind held in its own column.'],
-            ['Rows that identify someone', 'Rows that hold enough together to single a person out, such as a name with a date of birth, with the combinations found.'],
-            ['Who can see it', 'Everyone in your organisation, or only the holders of a restricting tag, and how many people that is.'],
-            ['What changed', 'What is new, gone or more widespread since the sweep before.'],
-            ['Findings', `Each kind of personal data in each column, riskiest first, with the rules it touches (GDPR, CCPA, PCI DSS and others). Open one to see where it is: each value drawn as a bar, with a mark at the characters the find occupies.`],
+          p(`Opening a dataset shows five figures: its rating (the worst severity found), its risk from 0 to 100 (point at it to see why), how many findings, how many hide in free text, and how many rows identify someone. Beside its name, who can open it. A line under the figures says what is new since the sweep before. The rest is in tabs, one open at a time; a red dot marks one that needs attention.`) +
+          table(['Tab', 'What it tells you'], [
+            ['Findings', `Each kind of personal data in each column, riskiest first. Open one to see where it is: each value drawn as a bar, with a mark at the characters the find occupies. A find inside free text is rated a level higher than the same kind held in its own column.`],
+            ['What to do', 'The next steps for this dataset, the urgent ones with a red number.'],
+            ['Columns', 'Which columns hold personal data, what kind, and whether in the clear, inside free text, or known by the column\'s name.'],
+            ['Who it identifies', 'Rows that hold enough together to single a person out, such as a name with a date of birth, with the combinations found.'],
+            ['What changed', 'What is new, gone, more or less widespread since the sweep before.'],
+            ['Data and rules', 'The kinds of personal data found, and the rules they touch (GDPR, CCPA, PCI DSS and others).'],
+            ['Sweeps', 'Every sweep of this dataset; open an earlier one to see what it found.'],
           ]) },
       { h: 'Act on it', body:
-          p(`${ui('What to do')} lists the next steps for this dataset: restrict it with a tag, label its columns as personal data so failed-record samples redact them, clean the free text, and deal with each kind of data at source. ${ui('Export locations')} gives every location as a CSV, with no values in it.`) +
+          p(`${ui('What to do')} lists the next steps for this dataset: restrict it with a tag, assess it again so its columns are redacted, clean the free text, and deal with each kind of data at source. ${ui('Export locations')} gives every location as a CSV, with no values in it.`) +
           (ADMIN ? p(`A finding that is not personal data (test data, a product named like a person) can be dismissed with a reason. It stays set aside on later sweeps until someone restores it, and is left out of the rating.`)
                  : note(`An admin can dismiss a finding that is not personal data.`)) },
       { h: 'On a schedule', body:
@@ -24785,7 +24813,7 @@ function initGuidesTab() {
 // column, the row, the characters), never what it was. The worker reads (dq/pii_sweep.py); the API
 // starts it from the dataset's saved connection or from a file uploaded for it, and serves the result
 // with who can see the dataset. This draws the picker, the progress, the result and the list.
-let pis = { list: null, sel: '', q: '', open: false, rowsRaw: '', busy: false, run: null, res: null, history: [],
+let pis = { list: null, sel: '', q: '', open: false, rowsRaw: '', busy: false, tab: 'findings', run: null, res: null, history: [],
             canDismiss: false, openF: '', sev: '', showDismissed: false, showClean: false, locAll: {}, uploadKey: '', listTimer: null };
 const PIS_SEV = ['critical', 'high', 'medium', 'low'];
 const PIS_SEV_L = { critical: 'Critical', high: 'High', medium: 'Medium', low: 'Low' };
@@ -25026,7 +25054,7 @@ async function pisFollow(run) {
 async function pisOpen(key, sweepId) {
   const st = $('#pisStage'); if (!st) return;
   st.style.display = '';
-  if (!pis.res || pis.res.dataset_key !== key) st.innerHTML = dqSkeleton('Loading the sweep', 4);
+  if (!pis.res || pis.res.dataset_key !== key) { st.innerHTML = dqSkeleton('Loading the sweep', 4); pis.tab = 'findings'; }
   try {
     const r = await pisApi({ action: 'result', dataset_key: key, ...(sweepId ? { sweep_id: sweepId } : {}) });
     pis.history = r.history || [];
@@ -25061,15 +25089,33 @@ function pisRiskWhy(o, live, x) {
   return `Its riskiest finding is ${top.label.toLowerCase()} in ${top.column} (${top.risk})` +
     (more.length ? `, raised for ${more.length > 1 ? more.slice(0, -1).join(', ') + ' and ' + more[more.length - 1] : more[0]}` : '') + '.';
 }
+// ---- The opened dataset: a header, five figures, a line for anything new, then one tab at a time ----
+const PIS_TABS = [['findings', 'Findings'], ['todo', 'What to do'], ['columns', 'Columns'], ['people', 'Who it identifies'],
+                  ['changes', 'What changed'], ['data', 'Data and rules'], ['sweeps', 'Sweeps']];
+/** Who can open the dataset, in a few words for the header (pisWho says it in full, as its tip). */
+function pisWhoShort(x) {
+  if (!x || !x.audience) return '';
+  const n = x.people != null ? ` (${pisN(x.people)})` : '';
+  return x.audience === 'restricted' ? `Restricted${n}` : x.audience === 'admins' ? `Admins only${n}` : `Everyone can open it${n}`;
+}
+function pisChangeCounts(c) {
+  const n = k => ((c && c[k]) || []).length;
+  return { nNew: n('new'), nGone: n('resolved'), nUp: n('grown'), nDown: n('fell'),
+           serious: ((c && c.new) || []).filter(f => f.severity === 'high' || f.severity === 'critical').length };
+}
 function pisPaintResult() {
   const res = pis.res, st = $('#pisStage'); if (!res || !st) return;
   const o = res.overall || {}, x = res.exposure || {}, d = pisDs(res.dataset_key) || {};
   const live = (res.findings || []).filter(f => !f.dismissed);
-  const rowsTxt = res.complete ? `all ${pisPl(res.rows_scanned, 'row')} read` : `${pisN(res.rows_scanned)} of ${res.rows_total != null ? pisN(res.rows_total) : 'more'} rows read`;
-  const bySev = o.by_severity || {};
+  const bySev = o.by_severity || {}, ident = res.identity || {};
+  const colsHit = new Set(live.map(f => f.column)).size;
+  const rowsTxt = res.complete ? `all ${pisPl(res.rows_scanned, 'row')} read`
+    : `${pisN(res.rows_scanned)} of ${res.rows_total != null ? pisN(res.rows_total) : 'more'} rows read`;
+  const who = pisWhoShort(x);
   const head = `<div class="pis-head"><div style="min-width:0"><div class="pis-title"><span class="ifr-dsi" aria-hidden="true">${srcIcon(d.sourceFormat || (res.source || {}).format)}</span>` +
-      `<h3>${esc(res.dataset || d.name || '')}</h3></div>` +
-      `<p class="pis-sub">Swept ${esc(rcxWhen(res.generated_at_utc))} · ${rowsTxt} · ${pisPl(o.columns_scanned, 'column')} in ${pisDur(res.seconds)}</p></div>` +
+      `<h3>${esc(res.dataset || d.name || '')}</h3>` +
+      (who ? `<span class="pis-who ${esc(x.audience || '')}" data-tip="${esc(pisWho(x))} can open this dataset">${esc(who)}</span>` : '') + `</div>` +
+      `<p class="pis-sub">Swept ${esc(rcxWhen(res.generated_at_utc))} · ${rowsTxt} · ${pisPl(o.columns_scanned, 'column')}</p></div>` +
     `<div class="pis-acts">` +
       (d.how === 'source' ? `<button type="button" class="dsx-btn lngb" data-pis="again">Sweep again</button>`
         : d.how === 'upload' ? `<button type="button" class="dsx-btn lngb" data-pis="again">Upload again</button>` : '') +
@@ -25077,54 +25123,83 @@ function pisPaintResult() {
       `<button type="button" class="dsx-btn lngb" data-pis="export" data-tip="Every location found, as a CSV. It holds no values.">Export locations</button>` +
       (pis.canDismiss ? `<button type="button" class="dsx-btn lngb" data-pis="delete" data-tip="Delete every sweep of this dataset">Delete sweeps</button>` : '') +
     `</div></div>`;
-  const partial = res.complete ? '' : `<div class="pis-partial">This sweep read the first ${pisN(res.rows_scanned)} rows of ${res.rows_total != null ? pisN(res.rows_total) : 'more'}. ` +
-    `Personal data in the rest has not been looked for: sweep again with Sample rows left empty to read every row.</div>`;
-  const ident = res.identity || {};
+  const tile = (label, value, sub, tip) => `<div class="pis-tile"${tip ? ` data-tip="${esc(tip)}"` : ''}><div class="pis-tile-l">${label}</div>` +
+    `<div class="pis-tile-v">${value}</div>${sub ? `<div class="pis-tile-s">${sub}</div>` : ''}</div>`;
   const tiles = `<div class="pis-tiles">` +
-    `<div class="pis-tile"><div class="pis-tile-l">Rating</div><div class="pis-tile-v">${pisSevHtml(o.severity, true)}</div>` +
-      `<div class="pis-dots">${PIS_SEV.filter(s => bySev[s]).map(s => `<span class="${s}">${pisN(bySev[s])} ${PIS_SEV_L[s].toLowerCase()}</span>`).join('') || 'No findings'}</div></div>` +
-    `<div class="pis-tile" data-tip="${esc(pisRiskWhy(o, live, x))}"><div class="pis-tile-l">Risk</div><div class="pis-tile-v">${pisN(o.risk || 0)}<small> / 100</small></div>` +
-      `<span class="pis-risk ${pisBand(o.risk || 0)}" style="display:block"><span class="pis-risk-bar"><i style="width:${Math.min(100, o.risk || 0)}%"></i></span></span>` +
-      `<div class="pis-tile-s">${esc(pisRiskWhy(o, live, x))}</div></div>` +
-    `<div class="pis-tile"><div class="pis-tile-l">Hidden in free text</div><div class="pis-tile-v">${pisN(o.hidden || 0)}</div>` +
-      `<div class="pis-tile-s">finding${o.hidden === 1 ? '' : 's'} inside notes, descriptions and other text</div></div>` +
-    `<div class="pis-tile"><div class="pis-tile-l">Rows with personal data</div><div class="pis-tile-v">${pisN(o.rows_with_pii || 0)}</div>` +
-      `<div class="pis-tile-s">${esc(String(o.rows_with_pii_pct || 0))}% of the rows read</div></div>` +
-    `<div class="pis-tile"><div class="pis-tile-l">Rows that identify someone</div><div class="pis-tile-v">${pisN(ident.rows || 0)}</div>` +
-      `<div class="pis-tile-s">${esc(String(ident.pct || 0))}% hold enough together to single a person out</div></div>` +
-    `<div class="pis-tile"><div class="pis-tile-l">Who can see it</div><div class="pis-tile-v" style="font-size:14px;line-height:1.35">${esc(pisWho(x) || 'Unknown')}</div>` +
-      `<div class="pis-tile-s">${x.audience === 'everyone' ? 'No restricting tag guards it' : x.audience === 'restricted' ? 'A restricting tag guards it' : ''}</div></div>` +
+    tile('Rating', pisSevHtml(o.severity, true),
+         `<span class="pis-dots">${PIS_SEV.filter(s => bySev[s]).map(s => `<span class="${s}">${pisN(bySev[s])} ${PIS_SEV_L[s].toLowerCase()}</span>`).join('') || 'No findings'}</span>`) +
+    tile('Risk', `${pisN(o.risk || 0)}<small> / 100</small>`,
+         `<span class="pis-risk ${pisBand(o.risk || 0)}" style="display:block"><span class="pis-risk-bar"><i style="width:${Math.min(100, o.risk || 0)}%"></i></span></span>`,
+         pisRiskWhy(o, live, x)) +
+    tile('Findings', pisN(live.length), colsHit ? `in ${pisPl(colsHit, 'column')}` : '') +
+    tile('Hidden in free text', pisN(o.hidden || 0), 'in notes and other text') +
+    tile('Identify someone', pisN(ident.rows || 0), `${esc(String(ident.pct || 0))}% of the rows read`,
+         'Rows that hold enough together to single a person out: see Who it identifies') +
     `</div>`;
-  const chips = arr => (arr || []).map(e => `<span class="pis-chip ${e.severity}" data-tip="${esc(PIS_SEV_L[e.severity] || '')}: its most serious finding"><b>${pisN(e.findings)}</b>${esc(e.label)}</span>`).join('')
-    || '<span class="dash-muted">None</span>';
+  // At most two lines between the figures and the tabs: a sample's limit, and what is new.
+  const c = res.changes || null, cc = pisChangeCounts(c);
+  const bits = [cc.nNew ? `${cc.nNew} new${cc.serious ? ` (${cc.serious} serious)` : ''}` : '', cc.nGone ? `${cc.nGone} gone` : '',
+                cc.nUp ? `${cc.nUp} more widespread` : '', cc.nDown ? `${cc.nDown} less widespread` : ''].filter(Boolean);
+  const notes = (res.complete ? '' : `<div class="pis-note partial"><span>Read the first ${pisN(res.rows_scanned)} rows of ` +
+      `${res.rows_total != null ? pisN(res.rows_total) : 'more'}. Sweep again with Sample rows left empty to read every row.</span></div>`) +
+    (bits.length ? `<div class="pis-note${cc.serious ? ' worse' : ''}"><span><b>${bits.join(', ')}</b> since the sweep on ${esc(rcxWhen(c.previous_at))}.</span>` +
+      `<button type="button" class="linkbtn lngb" data-pis="tab" data-v="changes">What changed</button></div>` : '');
+  const todo = pisTodoItems(res, live), open = todo.filter(t => !t.done);
+  const badge = { findings: [live.length], todo: [open.length, open.some(t => t.urgent)], columns: [colsHit],
+                  people: [ident.rows ? (ident.combinations || []).length : 0], changes: [bits.length ? cc.nNew + cc.nGone + cc.nUp + cc.nDown : 0, cc.serious > 0],
+                  data: [0], sweeps: [(pis.history || []).length] };
+  if (!PIS_TABS.some(([k]) => k === pis.tab)) pis.tab = 'findings';
+  const tabs = `<div class="rd-tabs pis-tabs" role="tablist" aria-label="${esc(res.dataset || 'The sweep')}">` + PIS_TABS.map(([k, l]) => {
+      const [n, dot] = badge[k] || [0];
+      return `<button type="button" role="tab" class="rd-tab${pis.tab === k ? ' active' : ''}" aria-selected="${pis.tab === k}" data-pis="tab" data-v="${k}">${l}` +
+        (n ? `<span class="ra-n">${pisN(n)}</span>` : '') + (dot ? '<span class="ra-dot" aria-hidden="true"></span>' : '') + `</button>`;
+    }).join('') + `</div>`;
+  const panel = (k, html) => `<div class="pis-panel" role="tabpanel" data-tab="${k}"${pis.tab === k ? '' : ' hidden'}>${html}</div>`;
   st.style.display = '';
-  st.innerHTML = head + partial + pisChangesHtml(res) + tiles +
-    (live.length ? `<div class="pis-two"><div><h4>What kind of data</h4><div class="pis-chips">${chips(o.categories)}</div></div>` +
-                   `<div><h4>Rules it touches</h4><div class="pis-chips">${chips(o.regulations)}</div></div></div>` : '') +
-    `<div id="pisFindings">${pisFindingsHtml(res)}</div>` +
-    pisIdentityHtml(res) + pisColumnsHtml(res) + pisTodoHtml(res) + pisHistoryHtml(res);
+  st.innerHTML = head + tiles + notes + tabs +
+    panel('findings', `<div id="pisFindings">${pisFindingsHtml(res)}</div>`) +
+    panel('todo', pisTodoHtml(todo)) +
+    panel('columns', pisColumnsHtml(res, live)) +
+    panel('people', pisIdentityHtml(res)) +
+    panel('changes', pisChangesHtml(res)) +
+    panel('data', pisDataHtml(o, live)) +
+    panel('sweeps', pisHistoryHtml(res));
+}
+/** Show one tab of the opened dataset, without drawing it again (each keeps its place). */
+function pisShowTab(k) {
+  if (!PIS_TABS.some(([t]) => t === k)) return;
+  pis.tab = k;
+  const st = $('#pisStage'); if (!st) return;
+  st.querySelectorAll('.pis-tabs [data-pis="tab"]').forEach(b => {
+    const on = b.dataset.v === k;
+    b.classList.toggle('active', on);
+    b.setAttribute('aria-selected', String(on));
+  });
+  st.querySelectorAll('.pis-panel').forEach(p => { p.hidden = p.dataset.tab !== k; });
 }
 function pisChangesHtml(res) {
   const c = res.changes;
   if (!c) {
-    return (pis.history || []).filter(h => h.state === 'SUCCEEDED').length <= 1
-      ? `<div class="pis-changes">This is the first sweep of this dataset. The next one will say what changed since.</div>` : '';
+    return `<p class="pis-muted">${(pis.history || []).filter(s => s.state === 'SUCCEEDED').length <= 1
+      ? 'This is the first sweep of this dataset. The next one will say what changed since.' : 'There is no earlier sweep to compare this one with.'}</p>`;
   }
-  const nNew = (c.new || []).length, nRes = (c.resolved || []).length, nUp = (c.grown || []).length, nDown = (c.fell || []).length;
-  const serious = (c.new || []).filter(f => f.severity === 'high' || f.severity === 'critical').length;
-  const when = esc(rcxWhen(c.previous_at));
-  if (!nNew && !nRes && !nUp && !nDown) return `<div class="pis-changes">No change since the sweep on ${when}: the same findings, in the same number of values.</div>`;
-  const bits = [nNew ? `${nNew} new${serious ? ` (${serious} serious)` : ''}` : '', nRes ? `${nRes} gone` : '',
-                nUp ? `${nUp} more widespread` : '', nDown ? `${nDown} less widespread` : ''].filter(Boolean);
-  const li = (f, what) => `<li>${pisSevHtml(f.severity)} ${esc(f.label)} in <code>${esc(f.column)}</code> ${what}</li>`;
-  const items = [...(c.new || []).map(f => li(f, `<span class="pis-new">new</span> in ${pisPl(f.cells, 'value')}`)),
-                 ...(c.resolved || []).map(f => li(f, 'is no longer found')),
-                 ...(c.grown || []).map(f => li(f, `now in ${pisPl(f.cells, 'value')}, up from ${pisN(f.before)}`)),
-                 ...(c.fell || []).map(f => li(f, `now in ${pisPl(f.cells, 'value')}, down from ${pisN(f.before)}`))];
+  const when = esc(rcxWhen(c.previous_at)), cc = pisChangeCounts(c);
+  if (!cc.nNew && !cc.nGone && !cc.nUp && !cc.nDown) {
+    return `<p class="pis-muted">No change since the sweep on ${when}: the same findings, in the same number of values.</p>`;
+  }
   const rowsNote = c.previous_rows_scanned != null && c.previous_rows_scanned !== res.rows_scanned
-    ? ` The sweep before read ${pisN(c.previous_rows_scanned)} rows; this one read ${pisN(res.rows_scanned)}.` : '';
-  return `<div class="pis-changes${serious ? ' worse' : ''}"><b>Since the sweep on ${when}:</b> ${bits.join(', ')}.${rowsNote}` +
-    `<ul>${items.slice(0, 12).join('')}</ul></div>`;
+    ? ` That sweep read ${pisN(c.previous_rows_scanned)} rows; this one read ${pisN(res.rows_scanned)}.` : '';
+  // One table, a row heading each group, so the columns line up from one group to the next.
+  const group = (title, list, what) => (list || []).length
+    ? `<tr class="pis-grp"><td colspan="4">${title} <small>${pisN(list.length)}</small></td></tr>` +
+      list.map(f => `<tr><td>${pisSevHtml(f.severity)}</td><td class="pis-what"><b>${esc(f.label)}</b></td>` +
+        `<td class="pis-col"><code>${esc(f.column)}</code></td><td class="pis-num">${what(f)}</td></tr>`).join('') : '';
+  return `<p class="pis-muted">Compared with the sweep on ${when}.${rowsNote}</p>` +
+    `<div class="pis-tbl-wrap"><table class="pis-tbl pis-chg"><tbody>` +
+    group('New', c.new, f => `in ${pisPl(f.cells, 'value')}`) +
+    group('Gone', c.resolved, () => 'no longer found') +
+    group('More widespread', c.grown, f => `${pisN(f.before)} → ${pisPl(f.cells, 'value')}`) +
+    group('Less widespread', c.fell, f => `${pisN(f.before)} → ${pisPl(f.cells, 'value')}`) + `</tbody></table></div>`;
 }
 function pisFindingsHtml(res) {
   const all = (res.findings || []).filter(f => !f.dismissed);
@@ -25138,7 +25213,7 @@ function pisFindingsHtml(res) {
   const chip = (v, l, n) => `<button type="button" class="pis-fchip lngb${pis.sev === v ? ' on' : ''}" data-pis="sev" data-v="${v}" aria-pressed="${pis.sev === v}">${l} <b>${pisN(n)}</b></button>`;
   const filter = `<div class="pis-filter" role="group" aria-label="Show findings">${chip('', 'All', all.length)}` +
     PIS_SEV.filter(count).map(s => chip(s, PIS_SEV_L[s], count(s))).join('') + (hidden ? chip('hidden', 'Hidden in free text', hidden) : '') + `</div>`;
-  return `<h4>Findings <small>riskiest first; open one to see where it is</small></h4>${filter}` +
+  return `<div class="pis-findhead">${filter}<span class="pis-muted">Riskiest first. Open one to see where it is.</span></div>` +
     `<div class="pis-tbl-wrap"><table class="pis-tbl"><thead><tr><th></th><th>Severity</th><th>Risk</th><th>Personal data</th><th>Column</th><th>Found in</th><th>Certainty</th></tr></thead>` +
     `<tbody>${shown.map(f => pisFindingRow(res, f)).join('')}</tbody></table></div>` + pisDismissedHtml(res);
 }
@@ -25224,33 +25299,51 @@ function pisDismissedHtml(res) {
     return `<tr class="pis-dismissed"><td>${pisSevHtml(f.severity)}</td><td class="pis-what"><b>${esc(f.label)}</b></td><td class="pis-col"><code>${esc(f.column)}</code></td>` +
       `<td>${esc(m.reason || '')}<small class="dash-muted" style="display:block">${esc(m.by || '')}${m.at ? ' · ' + esc(rcxWhen(m.at)) : ''}</small></td>` +
       `<td>${pis.canDismiss ? `<button type="button" class="pis-rowbtn lngb" data-pis="restore" data-id="${esc(f.id)}">Restore</button>` : ''}</td></tr>`; }).join('');
-  return `<h4>Dismissed <small>${pisPl(gone.length, 'finding')} set aside as not personal data, left out of the rating</small> ` +
-    `<button type="button" class="linkbtn lngb" data-pis="toggle-dismissed">${pis.showDismissed ? 'Hide' : 'Show'}</button></h4>` +
+  return `<h5>Dismissed <small>${pisPl(gone.length, 'finding')} set aside as not personal data, left out of the rating</small> ` +
+    `<button type="button" class="linkbtn lngb" data-pis="toggle-dismissed">${pis.showDismissed ? 'Hide' : 'Show'}</button></h5>` +
     (pis.showDismissed ? `<div class="pis-tbl-wrap"><table class="pis-tbl"><tbody>${rows}</tbody></table></div>` : '');
 }
 function pisIdentityHtml(res) {
-  const idn = res.identity || {};
-  if (!idn.rows) return '';
+  const idn = res.identity || {}, o = res.overall || {};
+  const withPii = `Personal data in ${pisN(o.rows_with_pii || 0)} rows (${esc(String(o.rows_with_pii_pct || 0))}%).`;
+  if (!idn.rows) return `<p class="pis-muted">${withPii} None holds enough together to single a person out.</p>`;
   const ex = c => (c.example_rows || []).slice(0, 5).map(r => esc(String(r))).join(', ');
-  const combos = (idn.combinations || []).map(c => `<li><b>${esc((c.labels || []).join(' + '))}</b>: ${pisPl(c.rows, 'row')}` +
-    `${(c.example_rows || []).length ? `, for example ${res.row_key ? esc(res.row_key) + ' ' : 'rows '}${ex(c)}` : ''}</li>`).join('');
-  return `<h4>Rows that identify a person <small>${pisN(idn.rows)}, ${esc(String(idn.pct))}% of the rows read</small></h4>` +
-    `<div class="pis-ident">One fact alone rarely identifies anyone. These rows hold enough together: ${esc(idn.rule || '')}.<ul>${combos}</ul></div>`;
+  return `<p class="pis-muted">${withPii} <b>${pisN(idn.rows)}</b> (${esc(String(idn.pct))}%) hold enough together to single a person out ` +
+    `<span class="pis-how" data-tip="${esc((idn.rule || '').replace(/^./, ch => ch.toUpperCase()))}.">how?</span></p>` +
+    `<div class="pis-tbl-wrap"><table class="pis-tbl"><thead><tr><th>Held together</th><th>Rows</th><th>For example (${esc(res.row_key || 'row')})</th></tr></thead><tbody>` +
+    (idn.combinations || []).map(c => `<tr><td>${esc((c.labels || []).join(' + '))}</td><td class="pis-num">${pisN(c.rows)}</td>` +
+      `<td><small>${ex(c)}</small></td></tr>`).join('') + `</tbody></table></div>`;
 }
-function pisColumnsHtml(res) {
+function pisColumnsHtml(res, live) {
   const cols = res.columns || [];
+  const byCol = {};
+  (live || []).forEach(f => {
+    const c = byCol[f.column] = byCol[f.column] || { kinds: [] };
+    if (!c.kinds.includes(f.label)) c.kinds.push(f.label);
+  });
   const hit = cols.filter(c => c.severity).sort((a, b) => PIS_SEV.indexOf(a.severity) - PIS_SEV.indexOf(b.severity));
   const clean = cols.filter(c => !c.severity);
-  const cut = pis.showClean ? clean.length : 12;
-  return `<h4>Columns <small>${pisN(hit.length)} of the ${pisN(cols.length)} read hold personal data</small></h4>` +
-    `<div class="pis-cols">${hit.map(c => `<span class="pis-colchip ${c.severity}"><code>${esc(c.column)}</code><small>${esc(PIS_ROLE[c.role] || '')}</small></span>`).join('') || '<span class="dash-muted">None</span>'}</div>` +
-    (clean.length ? `<div class="pis-clean">Nothing found in ${pisPl(clean.length, 'column')}: ${clean.slice(0, cut).map(c => esc(c.column)).join(', ')}` +
-      (clean.length > cut ? ` <button type="button" class="linkbtn lngb" data-pis="clean">and ${clean.length - cut} more</button>` : '') + '.</div>' : '') +
+  const show = pis.showClean ? clean.length : 12;
+  return `<p class="pis-muted">${pisN(hit.length)} of the ${pisN(cols.length)} columns read hold personal data.</p>` +
+    (hit.length ? `<div class="pis-tbl-wrap"><table class="pis-tbl"><thead><tr><th>Column</th><th>What it holds</th><th>Rating</th></tr></thead><tbody>` +
+      hit.map(c => `<tr><td class="pis-col"><code>${esc(c.column)}</code><small>${esc(PIS_ROLE[c.role] || '')}</small></td>` +
+        `<td>${esc(((byCol[c.column] || {}).kinds || []).join(', '))}</td><td>${pisSevHtml(c.severity)}</td></tr>`).join('') +
+      `</tbody></table></div>` : '') +
+    (clean.length ? `<div class="pis-clean">Nothing found in ${pisPl(clean.length, 'column')}: ${clean.slice(0, show).map(c => esc(c.column)).join(', ')}` +
+      (clean.length > show ? ` <button type="button" class="linkbtn lngb" data-pis="clean">and ${clean.length - show} more</button>` : '') + '.</div>' : '') +
     `<div class="pis-clean">Text columns are read, and number columns whose names say they may be personal. Dates and measurements are not.</div>`;
 }
-function pisTodoHtml(res) {
-  const o = res.overall || {}, x = res.exposure || {}, live = (res.findings || []).filter(f => !f.dismissed);
-  if (!live.length) return '';
+function pisDataHtml(o, live) {
+  if (!live.length) return `<p class="pis-muted">No personal data was found, so no rule applies.</p>`;
+  const chips = arr => (arr || []).map(e => `<span class="pis-chip ${e.severity}" data-tip="${esc(PIS_SEV_L[e.severity] || '')}: its most serious finding">` +
+    `<b>${pisN(e.findings)}</b>${esc(e.label)}</span>`).join('') || '<span class="dash-muted">None</span>';
+  return `<div class="pis-two"><div><h5>What kind of data</h5><div class="pis-chips">${chips(o.categories)}</div></div>` +
+    `<div><h5>Rules it touches</h5><div class="pis-chips">${chips(o.regulations)}</div></div></div>`;
+}
+/** The next steps for this dataset, most pressing first: done, urgent (a red number), or to do. */
+function pisTodoItems(res, live) {
+  const o = res.overall || {}, x = res.exposure || {};
+  if (!live.length) return [];
   const items = [];
   if (live.some(f => f.category === 'credentials')) items.push({ urgent: true, t: 'Change the exposed passwords and keys', s: PIS_FIX.credentials });
   if (x.audience === 'everyone') {
@@ -25287,18 +25380,23 @@ function pisTodoHtml(res) {
   items.push({ t: 'Export where it is', s: 'A CSV of every location found: the row, the column, the kind and the characters. It holds no values.', btn: ['export', 'Export locations'] });
   const d = pisDs(res.dataset_key) || {};
   if (d.how === 'source' && !d.schedule) items.push({ t: 'Sweep it on a schedule', s: 'Catch new personal data as it arrives. Each sweep lists what changed since the one before.', btn: ['schedule', 'Schedule'] });
-  return `<h4>What to do</h4><ol class="pis-todo">${items.map(i => `<li class="${i.urgent ? 'urgent' : ''}${i.done ? ' done' : ''}"><div><b>${esc(i.t)}</b><small>${esc(i.s)}</small></div>` +
+  return items;
+}
+function pisTodoHtml(items) {
+  if (!items.length) return `<p class="pis-muted">No personal data was found, so there is nothing to do.</p>`;
+  return `<ol class="pis-todo">${items.map(i => `<li class="${i.urgent ? 'urgent' : ''}${i.done ? ' done' : ''}"><div><b>${esc(i.t)}</b><small>${esc(i.s)}</small></div>` +
     (i.btn ? `<button type="button" class="pis-rowbtn lngb" data-pis="${i.btn[0]}">${esc(i.btn[1])}</button>` : '<span></span>') + `</li>`).join('')}</ol>`;
 }
 const PIS_STATE_W = { QUEUED: 'Waiting to start', RUNNING: 'Running', FAILED: 'Failed', ERROR: 'Failed', SUCCEEDED: 'Done', CANCELLED: 'Cancelled' };
 function pisHistoryHtml(res) {
   const h = pis.history || [];
-  if (h.length < 2) return '';
-  return `<h4>Sweeps of this dataset</h4><table class="pis-hist"><tbody>${h.map(s => `<tr class="${s.sweepId === res.sweep_id ? 'cur' : ''}">` +
+  if (h.length < 2) return `<p class="pis-muted">This is the only sweep of this dataset so far.</p>`;
+  return `<table class="pis-hist"><tbody>${h.map(s => `<tr class="${s.sweepId === res.sweep_id ? 'cur' : ''}">` +
     `<td>${esc(rcxWhen(s.requestedAt || s.updatedAt))}${s.scheduled ? ' <span class="dash-muted">· scheduled</span>' : ''}</td>` +
     `<td>${s.state === 'SUCCEEDED' ? pisSevHtml(s.severity) : `<span class="dash-muted">${esc(PIS_STATE_W[s.state] || s.state || '')}</span>`}</td>` +
     `<td class="pis-num">${s.findings != null ? pisPl(s.findings, 'finding') : ''}</td>` +
-    `<td>${s.state === 'SUCCEEDED' && s.sweepId !== res.sweep_id ? `<button type="button" class="linkbtn lngb" data-pis="open-sweep" data-id="${esc(s.sweepId)}">Open</button>`
+    `<td>${s.sweepId === res.sweep_id ? '<span class="dash-muted">Showing</span>'
+        : s.state === 'SUCCEEDED' ? `<button type="button" class="linkbtn lngb" data-pis="open-sweep" data-id="${esc(s.sweepId)}">Open</button>`
         : (s.state === 'FAILED' || s.state === 'ERROR') ? `<span class="dash-muted">${esc(String(s.error || '').slice(0, 120))}</span>`
         : s.state === 'CANCELLED' ? `<span class="dash-muted">${esc(String(s.detail || '').slice(0, 120))}${s.cancelledBy ? ' ' + esc(s.cancelledBy) : ''}</span>` : ''}</td></tr>`).join('')}</tbody></table>`;
 }
@@ -25446,6 +25544,8 @@ async function pisSchedule(key) {
         pisExport();
       } else if (a === 'delete') {
         pisDelete();
+      } else if (a === 'tab') {
+        pisShowTab(t.dataset.v);
       } else if (a === 'finding') {
         pis.openF = pis.openF === t.dataset.id ? '' : t.dataset.id;
         pisRepaintFindings(res, true);
