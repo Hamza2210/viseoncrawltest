@@ -25517,6 +25517,19 @@ function pisRepaintFindings(res, keep) {
   const w = box.querySelector('.pis-tbl-wrap'); if (w) w.scrollTop = top;
   pisSyncTiles();
 }
+function pisMenuClick(e) {
+  const b = e.target.closest('button[data-pis]'); if (!b || b.disabled) return;
+  pisCloseMenu();
+  const a = b.dataset.pis;
+  if (a === 'finding') pisToggleFinding(b.dataset.id);
+  else if (a === 'label') pisLabel([b.dataset.col]);
+  else if (a === 'dismiss') pisDismiss(b.dataset.id);
+}
+function pisToggleFinding(id) {
+  pis.openF = pis.openF === id ? '' : id;
+  pisRepaintFindings(pis.res, true);
+  pisRevealRow(id);
+}
 /** A finding's menu: where it is, label its column, or dismiss it. Opened beside its ⋯, over the page. */
 function pisOpenMenu(btn) {
   pisCloseMenu();
@@ -25529,11 +25542,14 @@ function pisOpenMenu(btn) {
     `<button type="button" role="menuitem" class="lngb" data-pis="label" data-col="${esc(f.column)}"${labelled ? ' disabled' : ''}>` +
       `${labelled ? 'Column labelled as personal data' : 'Label the column as personal data'}</button>` +
     (pis.canDismiss ? `<button type="button" role="menuitem" class="lngb danger" data-pis="dismiss" data-id="${esc(f.id)}">Not personal data: dismiss</button>` : '');
-  ($('#piiSweepPanel') || document.body).appendChild(m);
+  // On the body, not in the panel: the panel's entry animation leaves it a transform, and a transformed ancestor
+  // pins a position:fixed menu to itself instead of to the window. Out there, the menu takes its own clicks.
+  document.body.appendChild(m);
+  m.addEventListener('click', pisMenuClick);
   const r = btn.getBoundingClientRect();
   const top = r.bottom + 6 + m.offsetHeight > window.innerHeight ? r.top - m.offsetHeight - 6 : r.bottom + 6;
   m.style.top = Math.max(8, top) + 'px';
-  m.style.left = Math.max(8, r.right - m.offsetWidth) + 'px';
+  m.style.left = Math.max(8, Math.min(r.right - m.offsetWidth, window.innerWidth - m.offsetWidth - 8)) + 'px';
   btn.setAttribute('aria-expanded', 'true');
   pis.menuF = f.id;
   const first = m.querySelector('button:not(:disabled)'); if (first) first.focus();
@@ -25863,7 +25879,6 @@ async function pisSchedule(key) {
     panel.addEventListener('click', e => {
       const t = e.target.closest('[data-pis]');
       if (!t || t.disabled) return;
-      if (t.closest('.pis-menu')) pisCloseMenu();           // a choice in a finding's menu closes it
       const a = t.dataset.pis, res = pis.res;
       if (a === 'open') {
         pis.open = !pis.open; pis.q = ''; pisPaintPick();
@@ -25906,9 +25921,7 @@ async function pisSchedule(key) {
         pis.riskAsc = !pis.riskAsc;
         const box = $('#pisFindTable'); if (box && res) box.innerHTML = pisFindTableHtml(res);
       } else if (a === 'finding') {
-        pis.openF = pis.openF === t.dataset.id ? '' : t.dataset.id;
-        pisRepaintFindings(res, true);
-        pisRevealRow(t.dataset.id);
+        pisToggleFinding(t.dataset.id);
       } else if (a === 'sev') {
         pis.sev = t.dataset.v || ''; pisRepaintFindings(res, false);
       } else if (a === 'locs') {
