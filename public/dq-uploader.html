@@ -4542,8 +4542,11 @@
   .pis-star-sub { font-size: 11.5px; fill: var(--muted); }
   .pis-star.pis-dim, .pis-ray.pis-dim, .pis-dustcl.pis-dim { opacity: .4; filter: saturate(.35); }
   .pis-dustdot { fill: var(--muted); opacity: .55; }
-  .pis-dustlbl-bg { fill: rgba(10,14,26,.55); stroke: var(--border); stroke-width: 1; }
-  .pis-dustlbl:hover .pis-dustlbl-bg, .pis-dustlbl.sel .pis-dustlbl-bg { stroke: var(--accent); }
+  button.pis-dustbtn { position: absolute; left: 16px; top: 16px; z-index: 1; display: inline-flex; align-items: center; gap: 7px; height: 30px; padding: 0 12px;
+    border-radius: 999px; border: 1px solid var(--border); background: rgba(10,14,26,.72); box-shadow: none; color: var(--muted); font: inherit; font-size: 12.5px;
+    font-weight: 650; cursor: pointer; }
+  button.pis-dustbtn .pis-ico { width: 14px; height: 14px; }
+  button.pis-dustbtn:hover, button.pis-dustbtn:focus-visible, button.pis-dustbtn.on { border-color: var(--accent); color: var(--text); outline: none; }
   .pis-cleanlist { display: flex; flex-wrap: wrap; gap: 6px; max-height: 260px; overflow: auto; }
   .pis-cleanlist code { padding: 2px 7px; border-radius: 6px; border: 1px solid var(--border); background: var(--card); font-size: 12px; }
   .pis-cleanlist span { font-size: 12px; color: var(--muted); }
@@ -4565,8 +4568,10 @@
   .pis-howto-a { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin-top: 14px; }
   .pis-howto-a .dsx-btn { height: 34px; padding: 0 18px; font-size: 12.5px; } .pis-howto-a .linkbtn { margin: 0; font-size: 12.5px; }
   /* Beside the sky: a column, or what the view shows */
-  .pis-side { padding: 16px 16px 14px; border: 1px solid var(--border); border-radius: 14px; background: var(--card-2); box-shadow: 0 18px 40px rgba(0,0,0,.3); }
-  .pis-side-h { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .pis-side { padding: 0 16px 14px; border: 1px solid var(--border); border-radius: 14px; background: var(--card-2); box-shadow: 0 18px 40px rgba(0,0,0,.3); }
+  .pis-side-h { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 10px; margin: 0 0 4px; padding: 16px 0 10px; background: var(--card-2); }
+  .pis-skygrid:not(.full) > .pis-side { height: var(--pis-sky-h, 560px); overflow-y: auto; overscroll-behavior: contain; }
+  @media (max-width: 1180px) { .pis-skygrid:not(.full) > .pis-side { height: auto; overflow: visible; } }
   .pis-side-t { display: inline-flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 750; }
   .pis-side-t .pis-ico { width: 17px; height: 17px; color: var(--accent); }
   .pis-side-code { padding: 2px 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--card); font-size: 13px; font-weight: 650; }
@@ -25469,15 +25474,8 @@ function pisSkySvg(res, L, o) {
       `aria-label="${esc(aria)}" aria-pressed="${sel}" style="--i:${p.k};--dx:${(cx - p.x).toFixed(1)}px;--dy:${(cy - p.y).toFixed(1)}px">${g}</g>`;
   });
   if (D.length) {
-    const am = P.length ? L.D[Math.floor(D.length / 2)].a : -Math.PI * .75, r = R * base + 34, sel = o.col === '__clean';
-    const tx = cx + Math.cos(am) * r, ty = cy + Math.sin(am) * r, label = `${pisN(D.length)} clean columns`, tw = label.length * 6.4;
-    const anchor = Math.cos(am) > .3 ? 'start' : Math.cos(am) < -.3 ? 'end' : 'middle', x1 = anchor === 'start' ? tx : anchor === 'end' ? tx - tw : tx - tw / 2;
-    s += `<g class="pis-dustcl${o.col && !sel ? ' pis-dim' : ''}" aria-hidden="true">` +
-      D.map(p => `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="2" class="pis-dustdot"/>`).join('') + `</g>` +
-      `<g class="pis-star pis-dustlbl${sel ? ' sel' : ''}${o.col && !sel ? ' pis-dim' : ''}" role="button" tabindex="0" data-pis="col" data-v="__clean" ` +
-        `aria-label="${pisPl(D.length, 'clean column')}: nothing found in them" aria-pressed="${sel}" style="--i:${P.length};--dx:0px;--dy:0px">` +
-        `<rect x="${(x1 - 6).toFixed(1)}" y="${(ty - 14).toFixed(1)}" width="${(tw + 12).toFixed(1)}" height="22" rx="11" class="pis-star-hit pis-dustlbl-bg"/>` +
-        `<text x="${tx.toFixed(1)}" y="${ty.toFixed(1)}" text-anchor="${anchor}" class="pis-star-sub">${label}</text></g>`;
+    s += `<g class="pis-dustcl${o.col && o.col !== '__clean' ? ' pis-dim' : ''}" aria-hidden="true">` +
+      D.map(p => `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="2" class="pis-dustdot"/>`).join('') + `</g>`;
   }
   return `<svg class="pis-sky${o.animate ? ' pis-sky-in' : ''}" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="group" ` +
     `aria-label="Each column as a star: the further from the centre, the riskier. Riskiest first, clockwise from the top."><defs>${defs}</defs>${s}</svg>`;
@@ -25736,8 +25734,12 @@ function pisPaintSky(animate) {
     `<div class="pis-skygrid${side ? '' : ' full'}"><div class="pis-skywrap" id="pisSkyWrap"></div>${side}</div>` + pisNextHtml(todo);
   const wrap = $('#pisSkyWrap'), W = Math.max(300, Math.floor(wrap.getBoundingClientRect().width)), H = Math.round(Math.max(440, Math.min(560, W * .72)));
   const L = pis.sky = pisSkyLayout(res, W, H);
+  card.querySelector('.pis-skygrid').style.setProperty('--pis-sky-h', H + 'px');   // the panel beside the sky is as tall as the sky
   const hint = side || pis.howto ? '' : pis.lens === 'rules' ? 'Pick a rule or a kind of data to light up its columns' : 'Pick a star to see what it holds';
   wrap.innerHTML = pisSkySvg(res, L, { lens: pis.lens, col: pis.col, chip: pis.chip, animate }) +
+    // Many clean columns are dust by the centre: this lists them, in a corner where it cannot sit on a star's label.
+    (L.D.length ? `<button type="button" class="pis-dustbtn lngb${pis.col === '__clean' ? ' on' : ''}" data-pis="col" data-v="__clean" ` +
+      `aria-pressed="${pis.col === '__clean'}">${pisIco('shield')}${pisPl(L.D.length, 'clean column')}</button>` : '') +
     (pis.howto ? `<div class="pis-howto" role="note" aria-label="How to read the sky"><div class="pis-howto-h">${pisIco('target')}How to read the sky</div><ul>` +
       `<li><b>Each star is a column</b> of this dataset.</li>` +
       `<li><b>The further out, the riskier.</b> The rings mark a risk of 25, 50, 75 and 100.</li>` +
@@ -26176,7 +26178,7 @@ async function pisSchedule(key) {
         const v = t.dataset.v, f = t.dataset.f || '';
         pis.col = pis.col === v && !f ? '' : v; pis.colF = f;
         pisPaintSky();
-        pisRefocus(`.pis-star[data-v="${CSS.escape(v)}"]`);
+        pisRefocus(`#pisSkyWrap [data-pis="col"][data-v="${CSS.escape(v)}"]`);
       } else if (a === 'colf') {
         pis.colF = t.dataset.id; pisPaintSky();
         pisRefocus(`.pis-fitem[data-id="${CSS.escape(t.dataset.id)}"]`);
@@ -26254,7 +26256,7 @@ async function pisSchedule(key) {
       }
       if (e.key === 'Escape' && pis.col && !pis.menuF && e.target.closest && e.target.closest('#pisSkyCard')) {
         e.preventDefault();
-        const v = pis.col; pis.col = ''; pis.colF = ''; pisPaintSky(); pisRefocus(`.pis-star[data-v="${CSS.escape(v)}"]`);
+        const v = pis.col; pis.col = ''; pis.colF = ''; pisPaintSky(); pisRefocus(`#pisSkyWrap [data-pis="col"][data-v="${CSS.escape(v)}"]`);
         return;
       }
       if (e.key === 'Escape' && pis.open) { e.preventDefault(); pisClosePick(); const b = panel.querySelector('.rcx-pick-btn'); if (b) b.focus(); }
