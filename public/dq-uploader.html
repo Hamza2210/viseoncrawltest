@@ -4369,6 +4369,7 @@
   .pis-detail-acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
   .pis-dismissed td { opacity: .62; }
   /* Where it is: each value drawn as a bar, the finds as marks at their characters. No value is shown. */
+  .pis-locs-intro { margin-top: 10px; }
   .pis-locs { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
   .pis-loc { display: grid; grid-template-columns: minmax(90px, 160px) minmax(120px, 1fr) minmax(150px, auto); align-items: center; gap: 12px; font-size: 12px; }
   .pis-loc-row { font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-variant-numeric: tabular-nums; }
@@ -4598,22 +4599,42 @@
   .pis-fitem-r { font-weight: 750; font-variant-numeric: tabular-nums; }
   .pis-tag { padding: 1px 8px; border-radius: 999px; font-style: normal; font-size: 10.5px; font-weight: 750; background: color-mix(in srgb, var(--pii-crit) 18%, transparent);
     border: 1px solid color-mix(in srgb, var(--pii-crit) 50%, transparent); }
-  .pis-side-f { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); scroll-margin-top: 80px; }
-  .pis-side-ft { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 13.5px; outline: none; }
-  .pis-side-ft > i { flex: none; width: 9px; height: 9px; border-radius: 50%; }
-  .pis-side-ft span { margin-left: auto; font-size: 12px; font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; }
-  .pis-side-ft:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 6px; }
-  .pis-side-ft + p { margin: 0 0 10px; font-size: 12.5px; line-height: 1.55; }
-  .pis-side-f .pis-chips { margin-bottom: 4px; }
-  .pis-mlocs { display: grid; gap: 6px; }
-  .pis-mloc { display: grid; grid-template-columns: 112px minmax(0, 1fr); align-items: center; gap: 10px; font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
-  .pis-mloc > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .pis-mloc .pis-bar { height: 10px; }
-  .pis-side-a { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin-top: 12px; }
-  .pis-side-a .linkbtn, .pis-combos .linkbtn { display: inline-flex; align-items: center; gap: 5px; margin: 0; font-size: 12.5px; }
-  .pis-side-a .linkbtn .pis-ico, .pis-combos .linkbtn .pis-ico { width: 14px; height: 14px; }
   .pis-side-acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
   .pis-side-acts .dsx-btn { display: inline-flex; align-items: center; gap: 7px; height: 36px; font-size: 12.5px; }
+  /* A finding picked from a list: a wider pane between the sky and the list, or below them on a narrower card */
+  .pis-skycard { container: pis-sky / inline-size; }
+  .pis-skygrid.det { grid-template-columns: minmax(0, 1fr) 360px; }
+  .pis-skygrid.det > .pis-dpane { grid-column: 1 / -1; grid-row: 2; }
+  /* Beside the sky only where the sky keeps 600px: any narrower and its rings and labels crowd the centre */
+  @container pis-sky (min-width: 1416px) {
+    .pis-skygrid.det { grid-template-columns: minmax(600px, 1fr) minmax(420px, 500px) 360px; }
+    .pis-skygrid.det > .pis-dpane { grid-column: auto; grid-row: auto; height: var(--pis-sky-h, 560px); overflow-y: auto; overscroll-behavior: contain; }
+    .pis-dpane-h { position: sticky; top: 0; z-index: 2; }
+  }
+  @media (max-width: 1180px) { .pis-skygrid.det { grid-template-columns: minmax(0, 1fr); } .pis-skygrid.det > .pis-dpane { grid-row: auto; order: 3; } }
+  .pis-dpane { container: pis-det / inline-size; min-width: 0; padding: 0 20px 18px; border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border));
+    border-radius: 14px; background: var(--card-2); box-shadow: 0 18px 40px rgba(0,0,0,.3); scroll-margin-top: 80px; animation: dqIn .25s var(--dq-ease) both; }
+  @container pis-det (min-width: 820px) {
+    .pis-dpane-b { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: 0 36px; align-items: start; }
+    .pis-dpane-b > div:last-child > h6:first-child { margin-top: 2px; }
+  }
+  .pis-dpane-h { display: flex; align-items: center; gap: 12px; padding: 18px 0 12px; background: var(--card-2); }
+  .pis-dpane-h > i { flex: none; width: 11px; height: 11px; border-radius: 50%; }
+  .pis-dpane-t { flex: 1; min-width: 0; display: grid; gap: 3px; outline: none; }
+  .pis-dpane-t b { font-size: 18px; font-weight: 800; }
+  .pis-dpane-t span { font-size: 12.5px; color: var(--muted); }
+  .pis-dpane-t code { padding: 0 6px; border-radius: 5px; border: 1px solid var(--border); background: var(--card); color: var(--text); font-size: 12px; }
+  .pis-dpane-t:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 6px; }
+  .pis-dpane-v { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
+  .pis-dpane-facts { display: flex; flex-wrap: wrap; gap: 8px 20px; margin: 14px 0 2px; font-size: 13px; color: var(--muted); }
+  .pis-dpane-facts span { display: inline-flex; align-items: center; gap: 7px; } .pis-dpane-facts b { color: var(--text); }
+  .pis-dpane-facts .pis-ico { width: 15px; height: 15px; }
+  .pis-dpane h6 { margin: 18px 0 8px; font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
+  .pis-dpane-p { margin: 0; font-size: 13px; line-height: 1.6; }
+  .pis-dpane .pis-locs-intro { margin: 0; font-size: 12.5px; line-height: 1.55; color: var(--muted); }
+  .pis-dpane .pis-side-acts { align-items: center; margin-top: 18px; }
+  .pis-dpane .pis-side-acts .linkbtn { display: inline-flex; align-items: center; gap: 5px; margin: 0; font-size: 13px; }
+  .pis-dpane .pis-side-acts .linkbtn .pis-ico { width: 14px; height: 14px; }
   .pis-combos li { display: grid; gap: 3px; padding: 9px 11px; border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: 10px;
     background: var(--card); font-size: 12.5px; }
   .pis-combos li small { color: var(--muted); }
@@ -4659,7 +4680,8 @@
   .pis-sky-in .pis-star-lbl { animation: pisLbl .35s ease both; animation-delay: calc(var(--i) * .14s + .75s); }
   @keyframes pisLbl { from { opacity: 0; } to { opacity: 1; } }
   @media (prefers-reduced-motion: reduce) {
-    #pisStage.pis-enter > .card, #pisStage.pis-enter .pis-meter-bar i, .pis-sky-in .pis-star, .pis-sky-in .pis-ray, .pis-sky-in .pis-star-lbl { animation: none !important; }
+    #pisStage.pis-enter > .card, #pisStage.pis-enter .pis-meter-bar i, .pis-sky-in .pis-star, .pis-sky-in .pis-ray, .pis-sky-in .pis-star-lbl,
+    .pis-dpane { animation: none !important; }
     .pis-sky-in .pis-ray { stroke-dasharray: none; stroke-dashoffset: 0; }
     .pis-star, .pis-ray, .pis-star-hov, .pis-orbitl { transition: none; }
   }
@@ -24382,7 +24404,7 @@ ${HDRS}
           tip(`A Qlik app table can only be read by the app itself. Export it and upload the file to sweep it.`) },
       { h: 'Read the result', body:
           p(`Opening a dataset shows its rating (the worst severity found), its risk from 0 to 100 (point at it to see why), how many findings there are and in how many columns, how many hide in free text, and how many rows identify someone. Beside its name, who can open it. Anything new since the sweep before is a button that shows what changed.`) +
-          p(`Below that is the sky. Each star is a column of the dataset, on a ray from the dataset at the centre: the further out, the riskier, against rings at 25, 50, 75 and 100. The riskiest is at the top, then clockwise round to the safest, and colour, size and brightness say the same. Point at a star, or reach it with Tab and the arrow keys, to light up its ray and the ring at its risk. Press it to open the column beside the sky: each finding in it, where it sits in each value, and what can be done about it. ${ui('?')} explains the sky again.`) +
+          p(`Below that is the sky. Each star is a column of the dataset, on a ray from the dataset at the centre: the further out, the riskier, against rings at 25, 50, 75 and 100. The riskiest is at the top, then clockwise round to the safest, and colour, size and brightness say the same. Point at a star, or reach it with Tab and the arrow keys, to light up its ray and the ring at its risk. Press it to open the column beside the sky, and pick one of its findings to read it in full in a wider pane: why it matters, the rules it touches, where it sits in each value, and what can be done about it. A finding listed under Changes or Rules opens the same way. ${ui('?')} explains the sky again.`) +
           table(['View', 'What it shows'], [
             ['Severity', 'Every column at its risk, in the colour of the worst it holds.'],
             ['Who it identifies', 'A constellation joining the columns that, together in one row, single a person out, and how many rows do.'],
@@ -25034,8 +25056,8 @@ function initGuidesTab() {
 let pis = { list: null, sel: '', q: '', open: false, rowsRaw: '', busy: false, fq: '', riskAsc: false, menuF: '', focus: null, seen: '', run: null, res: null,
             history: [], canDismiss: false, openF: '', sev: '', showDismissed: false, locAll: {}, uploadKey: '', listTimer: null,
             // the sky: list or sky (kept in this browser), the view, the column open beside it, a Rules chip, the explainer, the steps
-            view: 'sky', lens: 'severity', col: '', colF: '', chip: '', howto: false, listed: false, todoOpen: false, hover: '', sky: null,
-            sideTop: {}, sideKey: '', reveal: null };
+            view: 'sky', lens: 'severity', col: '', chip: '', howto: false, listed: false, todoOpen: false, hover: '', sky: null,
+            sideTop: {}, sideKey: '', detail: '', detKey: '' };
 const PIS_SEV = ['critical', 'high', 'medium', 'low'];
 const PIS_SEV_L = { critical: 'Critical', high: 'High', medium: 'Medium', low: 'Low' };
 const PIS_SEV_VAR = { critical: 'var(--pii-crit)', high: 'var(--pii-high)', medium: 'var(--pii-med)', low: 'var(--pii-low)' };
@@ -25280,8 +25302,8 @@ async function pisOpen(key, sweepId) {
   if (!pis.res || pis.res.dataset_key !== key) {
     st.innerHTML = dqSkeleton('Loading the sweep', 4);
     pis.fq = ''; pis.sev = ''; pis.riskAsc = false; pis.focus = null; pis.listed = false; pis.todoOpen = false;
-    pis.lens = 'severity'; pis.col = ''; pis.colF = ''; pis.chip = ''; pis.view = pisPref('view') === 'list' ? 'list' : 'sky';
-    pis.sideTop = {}; pis.sideKey = ''; pis.reveal = null;
+    pis.lens = 'severity'; pis.col = ''; pis.chip = ''; pis.view = pisPref('view') === 'list' ? 'list' : 'sky';
+    pis.sideTop = {}; pis.sideKey = ''; pis.detail = ''; pis.detKey = '';
   }
   try {
     const r = await pisApi({ action: 'result', dataset_key: key, ...(sweepId ? { sweep_id: sweepId } : {}) });
@@ -25455,12 +25477,12 @@ function pisSkySvg(res, L, o) {
     `<text x="${cx}" y="${cy + 48}" text-anchor="middle" class="pis-core-name">${esc(res.dataset || '')}</text></g>`;
   // the stars, each a button that opens its column beside the sky, with what it is written beside it
   P.forEach(p => {
-    const c = p.c, Rs = c.risk ? 5 + c.risk * .1 : 3, cos = Math.cos(p.a), sin = Math.sin(p.a), sel = o.col === c.name;
+    const c = p.c, Rs = c.risk ? 5 + c.risk * .1 : 3, cos = Math.cos(p.a), sin = Math.sin(p.a), sel = o.col === c.name, ringed = sel || o.detCol === c.name;
     const aria = `${c.name}: ${c.sev ? `${PIS_SEV_L[c.sev]}, risk ${c.risk}` : 'nothing found'}${c.sev && c.role === 'free_text' ? ', hidden in free text' : ''}` +
       `${c.isNew ? ', new since the sweep before' : ''}`;
     let g = `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${Math.max(16, Rs + 9).toFixed(1)}" class="pis-star-hit"/>` +
       `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${(Rs + 9).toFixed(1)}" class="pis-star-hov"/>` +
-      (sel ? `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${(Rs + 15).toFixed(1)}" class="pis-star-sel"/>` : '');
+      (ringed ? `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${(Rs + 15).toFixed(1)}" class="pis-star-sel"/>` : '');
     if (c.risk) {
       g += (c.isNew && o.lens !== 'identify' && o.lens !== 'changes' ? `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${(Rs + 10).toFixed(1)}" class="pis-star-new"/>` : '') +
         (c.role === 'free_text' ? `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${(Rs + 5).toFixed(1)}" class="pis-star-text"/>` : '') +
@@ -25541,43 +25563,55 @@ function pisColPanel(res, name) {
       `<p class="pis-side-s">Nothing in its ${c.nonNull != null ? pisPl(c.nonNull, 'value') : 'values'} matched a kind of personal data, and its name does not say it holds any.</p>` +
       `<p class="pis-side-s">Text columns are read, and number columns whose names say they may be personal. Dates and measurements are not.</p></aside>`;
   }
-  const f = c.finds.find(x => x.id === pis.colF) || c.finds[0], harm = String(f.harm || ''), aline = pisAssessmentLine(res, name);
-  const items = c.finds.map(x => `<li><button type="button" class="pis-fitem lngb${x.id === f.id ? ' on' : ''}" data-pis="colf" data-id="${esc(x.id)}" aria-pressed="${x.id === f.id}">` +
-    `<i style="background:${PIS_SEV_VAR[x.severity] || 'var(--muted)'}" aria-hidden="true"></i><span class="pis-fitem-t"><b>${esc(x.label)}</b>` +
-    `<small>${pisPl(x.cells, 'value')} · ${esc(PIS_CONF_S[x.confidence] || '')}</small></span>${nw.has(x.id) ? '<em class="pis-tag">new</em>' : ''}` +
-    `<span class="pis-fitem-r" aria-label="risk ${x.risk}">${x.risk}</span></button></li>`).join('');
-  const regs = (f.regulations || []).map(k => `<span class="pis-chip low">${esc(PIS_REG_L[k] || k)}</span>`).join('');
-  const where = f.type === 'column_name'
-    ? `<p class="pis-side-s">Nothing in its values matched a pattern: the column's name is the evidence. Label it, or dismiss it if the name misleads.</p>`
-    : `<h6>Where it sits in each value</h6>${pisLocMini(res, f, 4)}`;
+  const items = c.finds.map(x => {
+    const on = pis.detail === x.id;
+    return `<li><button type="button" class="pis-fitem lngb${on ? ' on' : ''}" data-pis="det" data-id="${esc(x.id)}" aria-pressed="${on}">` +
+      `<i style="background:${PIS_SEV_VAR[x.severity] || 'var(--muted)'}" aria-hidden="true"></i><span class="pis-fitem-t"><b>${esc(x.label)}</b>` +
+      `<small>${pisPl(x.cells, 'value')} · ${esc(PIS_CONF_S[x.confidence] || '')}</small></span>${nw.has(x.id) ? '<em class="pis-tag">new</em>' : ''}` +
+      `<span class="pis-fitem-r" aria-label="risk ${x.risk}">${x.risk}</span></button></li>`;
+  }).join('');
   return `<aside class="pis-side" data-key="col:${esc(name)}" aria-label="${esc(name)}">${head}` +
     `<div class="pis-side-v">${pisSevHtml(c.sev, true)}<span class="pis-side-risk"><b>${c.risk}</b><small>risk</small></span></div>` +
     (c.pii != null && c.nonNull ? `<p class="pis-side-s">${pisN(c.pii)} of ${pisPl(c.nonNull, 'value')} hold personal data.</p>` : '') +
-    `<ul class="pis-fitems">${items}</ul>` +
-    `<div class="pis-side-f"><div class="pis-side-ft" tabindex="-1"><i style="background:${PIS_SEV_VAR[f.severity] || 'var(--muted)'}" aria-hidden="true"></i>` +
-      `<b>${esc(f.label)}</b><span>risk ${f.risk}</span></div><p>${esc(f.why || '')}.${harm ? ' ' + esc(harm.charAt(0).toUpperCase() + harm.slice(1)) + '.' : ''}</p>` +
-      (regs ? `<div class="pis-chips">${regs}</div>` : '') + where +
-      (aline ? `<p class="pis-side-s">${esc(aline)}</p>` : '') +
-      `<div class="pis-side-a">${pis.canDismiss ? `<button type="button" class="pis-rowbtn lngb" data-pis="dismiss" data-id="${esc(f.id)}">Not personal data: dismiss</button>` : ''}` +
-        `<button type="button" class="linkbtn lngb" data-pis="show" data-id="${esc(f.id)}">See it in the list ${pisIco('arrow')}</button></div></div>` +
+    `<h6>${pisPl(c.finds.length, 'finding')} <small>pick one to read it in full</small></h6><ul class="pis-fitems">${items}</ul>` +
     `<div class="pis-side-acts"><button type="button" class="dsx-btn primary lngb" data-pis="label" data-col="${esc(name)}"${labelled ? ' disabled' : ''}>` +
       `${labelled ? 'Labelled as personal data' : 'Label the column as personal data'}</button></div></aside>`;
 }
-/** Where a finding sits, small enough for the panel: one bar per value, a mark at its characters. No value is shown. */
-function pisLocMini(res, f, max) {
-  const byRow = new Map();
-  (f.locations || []).forEach(l => { const k = String(l.row); if (!byRow.has(k)) byRow.set(k, []); byRow.get(k).push(l); });
-  const rows = [...byRow.entries()]; if (!rows.length) return '';
-  const lines = rows.slice(0, max).map(([ref, ls]) => {
-    const n = Math.max(1, Number(ls[0].cell_length) || 1), name = res.row_key ? `${res.row_key} ${ref}` : `Row ${pisN(Number(ref))}`;
-    const t = ls.length === 1 && ls[0].whole ? 'the whole value' : ls.length === 1
-      ? `characters ${pisN(ls[0].start + 1)} to ${pisN(ls[0].start + ls[0].length)} of ${pisN(n)}` : `${ls.length} finds in ${pisPl(n, 'character')}`;
-    return `<div class="pis-mloc" data-tip="${esc(name + ': ' + t)}"><span>${esc(name)}</span><span class="pis-bar" style="--k:${PIS_SEV_VAR[f.severity] || 'var(--pii-low)'}" role="img" aria-label="${esc(t)}">` +
-      ls.map(l => `<i style="left:${(100 * l.start / n).toFixed(2)}%;width:${(100 * l.length / n).toFixed(2)}%"></i>`).join('') + `</span></div>`;
-  }).join('');
-  const more = Math.max(0, rows.length - max) + (Number(f.more_locations) || 0);
-  return `<div class="pis-mlocs">${lines}</div>` + (more ? `<p class="pis-side-s">And ${pisPl(more, 'more value')}: ` +
-    `<button type="button" class="linkbtn lngb" data-pis="show" data-id="${esc(f.id)}">see them in the list</button>.</p>` : '');
+/** A finding picked from a list, in a pane wide enough to read: what it is and how sure, why it matters, the rules it
+ *  touches, where it sits in each value (no value shown), what the assessment makes of its column, and what to do. */
+function pisDetailPane(res, id) {
+  const f = pisLive(res).find(x => x.id === id); if (!f) return '';
+  const ch = res.changes || {}, when = ch.previous_at ? pisDay(ch.previous_at) : '';
+  const grown = (ch.grown || []).find(x => x.id === id), fell = (ch.fell || []).find(x => x.id === id);
+  const change = (ch.new || []).some(x => x.id === id) ? `New since ${when}`
+    : grown ? `More widespread since ${when}: ${pisN(grown.before)} → ${pisPl(grown.cells, 'value')}`
+    : fell ? `Less widespread since ${when}: ${pisN(fell.before)} → ${pisPl(fell.cells, 'value')}` : '';
+  const where = f.type === 'column_name' ? 'known by its name' : f.embedded ? 'hidden in free text' : 'held in the clear';
+  const harm = String(f.harm || ''), aline = pisAssessmentLine(res, f.column), labelled = ((res.pii_labels || {})[f.column] || '') === 'pii';
+  const regs = (f.regulations || []).map(k => `<span class="pis-chip low">${esc(PIS_REG_L[k] || k)}</span>`).join('');
+  return `<section class="pis-dpane" data-key="det:${esc(id)}" aria-label="${esc(f.label)} in ${esc(f.column)}">` +
+    `<div class="pis-dpane-h"><i style="background:${PIS_SEV_VAR[f.severity] || 'var(--muted)'}" aria-hidden="true"></i>` +
+      `<div class="pis-dpane-t" tabindex="-1"><b>${esc(f.label)}</b><span>in <code>${esc(f.column)}</code> · ${where}</span></div>` +
+      `<button type="button" class="pis-side-x lngb" data-pis="detail-x" aria-label="Close the detail">${pisIco('cross')}</button></div>` +
+    // what it is and why (left), where it sits (right): side by side when the pane has the card's width, else one after the other
+    `<div class="pis-dpane-b"><div>` +
+    `<div class="pis-dpane-v">${pisSevHtml(f.severity, true)}<span class="pis-side-risk"><b>${f.risk}</b><small>risk</small></span>` +
+      (change ? `<em class="pis-tag">${esc(change)}</em>` : '') + `</div>` +
+    `<div class="pis-dpane-facts"><span>${pisIco('search')}<b>${pisPl(f.cells, 'value')}</b>${f.rate != null ? ` ${pisPct(f.rate)} of the column` : ''}</span>` +
+      `<span data-tip="${esc(PIS_CONF[f.confidence] || '')}">${pisIco('shield')}<b>${esc(PIS_CONF_S[f.confidence] || '')}</b></span>` +
+      `<span>${pisIco('doc')}<b>${esc(PIS_CAT_L[f.category] || f.category || '')}</b></span></div>` +
+    `<h6>Why it matters</h6><p class="pis-dpane-p">${esc(f.why || '')}.${harm ? ' ' + esc(harm.charAt(0).toUpperCase() + harm.slice(1)) + '.' : ''}</p>` +
+    (regs ? `<h6>Rules it touches</h6><div class="pis-chips">${regs}</div>` : '') +
+    (aline ? `<h6>In the assessment</h6><p class="pis-dpane-p">${esc(aline)}</p>` : '') + `</div>` +
+    `<div><h6>Where it sits in each value</h6>` + (f.type === 'column_name'
+      ? `<p class="pis-dpane-p">Nothing in its values matched a pattern: the column's name is the evidence. Label it, or dismiss it if the name misleads.</p>`
+      : pisLocsHtml(res, f)) + `</div></div>` +
+    `<div class="pis-side-acts"><button type="button" class="dsx-btn primary lngb" data-pis="label" data-col="${esc(f.column)}"${labelled ? ' disabled' : ''}>` +
+      `${labelled ? 'Column labelled as personal data' : 'Label the column as personal data'}</button>` +
+      (pis.canDismiss ? `<button type="button" class="dsx-btn lngb" data-pis="dismiss" data-id="${esc(f.id)}">Not personal data: dismiss</button>` : '') +
+      `<button type="button" class="linkbtn lngb" data-pis="show" data-id="${esc(f.id)}">See it in the list ${pisIco('arrow')}</button>` +
+      (pis.col !== f.column ? `<button type="button" class="linkbtn lngb" data-pis="col" data-v="${esc(f.column)}">Open ${esc(f.column)} ${pisIco('arrow')}</button>` : '') +
+    `</div></section>`;
 }
 function pisIdentPanel(res) {
   const idn = res.identity || {}, o = res.overall || {}, g = idn.combinations || [];
@@ -25605,7 +25639,8 @@ function pisChangesPanel(res) {
     const grp = (t, list, what) => (list || []).length ? `<h6>${t} <small>${pisN(list.length)}</small></h6><ul class="pis-fitems">` + list.map(f => {
       const inner = `<i style="background:${PIS_SEV_VAR[f.severity] || 'var(--muted)'}" aria-hidden="true"></i><span class="pis-fitem-t"><b>${esc(f.label)}</b>` +
         `<small><code>${esc(f.column)}</code> · ${what(f)}</small></span>`;
-      return `<li>${live.has(f.id) ? `<button type="button" class="pis-fitem lngb" data-pis="col" data-v="${esc(f.column)}" data-f="${esc(f.id)}">${inner}</button>`
+      const on = pis.detail === f.id;
+      return `<li>${live.has(f.id) ? `<button type="button" class="pis-fitem lngb${on ? ' on' : ''}" data-pis="det" data-id="${esc(f.id)}" aria-pressed="${on}">${inner}</button>`
         : `<div class="pis-fitem">${inner}</div>`}</li>`;
     }).join('') + `</ul>` : '';
     body = !cc.nNew && !cc.nGone && !cc.nUp && !cc.nDown
@@ -25640,7 +25675,7 @@ function pisRulesPanel(res, chip) {
   return `<aside class="pis-side" data-key="rule:${esc(chip)}"><div class="pis-side-h"><span class="pis-side-t">${pisIco(by === 'rule' ? 'shield' : 'doc')}${esc(name)}</span></div>` +
     `<p class="pis-side-s">${pisPl(fs.length, 'finding')} in ${pisPl(cols.size, 'column')} ` +
       `${by === 'rule' ? (fs.length === 1 ? 'falls under this rule' : 'fall under this rule') : (fs.length === 1 ? 'is of this kind' : 'are of this kind')}.</p>` +
-    `<ul class="pis-fitems">${fs.map(f => `<li><button type="button" class="pis-fitem lngb" data-pis="col" data-v="${esc(f.column)}" data-f="${esc(f.id)}">` +
+    `<ul class="pis-fitems">${fs.map(f => `<li><button type="button" class="pis-fitem lngb${pis.detail === f.id ? ' on' : ''}" data-pis="det" data-id="${esc(f.id)}" aria-pressed="${pis.detail === f.id}">` +
       `<i style="background:${PIS_SEV_VAR[f.severity] || 'var(--muted)'}" aria-hidden="true"></i><span class="pis-fitem-t"><b>${esc(f.label)}</b>` +
       `<small><code>${esc(f.column)}</code> · ${pisPl(f.cells, 'value')}</small></span><span class="pis-fitem-r">${f.risk}</span></button></li>`).join('')}</ul>` +
     (why ? `<h6>${by === 'rule' ? 'Why it matters' : 'What to do'}</h6><p class="pis-side-s">${why}</p>` : '') +
@@ -25735,15 +25770,18 @@ function pisPaintSky(animate) {
     ? `<div class="pis-chiprow"><span class="pis-chiprow-l">Rule</span>${(o.regulations || []).map(r => chip('rule:' + r.key, r.label, r.findings)).join('')}` +
       `<span class="pis-chiprow-l">Kind of data</span>${(o.categories || []).map(r => chip('kind:' + r.key, r.label, r.findings)).join('')}</div>`
     : `<p class="pis-side-s">No personal data was found, so no rule applies.</p>`;
-  const side = pisSideHtml(res);
+  const side = pisSideHtml(res), dpane = side && pis.detail ? pisDetailPane(res, pis.detail) : '';
+  if (!dpane) pis.detail = '';
+  const detCol = dpane ? (pisLive(res).find(f => f.id === pis.detail) || {}).column || '' : '';
   card.innerHTML = `<div class="pis-skybar">${seg}<div class="pis-legend">${legend}<span class="pis-legend-note">Further out: riskier</span></div>` +
       `<button type="button" class="pis-help lngb" data-pis="howto" aria-label="How to read the sky" aria-expanded="${!!pis.howto}">?</button>${view}</div>` + chips +
-    `<div class="pis-skygrid${side ? '' : ' full'}"><div class="pis-skywrap" id="pisSkyWrap"></div>${side}</div>` + pisNextHtml(todo);
-  const wrap = $('#pisSkyWrap'), W = Math.max(300, Math.floor(wrap.getBoundingClientRect().width)), H = Math.round(Math.max(440, Math.min(560, W * .72)));
+    `<div class="pis-skygrid${side ? '' : ' full'}${dpane ? ' det' : ''}"><div class="pis-skywrap" id="pisSkyWrap"></div>${dpane}${side}</div>` + pisNextHtml(todo);
+  // With a panel beside it the sky keeps the panels' height, however narrow a detail pane makes it.
+  const wrap = $('#pisSkyWrap'), W = Math.max(300, Math.floor(wrap.getBoundingClientRect().width)), H = side ? 560 : Math.round(Math.max(440, Math.min(560, W * .72)));
   const L = pis.sky = pisSkyLayout(res, W, H);
   card.querySelector('.pis-skygrid').style.setProperty('--pis-sky-h', H + 'px');   // the panel beside the sky is as tall as the sky
   const hint = side || pis.howto ? '' : pis.lens === 'rules' ? 'Pick a rule or a kind of data to light up its columns' : 'Pick a star to see what it holds';
-  wrap.innerHTML = pisSkySvg(res, L, { lens: pis.lens, col: pis.col, chip: pis.chip, animate }) +
+  wrap.innerHTML = pisSkySvg(res, L, { lens: pis.lens, col: pis.col, chip: pis.chip, animate, detCol }) +
     // Many clean columns are dust by the centre: this lists them, in a corner where it cannot sit on a star's label.
     (L.D.length ? `<button type="button" class="pis-dustbtn lngb${pis.col === '__clean' ? ' on' : ''}" data-pis="col" data-v="__clean" ` +
       `aria-pressed="${pis.col === '__clean'}">${pisIco('shield')}${pisPl(L.D.length, 'clean column')}</button>` : '') +
@@ -25756,26 +25794,18 @@ function pisPaintSky(animate) {
       `<button type="button" class="linkbtn lngb" data-pis="view" data-v="list">Show me a list instead</button></div></div>` : '') +
     (hint ? `<span class="pis-skyhint">${pisIco('target')}${hint}</span>` : '');
   if (animate) { clearTimeout(pis.skyT); pis.skyT = setTimeout(() => { const v = wrap.querySelector('svg'); if (v) v.classList.remove('pis-sky-in'); }, 2900); }
-  // The panel beside the sky keeps its place when drawn again (and a list is back where it was when a column opened from it
-  // closes); a finding picked from a list opens with its detail in view.
+  // The panels keep their place when drawn again: a list beside the sky (and a list is back where it was when a column
+  // opened from it closes), and the detail pane while it shows the same finding.
   const sideEl = card.querySelector('.pis-side'), prevKey = pis.sideKey;
   pis.sideKey = sideEl ? sideEl.dataset.key || '' : '';
-  if (sideEl) {
-    const key = pis.sideKey, det = pis.reveal ? sideEl.querySelector('.pis-side-f') : null;
-    if (det) pisRevealDetail(sideEl, det, pis.reveal);
-    else if (pis.sideTop[key] != null && (key === prevKey || !key.startsWith('col:'))) sideEl.scrollTop = pis.sideTop[key];
+  if (sideEl && pis.sideTop[pis.sideKey] != null && (pis.sideKey === prevKey || !pis.sideKey.startsWith('col:'))) sideEl.scrollTop = pis.sideTop[pis.sideKey];
+  const detEl = card.querySelector('.pis-dpane'), prevDet = pis.detKey;
+  pis.detKey = detEl ? detEl.dataset.key || '' : '';
+  if (detEl && pis.detKey === prevDet) {                  // the same finding drawn again: no second entrance, and the same place
+    detEl.style.animation = 'none';
+    if (pis.sideTop[pis.detKey] != null) detEl.scrollTop = pis.sideTop[pis.detKey];
   }
-  pis.reveal = null;
   if (pis.hover) pisSkyHover(pis.hover);
-}
-/** Bring a finding's detail into view: within the panel when it scrolls beside the sky, or in the page when it sits under it. */
-function pisRevealDetail(side, det, how) {
-  const behavior = how.smooth && !dqReduced() ? 'smooth' : 'auto', oy = getComputedStyle(side).overflowY;
-  if (oy !== 'auto' && oy !== 'scroll') { det.scrollIntoView({ block: 'start', behavior }); return; }
-  if (how.from) side.scrollTop = how.from;                    // from where the same panel was, so the move reads as one
-  const head = side.querySelector('.pis-side-h');
-  const to = side.scrollTop + det.getBoundingClientRect().top - side.getBoundingClientRect().top - (head ? head.offsetHeight : 0) - 6;
-  side.scrollTo({ top: Math.max(0, to), behavior });
 }
 /** A dataset coming into view: its two cards rise one after the other, its figures count up, its risk bar fills. */
 function pisEnter(st) {
@@ -25987,7 +26017,7 @@ function pisLocsHtml(res, f) {
   const more = Number(f.more_locations) || 0;
   const tail = [rows.length > 8 ? `<button type="button" class="linkbtn lngb" data-pis="locs" data-id="${esc(f.id)}">${all ? 'Show fewer' : `Show all ${rows.length} rows listed`}</button>` : '',
                 more ? `${pisPl(more, 'more value')} hold${more === 1 ? 's' : ''} it too; the first ${pisPl(locs.length, 'find')} are listed.` : ''].filter(Boolean).join(' ');
-  return `<p class="pis-muted" style="margin-top:10px">Where it is: each bar is one value, and the marks show where in it the ${esc(String(f.label || '').toLowerCase())} sits. ` +
+  return `<p class="pis-muted pis-locs-intro">Where it is: each bar is one value, and the marks show where in it the ${esc(String(f.label || '').toLowerCase())} sits. ` +
     `${res.row_key ? `Rows are named by their ${esc(res.row_key)}${res.row_key_guessed ? ', which is not a declared key, so a value may name more than one row' : ''}.`
       : 'Rows are numbered in the order the sweep read them.'}</p>` +
     `<div class="pis-locs">${lines}</div>${tail ? `<div class="pis-locs-more">${tail}</div>` : ''}`;
@@ -26196,22 +26226,32 @@ async function pisSchedule(key) {
       } else if (a === 'delete') {
         pisDelete();
       } else if (a === 'lens') {
-        pis.lens = t.dataset.v; pis.col = ''; pis.colF = ''; pis.view = 'sky'; pis.listed = false;
+        pis.lens = t.dataset.v; pis.col = ''; pis.detail = ''; pis.view = 'sky'; pis.listed = false;
         pisPaintSky();
         if (t.closest('.pis-verdict')) { const c = $('#pisSkyCard'); if (c) c.scrollIntoView({ behavior: dqReduced() ? 'auto' : 'smooth', block: 'start' }); }
         else pisRefocus(`.pis-seg [data-pis="lens"][data-v="${t.dataset.v}"]`);
       } else if (a === 'col') {
-        const v = t.dataset.v, f = t.dataset.f || '', closing = pis.col === v && !f;
-        if (closing || f) delete pis.sideTop['col:' + v];      // a column opens at its top, or at the finding picked
-        pis.col = closing ? '' : v; pis.colF = f;
-        if (f) pis.reveal = { from: 0, smooth: false };
+        const v = t.dataset.v, closing = pis.col === v, fromDet = !!t.closest('.pis-dpane');
+        if (closing) delete pis.sideTop['col:' + v];             // a column opens at its top
+        pis.col = closing ? '' : v;
+        // A finding open in the detail pane stays open when its own column opens beside it; anything else closes it.
+        if (!(pis.col && pis.detail && ((pisLive(res).find(f => f.id === pis.detail) || {}).column === pis.col))) pis.detail = '';
         pisPaintSky();
-        pisRefocus(f ? '.pis-side .pis-side-ft' : `#pisSkyWrap [data-pis="col"][data-v="${CSS.escape(v)}"]`);
-      } else if (a === 'colf') {
-        const sEl = panel.querySelector('#pisSkyCard .pis-side');
-        pis.colF = t.dataset.id; pis.reveal = { from: sEl ? sEl.scrollTop : 0, smooth: true };
+        pisRefocus(fromDet && pis.detail ? '.pis-dpane .pis-dpane-t' : `#pisSkyWrap [data-pis="col"][data-v="${CSS.escape(v)}"]`);
+      } else if (a === 'det') {
+        const id = t.dataset.id;
+        pis.detail = pis.detail === id ? '' : id;
         pisPaintSky();
-        pisRefocus('.pis-side .pis-side-ft');
+        const dp = panel.querySelector('#pisSkyCard .pis-dpane');
+        if (dp) {
+          pisRefocus('.pis-dpane .pis-dpane-t');
+          // Under the sky and the list (a narrower card), the page moves to it when it opens low down; beside them, it is already in view.
+          const r = dp.getBoundingClientRect();
+          if (getComputedStyle(dp).overflowY === 'visible' && r.bottom > innerHeight && r.top > innerHeight * .35) dp.scrollIntoView({ block: 'start', behavior: dqReduced() ? 'auto' : 'smooth' });
+        } else pisRefocus(`.pis-side [data-pis="det"][data-id="${CSS.escape(id)}"]`);
+      } else if (a === 'detail-x') {
+        const id = pis.detail; pis.detail = ''; pisPaintSky();
+        pisRefocus(`.pis-side [data-pis="det"][data-id="${CSS.escape(id)}"]`);
       } else if (a === 'view') {
         pis.view = t.dataset.v === 'list' ? 'list' : 'sky'; pisPref('view', pis.view); pis.listed = pis.view === 'list';
         if (pis.howto) { pis.howto = false; pisPref('howto', 'seen'); }
@@ -26224,7 +26264,7 @@ async function pisSchedule(key) {
       } else if (a === 'howto-ok') {
         pis.howto = false; pisPref('howto', 'seen'); pisPaintSky(); pisRefocus('.pis-help');
       } else if (a === 'chip') {
-        pis.chip = pis.chip === t.dataset.v ? '' : t.dataset.v; pis.col = ''; pis.colF = '';
+        pis.chip = pis.chip === t.dataset.v ? '' : t.dataset.v; pis.col = ''; pis.detail = '';
         pisPaintSky();
         pisRefocus(`.pis-rchip[data-v="${CSS.escape(t.dataset.v)}"]`);
       } else if (a === 'todo') {
@@ -26248,7 +26288,8 @@ async function pisSchedule(key) {
       } else if (a === 'sev') {
         pis.sev = t.dataset.v || ''; pisRepaintFindings(res, false);
       } else if (a === 'locs') {
-        pis.locAll[t.dataset.id] = !pis.locAll[t.dataset.id]; pisRepaintFindings(res, true);
+        pis.locAll[t.dataset.id] = !pis.locAll[t.dataset.id];
+        if (pis.view === 'list') pisRepaintFindings(res, true); else { pisPaintSky(); pisRefocus('.pis-dpane [data-pis="locs"]'); }
       } else if (a === 'toggle-dismissed') {
         pis.showDismissed = !pis.showDismissed; pisRepaintFindings(res, true);
       } else if (a === 'label') {
@@ -26284,9 +26325,14 @@ async function pisSchedule(key) {
         if (next) next.focus();
         return;
       }
+      if (e.key === 'Escape' && pis.detail && !pis.menuF && e.target.closest && e.target.closest('#pisSkyCard')) {
+        e.preventDefault();
+        const id = pis.detail; pis.detail = ''; pisPaintSky(); pisRefocus(`.pis-side [data-pis="det"][data-id="${CSS.escape(id)}"]`);
+        return;
+      }
       if (e.key === 'Escape' && pis.col && !pis.menuF && e.target.closest && e.target.closest('#pisSkyCard')) {
         e.preventDefault();
-        const v = pis.col; delete pis.sideTop['col:' + v]; pis.col = ''; pis.colF = ''; pisPaintSky();
+        const v = pis.col; delete pis.sideTop['col:' + v]; pis.col = ''; pisPaintSky();
         pisRefocus(`#pisSkyWrap [data-pis="col"][data-v="${CSS.escape(v)}"]`);
         return;
       }
@@ -26310,7 +26356,7 @@ async function pisSchedule(key) {
     // Where each panel beside the sky was scrolled to, to put it back after a redraw.
     panel.addEventListener('scroll', e => {
       const el = e.target;
-      if (el && el.classList && el.classList.contains('pis-side') && el.dataset.key) pis.sideTop[el.dataset.key] = el.scrollTop;
+      if (el && el.classList && (el.classList.contains('pis-side') || el.classList.contains('pis-dpane')) && el.dataset.key) pis.sideTop[el.dataset.key] = el.scrollTop;
     }, true);
     // The sky is drawn to the width it has: drawn again when that changes.
     let pisResizeT = null;
