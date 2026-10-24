@@ -4424,6 +4424,16 @@
   .pis-acts .dsx-btn { display: inline-flex; align-items: center; gap: 7px; }
   .pis-acts .dsx-btn.danger { color: #ff8a8a; }
   .pis-acts .dsx-btn.danger:hover { border-color: color-mix(in srgb, var(--err) 55%, var(--border)); }
+  /* The opened sweep's head: its name, what can be done, and Close in the corner; on a narrower card the actions go under */
+  .pis-top { container: pis-top / inline-size; }
+  .pis-top .pis-head { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; grid-template-areas: "title acts close"; column-gap: 12px; }
+  .pis-top .pis-head-l { grid-area: title; } .pis-top .pis-acts { grid-area: acts; } .pis-top .pis-closesw { grid-area: close; }
+  .pis-acts-sep { width: 1px; height: 24px; margin-left: 4px; background: var(--border); }
+  .pis-closesw { display: inline-flex; align-items: center; gap: 7px; }
+  @container pis-top (max-width: 1000px) {
+    .pis-top .pis-head { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "title close" "acts acts"; }
+    .pis-acts-sep { display: none; }
+  }
   .pis-note .pis-ico { width: 18px; height: 18px; color: var(--muted); }
   .pis-note.worse { background: color-mix(in srgb, var(--pii-crit) 10%, var(--card-2)); }
   .pis-note.worse .pis-ico { color: var(--pii-crit); }
@@ -24403,7 +24413,7 @@ ${HDRS}
                 `To sweep a file that has not been assessed, or an uploaded file (uploads are not kept once assessed), press ${ui('Upload a file to sweep')}. The file is deleted once it has been read.`) +
           tip(`A Qlik app table can only be read by the app itself. Export it and upload the file to sweep it.`) },
       { h: 'Read the result', body:
-          p(`Opening a dataset shows its rating (the worst severity found), its risk from 0 to 100 (point at it to see why), how many findings there are and in how many columns, how many hide in free text, and how many rows identify someone. Beside its name, who can open it. Anything new since the sweep before is a button that shows what changed.`) +
+          p(`Opening a dataset shows its rating (the worst severity found), its risk from 0 to 100 (point at it to see why), how many findings there are and in how many columns, how many hide in free text, and how many rows identify someone. Beside its name, who can open it. Anything new since the sweep before is a button that shows what changed. ${ui('Close')} puts the sweep away, back to the swept datasets.`) +
           p(`Below that is the sky. Each star is a column of the dataset, on a ray from the dataset at the centre: the further out, the riskier, against rings at 25, 50, 75 and 100. The riskiest is at the top, then clockwise round to the safest, and colour, size and brightness say the same. Point at a star, or reach it with Tab and the arrow keys, to light up its ray and the ring at its risk. Press it to open the column beside the sky, and pick one of its findings to read it in full in a wider pane: why it matters, the rules it touches, where it sits in each value, and what can be done about it. A finding listed under Changes or Rules opens the same way. ${ui('?')} explains the sky again.`) +
           table(['View', 'What it shows'], [
             ['Severity', 'Every column at its risk, in the colour of the worst it holds.'],
@@ -25711,7 +25721,8 @@ function pisPaintResult() {
       (d.how === 'source' ? btn('schedule', 'calendar', d.schedule ? 'On a schedule' : 'Schedule') : '') +
       btn('export', 'download', 'Export locations', '', 'Every location found, as a CSV. It holds no values.') +
       (pis.canDismiss ? btn('delete', 'trash', 'Delete sweeps', 'danger', 'Delete every sweep of this dataset') : '') +
-    `</div></div>`;
+      `<span class="pis-acts-sep" aria-hidden="true"></span>` +
+    `</div>${btn('close-sweep', 'cross', 'Close', 'pis-closesw', 'Back to the swept datasets')}</div>`;
   // One line of verdict where five figures used to be; what is new since the sweep before opens the Changes view.
   const num = v => `<span data-to="${+v || 0}">${pisN(v || 0)}</span>`;
   const stat = (ic, n, txt) => `<span class="pis-stat">${pisIco(ic)}<b>${num(n)}</b>${txt}</span>`;
@@ -26183,6 +26194,18 @@ async function pisDelete() {
     dqDone('Sweeps deleted', `Every sweep of <strong>${esc(res.dataset)}</strong> is gone.`);
   } catch (e) { dqAlert(rcxErrText(e), { title: 'Not deleted' }); }
 }
+/** Put the opened sweep away: the tab is as it first opens, nothing picked and the swept datasets in view, on the
+ *  closed dataset's Open. Opened again, it starts afresh. */
+function pisCloseSweep() {
+  const key = (pis.res || {}).dataset_key || '', st = $('#pisStage'), card = $('#pisListCard');
+  pisCloseMenu();
+  pis.res = null; pis.seen = ''; pis.sky = null; pis.sel = ''; pis.open = false; pis.q = '';
+  st.style.display = 'none'; st.innerHTML = '';
+  pisHint(''); pisPaintPick();
+  card.scrollIntoView({ block: 'nearest', behavior: dqReduced() ? 'auto' : 'smooth' });
+  const b = key && card.querySelector(`[data-pis="open-ds"][data-key="${CSS.escape(key)}"]`);
+  if (b) b.focus({ preventScroll: true });
+}
 /** Open the Schedules form on a PII sweep of this dataset. */
 async function pisSchedule(key) {
   const d = pisDs(key);
@@ -26310,6 +26333,8 @@ async function pisSchedule(key) {
         pisCancel();
       } else if (a === 'close') {
         $('#pisStage').style.display = 'none';
+      } else if (a === 'close-sweep') {
+        pisCloseSweep();
       }
     });
     panel.addEventListener('keydown', e => {
