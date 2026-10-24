@@ -4533,9 +4533,6 @@
   .pis-ray.hi { stroke-width: 5; }
   .pis-cons { fill: color-mix(in srgb, var(--accent) 7%, transparent); stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; opacity: .8; }
   .pis-conslabel { font-size: 12.5px; font-weight: 650; fill: var(--text); }
-  .pis-ghost { fill: none; stroke: var(--muted); stroke-width: 1.5; }
-  .pis-trail { stroke-width: 4; stroke-linecap: round; }
-  .pis-delta { font-size: 13px; font-weight: 750; fill: var(--text); }
   .pis-core-in { fill: #0b1020; stroke: color-mix(in srgb, var(--accent) 60%, transparent); stroke-width: 1.5; }
   .pis-core-n { font-size: 17px; font-weight: 800; fill: var(--text); }
   .pis-core-name { font-size: 13px; font-weight: 700; fill: var(--text); }
@@ -4656,11 +4653,6 @@
   .pis-combos li { display: grid; gap: 3px; padding: 9px 11px; border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: 10px;
     background: var(--card); font-size: 12.5px; }
   .pis-combos li small { color: var(--muted); }
-  .pis-sweeps { display: flex; align-items: center; gap: 8px; } .pis-sweeps > i { flex: 1; min-width: 8px; height: 2px; background: var(--border); }
-  .pis-sweep { display: grid; gap: 2px; padding: 7px 10px; border: 1px solid var(--border); border-radius: 10px; background: var(--card); color: var(--text);
-    font: inherit; font-size: 12px; text-align: left; }
-  button.pis-sweep { box-shadow: none; cursor: pointer; } button.pis-sweep:hover, button.pis-sweep:focus-visible { border-color: var(--accent); outline: none; }
-  .pis-sweep.cur { border-color: var(--accent); } .pis-sweep.off { opacity: .6; } .pis-sweep small { color: var(--muted); }
   /* The next step, under the sky or the list */
   .pis-next { margin-top: 16px; padding: 12px 16px; border-radius: 12px; border: 1px solid var(--border); background: var(--card-2); }
   .pis-next-row { display: flex; align-items: center; gap: 14px; }
@@ -4697,6 +4689,81 @@
   @keyframes pisRayOut { to { stroke-dashoffset: 0; } }
   .pis-sky-in .pis-star-lbl { animation: pisLbl .35s ease both; animation-delay: calc(var(--i) * .14s + .75s); }
   @keyframes pisLbl { from { opacity: 0; } to { opacity: 1; } }
+  /* Changes: a timeline of the sweeps. The risk each found as a line, each sweep on a track with how it ended, and what moved */
+  .pis-tl { display: block; max-width: 100%; height: auto; }
+  svg.pis-tl text { font-family: inherit; }
+  .pis-tl .tl-h { font-size: 14.5px; font-weight: 750; fill: var(--text); }
+  .pis-tl .tl-hs { font-size: 12px; fill: var(--muted); }
+  .pis-tl .tl-h2 { font-size: 13px; font-weight: 750; fill: var(--text); }
+  .pis-tl .tl-ax { font-size: 10px; font-weight: 700; letter-spacing: .08em; fill: var(--muted); }
+  .pis-tl .tl-axn { font-size: 10.5px; fill: rgba(148,162,190,.8); font-variant-numeric: tabular-nums; }
+  .pis-tl .tl-grid { stroke: rgba(148,162,190,.12); stroke-width: 1; }
+  .pis-tl .tl-grid.base { stroke: rgba(148,162,190,.28); }
+  .pis-tl .tl-tick { stroke: rgba(148,162,190,.12); stroke-width: 1; stroke-dasharray: 2 4; }
+  .pis-tl .tl-tick.done { stroke: rgba(148,162,190,.24); }
+  .pis-tl .tl-line { fill: none; stroke: url(#pisTlLine); stroke-width: 3; stroke-linecap: round; }
+  .pis-tl .tl-pt { stroke: #0b1020; stroke-width: 2.5; }
+  .pis-tl .tl-ptn { font-size: 13px; font-weight: 800; fill: var(--text); }
+  .pis-tl .tl-band rect:first-child { fill: none; stroke: rgba(148,162,190,.45); stroke-width: 1.2; stroke-dasharray: 4 4; }
+  .pis-tl .tl-band.cur rect:first-child { fill: rgba(91,140,255,.09); stroke: rgba(91,140,255,.55); stroke-dasharray: none; }
+  .pis-tl .tl-pill { fill: #2a3552; } .pis-tl .tl-band.cur .tl-pill { fill: var(--accent); }
+  .pis-tl .tl-pillt { font-size: 10.5px; font-weight: 750; fill: #fff; letter-spacing: .02em; }
+  .pis-tl .tl-track { stroke: rgba(148,162,190,.32); stroke-width: 2; stroke-linecap: round; }
+  .pis-tl .tl-run { cursor: default; outline: none; color: var(--muted); }
+  .pis-tl .tl-run[data-pis] { cursor: pointer; }
+  .pis-tl .tl-hit { fill: transparent; }
+  .pis-tl .tl-ring { fill: none; stroke: var(--accent); stroke-width: 2; opacity: 0; }
+  .pis-tl .tl-run:focus-visible .tl-ring { opacity: 1; }
+  .pis-tl .tl-bead { fill: #0b1020; stroke: currentColor; stroke-width: 2; transition: stroke-width .15s; }
+  .pis-tl .tl-run.done { color: var(--ok); } .pis-tl .tl-run.fail { color: var(--err); } .pis-tl .tl-run.stop { color: var(--muted); }
+  .pis-tl .tl-run.run, .pis-tl .tl-run.wait { color: var(--accent); }
+  .pis-tl .tl-run.stop .tl-bead, .pis-tl .tl-run.wait .tl-bead { stroke-dasharray: 3 3; }
+  .pis-tl .tl-run.cur .tl-bead { stroke-width: 2.5; filter: drop-shadow(0 0 8px rgba(52,211,153,.55)); }
+  .pis-tl .tl-run.run .tl-bead { stroke-opacity: .25; }
+  .pis-tl .tl-spin { fill: none; stroke: currentColor; stroke-width: 2.5; stroke-dasharray: 20 60; transform-box: fill-box; transform-origin: center; animation: pisTlSpin 1s linear infinite; }
+  @keyframes pisTlSpin { to { transform: rotate(360deg); } }
+  .pis-tl .tl-run:hover .tl-bead, .pis-tl .tl-run:focus-visible .tl-bead { stroke-width: 3; filter: drop-shadow(0 0 7px currentColor); }
+  .pis-tl .tl-day { font-size: 12px; font-weight: 700; fill: var(--text); }
+  .pis-tl .tl-time { font-size: 11px; fill: var(--muted); font-variant-numeric: tabular-nums; }
+  .pis-tl .tl-who { color: var(--muted); }
+  .pis-tl .tl-brk { fill: none; stroke: rgba(148,162,190,.5); stroke-width: 1.2; }
+  .pis-tl .tl-brkt { font-size: 12px; font-weight: 650; fill: var(--text); }
+  .pis-tl .tl-mv { cursor: pointer; outline: none; }
+  .pis-tl .tl-mvhit { fill: transparent; stroke: transparent; stroke-width: 1.5; transition: fill .15s; }
+  .pis-tl .tl-mv:hover .tl-mvhit { fill: rgba(148,162,190,.07); }
+  .pis-tl .tl-mv:focus-visible .tl-mvhit { stroke: var(--accent); }
+  .pis-tl .tl-mv.on .tl-mvhit { fill: rgba(91,140,255,.12); stroke: rgba(91,140,255,.55); }
+  .pis-tl .tl-col { font: 650 12.5px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; fill: var(--text); }
+  .pis-tl .tl-mvtrack { stroke: rgba(148,162,190,.16); stroke-width: 1; }
+  .pis-tl .tl-mvbar { stroke-width: 4; stroke-linecap: round; opacity: .55; }
+  .pis-tl .tl-was { fill: #0b1020; stroke: var(--muted); stroke-width: 1.6; }
+  .pis-tl .tl-now { stroke: #0b1020; stroke-width: 2; }
+  .pis-tl .tl-d { font-size: 13px; font-weight: 800; fill: var(--text); font-variant-numeric: tabular-nums; }
+  .pis-tl .tl-new { font-size: 11px; font-weight: 700; fill: var(--muted); }
+  .pis-tl .tl-mv.still { opacity: .45; } .pis-tl .tl-mv.still:hover, .pis-tl .tl-mv.still.on, .pis-tl .tl-mv.still:focus-visible { opacity: .85; }
+  .pis-tl .tl-mv.still .tl-d { font-weight: 600; fill: var(--muted); }
+  .pis-tl .tl-note { font-size: 12.5px; fill: var(--muted); }
+  .pis-runtip { min-width: 250px; pointer-events: none; }
+  .pis-runtip-o, .pis-runleg { display: inline-flex; align-items: center; gap: 6px; }
+  .pis-runtip-o { font-weight: 700; color: var(--text); }
+  .pis-runico { width: 15px; height: 15px; flex: none; } .pis-runleg .pis-runico { width: 14px; height: 14px; }
+  .pis-runtip-o.done .pis-runico, .pis-runleg.done .pis-runico { color: var(--ok); }
+  .pis-runtip-o.fail .pis-runico, .pis-runleg.fail .pis-runico { color: var(--err); }
+  .pis-runtip-o.stop .pis-runico, .pis-runleg.stop .pis-runico { color: var(--muted); }
+  .pis-runtip-o.run .pis-runico, .pis-runtip-o.wait .pis-runico, .pis-runleg.run .pis-runico { color: var(--accent); }
+  /* Coming in: the sweeps pop onto the track in turn, the line is drawn left to right (each point as the line reaches it),
+     then the marks for the two compared come up, and each column's bar grows from its risk then to its risk now */
+  .pis-tl.tl-in .tl-line { stroke-dasharray: 1; stroke-dashoffset: 1; animation: pisRayOut 1.2s linear .15s forwards; }
+  .pis-tl.tl-in .tl-area { animation: pisTlShow .7s ease 1s both; }
+  .pis-tl.tl-in .tl-pt { transform-box: fill-box; transform-origin: center; animation: pisTlPop .45s cubic-bezier(.3,1.6,.5,1) both; animation-delay: var(--d); }
+  .pis-tl.tl-in .tl-run { animation: pisTlRise .5s cubic-bezier(.3,1.4,.5,1) both; animation-delay: calc(var(--k) * .09s); }
+  .pis-tl.tl-in .tl-band, .pis-tl.tl-in .tl-ptn, .pis-tl.tl-in .tl-brk, .pis-tl.tl-in .tl-brkt { animation: pisTlShow .5s ease 1.2s both; }
+  .pis-tl.tl-in .tl-mvbar { stroke-dasharray: 1; stroke-dashoffset: 1; animation: pisRayOut .6s cubic-bezier(.4,0,.2,1) forwards; animation-delay: calc(1.25s + var(--k) * .12s); }
+  .pis-tl.tl-in .tl-mv .tl-now { transform-box: fill-box; transform-origin: center; animation: pisTlPop .45s cubic-bezier(.3,1.6,.5,1) both; animation-delay: calc(1.6s + var(--k) * .12s); }
+  .pis-tl.tl-in .tl-mv .tl-d, .pis-tl.tl-in .tl-mv .tl-new { animation: pisTlShow .4s ease 1.9s both; }
+  @keyframes pisTlShow { from { opacity: 0; } }
+  @keyframes pisTlPop { from { transform: scale(0); } }
+  @keyframes pisTlRise { from { opacity: 0; transform: translateY(14px); } }
   /* Who it identifies, on entering it: the constellation drawn star to star at an even pace, a spark at its tip and each
      star struck as the line reaches it; then it fills and its caption comes up */
   .pis-cons-in .pis-cons { stroke-dasharray: var(--plen); stroke-dashoffset: var(--plen); fill-opacity: 0;
@@ -4723,7 +4790,8 @@
   @media (prefers-reduced-motion: reduce) {
     #pisStage.pis-enter > .card, #pisStage.pis-enter .pis-meter-bar i, .pis-sky-in .pis-star, .pis-sky-in .pis-ray, .pis-sky-in .pis-star-lbl,
     .pis-dpane, .pis-cons-in .pis-cons, .pis-cons-in .pis-star-core, .pis-cons-in .pis-star-hov, .pis-cons-in .pis-conslabel, .pis-cons-spark,
-    .pis-light .pis-wave, .pis-light .pis-core-glow, .pis-light .pis-ray, .pis-light .pis-star { animation: none !important; }
+    .pis-light .pis-wave, .pis-light .pis-core-glow, .pis-light .pis-ray, .pis-light .pis-star, .pis-tl.tl-in *, .pis-tl .tl-spin { animation: none !important; }
+    .pis-tl.tl-in .tl-line, .pis-tl.tl-in .tl-mvbar { stroke-dasharray: none; stroke-dashoffset: 0; }
     .pis-sky-in .pis-ray, .pis-cons-in .pis-cons, .pis-light .pis-ray { stroke-dasharray: none; stroke-dashoffset: 0; }
     .pis-cons-in .pis-cons { fill-opacity: 1; }
     .pis-star, .pis-ray, .pis-star-hov, .pis-orbitl { transition: none; }
@@ -24451,7 +24519,7 @@ ${HDRS}
           table(['View', 'What it shows'], [
             ['Severity', 'Every column at its risk, in the colour of the worst it holds.'],
             ['Who it identifies', 'A constellation joining the columns that, together in one row, single a person out, and how many rows do.'],
-            ['Changes', 'Where each star sat at the sweep before and how far it moved, what is new, gone, more or less widespread, and the earlier sweeps to open.'],
+            ['Changes', 'A timeline of every sweep: the risk each found, how each ended (completed, failed, cancelled or still running) and who started it. The sweep showing is set beside the one before it, with what moved column by column, and an earlier sweep opens with a click.'],
             ['Rules', 'Pick a rule (GDPR, CCPA, PCI DSS and others) or a kind of data, and the columns it touches light up.'],
           ]) +
           p(`${ui('List')} shows every finding as a table instead: riskiest first (press Risk to turn the order round), filtered by severity or searched, each opening onto where it sits in each value, with a ⋯ to label its column or dismiss it. Sky or list, your choice is remembered in this browser. A find inside free text is rated a level higher than the same kind held in its own column.`) },
@@ -25471,9 +25539,7 @@ function pisSkySvg(res, L, o) {
   const { W, H, cx, cy, R, base, frac, at, P, D } = L, sevv = s => PIS_SEV_VAR[s] || 'var(--muted)';
   const ids = pisIdentityCols(res);
   const lit = o.lens === 'rules' && o.chip ? new Set(pisLive(res).filter(f => pisChipMatch(f, o.chip)).map(f => f.column)) : null;
-  const changed = c => c.risk !== c.prevRisk || c.isNew, anyChange = P.some(p => changed(p.c));
-  const dimmed = c => (o.col && o.col !== c.name) || (o.lens === 'identify' && ids.size > 0 && !ids.has(c.name)) ||
-    (o.lens === 'changes' && anyChange && !changed(c)) || (lit && !lit.has(c.name));
+  const dimmed = c => (o.col && o.col !== c.name) || (o.lens === 'identify' && ids.size > 0 && !ids.has(c.name)) || (lit && !lit.has(c.name));
   // A label goes where it fits, riskiest first: one that would overlap another (or the centre, or the scale) is left to the tip.
   const nameW = String(res.dataset || '').length * 7.4 + 8;   // the core, its name under it, and the scale above it
   const placed = [{ x1: cx - 31, x2: cx + 31, y1: cy - 31, y2: cy + 31 }, { x1: cx - nameW / 2, x2: cx + nameW / 2, y1: cy + 35, y2: cy + 53 },
@@ -25516,16 +25582,6 @@ function pisSkySvg(res, L, o) {
       (strike ? `<circle r="4" class="pis-cons-spark" filter="url(#pisSkyGlow)" aria-hidden="true"><animateMotion dur="${consDur.toFixed(2)}s" fill="freeze" path="${d}"/></circle>` : '') +
       `<text x="${cx}" y="${H - 20}" text-anchor="middle" class="pis-conslabel">Joined, these ${on.length} columns single out a person in ${pisPl((res.identity || {}).rows, 'row')}</text>`;
   }
-  if (o.lens === 'changes') P.forEach(p => {
-    const c = p.c; if (c.risk === c.prevRisk) return;
-    const [gx, gy] = at(c.prevRisk, p.a), mx = (gx + p.x) / 2, my = (gy + p.y) / 2, side = Math.sign(Math.cos(p.a) || 1) * Math.abs(Math.sin(p.a));
-    defs += `<linearGradient id="pisTrail${p.k}" gradientUnits="userSpaceOnUse" x1="${gx.toFixed(1)}" y1="${gy.toFixed(1)}" x2="${p.x.toFixed(1)}" y2="${p.y.toFixed(1)}">` +
-      `<stop offset="0" style="stop-color:var(--text);stop-opacity:.05"/><stop offset="1" style="stop-color:var(--text);stop-opacity:.75"/></linearGradient>`;
-    const d = c.risk - c.prevRisk;
-    s += `<g aria-hidden="true">${c.prevRisk ? `<circle cx="${gx.toFixed(1)}" cy="${gy.toFixed(1)}" r="${(5 + c.prevRisk * .1).toFixed(1)}" class="pis-ghost"/>` : ''}` +
-      `<line x1="${gx.toFixed(1)}" y1="${gy.toFixed(1)}" x2="${p.x.toFixed(1)}" y2="${p.y.toFixed(1)}" stroke="url(#pisTrail${p.k})" class="pis-trail"/>` +
-      `<text x="${(mx - side * 30).toFixed(1)}" y="${(my + 4).toFixed(1)}" text-anchor="middle" class="pis-delta">${d > 0 ? '+' : '−'}${Math.abs(d)}</text></g>`;
-  });
   s += `<g aria-hidden="true"><circle cx="${cx}" cy="${cy}" r="58" fill="url(#pisSkyCore)" class="pis-core-glow"/><circle cx="${cx}" cy="${cy}" r="27" class="pis-core-in"/>` +
     `<text x="${cx}" y="${cy + 5}" text-anchor="middle" class="pis-core-n">${pisN((res.overall || {}).risk || 0)}</text>` +
     `<text x="${cx}" y="${cy + 48}" text-anchor="middle" class="pis-core-name">${esc(res.dataset || '')}</text></g>`;
@@ -25538,7 +25594,7 @@ function pisSkySvg(res, L, o) {
       `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${(Rs + 9).toFixed(1)}" class="pis-star-hov"/>` +
       (ringed ? `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${(Rs + 15).toFixed(1)}" class="pis-star-sel"/>` : '');
     if (c.risk) {
-      g += (c.isNew && o.lens !== 'identify' && o.lens !== 'changes' ? `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${(Rs + 10).toFixed(1)}" class="pis-star-new"/>` : '') +
+      g += (c.isNew && o.lens !== 'identify' ? `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${(Rs + 10).toFixed(1)}" class="pis-star-new"/>` : '') +
         (c.role === 'free_text' ? `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${(Rs + 5).toFixed(1)}" class="pis-star-text"/>` : '') +
         `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${Rs.toFixed(1)}" filter="url(#pisSkyGlow)" style="fill:${sevv(c.sev)}" class="pis-star-core"/>`;
     } else g += `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="3" class="pis-star-clean"/>`;
@@ -25570,7 +25626,7 @@ function pisSkyHover(name, kb) {
   const wrap = $('#pisSkyWrap'), L = pis.sky; if (!wrap) return;
   wrap.querySelectorAll('.pis-hov, .pis-tipbox').forEach(e => e.remove());
   wrap.querySelectorAll('.pis-ray.hi, .pis-star.hov').forEach(e => e.classList.remove('hi', 'hov'));
-  const p = name && L ? L.P.find(q => q.c.name === name) : null;
+  const p = name && L && L.P ? L.P.find(q => q.c.name === name) : null;
   wrap.classList.toggle('hovering', !!p);
   if (!p) return;
   const svg = wrap.querySelector('svg'), c = p.c; if (!svg) return;
@@ -25708,19 +25764,7 @@ function pisChangesPanel(res) {
         grp('More widespread', c.grown, f => `${pisN(f.before)} → ${pisPl(f.cells, 'value')}`) +
         grp('Less widespread', c.fell, f => `${pisN(f.before)} → ${pisPl(f.cells, 'value')}`);
   }
-  return `<aside class="pis-side" data-key="lens:changes">${head}${body}${pisSweepsHtml(res)}</aside>`;
-}
-/** The last few sweeps of the dataset, oldest first: the one showing marked, an earlier one a button that opens it. */
-function pisSweepsHtml(res) {
-  const all = pis.history || [], h = all.slice(0, 4).reverse();
-  if (h.length < 2) return '';
-  return `<h6>Sweeps</h6><div class="pis-sweeps">` + h.map(s => {
-    const when = esc(pisDay(s.requestedAt || s.updatedAt));
-    const sub = s.state === 'SUCCEEDED' ? `risk ${pisN(s.risk)} · ${pisPl(s.findings, 'finding')}` : esc(PIS_STATE_W[s.state] || s.state || '');
-    return s.sweepId === res.sweep_id ? `<span class="pis-sweep cur" aria-current="true"><b>${when}</b><small>Showing · ${sub}</small></span>`
-      : s.state === 'SUCCEEDED' ? `<button type="button" class="pis-sweep lngb" data-pis="open-sweep" data-id="${esc(s.sweepId)}" data-tip="Open this sweep"><b>${when}</b><small>${sub}</small></button>`
-      : `<span class="pis-sweep off"><b>${when}</b><small>${sub}</small></span>`;
-  }).join('<i aria-hidden="true"></i>') + `</div>` + (all.length > 4 ? `<p class="pis-side-s">And ${pisPl(all.length - 4, 'earlier sweep')}.</p>` : '');
+  return `<aside class="pis-side" data-key="lens:changes">${head}${body}</aside>`;
 }
 function pisRulesPanel(res, chip) {
   const [by, key] = chip.split(':'), o = res.overall || {};
@@ -25824,12 +25868,179 @@ function pisSideSet(grid, w, quiet) {
 }
 /** Just the sky drawn again to the width it now has: the panels beside it stay as they are, and a drag on the list's edge with them. */
 function pisRedrawSky() {
-  const res = pis.res, wrap = $('#pisSkyWrap'), old = wrap && wrap.querySelector('svg.pis-sky'), L0 = pis.sky;
+  const res = pis.res, wrap = $('#pisSkyWrap'), old = wrap && wrap.querySelector('svg.pis-sky, svg.pis-tl'), L0 = pis.sky;
   if (!res || !old || !L0) return;
   const W = Math.max(300, Math.floor(wrap.getBoundingClientRect().width)); if (W === L0.W) return;
+  if (L0.tl) { pis.sky = { W, H: L0.H, tl: true, D: [] }; old.outerHTML = pisTimelineSvg(res, W, L0.H, { col: pis.col }); return; }
   const L = pis.sky = pisSkyLayout(res, W, L0.H), detCol = pis.detail ? (pisLive(res).find(f => f.id === pis.detail) || {}).column || '' : '';
   old.outerHTML = pisSkySvg(res, L, { lens: pis.lens, col: pis.col, chip: pis.chip, detCol });
   if (pis.hover) pisSkyHover(pis.hover);
+}
+// ---- Changes: a timeline of the dataset's sweeps ----
+// The risk each completed sweep found (a line) above every sweep on a track, with how it ended and who started it; the
+// sweep showing marked beside the one it is compared with; and under them what moved between the two, column by column.
+const PIS_RUN = { SUCCEEDED: ['done', 'Completed'], FAILED: ['fail', 'Failed'], ERROR: ['fail', 'Failed'], CANCELLED: ['stop', 'Cancelled'],
+                  RUNNING: ['run', 'Sweeping'], QUEUED: ['wait', 'Waiting to start'] };
+const PIS_RUN_IC = { done: '<path d="m6.5 12.5 3.6 3.6L17.5 8.5"/>', fail: '<path d="M8 8l8 8M16 8l-8 8"/>', stop: '<path d="M7.5 16.5l9-9"/>',
+                     run: '<path d="M12 4a8 8 0 1 1-8 8"/>', wait: '<path d="M12 7.5V12l3 2"/>' };
+const pisRunIco = k => `<svg class="pis-runico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" ` +
+  `stroke-linejoin="round" aria-hidden="true">${PIS_RUN_IC[k] || ''}</svg>`;
+const pisTime = iso => (String(rcxWhen(iso) || '').split(',')[1] || '').trim();
+/** What a sweep on the timeline was: how it ended, who started it, and what it found (or why it stopped). */
+function pisRunFacts(r) {
+  const [k, l] = PIS_RUN[r.state] || PIS_RUN.QUEUED;
+  const who = r.scheduled ? 'Started by its schedule' : r.requestedBy ? `Started by ${r.requestedBy}` : 'Started by hand';
+  const facts = k === 'done' ? `Risk ${pisN(r.risk || 0)}${r.severity ? ' · ' + (PIS_SEV_L[r.severity] || r.severity) : ''} · ${pisPl(r.findings || 0, 'finding')}` +
+      (r.rowsScanned != null ? ` · ${pisN(r.rowsScanned)} rows read` : '')
+    : k === 'fail' ? (r.error || 'The worker did not say why.')
+    : k === 'stop' ? `Cancelled${r.cancelledBy ? ` by ${r.cancelledBy}` : ''}${r.cancelledAt ? ` at ${pisTime(r.cancelledAt)}` : ''}` +
+      (r.rowsScanned ? `, ${pisPl(r.rowsScanned, 'row')} in` : '') + (r.detail ? `. ${r.detail}` : '')
+    : k === 'run' ? `${pisN(r.rowsScanned || 0)} rows read so far` : 'Waiting for a worker to take it';
+  return { k, l, who, facts };
+}
+/** A line through points that never overshoots them (monotone cubic), so a risk drawn between two sweeps stays between them. */
+function pisMonoPath(pts) {
+  const f = v => v.toFixed(1), n = pts.length;
+  if (!n) return '';
+  if (n === 1) return `M${f(pts[0][0])} ${f(pts[0][1])}`;
+  const dx = [], m = [], t = [];
+  for (let i = 0; i < n - 1; i++) { dx[i] = pts[i + 1][0] - pts[i][0]; m[i] = (pts[i + 1][1] - pts[i][1]) / dx[i]; }
+  t[0] = m[0]; t[n - 1] = m[n - 2];
+  for (let i = 1; i < n - 1; i++) t[i] = m[i - 1] * m[i] <= 0 ? 0 : (m[i - 1] + m[i]) / 2;
+  for (let i = 0; i < n - 1; i++) {
+    if (!m[i]) { t[i] = t[i + 1] = 0; continue; }
+    const a = t[i] / m[i], b = t[i + 1] / m[i], s = a * a + b * b;
+    if (s > 9) { const k = 3 / Math.sqrt(s); t[i] = k * a * m[i]; t[i + 1] = k * b * m[i]; }
+  }
+  let d = `M${f(pts[0][0])} ${f(pts[0][1])}`;
+  for (let i = 0; i < n - 1; i++) {
+    const g = dx[i] / 3;
+    d += ` C${f(pts[i][0] + g)} ${f(pts[i][1] + g * t[i])} ${f(pts[i + 1][0] - g)} ${f(pts[i + 1][1] - g * t[i + 1])} ${f(pts[i + 1][0])} ${f(pts[i + 1][1])}`;
+  }
+  return d;
+}
+/** The timeline, W x H (H is the panels' 560). `o.anim`: it plays in; `o.col`: the column open beside it, its row marked. */
+function pisTimelineSvg(res, W, H, o) {
+  const f = v => (+v).toFixed(1), sev = s => PIS_SEV_VAR[s] || 'var(--muted)', ov = res.overall || {};
+  const runs = (pis.history || []).slice().reverse();                     // oldest first
+  if (res.sweep_id && !runs.some(r => r.sweepId === res.sweep_id)) {      // the sweep showing, should the history not reach it
+    runs.push({ sweepId: res.sweep_id, state: 'SUCCEEDED', requestedAt: res.generated_at_utc, risk: ov.risk_base != null ? ov.risk_base : ov.risk,
+                severity: ov.severity, findings: ov.findings, rowsScanned: res.rows_scanned });
+    runs.sort((a, b) => String(a.sweepId).localeCompare(String(b.sweepId)));
+  }
+  pis.tlRuns = runs;
+  const n = runs.length, ci = runs.findIndex(r => r.sweepId === res.sweep_id), ch = res.changes;
+  let pi = ch && ch.previous_sweep_id ? runs.findIndex(r => r.sweepId === ch.previous_sweep_id) : -1;
+  if (ch && pi < 0) for (let i = ci - 1; i >= 0; i--) if (runs[i].state === 'SUCCEEDED') { pi = i; break; }
+  const x0 = 112, x1 = W - 70, X = i => n <= 1 ? (x0 + x1) / 2 : x0 + (x1 - x0) * i / (n - 1), step = n > 1 ? (x1 - x0) / (n - 1) : W;
+  const yT = 100, yB = 208, Y = v => yB - (yB - yT) * v / 100, yK = 262, name = esc(res.dataset || '');
+  let s = `<defs><radialGradient id="pisTlBg" cx="50%" cy="38%" r="75%"><stop offset="0" stop-color="#17213f"/><stop offset="1" stop-color="#0a0e1a"/></radialGradient>` +
+    `<linearGradient id="pisTlArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7c9cff" stop-opacity=".38"/><stop offset="1" stop-color="#7c9cff" stop-opacity="0"/></linearGradient>` +
+    `<linearGradient id="pisTlLine" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#8b7bff"/><stop offset="1" stop-color="#7cc4ff"/></linearGradient>` +
+    `<filter id="pisTlGlow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>` +
+    `<rect width="${W}" height="${H}" rx="14" fill="url(#pisTlBg)"/>` +
+    `<text x="24" y="34" class="tl-h">Every sweep of ${name}</text>` +
+    (n ? `<text x="${W - 24}" y="34" text-anchor="end" class="tl-hs">${n === 12 ? 'The last 12 sweeps' : pisPl(n, 'sweep')} since ${esc(pisDay(runs[0].requestedAt || runs[0].updatedAt))}</text>` : '');
+  // the risk each sweep found: a scale of 0 to 100, the sweep showing and the one compared with marked across it and the track
+  s += `<text x="${x0 - 34}" y="${yT - 18}" text-anchor="end" class="tl-ax">RISK</text>`;
+  for (const v of [0, 25, 50, 75, 100]) s += `<line x1="${x0 - 30}" x2="${x1 + 30}" y1="${f(Y(v))}" y2="${f(Y(v))}" class="tl-grid${v ? '' : ' base'}"/>` +
+    `<text x="${x0 - 40}" y="${f(Y(v) + 4)}" text-anchor="end" class="tl-axn">${v}</text>`;
+  const band = (i, cls, label) => `<g class="tl-band ${cls}" aria-hidden="true"><rect x="${f(X(i) - 30)}" y="58" width="60" height="${yK + 6}" rx="14"/>` +
+    `<rect x="${f(X(i) - 31)}" y="49" width="62" height="19" rx="9.5" class="tl-pill"/><text x="${f(X(i))}" y="62.5" text-anchor="middle" class="tl-pillt">${label}</text></g>`;
+  if (pi >= 0) s += band(pi, 'cmp', 'Compared');
+  if (ci >= 0) s += band(ci, 'cur', 'Showing');
+  runs.forEach((r, i) => { s += `<line x1="${f(X(i))}" x2="${f(X(i))}" y1="${yT - 4}" y2="${yK - 16}" class="tl-tick${r.state === 'SUCCEEDED' ? ' done' : ''}"/>`; });
+  const pts = runs.map((r, i) => r.state === 'SUCCEEDED' && r.risk != null ? [X(i), Y(r.risk), i] : null).filter(Boolean);
+  if (pts.length) {
+    const d = pisMonoPath(pts.map(p => [p[0], p[1]])), span = pts[pts.length - 1][0] - pts[0][0];
+    s += `<g aria-hidden="true"><path d="${d} L${f(pts[pts.length - 1][0])} ${yB} L${f(pts[0][0])} ${yB} Z" fill="url(#pisTlArea)" class="tl-area"/>` +
+      `<path d="${d}" class="tl-line" pathLength="1" filter="url(#pisTlGlow)"/>`;
+    pts.forEach(([x, y, i]) => {
+      const r = runs[i], at = span ? (x - pts[0][0]) / span : 0;          // it pops in as the line reaches it
+      s += `<circle cx="${f(x)}" cy="${f(y)}" r="${i === ci ? 8 : 6.5}" style="fill:${sev(r.severity)};--d:${(.15 + 1.2 * at).toFixed(2)}s" class="tl-pt" filter="url(#pisTlGlow)"/>` +
+        (i === ci || i === pi ? `<text x="${f(x)}" y="${f(y - 15)}" text-anchor="middle" class="tl-ptn">${pisN(r.risk)}</text>` : '');
+    });
+    s += `</g>`;
+  }
+  // the track: each sweep a marker for how it ended; its day under it, and its time with who started it while there is room
+  const labelled = new Set(), roomy = step >= 58;
+  [ci, pi, n - 1, ...runs.map((_, i) => n - 1 - i)].forEach(i => {
+    if (i >= 0 && !labelled.has(i) && [...labelled].every(j => Math.abs(X(j) - X(i)) >= 56)) labelled.add(i);
+  });
+  s += `<line x1="${x0 - 46}" x2="${x1 + 46}" y1="${yK}" y2="${yK}" class="tl-track"/>`;
+  runs.forEach((r, i) => {
+    const q = pisRunFacts(r), big = i === ci, open = q.k === 'done' && !big, at = r.requestedAt || r.updatedAt;
+    const aria = `${rcxWhen(at)}: ${q.l}. ${q.who}. ${q.facts}${big ? '. Showing' : i === pi ? '. Compared with the sweep showing' : open ? '. Opens this sweep' : ''}`;
+    s += `<g transform="translate(${f(X(i))} ${yK})"><g class="tl-run ${q.k}${big ? ' cur' : ''}" style="--k:${i}" tabindex="0" role="button" ` +
+      `data-i="${i}" data-x="${f(X(i))}" data-sid="${esc(r.sweepId || '')}"${open ? ` data-pis="open-sweep" data-id="${esc(r.sweepId)}"` : ''} aria-label="${esc(aria)}">` +
+      `<rect x="-29" y="-21" width="58" height="78" rx="10" class="tl-hit"/><circle r="19" class="tl-ring"/><circle r="${big ? 15 : 12.5}" class="tl-bead"/>` + (q.k === 'run' ? `<circle r="${big ? 15 : 12.5}" class="tl-spin"/>` : '') +
+      `<g transform="translate(-9 -9) scale(.75)" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">` +
+        (q.k === 'run' ? '<circle cx="12" cy="12" r="3" fill="currentColor" stroke="none"/>' : PIS_RUN_IC[q.k]) + `</g>` +
+      (labelled.has(i) ? `<text y="34" text-anchor="middle" class="tl-day">${esc(pisDay(at))}</text>` +
+        (roomy ? `<g transform="translate(-24 41)" class="tl-who"><g transform="scale(.46)" fill="none" stroke="currentColor" stroke-width="2.4" ` +
+          `stroke-linecap="round" stroke-linejoin="round">${(r.scheduled ? GD_ICONS.calendar : GD_ICONS.user) || ''}</g></g>` +
+          `<text x="-11" y="50" class="tl-time">${esc(pisTime(at))}</text>` : '') : '') + `</g></g>`;
+  });
+  const cc = pisChangeCounts(ch);
+  if (pi >= 0 && ci >= 0) {
+    const a = X(pi), b = X(ci), y = yK + 74;
+    const bits = [cc.nNew ? `${pisN(cc.nNew)} new` : '', cc.nGone ? `${pisN(cc.nGone)} gone` : '', cc.nUp ? `${pisN(cc.nUp)} more widespread` : '',
+                  cc.nDown ? `${pisN(cc.nDown)} less widespread` : ''].filter(Boolean);
+    s += `<path d="M${f(a)} ${y - 6} V${y} H${f(b)} V${y - 6}" class="tl-brk"/>` +
+      `<text x="${f((a + b) / 2)}" y="${y + 17}" text-anchor="middle" class="tl-brkt">${esc(bits.join(' · ') || 'No change')}</text>`;
+  }
+  // what moved between the two, by column: a bar from its risk then to its risk now; the steady ones under them, dimmed
+  const yM = yK + 132;
+  if (pi >= 0 && ci >= 0) {
+    const C = pisColumns(res), moved = C.filter(c => (c.risk || 0) !== (c.prevRisk || 0))
+      .sort((p, q) => Math.abs(q.risk - (q.prevRisk || 0)) - Math.abs(p.risk - (p.prevRisk || 0)) || q.risk - p.risk);
+    const still = C.filter(c => c.risk > 0 && (c.risk || 0) === (c.prevRisk || 0)).sort((p, q) => q.risk - p.risk);
+    const xa = 196, xb = W - 128, XR = v => xa + (xb - xa) * v / 100;
+    const rows = moved.slice(0, 5), more = moved.length - rows.length, rest = still.slice(0, Math.max(0, 5 - rows.length - (more ? 1 : 0)));
+    s += `<text x="24" y="${yM}" class="tl-h2">What moved, ${esc(pisDay(runs[pi].requestedAt || runs[pi].updatedAt))} to ${esc(pisDay(runs[ci].requestedAt || runs[ci].updatedAt))}</text>` +
+      `<text x="${W - 24}" y="${yM}" text-anchor="end" class="tl-hs">${pisPl(moved.length, 'column')} moved, ${pisN(still.length)} held</text>` +
+      [0, 25, 50, 75, 100].map(v => `<text x="${f(XR(v))}" y="${yM + 22}" class="tl-axn" text-anchor="middle">${v === 100 ? 'risk 100' : v}</text>`).join('');
+    const row = (c, k, y, moving) => {
+      const p = c.prevRisk || 0, d = c.risk - p, on = o.col === c.name;
+      return `<g class="tl-mv${moving ? '' : ' still'}${on ? ' on' : ''}" style="--k:${k}" role="button" tabindex="0" data-pis="col" data-v="${esc(c.name)}" aria-pressed="${on}" ` +
+        `aria-label="${esc(c.name)}: ${moving ? `risk ${p} then, ${c.risk} now` : `risk ${c.risk}, the same`}">` +
+        `<rect x="14" y="${y - 12}" width="${W - 28}" height="24" rx="7" class="tl-mvhit"/><text x="24" y="${y + 4}" class="tl-col">${esc(c.name)}</text>` +
+        `<line x1="${f(xa)}" x2="${f(xb)}" y1="${y}" y2="${y}" class="tl-mvtrack"/>` +
+        (moving ? `<line x1="${f(XR(p))}" x2="${f(XR(c.risk))}" y1="${y}" y2="${y}" class="tl-mvbar" pathLength="1" style="stroke:${sev(c.sev)}"/>` +
+          `<circle cx="${f(XR(p))}" cy="${y}" r="5.5" class="tl-was"/>` : '') +
+        `<circle cx="${f(XR(c.risk))}" cy="${y}" r="${moving ? 7 : 5.5}" style="fill:${sev(c.sev)}" class="tl-now"/>` +
+        `<text x="${f(xb + 22)}" y="${y + 4.5}" class="tl-d">${moving ? `${d > 0 ? '+' : '−'}${Math.abs(d)}` : 'same'}</text>` +
+        (moving && !p ? `<text x="${f(XR(0) - 12)}" y="${y + 4}" text-anchor="end" class="tl-new">was clean</text>` : '') +
+        (moving && c.isNew ? `<text x="${f(xb + 56)}" y="${y + 4}" class="tl-new">new finding</text>` : '') + `</g>`;
+    };
+    rows.forEach((c, k) => { s += row(c, k, yM + 44 + k * 25, true); });
+    rest.forEach((c, k) => { s += row(c, rows.length + k, yM + 44 + (rows.length + k) * 25, false); });
+    if (more) s += `<text x="24" y="${yM + 48 + rows.length * 25}" class="tl-note">and ${pisPl(more, 'more column')}: what changed is in the list beside</text>`;
+    if (!moved.length && !still.length) s += `<text x="24" y="${yM + 48}" class="tl-note">No personal data was found in either sweep.</text>`;
+  } else {
+    const first = runs.filter(r => r.state === 'SUCCEEDED').length <= 1;
+    s += `<text x="24" y="${yM}" class="tl-h2">What moved</text><text x="24" y="${yM + 28}" class="tl-note">` +
+      (first ? `This is the first sweep of ${name}. From the next one, this shows what moved and by how much.` : 'There is no earlier sweep to compare this one with.') + `</text>`;
+  }
+  return `<svg class="pis-tl${o.anim ? ' tl-in' : ''}" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="group" ` +
+    `aria-label="Every sweep of ${name}, oldest first: how each ended, and the risk each found">${s}</svg>`;
+}
+/** A sweep on the timeline pointed at (or reached from the keyboard): a tip above it saying what it was. */
+function pisRunTip(g, kb) {
+  const wrap = $('#pisSkyWrap'); if (!wrap) return;
+  wrap.querySelectorAll('.pis-tipbox').forEach(e => e.remove());
+  const r = g && (pis.tlRuns || [])[+g.dataset.i]; if (!r) return;
+  const q = pisRunFacts(r), res = pis.res || {}, ov = res.overall || {}, cur = r.sweepId === res.sweep_id;
+  const tip = document.createElement('div');
+  tip.className = 'pis-tipbox pis-runtip'; tip.setAttribute('aria-hidden', 'true');
+  tip.innerHTML = `<b>${esc(rcxWhen(r.requestedAt || r.updatedAt))}</b><span class="pis-runtip-o ${q.k}">${pisRunIco(q.k)}${q.l}</span>` +
+    `<small>${esc(q.who)}</small><small>${esc(q.facts)}</small>` +
+    (cur && ov.risk != null && ov.risk_base != null && ov.risk !== ov.risk_base ? `<small>${pisN(ov.risk)} counting who can open it now</small>` : '') +
+    (cur ? '<em>Showing</em>' : q.k === 'done' ? `<em>${kb ? 'Press Enter' : 'Click'} to open this sweep</em>` : q.k === 'run' ? '<em>It opens here when it finishes</em>' : '');
+  wrap.appendChild(tip);
+  const x = +g.dataset.x, W = wrap.getBoundingClientRect().width;
+  tip.style.left = Math.max(8, Math.min(W - tip.offsetWidth - 8, x - tip.offsetWidth / 2)) + 'px';
+  tip.style.top = Math.max(8, 262 - 26 - tip.offsetHeight) + 'px';
 }
 /** Draw the sky (or the list) and what goes with it. `animate`: the stars fly out from the centre, as when a sweep first opens. */
 function pisPaintSky(animate) {
@@ -25850,8 +26061,8 @@ function pisPaintSky(animate) {
   const seg = `<div class="pis-seg" role="radiogroup" aria-label="Show">` + PIS_LENSES.map(([k, l]) =>
     `<button type="button" class="lngb${pis.lens === k ? ' on' : ''}" role="radio" aria-checked="${pis.lens === k}" data-pis="lens" data-v="${k}">${l}` +
     `${k === 'changes' && cc.nNew && pis.lens !== 'changes' ? '<span class="pis-seg-dot" aria-hidden="true"></span>' : ''}</button>`).join('') + `</div>`;
-  const legend = pis.lens === 'changes' && res.changes
-      ? `<span><i class="hollow"></i>${esc(pisDay(res.changes.previous_at))}</span><span><i style="background:var(--muted)"></i>${esc(pisDay(res.generated_at_utc))}</span>`
+  const tl = pis.lens === 'changes';
+  const legend = tl ? ['done', 'fail', 'stop', 'run'].map(k => `<span class="pis-runleg ${k}">${pisRunIco(k)}${PIS_RUN[{ done: 'SUCCEEDED', fail: 'FAILED', stop: 'CANCELLED', run: 'RUNNING' }[k]][1]}</span>`).join('')
     : pis.lens === 'identify' ? `<span><i class="link"></i>held together in a row</span>`
     : pis.lens === 'rules' ? `<span><i style="background:var(--muted)"></i>lit: falls under it</span>`
     : sevs.map(s => `<span><i style="background:${PIS_SEV_VAR[s]}"></i>${PIS_SEV_L[s]}</span>`).join('') +
@@ -25864,8 +26075,8 @@ function pisPaintSky(animate) {
   const side = pisSideHtml(res), dpane = side && pis.detail ? pisDetailPane(res, pis.detail) : '';
   if (!dpane) pis.detail = '';
   const detCol = dpane ? (pisLive(res).find(f => f.id === pis.detail) || {}).column || '' : '';
-  card.innerHTML = `<div class="pis-skybar">${seg}<div class="pis-legend">${legend}<span class="pis-legend-note">Further out: riskier</span></div>` +
-      `<button type="button" class="pis-help lngb" data-pis="howto" aria-label="How to read the sky" aria-expanded="${!!pis.howto}">?</button>${view}</div>` + chips +
+  card.innerHTML = `<div class="pis-skybar">${seg}<div class="pis-legend">${legend}${tl ? '' : '<span class="pis-legend-note">Further out: riskier</span>'}</div>` +
+      `<button type="button" class="pis-help lngb" data-pis="howto" aria-label="How to read the ${tl ? 'timeline' : 'sky'}" aria-expanded="${!!pis.howto}">?</button>${view}</div>` + chips +
     `<div class="pis-skygrid${side ? '' : ' full'}${dpane ? ' det' : ''}"><div class="pis-skywrap" id="pisSkyWrap"></div>${dpane}${side}` +
       (side ? `<div class="pis-grip" role="separator" tabindex="0" aria-orientation="vertical" aria-label="Width of the list beside the sky" ` +
         `aria-valuemin="${PIS_SIDE_MIN}" data-tip="Drag to make the list wider or narrower. Double-click for its usual width."><i></i></div>` : '') +
@@ -25873,32 +26084,38 @@ function pisPaintSky(animate) {
   const grid = card.querySelector('.pis-skygrid');
   if (side) pisSideFit(grid, !!dpane);
   // With a panel beside it the sky keeps the panels' height, however narrow a detail pane makes it.
-  const wrap = $('#pisSkyWrap'), W = Math.max(300, Math.floor(wrap.getBoundingClientRect().width)), H = side ? 560 : Math.round(Math.max(440, Math.min(560, W * .72)));
-  const L = pis.sky = pisSkyLayout(res, W, H);
+  const wrap = $('#pisSkyWrap'), W = Math.max(300, Math.floor(wrap.getBoundingClientRect().width)), H = side || tl ? 560 : Math.round(Math.max(440, Math.min(560, W * .72)));
+  const L = pis.sky = tl ? { W, H, tl: true, D: [] } : pisSkyLayout(res, W, H);
   grid.style.setProperty('--pis-sky-h', H + 'px');   // the panel beside the sky is as tall as the sky
   const hint = side || pis.howto ? '' : pis.lens === 'rules' ? 'Pick a rule or a kind of data to light up its columns' : 'Pick a star to see what it holds';
   // What has just come into view plays in, once: the constellation on entering Who it identifies, a rule's columns lit on picking it.
   const motion = !dqReduced(), chipNow = pis.lens === 'rules' ? pis.chip : '';
   const cons = motion && pis.lens === 'identify' && pis.paintedLens !== 'identify', light = motion && !!chipNow && chipNow !== pis.paintedChip;
+  const tlIn = motion && tl && pis.paintedLens !== 'changes';            // the timeline plays in on entering Changes
   pis.paintedLens = pis.lens; pis.paintedChip = chipNow;
-  wrap.innerHTML = pisSkySvg(res, L, { lens: pis.lens, col: pis.col, chip: pis.chip, animate, detCol, cons, light }) +
+  wrap.innerHTML = (tl ? pisTimelineSvg(res, W, H, { anim: tlIn, col: pis.col }) : pisSkySvg(res, L, { lens: pis.lens, col: pis.col, chip: pis.chip, animate, detCol, cons, light })) +
     // Many clean columns are dust by the centre: this lists them, in a corner where it cannot sit on a star's label.
     (L.D.length ? `<button type="button" class="pis-dustbtn lngb${pis.col === '__clean' ? ' on' : ''}" data-pis="col" data-v="__clean" ` +
       `aria-pressed="${pis.col === '__clean'}">${pisIco('shield')}${pisPl(L.D.length, 'clean column')}</button>` : '') +
-    (pis.howto ? `<div class="pis-howto" role="note" aria-label="How to read the sky"><div class="pis-howto-h">${pisIco('target')}How to read the sky</div><ul>` +
+    (pis.howto && tl ? `<div class="pis-howto" role="note" aria-label="How to read the timeline"><div class="pis-howto-h">${pisIco('trend')}How to read the timeline</div><ul>` +
+      `<li><b>Each marker is a sweep</b>, oldest on the left. Its icon says how it ended: completed, failed, cancelled or still sweeping.</li>` +
+      `<li><b>The line is the risk</b> each completed sweep found, from 0 to 100.</li>` +
+      `<li><b>Showing</b> is the sweep on screen and <b>Compared</b> the one before it. What moved compares the two, column by column.</li>` +
+      `<li>Click an earlier completed sweep to open it.</li></ul>` : '') +
+    (pis.howto && !tl ? `<div class="pis-howto" role="note" aria-label="How to read the sky"><div class="pis-howto-h">${pisIco('target')}How to read the sky</div><ul>` +
       `<li><b>Each star is a column</b> of this dataset.</li>` +
       `<li><b>The further out, the riskier.</b> The rings mark a risk of 25, 50, 75 and 100.</li>` +
       `<li><b>Riskiest at the top</b>, then clockwise round to the safest.</li>` +
-      `<li>Colour, size and brightness agree: red, big and bright is worst.</li></ul>` +
+      `<li>Colour, size and brightness agree: red, big and bright is worst.</li></ul>` : '') + (pis.howto ?
       `<div class="pis-howto-a"><button type="button" class="dsx-btn primary lngb" data-pis="howto-ok">Got it</button>` +
       `<button type="button" class="linkbtn lngb" data-pis="view" data-v="list">Show me a list instead</button></div></div>` : '') +
     (hint ? `<span class="pis-skyhint">${pisIco('target')}${hint}</span>` : '');
   if (animate) { clearTimeout(pis.skyT); pis.skyT = setTimeout(() => { const v = wrap.querySelector('svg'); if (v) v.classList.remove('pis-sky-in'); }, 2900); }
-  if (cons || light) {
+  if (cons || light || tlIn) {
     clearTimeout(pis.fxT);
     pis.fxT = setTimeout(() => {
       const v = wrap.querySelector('svg'); if (!v) return;
-      v.classList.remove('pis-cons-in', 'pis-light'); v.querySelectorAll('.pis-cons-spark, .pis-wave').forEach(e => e.remove());
+      v.classList.remove('pis-cons-in', 'pis-light', 'tl-in'); v.querySelectorAll('.pis-cons-spark, .pis-wave').forEach(e => e.remove());
     }, 3400);
   }
   // The panels keep their place when drawn again: a list beside the sky (and a list is back where it was when a column
@@ -26187,7 +26404,6 @@ function pisTodoHtml(items) {
   return `<ol class="pis-todo">${items.map(i => `<li class="${i.urgent ? 'urgent' : ''}${i.done ? ' done' : ''}"><div><b>${esc(i.t)}</b><small>${esc(i.s)}</small></div>` +
     (i.btn ? `<button type="button" class="pis-rowbtn lngb" data-pis="${i.btn[0]}">${esc(i.btn[1])}</button>` : '<span></span>') + `</li>`).join('')}</ol>`;
 }
-const PIS_STATE_W = { QUEUED: 'Waiting to start', RUNNING: 'Running', FAILED: 'Failed', ERROR: 'Failed', SUCCEEDED: 'Done', CANCELLED: 'Cancelled' };
 
 // ---- The list of datasets swept ----
 function pisPaintList() {
@@ -26422,7 +26638,8 @@ async function pisSchedule(key) {
       } else if (a === 'restore') {
         pisRestore(t.dataset.id);
       } else if (a === 'open-sweep') {
-        if (res) pisOpen(res.dataset_key, t.dataset.id);
+        const id = t.dataset.id;
+        if (res) pisOpen(res.dataset_key, id).then(() => pisRefocus(`#pisSkyWrap .tl-run[data-sid="${CSS.escape(id)}"]`));
       } else if (a === 'open-ds') {
         pisOpen(t.dataset.key).then(() => { const s = $('#pisStage'); if (s) s.scrollIntoView({ behavior: dqReduced() ? 'auto' : 'smooth', block: 'start' }); });
       } else if (a === 'cancel') {
@@ -26443,7 +26660,17 @@ async function pisSchedule(key) {
       if (to != null) { e.preventDefault(); pisPref('sidew', pisSideSet(grip.parentElement, to)); return; }
       // A star is a button: Enter or Space opens its column, and the arrow keys walk the stars in order of risk.
       const star = e.target.closest && e.target.closest('.pis-star');
-      if (star && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); star.dispatchEvent(new MouseEvent('click', { bubbles: true })); return; }
+      const press = e.target.closest && e.target.closest('.pis-star, #pisSkyWrap .tl-run, #pisSkyWrap .tl-mv');
+      if (press && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); press.dispatchEvent(new MouseEvent('click', { bubbles: true })); return; }
+      // On the timeline the arrow keys walk the sweeps (left and right) and the columns that moved (up and down).
+      const tlEl = e.target.closest && e.target.closest('#pisSkyWrap .tl-run, #pisSkyWrap .tl-mv');
+      const tlStep = tlEl && (tlEl.classList.contains('tl-run') ? { ArrowRight: 1, ArrowLeft: -1 } : { ArrowDown: 1, ArrowUp: -1 })[e.key];
+      if (tlStep) {
+        e.preventDefault();
+        const all = [...panel.querySelectorAll(`#pisSkyWrap .${tlEl.classList.contains('tl-run') ? 'tl-run' : 'tl-mv'}`)];
+        const next = all[all.indexOf(tlEl) + tlStep]; if (next) next.focus();
+        return;
+      }
       const step = star && { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
       if (step) {
         e.preventDefault();
@@ -26468,16 +26695,25 @@ async function pisSchedule(key) {
     panel.addEventListener('mouseover', e => {
       const s = e.target.closest && e.target.closest('#pisSkyWrap .pis-star'), v = s ? s.dataset.v : '';
       if (v !== pis.hover) { pis.hover = v; pisSkyHover(v); }
+      // a sweep on the timeline pointed at: its tip
+      const run = (e.target.closest && e.target.closest('#pisSkyWrap .tl-run')) || null;
+      if (run !== pis.tlHover) { pis.tlHover = run; pisRunTip(run); }
     });
-    panel.addEventListener('mouseleave', () => { if (pis.hover) { pis.hover = ''; pisSkyHover(''); } });
+    panel.addEventListener('mouseleave', () => {
+      if (pis.hover) { pis.hover = ''; pisSkyHover(''); }
+      if (pis.tlHover) { pis.tlHover = null; pisRunTip(null); }
+    });
     panel.addEventListener('focusin', e => {
       // From the keyboard only: focus put back on a star after a click would otherwise leave a tip over the sky.
       const s = e.target.closest && e.target.closest('#pisSkyWrap .pis-star');
       if (s && s.matches(':focus-visible')) { pis.hover = s.dataset.v; pisSkyHover(pis.hover, true); }
+      const run = e.target.closest && e.target.closest('#pisSkyWrap .tl-run');
+      if (run && run.matches(':focus-visible')) { pis.tlHover = run; pisRunTip(run, true); }
     });
     panel.addEventListener('focusout', e => {
       const to = e.relatedTarget;
       if (e.target.closest && e.target.closest('.pis-star') && !(to && to.closest && to.closest('.pis-star'))) { pis.hover = ''; pisSkyHover(''); }
+      if (e.target.closest && e.target.closest('.tl-run') && !(to && to.closest && to.closest('.tl-run'))) { pis.tlHover = null; pisRunTip(null); }
     });
     // The list's edge, dragged: to the left for a wider list, to the right for a narrower one. The sky makes room as it
     // goes, and the width is kept for every list beside the sky; a double-click puts it back to its usual width.
