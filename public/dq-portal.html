@@ -4520,7 +4520,7 @@
   button.pis-rchip.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, var(--card-2)); }
   button.pis-rchip.on b { background: rgba(255,255,255,.16); }
   button.pis-rchip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-  .pis-skygrid { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 18px; align-items: start; }
+  .pis-skygrid { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) var(--pis-side-w, 360px); gap: 18px; align-items: start; }
   .pis-skygrid.full { grid-template-columns: minmax(0, 1fr); }
   @media (max-width: 1180px) { .pis-skygrid { grid-template-columns: minmax(0, 1fr); } }
   .pis-skywrap { position: relative; min-width: 0; }
@@ -4584,6 +4584,17 @@
   .pis-side-h { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 10px; margin: 0 0 4px; padding: 16px 0 10px; background: var(--card-2); }
   .pis-skygrid:not(.full) > .pis-side { height: var(--pis-sky-h, 560px); overflow-y: auto; overscroll-behavior: contain; }
   @media (max-width: 1180px) { .pis-skygrid:not(.full) > .pis-side { height: auto; overflow: visible; } }
+  /* The list's left edge: dragged (or moved with the arrow keys) to make the list wider or narrower */
+  .pis-grip { position: absolute; top: 0; right: var(--pis-side-w, 360px); z-index: 2; width: 18px; height: var(--pis-sky-h, 560px);
+    display: grid; place-items: center; cursor: col-resize; touch-action: none; outline: none; }
+  .pis-grip::before { content: ''; position: absolute; top: 10px; bottom: 10px; left: 8px; width: 2px; border-radius: 2px; background: var(--accent);
+    opacity: 0; transition: opacity .15s; }
+  .pis-grip > i { position: relative; width: 6px; height: 44px; border-radius: 4px; background: rgba(148,162,190,.28); border: 1px solid rgba(148,162,190,.22);
+    transition: background .15s, border-color .15s; }
+  .pis-grip:hover::before, .pis-grip.on::before, .pis-grip:focus-visible::before { opacity: .5; }
+  .pis-grip:hover > i, .pis-grip.on > i, .pis-grip:focus-visible > i { background: var(--accent); border-color: var(--accent); }
+  body.pis-resizing, body.pis-resizing * { cursor: col-resize !important; user-select: none !important; }
+  @media (max-width: 1180px) { .pis-grip { display: none; } }
   .pis-side-t { display: inline-flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 750; }
   .pis-side-t .pis-ico { width: 17px; height: 17px; color: var(--accent); }
   .pis-side-code { padding: 2px 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--card); font-size: 13px; font-weight: 650; }
@@ -4613,15 +4624,12 @@
   .pis-side-acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
   .pis-side-acts .dsx-btn { display: inline-flex; align-items: center; gap: 7px; height: 36px; font-size: 12.5px; }
   /* A finding picked from a list: a wider pane between the sky and the list, or below them on a narrower card */
-  .pis-skycard { container: pis-sky / inline-size; }
-  .pis-skygrid.det { grid-template-columns: minmax(0, 1fr) 360px; }
+  .pis-skygrid.det { grid-template-columns: minmax(0, 1fr) var(--pis-side-w, 360px); }
   .pis-skygrid.det > .pis-dpane { grid-column: 1 / -1; grid-row: 2; }
-  /* Beside the sky only where the sky keeps 600px: any narrower and its rings and labels crowd the centre */
-  @container pis-sky (min-width: 1416px) {
-    .pis-skygrid.det { grid-template-columns: minmax(600px, 1fr) minmax(420px, 500px) 360px; }
-    .pis-skygrid.det > .pis-dpane { grid-column: auto; grid-row: auto; height: var(--pis-sky-h, 560px); overflow-y: auto; overscroll-behavior: contain; }
-    .pis-dpane-h { position: sticky; top: 0; z-index: 2; }
-  }
+  /* Beside the sky (.wide, set where it fits) only where the sky keeps 600px: any narrower and its rings and labels crowd the centre */
+  .pis-skygrid.det.wide { grid-template-columns: minmax(600px, 1fr) minmax(420px, 500px) var(--pis-side-w, 360px); }
+  .pis-skygrid.det.wide > .pis-dpane { grid-column: auto; grid-row: auto; height: var(--pis-sky-h, 560px); overflow-y: auto; overscroll-behavior: contain; }
+  .pis-skygrid.det.wide .pis-dpane-h { position: sticky; top: 0; z-index: 2; }
   @media (max-width: 1180px) { .pis-skygrid.det { grid-template-columns: minmax(0, 1fr); } .pis-skygrid.det > .pis-dpane { grid-row: auto; order: 3; } }
   .pis-dpane { container: pis-det / inline-size; min-width: 0; padding: 0 20px 18px; border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border));
     border-radius: 14px; background: var(--card-2); box-shadow: 0 18px 40px rgba(0,0,0,.3); scroll-margin-top: 80px; animation: dqIn .25s var(--dq-ease) both; }
@@ -4690,10 +4698,35 @@
   @keyframes pisRayOut { to { stroke-dashoffset: 0; } }
   .pis-sky-in .pis-star-lbl { animation: pisLbl .35s ease both; animation-delay: calc(var(--i) * .14s + .75s); }
   @keyframes pisLbl { from { opacity: 0; } to { opacity: 1; } }
+  /* Who it identifies, on entering it: the constellation drawn star to star at an even pace, a spark at its tip and each
+     star struck as the line reaches it; then it fills and its caption comes up */
+  .pis-cons-in .pis-cons { stroke-dasharray: var(--plen); stroke-dashoffset: var(--plen); fill-opacity: 0;
+    animation: pisRayOut var(--cdur) linear forwards, pisConsFill .6s ease var(--cdur) forwards; }
+  @keyframes pisConsFill { to { fill-opacity: 1; } }
+  .pis-cons-spark { fill: #fff; opacity: 0; pointer-events: none; }
+  .pis-cons-in .pis-cons-spark { animation: pisSpark var(--cdur) linear forwards; }
+  @keyframes pisSpark { 0%, 94% { opacity: 1; } 100% { opacity: 0; } }
+  .pis-cons-in .pis-star.pis-link .pis-star-core { transform-box: fill-box; transform-origin: center; animation: pisStrike .6s ease-out var(--cd); }
+  @keyframes pisStrike { 30% { transform: scale(1.6); } }
+  .pis-cons-in .pis-star.pis-link .pis-star-hov { animation: pisRing .8s ease-out var(--cd); }
+  @keyframes pisRing { 25% { opacity: 1; } }
+  .pis-cons-in .pis-conslabel { animation: pisLbl .45s ease both; animation-delay: var(--cdur); }
+  /* Rules, on picking one: a wave leaves the core, and each column the rule touches lights as the wave reaches it, its ray
+     drawn out at the wave's pace, so the nearest light first and the whole is lit last */
+  .pis-wave { fill: none; stroke: #c7d2fe; stroke-width: 2; vector-effect: non-scaling-stroke; opacity: 0; pointer-events: none; }
+  .pis-light .pis-wave { animation: pisWave var(--lw) linear forwards; }
+  @keyframes pisWave { from { transform: scale(var(--b)); opacity: .75; } 80% { opacity: .3; } to { transform: scale(1); opacity: 0; } }
+  .pis-light .pis-core-glow { transform-box: fill-box; transform-origin: center; animation: pisCorePulse .8s ease-out; }
+  @keyframes pisCorePulse { from { transform: scale(1.6); } }
+  .pis-light .pis-ray.pis-lit { stroke-dasharray: var(--len); stroke-dashoffset: var(--len); animation: pisRayOut var(--ld) linear forwards; }
+  .pis-light .pis-star.pis-lit { animation: pisIgnite .6s ease-out both; animation-delay: var(--ld); }
+  @keyframes pisIgnite { from { opacity: .4; filter: saturate(.35); } 35% { opacity: 1; filter: brightness(1.8) saturate(1.2); } to { opacity: 1; filter: none; } }
   @media (prefers-reduced-motion: reduce) {
     #pisStage.pis-enter > .card, #pisStage.pis-enter .pis-meter-bar i, .pis-sky-in .pis-star, .pis-sky-in .pis-ray, .pis-sky-in .pis-star-lbl,
-    .pis-dpane { animation: none !important; }
-    .pis-sky-in .pis-ray { stroke-dasharray: none; stroke-dashoffset: 0; }
+    .pis-dpane, .pis-cons-in .pis-cons, .pis-cons-in .pis-star-core, .pis-cons-in .pis-star-hov, .pis-cons-in .pis-conslabel, .pis-cons-spark,
+    .pis-light .pis-wave, .pis-light .pis-core-glow, .pis-light .pis-ray, .pis-light .pis-star { animation: none !important; }
+    .pis-sky-in .pis-ray, .pis-cons-in .pis-cons, .pis-light .pis-ray { stroke-dasharray: none; stroke-dashoffset: 0; }
+    .pis-cons-in .pis-cons { fill-opacity: 1; }
     .pis-star, .pis-ray, .pis-star-hov, .pis-orbitl { transition: none; }
   }
 </style>
@@ -24415,7 +24448,7 @@ ${HDRS}
           tip(`A Qlik app table can only be read by the app itself. Export it and upload the file to sweep it.`) },
       { h: 'Read the result', body:
           p(`Opening a dataset shows its rating (the worst severity found), its risk from 0 to 100 (point at it to see why), how many findings there are and in how many columns, how many hide in free text, and how many rows identify someone. Beside its name, who can open it. Anything new since the sweep before is a button that shows what changed. ${ui('Close')} puts the sweep away, back to the swept datasets.`) +
-          p(`Below that is the sky. Each star is a column of the dataset, on a ray from the dataset at the centre: the further out, the riskier, against rings at 25, 50, 75 and 100. The riskiest is at the top, then clockwise round to the safest, and colour, size and brightness say the same. Point at a star, or reach it with Tab and the arrow keys, to light up its ray and the ring at its risk. Press it to open the column beside the sky, and pick one of its findings to read it in full in a wider pane: why it matters, the rules it touches, where it sits in each value, and what can be done about it. A finding listed under Changes or Rules opens the same way. ${ui('?')} explains the sky again.`) +
+          p(`Below that is the sky. Each star is a column of the dataset, on a ray from the dataset at the centre: the further out, the riskier, against rings at 25, 50, 75 and 100. The riskiest is at the top, then clockwise round to the safest, and colour, size and brightness say the same. Point at a star, or reach it with Tab and the arrow keys, to light up its ray and the ring at its risk. Press it to open the column beside the sky, and pick one of its findings to read it in full in a wider pane: why it matters, the rules it touches, where it sits in each value, and what can be done about it. A finding listed under Changes or Rules opens the same way. Drag the left edge of the list beside the sky to make it wider or narrower; the width is kept in this browser, and a double-click on the edge puts it back. ${ui('?')} explains the sky again.`) +
           table(['View', 'What it shows'], [
             ['Severity', 'Every column at its risk, in the colour of the worst it holds.'],
             ['Who it identifies', 'A constellation joining the columns that, together in one row, single a person out, and how many rows do.'],
@@ -25314,7 +25347,7 @@ async function pisOpen(key, sweepId) {
     st.innerHTML = dqSkeleton('Loading the sweep', 4);
     pis.fq = ''; pis.sev = ''; pis.riskAsc = false; pis.focus = null; pis.listed = false; pis.todoOpen = false;
     pis.lens = 'severity'; pis.col = ''; pis.chip = ''; pis.view = pisPref('view') === 'list' ? 'list' : 'sky';
-    pis.sideTop = {}; pis.sideKey = ''; pis.detail = ''; pis.detKey = '';
+    pis.sideTop = {}; pis.sideKey = ''; pis.detail = ''; pis.detKey = ''; pis.paintedLens = ''; pis.paintedChip = '';
   }
   try {
     const r = await pisApi({ action: 'result', dataset_key: key, ...(sweepId ? { sweep_id: sweepId } : {}) });
@@ -25459,18 +25492,29 @@ function pisSkySvg(res, L, o) {
   for (const v of [25, 50, 75, 100]) s += `<circle cx="${cx}" cy="${cy}" r="${(R * frac(v)).toFixed(1)}" class="pis-orbit"/>` +
     `<text x="${cx}" y="${(cy - R * frac(v) - 5).toFixed(1)}" text-anchor="middle" class="pis-orbitl">${v === 100 ? 'risk 100' : v}</text>`;
   s += `</g><g aria-hidden="true">`;
+  // Rules, a rule just picked: a wave leaves the core, and each column it touches lights as the wave reaches it (its ray
+  // drawn out from the core at the wave's pace, --ld), so the nearest light first and the riskiest last.
+  const ignite = c => !!(o.light && lit && lit.has(c.name)), ld = c => (PIS_LIGHT_S * c.risk / 100).toFixed(2);
+  if (o.light && lit) s += `<circle cx="${cx}" cy="${cy}" r="${R.toFixed(1)}" class="pis-wave" style="transform-origin:${cx}px ${cy}px;--b:${base}"/>`;
   P.forEach(p => {
     const c = p.c; if (!c.risk) return;
     const [bx, by] = at(0, p.a), len = Math.hypot(p.x - bx, p.y - by);
     defs += `<linearGradient id="pisRay${p.k}" gradientUnits="userSpaceOnUse" x1="${bx.toFixed(1)}" y1="${by.toFixed(1)}" x2="${p.x.toFixed(1)}" y2="${p.y.toFixed(1)}">` +
       `<stop offset="0" style="stop-color:${sevv(c.sev)};stop-opacity:0"/><stop offset="1" style="stop-color:${sevv(c.sev)};stop-opacity:.9"/></linearGradient>`;
     s += `<line x1="${bx.toFixed(1)}" y1="${by.toFixed(1)}" x2="${p.x.toFixed(1)}" y2="${p.y.toFixed(1)}" stroke="url(#pisRay${p.k})" data-v="${esc(c.name)}" ` +
-      `class="pis-ray${dimmed(c) ? ' pis-dim' : ''}" style="--i:${p.k};--len:${len.toFixed(1)}px"/>`;
+      `class="pis-ray${dimmed(c) ? ' pis-dim' : ''}${ignite(c) ? ' pis-lit' : ''}" style="--i:${p.k};--len:${len.toFixed(1)}px${ignite(c) ? `;--ld:${ld(c)}s` : ''}"/>`;
   });
   s += `</g>`;
+  // Who it identifies, just entered: the constellation drawn star to star at an even pace with a spark at its tip, each
+  // star struck as the line reaches it (--cd), then filled and captioned.
+  let strike = null, consDur = 0;
   if (o.lens === 'identify' && ids.size > 1) {
-    const on = P.filter(p => ids.has(p.c.name));
-    s += `<path d="${on.map((p, i) => (i ? 'L' : 'M') + p.x.toFixed(1) + ' ' + p.y.toFixed(1)).join('')}Z" class="pis-cons" aria-hidden="true"/>` +
+    const on = P.filter(p => ids.has(p.c.name)), d = on.map((p, i) => (i ? 'L' : 'M') + p.x.toFixed(1) + ' ' + p.y.toFixed(1)).join('') + 'Z';
+    let run = 0; const reach = on.map((p, i) => (run += i ? Math.hypot(p.x - on[i - 1].x, p.y - on[i - 1].y) : 0));
+    const plen = run + Math.hypot(on[0].x - on[on.length - 1].x, on[0].y - on[on.length - 1].y);
+    if (o.cons) { consDur = Math.min(2.8, Math.max(1.4, plen / 520)); strike = new Map(on.map((p, i) => [p.c.name, reach[i] / plen * consDur])); }
+    s += `<path d="${d}" class="pis-cons" style="--plen:${plen.toFixed(1)}px" aria-hidden="true"/>` +
+      (strike ? `<circle r="4" class="pis-cons-spark" filter="url(#pisSkyGlow)" aria-hidden="true"><animateMotion dur="${consDur.toFixed(2)}s" fill="freeze" path="${d}"/></circle>` : '') +
       `<text x="${cx}" y="${H - 20}" text-anchor="middle" class="pis-conslabel">Joined, these ${on.length} columns single out a person in ${pisPl((res.identity || {}).rows, 'row')}</text>`;
   }
   if (o.lens === 'changes') P.forEach(p => {
@@ -25483,7 +25527,7 @@ function pisSkySvg(res, L, o) {
       `<line x1="${gx.toFixed(1)}" y1="${gy.toFixed(1)}" x2="${p.x.toFixed(1)}" y2="${p.y.toFixed(1)}" stroke="url(#pisTrail${p.k})" class="pis-trail"/>` +
       `<text x="${(mx - side * 30).toFixed(1)}" y="${(my + 4).toFixed(1)}" text-anchor="middle" class="pis-delta">${d > 0 ? '+' : '−'}${Math.abs(d)}</text></g>`;
   });
-  s += `<g aria-hidden="true"><circle cx="${cx}" cy="${cy}" r="58" fill="url(#pisSkyCore)"/><circle cx="${cx}" cy="${cy}" r="27" class="pis-core-in"/>` +
+  s += `<g aria-hidden="true"><circle cx="${cx}" cy="${cy}" r="58" fill="url(#pisSkyCore)" class="pis-core-glow"/><circle cx="${cx}" cy="${cy}" r="27" class="pis-core-in"/>` +
     `<text x="${cx}" y="${cy + 5}" text-anchor="middle" class="pis-core-n">${pisN((res.overall || {}).risk || 0)}</text>` +
     `<text x="${cx}" y="${cy + 48}" text-anchor="middle" class="pis-core-name">${esc(res.dataset || '')}</text></g>`;
   // the stars, each a button that opens its column beside the sky, with what it is written beside it
@@ -25509,14 +25553,17 @@ function pisSkySvg(res, L, o) {
       g += `<g class="pis-star-lbl" aria-hidden="true"><text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="${anchor}" class="pis-star-name">${esc(nameT)}</text>` +
         `<text x="${lx.toFixed(1)}" y="${(ly + 16).toFixed(1)}" text-anchor="${anchor}" class="pis-star-sub">${esc(subT)}</text></g>`;
     }
-    s += `<g class="pis-star${dimmed(c) ? ' pis-dim' : ''}${sel ? ' sel' : ''}" role="button" tabindex="0" data-pis="col" data-v="${esc(c.name)}" ` +
-      `aria-label="${esc(aria)}" aria-pressed="${sel}" style="--i:${p.k};--dx:${(cx - p.x).toFixed(1)}px;--dy:${(cy - p.y).toFixed(1)}px">${g}</g>`;
+    const struck = strike && strike.has(c.name);
+    s += `<g class="pis-star${dimmed(c) ? ' pis-dim' : ''}${sel ? ' sel' : ''}${struck ? ' pis-link' : ''}${ignite(c) ? ' pis-lit' : ''}" role="button" tabindex="0" ` +
+      `data-pis="col" data-v="${esc(c.name)}" aria-label="${esc(aria)}" aria-pressed="${sel}" style="--i:${p.k};--dx:${(cx - p.x).toFixed(1)}px;--dy:${(cy - p.y).toFixed(1)}px` +
+      `${struck ? `;--cd:${strike.get(c.name).toFixed(2)}s` : ''}${ignite(c) ? `;--ld:${ld(c)}s` : ''}">${g}</g>`;
   });
   if (D.length) {
     s += `<g class="pis-dustcl${o.col && o.col !== '__clean' ? ' pis-dim' : ''}" aria-hidden="true">` +
       D.map(p => `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="2" class="pis-dustdot"/>`).join('') + `</g>`;
   }
-  return `<svg class="pis-sky${o.animate ? ' pis-sky-in' : ''}" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="group" ` +
+  return `<svg class="pis-sky${o.animate ? ' pis-sky-in' : ''}${strike ? ' pis-cons-in' : ''}${o.light && lit ? ' pis-light' : ''}" ` +
+    `style="--cdur:${consDur.toFixed(2)}s;--lw:${PIS_LIGHT_S}s" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="group" ` +
     `aria-label="Each column as a star: the further from the centre, the riskier. Riskiest first, clockwise from the top."><defs>${defs}</defs>${s}</svg>`;
 }
 /** Point at a star (or reach it with the keyboard): its ray brightens, the ring at its risk lights up, and a tip says what it is. */
@@ -25752,6 +25799,39 @@ function pisPaintResult() {
   pisPaintSky(motion);
   if (motion) pisEnter(st);
 }
+// The list beside the sky is as wide as the reader drags its left edge (remembered in this browser), between a width
+// its lists still read at and one that leaves the sky readable.
+const PIS_SIDE_MIN = 280, PIS_SIDE_DEF = 360, PIS_SKY_MIN = 560;
+const PIS_LIGHT_S = 1.1;   // seconds for a rule's wave to go from the core to a risk of 100
+/** The widest the list can be: the sky keeps 560px, or in three panes (a finding open between) 600px and the finding 420px. */
+function pisSideMax(grid) {
+  const gw = grid.clientWidth;
+  return Math.max(PIS_SIDE_MIN, grid.classList.contains('wide') ? gw - 600 - 420 - 36 : gw - 18 - PIS_SKY_MIN);
+}
+/** The list at the reader's width, and a finding open between the sky and the list (.wide) only where all three fit. */
+function pisSideFit(grid, det) {
+  const gw = grid.clientWidth, w = Math.round(Math.max(PIS_SIDE_MIN, Math.min(+pisPref('sidew') || PIS_SIDE_DEF, gw - 18 - PIS_SKY_MIN)));
+  grid.classList.toggle('wide', det && gw >= 600 + 420 + 36 + w);
+  pisSideSet(grid, w, true);
+}
+/** Set the list's width, kept within its limits, and draw the sky again to the room it leaves (unless `quiet`). Returns the width set. */
+function pisSideSet(grid, w, quiet) {
+  const max = pisSideMax(grid), g = grid.querySelector('.pis-grip');
+  w = Math.round(Math.max(PIS_SIDE_MIN, Math.min(max, w)));
+  grid.style.setProperty('--pis-side-w', w + 'px');
+  if (g) { g.setAttribute('aria-valuenow', w); g.setAttribute('aria-valuemax', max); }
+  if (!quiet) { cancelAnimationFrame(pis.sideRaf); pis.sideRaf = requestAnimationFrame(pisRedrawSky); }
+  return w;
+}
+/** Just the sky drawn again to the width it now has: the panels beside it stay as they are, and a drag on the list's edge with them. */
+function pisRedrawSky() {
+  const res = pis.res, wrap = $('#pisSkyWrap'), old = wrap && wrap.querySelector('svg.pis-sky'), L0 = pis.sky;
+  if (!res || !old || !L0) return;
+  const W = Math.max(300, Math.floor(wrap.getBoundingClientRect().width)); if (W === L0.W) return;
+  const L = pis.sky = pisSkyLayout(res, W, L0.H), detCol = pis.detail ? (pisLive(res).find(f => f.id === pis.detail) || {}).column || '' : '';
+  old.outerHTML = pisSkySvg(res, L, { lens: pis.lens, col: pis.col, chip: pis.chip, detCol });
+  if (pis.hover) pisSkyHover(pis.hover);
+}
 /** Draw the sky (or the list) and what goes with it. `animate`: the stars fly out from the centre, as when a sweep first opens. */
 function pisPaintSky(animate) {
   const res = pis.res, card = $('#pisSkyCard'); if (!res || !card) return;
@@ -25760,7 +25840,7 @@ function pisPaintSky(animate) {
   const view = `<div class="pis-seg pis-view" role="radiogroup" aria-label="Show it as">` + [['sky', 'target', 'Sky'], ['list', 'columns', 'List']].map(([k, ic, l]) =>
     `<button type="button" class="lngb${pis.view === k ? ' on' : ''}" role="radio" aria-checked="${pis.view === k}" data-pis="view" data-v="${k}">${pisIco(ic)}${l}</button>`).join('') + `</div>`;
   if (pis.view === 'list') {
-    pis.sky = null;
+    pis.sky = null; pis.paintedLens = ''; pis.paintedChip = '';   // back in the sky, its view plays in again
     card.innerHTML = `<div class="pis-skybar"><span class="pis-skybar-t">${pisIco('columns')}Every finding, riskiest first</span><span class="pis-grow"></span>${view}</div>` +
       `<div id="pisFindings">${pisFindingsHtml(res)}</div>` +
       (pis.listed ? `<div class="pis-remember">${pisIco('history')}<span>Every dataset now opens as a list for you, in this browser.</span>` +
@@ -25787,13 +25867,22 @@ function pisPaintSky(animate) {
   const detCol = dpane ? (pisLive(res).find(f => f.id === pis.detail) || {}).column || '' : '';
   card.innerHTML = `<div class="pis-skybar">${seg}<div class="pis-legend">${legend}<span class="pis-legend-note">Further out: riskier</span></div>` +
       `<button type="button" class="pis-help lngb" data-pis="howto" aria-label="How to read the sky" aria-expanded="${!!pis.howto}">?</button>${view}</div>` + chips +
-    `<div class="pis-skygrid${side ? '' : ' full'}${dpane ? ' det' : ''}"><div class="pis-skywrap" id="pisSkyWrap"></div>${dpane}${side}</div>` + pisNextHtml(todo);
+    `<div class="pis-skygrid${side ? '' : ' full'}${dpane ? ' det' : ''}"><div class="pis-skywrap" id="pisSkyWrap"></div>${dpane}${side}` +
+      (side ? `<div class="pis-grip" role="separator" tabindex="0" aria-orientation="vertical" aria-label="Width of the list beside the sky" ` +
+        `aria-valuemin="${PIS_SIDE_MIN}" data-tip="Drag to make the list wider or narrower. Double-click for its usual width."><i></i></div>` : '') +
+    `</div>` + pisNextHtml(todo);
+  const grid = card.querySelector('.pis-skygrid');
+  if (side) pisSideFit(grid, !!dpane);
   // With a panel beside it the sky keeps the panels' height, however narrow a detail pane makes it.
   const wrap = $('#pisSkyWrap'), W = Math.max(300, Math.floor(wrap.getBoundingClientRect().width)), H = side ? 560 : Math.round(Math.max(440, Math.min(560, W * .72)));
   const L = pis.sky = pisSkyLayout(res, W, H);
-  card.querySelector('.pis-skygrid').style.setProperty('--pis-sky-h', H + 'px');   // the panel beside the sky is as tall as the sky
+  grid.style.setProperty('--pis-sky-h', H + 'px');   // the panel beside the sky is as tall as the sky
   const hint = side || pis.howto ? '' : pis.lens === 'rules' ? 'Pick a rule or a kind of data to light up its columns' : 'Pick a star to see what it holds';
-  wrap.innerHTML = pisSkySvg(res, L, { lens: pis.lens, col: pis.col, chip: pis.chip, animate, detCol }) +
+  // What has just come into view plays in, once: the constellation on entering Who it identifies, a rule's columns lit on picking it.
+  const motion = !dqReduced(), chipNow = pis.lens === 'rules' ? pis.chip : '';
+  const cons = motion && pis.lens === 'identify' && pis.paintedLens !== 'identify', light = motion && !!chipNow && chipNow !== pis.paintedChip;
+  pis.paintedLens = pis.lens; pis.paintedChip = chipNow;
+  wrap.innerHTML = pisSkySvg(res, L, { lens: pis.lens, col: pis.col, chip: pis.chip, animate, detCol, cons, light }) +
     // Many clean columns are dust by the centre: this lists them, in a corner where it cannot sit on a star's label.
     (L.D.length ? `<button type="button" class="pis-dustbtn lngb${pis.col === '__clean' ? ' on' : ''}" data-pis="col" data-v="__clean" ` +
       `aria-pressed="${pis.col === '__clean'}">${pisIco('shield')}${pisPl(L.D.length, 'clean column')}</button>` : '') +
@@ -25806,6 +25895,13 @@ function pisPaintSky(animate) {
       `<button type="button" class="linkbtn lngb" data-pis="view" data-v="list">Show me a list instead</button></div></div>` : '') +
     (hint ? `<span class="pis-skyhint">${pisIco('target')}${hint}</span>` : '');
   if (animate) { clearTimeout(pis.skyT); pis.skyT = setTimeout(() => { const v = wrap.querySelector('svg'); if (v) v.classList.remove('pis-sky-in'); }, 2900); }
+  if (cons || light) {
+    clearTimeout(pis.fxT);
+    pis.fxT = setTimeout(() => {
+      const v = wrap.querySelector('svg'); if (!v) return;
+      v.classList.remove('pis-cons-in', 'pis-light'); v.querySelectorAll('.pis-cons-spark, .pis-wave').forEach(e => e.remove());
+    }, 3400);
+  }
   // The panels keep their place when drawn again: a list beside the sky (and a list is back where it was when a column
   // opened from it closes), and the detail pane while it shows the same finding.
   const sideEl = card.querySelector('.pis-side'), prevKey = pis.sideKey;
@@ -26341,6 +26437,11 @@ async function pisSchedule(key) {
     panel.addEventListener('keydown', e => {
       const row = e.target.matches && e.target.matches('tr.pis-frow') ? e.target : null;   // not its ⋯, a button of its own
       if (row && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); row.click(); return; }
+      // The list's edge from the keyboard: the arrow keys move it 16px at a time (64 with Shift), Home and End to its limits.
+      const grip = e.target.classList && e.target.classList.contains('pis-grip') ? e.target : null;
+      const gw = grip && (parseFloat(grip.parentElement.style.getPropertyValue('--pis-side-w')) || PIS_SIDE_DEF), by = e.shiftKey ? 64 : 16;
+      const to = grip && { ArrowLeft: gw + by, ArrowRight: gw - by, Home: PIS_SIDE_MIN, End: Infinity }[e.key];
+      if (to != null) { e.preventDefault(); pisPref('sidew', pisSideSet(grip.parentElement, to)); return; }
       // A star is a button: Enter or Space opens its column, and the arrow keys walk the stars in order of risk.
       const star = e.target.closest && e.target.closest('.pis-star');
       if (star && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); star.dispatchEvent(new MouseEvent('click', { bubbles: true })); return; }
@@ -26378,6 +26479,24 @@ async function pisSchedule(key) {
     panel.addEventListener('focusout', e => {
       const to = e.relatedTarget;
       if (e.target.closest && e.target.closest('.pis-star') && !(to && to.closest && to.closest('.pis-star'))) { pis.hover = ''; pisSkyHover(''); }
+    });
+    // The list's edge, dragged: to the left for a wider list, to the right for a narrower one. The sky makes room as it
+    // goes, and the width is kept for every list beside the sky; a double-click puts it back to its usual width.
+    panel.addEventListener('pointerdown', e => {
+      const g = e.target.closest && e.target.closest('.pis-grip'); if (!g || e.button !== 0) return;
+      const grid = g.parentElement, x0 = e.clientX, w0 = parseFloat(grid.style.getPropertyValue('--pis-side-w')) || PIS_SIDE_DEF;
+      let w = w0;
+      g.setPointerCapture(e.pointerId); g.classList.add('on'); document.body.classList.add('pis-resizing');
+      const move = ev => { w = pisSideSet(grid, w0 + x0 - ev.clientX); };
+      const end = () => {
+        g.removeEventListener('pointermove', move); g.removeEventListener('pointerup', end); g.removeEventListener('pointercancel', end);
+        g.classList.remove('on'); document.body.classList.remove('pis-resizing');
+        if (w !== w0) pisPref('sidew', w);
+      };
+      g.addEventListener('pointermove', move); g.addEventListener('pointerup', end); g.addEventListener('pointercancel', end);
+    });
+    panel.addEventListener('dblclick', e => {
+      const g = e.target.closest && e.target.closest('.pis-grip'); if (g) pisPref('sidew', pisSideSet(g.parentElement, PIS_SIDE_DEF));
     });
     // Where each panel beside the sky was scrolled to, to put it back after a redraw.
     panel.addEventListener('scroll', e => {
