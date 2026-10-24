@@ -4225,6 +4225,7 @@
     border: solid #08281c; border-width: 0 2px 2px 0; transform: rotate(45deg); }
   .dq-run-step[data-state="error"] { color: var(--err); }
   .dq-run-step[data-state="error"] .dq-run-dot { border-color: var(--err); background: var(--err-bg); }
+  .dq-run-step[data-state="skip"] .dq-run-dot { border-style: dashed; }
   .dq-run-meta { margin-top: 16px; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
   .dq-run-meta:empty { display: none; }
   .dq-run-meta code { font-size: 11.5px; padding: 1px 6px; border-radius: 5px; background: var(--idle-bg); color: var(--text); }
@@ -9130,7 +9131,7 @@ function dqRunFill(f, o) {
   o = o || {};
   const at = o.at || 0;
   const steps = (o.steps || []).map((t, i) =>
-    `<li class="dq-run-step" data-state="${i < at ? 'done' : i === at ? 'running' : 'idle'}">` +
+    `<li class="dq-run-step" data-state="${i < at ? 'done' : i === at ? 'running' : 'idle'}"${t === DQ_SWEEP_STEP ? ' data-step="sweep"' : ''}>` +
     `<span class="dq-run-dot" aria-hidden="true"></span><span>${esc(t)}</span></li>`).join('');
   f.innerHTML = dqLoader(o.msg, o.sub || '') +
     `<div class="dq-run-bar${o.pct == null ? ' indet' : ''}" aria-hidden="true"><span></span></div>` +
@@ -9144,6 +9145,7 @@ function dqRunFill(f, o) {
   if (o.pct != null) dqRunBar(f, o.pct);
   f._runId = '';
   f._t0 = Date.now();
+  f._sweep = ''; f._assessSub = '';
   dqRunClock(f, o.clock !== false);
 }
 /** "12s", "4m 05s", "1h 02m". */
@@ -9227,10 +9229,56 @@ function dqRunBar(f, pct) {
 }
 function dqRunStep(f, i, state) {
   const all = f ? [...f.querySelectorAll('.dq-run-step')] : [];
+  if (i < 0) i += all.length;                            // -1: the last step
   if (!all[i]) return;
   all[i].dataset.state = state;
-  // A step under way, or finished, means every step before it is finished.
-  if (state !== 'error') all.slice(0, i).forEach(li => { if (li.dataset.state !== 'error') li.dataset.state = 'done'; });
+  // A step under way, or finished, means every step before it is finished (or was skipped, or failed).
+  if (state !== 'error') all.slice(0, i).forEach(li => { if (li.dataset.state !== 'error' && li.dataset.state !== 'skip') li.dataset.state = 'done'; });
+}
+
+// Every assessment sweeps its dataset for personal data first (dq/pii_sweep.py), so a run's steps carry the sweep.
+const DQ_SWEEP_STEP = 'PII sweep';
+/**
+ * Follow a run's sweep on its run face, every round of the wait until the sweep is over. The sweep is named after the
+ * run (its folder's last part), so the PII sweep API answers for it: while it reads, its step is under way and the
+ * line under the loader counts the rows read so far; once it is over, Assess takes over with the run's own words, and
+ * a note says what it read and found (or that it failed, and the assessment went on without it). A dataset whose
+ * sweeping is switched off skips the step. Never throws: a sweep that cannot be asked about leaves the steps as they are.
+ */
+async function dqRunSweep(f, resultPrefix) {
+  if (!f || f._sweep === 'over' || !APP_ID || typeof pisApi !== 'function') return;
+  const i = [...f.querySelectorAll('.dq-run-step')].findIndex(li => li.dataset.step === 'sweep');
+  const m = /^s3:\/\/[^/]+\/(.+)\/([^/]+)\/?$/.exec(String(resultPrefix || ''));
+  if (i < 0 || !m) return;
+  const dk = m[1], runId = m[2];
+  if (!f._sweep) {                                       // the first round: is the dataset swept at all?
+    f._sweep = 'on';
+    try {
+      if (((await pisApi({ action: 'settings', dataset_key: dk })).settings || {}).off) {
+        f._sweep = 'over';
+        dqRunStep(f, i, 'skip');
+        const t = f.querySelectorAll('.dq-run-step')[i].lastElementChild; if (t) t.textContent = 'PII sweep off';
+        dqRunStep(f, i + 1, 'running');
+        return;
+      }
+    } catch (e) { /* cannot tell: follow it as one that sweeps */ }
+  }
+  let s = null;
+  try { s = await pisApi({ action: 'status', dataset_key: dk, sweep_id: runId }); } catch (e) { return; }   // not under way yet
+  const st = String((s && s.state) || '').toUpperCase();
+  if (st === 'RUNNING') {
+    dqRunStep(f, i, 'running');
+    dqRunSay(f, null, s.rowsScanned ? `Sweeping it for personal data: ${pisN(s.rowsScanned)} rows read so far.` : 'Sweeping it for personal data first.');
+  } else if (['SUCCEEDED', 'FAILED', 'ERROR', 'CANCELLED'].includes(st)) {
+    f._sweep = 'over';
+    const ok = st === 'SUCCEEDED';
+    dqRunStep(f, i, ok ? 'done' : 'error');
+    dqRunStep(f, i + 1, 'running');
+    if (f._assessSub) dqRunSay(f, null, f._assessSub);
+    dqRunNote(f, ok ? `Swept for personal data first: ${pisPl(Number(s.rowsScanned) || 0, 'row')} read, ${pisPl(Number(s.findings) || 0, 'finding')}. ` +
+                      'Its Compliance section shows what the sweep found.'
+      : st === 'CANCELLED' ? '' : `The PII sweep did not finish${s.error ? ` (${s.error})` : ''}. The assessment goes on, judging personal data from a sample instead.`);
+  }
 }
 
 async function pollResults(resultPrefix) {
@@ -9256,6 +9304,7 @@ async function pollResults(resultPrefix) {
       srcRunDone('file', r);
       return;                              // history reloads fresh whenever the tab is opened
     }
+    await dqRunSweep(srcFace('file', 'run'), resultPrefix);
     if (!nudged && Date.now() - start > NUDGE_MS) {
       nudged = true;
       dqRunNote(srcFace('file', 'run'), 'This is taking longer than usual - still working…');
@@ -18737,8 +18786,8 @@ function srcSkeletonSwap(body, key) {
 // connector has been through is kept per connector: moving to another one and back leaves a run
 // going, or a result on show. Keyed by the connector's body, so Excel shares Local File's.
 const srcRunState = {};   // key -> { running, seq, started, finished, runId, prefix, status, done, fresh, card }
-const SRC_STEPS = ['Launch', 'Assess', 'Results'];
-const SRC_FILE_STEPS = ['Upload', 'Assess', 'Results'];
+const SRC_STEPS = ['Launch', DQ_SWEEP_STEP, 'Assess', 'Results'];
+const SRC_FILE_STEPS = ['Upload', DQ_SWEEP_STEP, 'Assess', 'Results'];
 
 function _srcKey(key) { return key === 'excel' ? 'file' : key; }
 function srcStage(key) { return document.getElementById('src-' + _srcKey(key)); }
@@ -18839,6 +18888,7 @@ function srcRunLaunched(key, runId, sub, msg) {
   const k = _srcKey(key), f = srcFace(k, 'run');
   dqRunStep(f, 1, 'running');
   dqRunSay(f, msg == null ? null : msg, sub == null ? null : sub);
+  if (f && sub != null) f._assessSub = sub;              // said again once the sweep hands over to Assess
   dqRunId(f, runId);
   if (srcRunState[k]) srcRunState[k].runNow = runId || '';
 }
@@ -18874,7 +18924,7 @@ function _srcStatus(r, failure) {
 function srcRunDone(key, r, failure) {
   const k = _srcKey(key), st = srcRunState[k] || (srcRunState[k] = {});
   const f = srcFace(k, 'run');
-  dqRunStep(f, 2, failure ? 'error' : 'done');
+  dqRunStep(f, -1, failure ? 'error' : 'done');
   dqRunStop(f);
   _srcUnmark(st);
   Object.assign(st, { running: false, done: true, finished: Date.now(), runId: st.runNow,
@@ -20258,7 +20308,7 @@ function dbLaunchWords(cfg, name, where, started) {
   return cfg.agent
     ? { launch: `Queuing the ${name} assessment for the agent`,
         started: `Queued for the agent. It starts on that machine's next poll, usually within 15 seconds, then scores the whole table in ${where}.`,
-        steps: ['Queue', 'Assess on the agent', 'Results'] }
+        steps: ['Queue', DQ_SWEEP_STEP, 'Assess on the agent', 'Results'] }
     : { launch: `Launching ${name} assessment`, started };
 }
 
@@ -20329,7 +20379,7 @@ async function runAgentFile(cfg, statusEl) {
   return srcLaunch('agentfile', statusEl, 'agent-file-assessment', body, {
     launch: 'Queueing the file for the agent',
     started: 'Queued for the agent. It starts on that machine\'s next poll, usually within fifteen seconds.',
-    steps: ['Queue', 'Assess on the agent', 'Results'] });
+    steps: ['Queue', DQ_SWEEP_STEP, 'Assess on the agent', 'Results'] });
 }
 
 // Launch a full-table PostgreSQL assessment, then poll + render its result.
@@ -27622,6 +27672,7 @@ async function pollInto(resultPrefix, bodyEl, opts) {
       if (stage) srcRunDone(stage, null, bad);
       return;
     }
+    if (stage) await dqRunSweep(srcFace(stage, 'run'), resultPrefix);
     if (!nudged && Date.now() - start > NUDGE_MS) {
       nudged = true;
       if (stage) dqRunNote(srcFace(stage, 'run'), 'Still working. A large table can take a while, and the result is saved to History either way.');
