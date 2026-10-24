@@ -22898,6 +22898,15 @@ const GD_SHOTS = {
   "overview-top-p": [1600, 609, "2906120567"],
   "overview-top-q": [1600, 584, "5d61e45e4c"],
   "passport": [1600, 3230, "6eed9c1878"],
+  "pii-changes": [1600, 815, "8c11ab023c"],
+  "pii-column": [1600, 1399, "4f259c64ba"],
+  "pii-findings": [1600, 1087, "266df3e953"],
+  "pii-head": [1600, 324, "cbe99a5ed1"],
+  "pii-identify": [1600, 815, "187439dc7a"],
+  "pii-rule": [1600, 815, "0d5dc40103"],
+  "pii-rules": [1600, 815, "71bdeecf74"],
+  "pii-sky": [1600, 1018, "2d3514234f"],
+  "pii-start": [1600, 869, "ad750dc3d2"],
   "profile": [1600, 526, "104f28f43a"],
   "quality-space": [1600, 812, "7bfbdb7881"],
   "records-policy": [1600, 433, "0850fe5c47"],
@@ -23001,6 +23010,25 @@ function gdPickSource(key) {
   };
 }
 const GD_NO_DATASET = 'Nothing has been assessed yet, so there is no dataset to open. Assess one first, then try again.';
+// The PII sweep tab with a sweep open (the one open already, or else the newest sweep of the riskiest
+// dataset swept), in the view a guide is talking about: the sky, a column, a view, or the list.
+const GD_NO_SWEEP = 'Nothing has been swept yet, so there is no sweep to open. Sweep a dataset first, then try again.';
+function gdOpenSweep(view) {
+  return async () => {
+    for (let i = 0; i < 40 && !(pis.list && pis.list.datasets); i++) await new Promise(r => setTimeout(r, 100));
+    if (!pis.res || $('#pisStage').style.display === 'none') {
+      const d = ((pis.list || {}).datasets || []).filter(x => x.latest).sort((a, b) => (b.latest.risk || 0) - (a.latest.risk || 0))[0];
+      if (!d) return;
+      await pisOpen(d.key);
+    }
+    if (!pis.res) return;
+    const top = pisColumns(pis.res).filter(c => c.risk > 0).sort((a, b) => b.risk - a.risk)[0];
+    const set = { sky: { view: 'sky', lens: 'severity', col: '' }, column: { view: 'sky', lens: 'severity', col: top ? top.name : '' },
+                  identify: { view: 'sky', lens: 'identify', col: '' }, changes: { view: 'sky', lens: 'changes', col: '' },
+                  rules: { view: 'sky', lens: 'rules', col: '', chip: '' }, list: { view: 'list', listed: false, focus: null } }[view];
+    if (set) { Object.assign(pis, { detail: '', howto: false }, set); pisPaintSky(); }
+  };
+}
 const GD_SHOW = {
   'src-picker': { tab: 'upload', sel: '#srcSwitch',
     tip: 'Every source you can assess is in this menu. Open it, then pick one or search for it by name.' },
@@ -23052,6 +23080,25 @@ const GD_SHOW = {
   'history': { tab: 'history', sel: '#historySubtabs, #historyList', tip: 'Every run. Open one for its full report.' },
   'approvals': { tab: 'approvals', sel: '#approvalsBody', tip: 'Runs and proposals waiting for a decision.' },
   'mcp-url': { tab: 'assistant', sel: '#mcpUrl', tip: 'The address to add in your assistant as a custom connector.' },
+  'pii-start': { tab: 'piisweep', sel: '#pisPickRow',
+    tip: 'Choose a dataset here, leave <b>Sample rows</b> empty to read every row, and press <b>Sweep for PII</b>.' },
+  'pii-swept': { tab: 'piisweep', sel: '#pisListCard', tip: 'Every dataset swept so far, riskiest first. <b>Open</b> shows its newest sweep.' },
+  'pii-head': { tab: 'piisweep', prep: gdOpenSweep(), sel: '#pisStage .pis-top', miss: GD_NO_SWEEP,
+    tip: 'The sweep open: its rating, its risk and what it found, what you can do with it, and <b>Close</b> at the top right.' },
+  'pii-sky': { tab: 'piisweep', prep: gdOpenSweep('sky'), sel: '#pisSkyWrap', miss: GD_NO_SWEEP,
+    tip: 'Each star is a column: the further out, the riskier. Point at one for what it holds, and press it to open it.' },
+  'pii-column': { tab: 'piisweep', prep: gdOpenSweep('column'), sel: '#pisStage .pis-side', miss: GD_NO_SWEEP,
+    tip: 'The riskiest column, open beside the sky. Pick one of its findings to read it in full.' },
+  'pii-identify': { tab: 'piisweep', prep: gdOpenSweep('identify'), sel: '#pisSkyCard .pis-skygrid', miss: GD_NO_SWEEP,
+    tip: 'The columns that, together in one row, single a person out, joined; beside them, how many rows they single out.' },
+  'pii-changes': { tab: 'piisweep', prep: gdOpenSweep('changes'), sel: '#pisSkyWrap', miss: GD_NO_SWEEP,
+    tip: 'Every sweep of this dataset, oldest first. Point at one for how it went; what moved since the one before is underneath.' },
+  'pii-rules': { tab: 'piisweep', prep: gdOpenSweep('rules'), sel: '#pisStage .pis-side', miss: GD_NO_SWEEP,
+    tip: 'Pick a rule or a kind of data here to light up the columns it touches.' },
+  'pii-findings': { tab: 'piisweep', prep: gdOpenSweep('list'), sel: '#pisFindings', miss: GD_NO_SWEEP,
+    tip: 'Every finding as a table: search it, show one severity, and click a row for where it sits. <b>Sky</b> at the top right goes back.' },
+  'pii-next': { tab: 'piisweep', prep: gdOpenSweep(), sel: '#pisStage .pis-next', miss: GD_NO_SWEEP,
+    tip: 'The next thing to do about this dataset. <b>All steps</b> shows the rest.' },
 };
 function gdWaitFor(sel, ms) {
   const shown = el => { const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0; };
@@ -24500,32 +24547,83 @@ ${HDRS}
   G.push({
     id: 'pii-sweep', cat: 'Compliance', icon: 'shield', tint: '#fb7185',
     title: 'Sweep a dataset for personal data', sub: 'Every value read, every find located and rated, no value kept',
-    keywords: 'pii sweep personal data hidden free text notes description card number phone email passport nhs national insurance date of birth credential password key severity risk exposure restrict label dismiss schedule export locations gdpr ccpa pci',
+    keywords: 'pii sweep personal data hidden free text notes description card number phone email passport nhs national insurance date of birth credential password key severity risk exposure restrict label dismiss schedule export locations gdpr ccpa pci sky star constellation who it identifies changes timeline rules list close',
     open: { tab: 'piisweep', label: 'Open PII sweep' },
     sections: [
       { h: 'What it is', body:
           p(`An assessment judges each column from a sample. A sweep reads every value of one dataset (or a sample, if you ask for one) and finds personal data wherever it is, including inside free text such as notes, comments and descriptions, where nobody would think to look.`) +
           p(`Each find says what it is, how serious it is, and where it is: the column, the row, and the characters it occupies. The value itself is never written down; it stays in your source.`) +
           p(`Assessments keep in step with it. From its next run, an assessment treats every column the newest sweep found personal data in as personal data too: its values are redacted from stored samples, and its Compliance section shows what the sweep found and which of it the assessment's own checks would have missed. A finding you dismiss here leaves the assessment as well. The Data Passport counts the sweep in its personal-data part.`) },
-      { h: 'Run one', body:
-          steps(`Open ${go('piisweep', 'PII sweep')} and choose a dataset. A database or warehouse table is read again through the saved connection its last assessment used; one on an on-premises agent is read by that agent.`,
-                `Leave ${ui('Sample rows')} empty to read every row, or type a number to read only that many, then press ${ui('Sweep for PII')}.`,
-                `To sweep a file that has not been assessed, or an uploaded file (uploads are not kept once assessed), press ${ui('Upload a file to sweep')}. The file is deleted once it has been read.`) +
+      { h: 'Start a sweep', body:
+          p(`${go('piisweep', 'PII sweep')} is in the menu on the left. The card at the top of the tab starts a sweep; under it is every dataset swept so far.`) +
+          steps(`Press ${ui('Choose a dataset')} and pick one, or type to find it by name. A database or warehouse table is read again through the saved connection its last assessment used; one on an on-premises agent is read by that agent. A dataset swept before shows its rating beside its name, and picking it opens its newest sweep.`,
+                `Leave ${ui('Sample rows')} empty to read every row, or type a number to read only that many.`,
+                `Press ${ui('Sweep for PII')}. A card says what the sweep is doing and how many rows it has read so far, and ${ui('Cancel this sweep')} stops it. When it finishes, its result opens in that card.`,
+                `To sweep a file that has not been assessed, or an uploaded file (uploads are not kept once assessed), press ${ui('Upload a file to sweep')} instead. The file is deleted once it has been read.`) +
+          shot('pii-start', `${n(1)} Choose the dataset, ${n(2)} leave Sample rows empty to read every row, and ${n(3)} press Sweep for PII. ${n(4)} Sweep a file instead. Underneath, ${n(5)} Open shows a swept dataset's newest sweep.`) +
+          sm('pii-start') +
           tip(`A Qlik app table can only be read by the app itself. Export it and upload the file to sweep it.`) },
-      { h: 'Read the result', body:
-          p(`Opening a dataset shows its rating (the worst severity found), its risk from 0 to 100 (point at it to see why), how many findings there are and in how many columns, how many hide in free text, and how many rows identify someone. Beside its name, who can open it. Anything new since the sweep before is a button that shows what changed. ${ui('Close')} puts the sweep away, back to the swept datasets.`) +
-          p(`Below that is the sky. Each star is a column of the dataset, on a ray from the dataset at the centre: the further out, the riskier, against rings at 25, 50, 75 and 100. The riskiest is at the top, then clockwise round to the safest, and colour, size and brightness say the same. Point at a star, or reach it with Tab and the arrow keys, to light up its ray and the ring at its risk. Press it to open the column beside the sky, and pick one of its findings to read it in full in a wider pane: why it matters, the rules it touches, where it sits in each value, and what can be done about it. A finding listed under Changes or Rules opens the same way. Drag the left edge of the list beside the sky to make it wider or narrower; the width is kept in this browser, and a double-click on the edge puts it back. ${ui('?')} explains the sky again.`) +
-          table(['View', 'What it shows'], [
-            ['Severity', 'Every column at its risk, in the colour of the worst it holds.'],
-            ['Who it identifies', 'A constellation joining the columns that, together in one row, single a person out, and how many rows do.'],
-            ['Changes', 'A timeline of every sweep: the risk each found, how each ended (completed, failed, cancelled or still running) and who started it. The sweep showing is set beside the one before it, with what moved column by column, and an earlier sweep opens with a click.'],
-            ['Rules', 'Pick a rule (GDPR, CCPA, PCI DSS and others) or a kind of data from the list beside the sky, and the columns it touches light up.'],
-          ]) +
-          p(`${ui('List')} shows every finding as a table instead: riskiest first (press Risk to turn the order round), filtered by severity or searched, each opening onto where it sits in each value, with a ⋯ to label its column or dismiss it. Sky or list, your choice is remembered in this browser. A find inside free text is rated a level higher than the same kind held in its own column.`) },
+      { h: 'The swept datasets', body:
+          p(`${ui('Swept datasets')}, under the card, lists every dataset swept so far, riskiest first. Each row gives the rating (the worst severity found), the risk out of 100, how many findings there are, how many sit hidden in free text, how many rows identify someone, who can see the dataset, and when it was last swept.`) +
+          list(`${ui('+1 new')} beside a rating counts the serious findings that are new since the sweep before.`,
+               `Under the date: a sweep under way and how many rows it has read, one that failed or was cancelled (point at it for why), and whether the dataset is on a schedule.`,
+               `${ui('Open')} shows the dataset's newest sweep, between the card and the list. ${ui('Refresh')}, at the top of the list, reads it again.`) +
+          sm('pii-swept') },
+      { h: 'An open sweep', body:
+          p(`An open sweep has two parts: a header saying what was found, and under it the sky (or a list, if you choose one).`) +
+          shot('pii-head', `${n(1)} The dataset, and who can open it: point at that for exactly who. ${n(2)} Sweep it again, put it on a schedule, export where every find is (a CSV with no values in it)${ADMIN ? ', or delete its sweeps' : ''}. ${n(3)} Close puts the sweep away. ${n(4)} The rating and the risk out of 100: point at the risk for what raised it. ${n(5)} What is new since the sweep before: press it to see what changed.`) +
+          sm('pii-head') +
+          p(`Under the dataset's name are when it was swept, how many rows were read and how many columns. A sample says so, with a note to sweep again with ${ui('Sample rows')} empty to read every row. Beside the rating and the risk, one line gives the findings and how many of the columns they are in, how many hide in free text, and how many rows identify someone.`) +
+          p(`${ui('Close')}, at the top right, puts the sweep away: the tab goes back to the card and the swept datasets, with nothing chosen. Opened again, a sweep starts afresh.`) },
+      { h: 'The sky', body:
+          p(`Under the header is the sky, the ${ui('Severity')} view. Each star is a column of the dataset, on a ray from the dataset at the centre.`) +
+          list(`<b>The further out, the riskier.</b> The rings mark a risk of 25, 50, 75 and 100.`,
+               `<b>The riskiest is at the top</b>, then clockwise round to the safest.`,
+               `<b>Colour, size and brightness agree</b>: red, big and bright is worst. A ring round a star means its find hides in free text, and ${ui('new')} by its name means a finding new since the sweep before.`,
+               `<b>A small grey dot</b> is a column with nothing found in it. A wide table's many clean columns become dust by the centre, with a button in the sky's top-left corner that lists them.`) +
+          shot('pii-sky', `${n(1)} The four views of the dataset. ${n(2)} What the colours mean in the view showing. ${n(3)} How to read the sky, again. ${n(4)} The sky, or every finding as a list. ${n(5)} A column: point at it for what it holds, and press it to open it. ${n(6)} The next step for this dataset.`) +
+          sm('pii-sky') +
+          p(`Point at a star, or reach it with Tab and the arrow keys, and its ray and the ring at its risk light up, with a tip naming its worst finding and how many values hold it. Press it, or Enter, to open the column. The buttons at the top left switch the sky to the other views, below; ${ui('List')} at the top right shows every finding as a table instead.`) },
+      { h: 'A column and its findings', body:
+          steps(`Press a star. Its column opens in the list beside the sky: how many of its values hold personal data, and every finding in it, riskiest first. The other stars step back.`,
+                `Pick a finding. It opens in a pane of its own: its severity and risk, what changed about it since the sweep before, how many values hold it and how sure the match is, why it matters, the rules it touches, what the latest assessment makes of its column, and where it sits in each value, as a bar per value with a mark at its characters. No value is ever shown.`,
+                `From there, ${ui('Label the column as personal data')}${GOV ? `, ${ui('Not personal data: dismiss')} it with a reason,` : ''} or ${ui('See it in the list')}.`) +
+          shot('pii-column', `${n(1)} The column open, ringed in the sky. ${n(2)} Its findings: pick one. ${n(3)} The finding picked, in full, with ${n(4)} where it sits in each value and ${n(5)} what you can do about it. ${n(6)} Drag the list's left edge to make the list wider or narrower.`) +
+          sm('pii-column') +
+          p(`On a wide window the finding's pane sits between the sky and the list; on a narrower one it opens underneath them, and the page moves down to it. The list stays put, to pick another. Escape closes the finding, then the column.`) +
+          tip(`Drag the left edge of any list beside the sky to make it wider or narrower, or focus the edge and use the arrow keys. The width is kept in this browser for every list, and a double-click on the edge puts it back.`) },
+      { h: 'Who it identifies', body:
+          p(`${ui('Who it identifies')}, the second view, joins the columns that, together in one row, single a person out: a name with a date of birth, say. A caption under the constellation says how many rows they single out, and the columns outside it step back.`) +
+          shot('pii-identify', `${n(1)} The columns that single a person out, joined. ${n(2)} How many rows that is, which columns hold it together, and example rows. ${n(3)} Restrict who can open the dataset. ${n(4)} The findings in those columns, in the list.`) +
+          sm('pii-identify') },
+      { h: 'Changes', body:
+          p(`${ui('Changes')} is a timeline of the dataset's sweeps (its last twelve), oldest on the left. The red dot on the button means there is something new.`) +
+          list(`<b>The line</b> is the risk each completed sweep found, each point in the colour of its worst severity.`,
+               `<b>The track</b> has a marker for every sweep, saying how it ended: ${ui('Completed')}, ${ui('Failed')}, ${ui('Cancelled')} or ${ui('Sweeping')}. Under each are its day and time, with a calendar if its schedule started it or a person if someone did.`,
+               `<b>Showing</b> is the sweep on screen and <b>Compared</b> the one before it. Between them, what changed: findings new, gone, more widespread or less.`,
+               `<b>What moved</b>, underneath, gives each column's risk then and now as a bar. The columns that held are dimmed.`) +
+          shot('pii-changes', `${n(1)} The risk each sweep found. ${n(2)} A sweep that failed: point at any sweep for when it ran, who started it, and what it found or why it stopped. ${n(3)} The sweep showing, ${n(4)} what changed since the one compared, and ${n(5)} what moved, column by column. ${n(6)} Each finding that changed: pick one to read it in full.`) +
+          sm('pii-changes') +
+          p(`Press an earlier completed sweep, or reach it with Tab and the arrow keys and press Enter, to open it: it becomes the sweep showing, compared with the one before it. A column under ${ui('What moved')} opens beside the timeline.`) },
+      { h: 'Rules', body:
+          p(`${ui('Rules')} lists, beside the sky, every rule the findings fall under (GDPR, CCPA, PCI DSS and others) and every kind of data found, each with how many findings it covers in how many columns. The sky stays unlit until you pick one.`) +
+          shot('pii-rules', `${n(1)} The rules the findings fall under, and ${n(2)} the kinds of data found. Pick one.`) +
+          p(`Picking one lights the columns it touches, from the centre out, and the list makes way for it: its findings (each opening in its own pane), why it matters or what to do about it, and ${ui('See them in the list')}.`) +
+          shot('pii-rule', `${n(1)} Back to every rule and kind of data. ${n(2)} A column it touches, lit. ${n(3)} Its findings, and ${n(4)} the same as rows in the list.`) +
+          sm('pii-rules') +
+          p(`${ui('All rules and kinds of data')}, or Escape, goes back to the list.`) },
+      { h: 'The list instead', body:
+          p(`${ui('List')}, at the top right of the sky, shows every finding as a table: its severity, its risk, what it is, its column, and whether it hides in free text, riskiest first. Choosing it is remembered in this browser, so every dataset then opens as a list until you choose ${ui('Sky')} again.`) +
+          shot('pii-findings', `${n(1)} The sky, or the list. ${n(2)} Search the findings. ${n(3)} Show only one severity, or only those hidden in free text. ${n(4)} Turn the order round. ${n(5)} A finding opened: why it matters and where it sits in each value. ${n(6)} Label its column${GOV ? ' or dismiss it' : ''}.`) +
+          sm('pii-findings') +
+          p(`${ui('See them in the list')} in a view, and ${ui('See it in the list')} in a finding's pane, open the list narrowed to those findings without changing what opens next time; the ${ui('×')} on the chip above the table shows every finding again. A find inside free text is rated a level higher than the same kind held in its own column.`) },
       { h: 'Act on it', body:
-          p(`Under the sky, or the list, is the next step for this dataset, and ${ui('All steps')} shows the rest: restrict it with a tag, assess it again so its columns are redacted, clean the free text, and deal with each kind of data at source. A column opened beside the sky labels it as personal data. ${ui('Export locations')} gives every location as a CSV, with no values in it.`) +
-          (ADMIN ? p(`A finding that is not personal data (test data, a product named like a person) can be dismissed with a reason. It stays set aside on later sweeps until someone restores it, and is left out of the rating.`)
-                 : note(`An admin can dismiss a finding that is not personal data.`)) },
+          p(`Under the sky, or the list, is the next step for this dataset, and ${ui('All steps')} shows the rest: restrict it with a tag, assess it again so its columns are redacted, clean the free text, and deal with each kind of data at source. ${showme('pii-next')}`) +
+          list(`${ui('Label the column as personal data')}, beside the sky or in a finding's pane, labels the column for every assessment.`,
+               `${ui('Restrict with a tag')} limits who can open the dataset to the people granted that tag.`,
+               `${ui('Export locations')} gives every location as a CSV, with no values in it.`) +
+          (GOV ? p(`A finding that is not personal data (test data, a product named like a person) can be dismissed with a reason. It stays set aside on later sweeps until someone restores it, and is left out of the rating.`)
+               : note(`An admin can dismiss a finding that is not personal data.`)) },
       { h: 'On a schedule', body:
           p(`Press ${ui('Schedule')} on a result, or in ${go('schedules', 'Schedules')} choose ${ui('PII sweep of one dataset')}. Each scheduled sweep says what changed since the last, so new personal data shows up as new. ${see('schedules', 'Schedule checks')}`) },
     ],
