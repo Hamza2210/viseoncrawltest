@@ -4488,6 +4488,10 @@
   .pis-meter-bar { align-self: center; width: 120px; height: 6px; margin-left: 6px; border-radius: 4px; overflow: hidden;
     background: color-mix(in srgb, var(--k) 20%, var(--idle-bg)); }
   .pis-meter-bar i { display: block; height: 100%; border-radius: 4px; background: var(--k); }
+  .pis-meter-bar:has(i.x) { display: flex; } .pis-meter-bar:has(i.x) i { flex: none; border-radius: 4px 0 0 4px; }
+  .pis-meter-bar i.x { border-radius: 0 4px 4px 0; background: repeating-linear-gradient(135deg, var(--k) 0 3px, color-mix(in srgb, var(--k) 35%, transparent) 3px 6px); }
+  .pis-meter-split { align-self: center; margin-left: 4px; font-size: 12px; color: var(--muted); white-space: nowrap; }
+  .pis-meter .pis-meter-split b { font-size: 12.5px; color: var(--text); } .pis-meter-split em { font-style: normal; font-weight: 700; color: var(--text); }
   .pis-meter-bar.critical { --k: var(--pii-crit); } .pis-meter-bar.high { --k: var(--pii-high); } .pis-meter-bar.medium { --k: var(--pii-med); } .pis-meter-bar.low { --k: var(--pii-low); }
   .pis-vsep { width: 1px; height: 26px; background: var(--border); }
   .pis-stat { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; color: var(--muted); }
@@ -24586,6 +24590,7 @@ ${HDRS}
           shot('pii-head', `${n(1)} The dataset, and who can open it: point at that for exactly who. ${n(2)} Sweep it again, put it on a schedule, export where every find is (a CSV with no values in it)${ADMIN ? ', or delete its sweeps' : ''}. ${n(3)} Close puts the sweep away. ${n(4)} The rating and the risk out of 100: point at the risk for what raised it. ${n(5)} What is new since the sweep before: press it to see what changed.`) +
           sm('pii-head') +
           p(`Under the dataset's name are when it was swept, how many rows were read and how many columns. A sample says so, with a note to sweep again with ${ui('Sample rows')} empty to read every row. Beside the rating and the risk, one line gives the findings and how many of the columns they are in, how many hide in free text, and how many rows identify someone.`) +
+          p(`When everyone in your organisation can open the dataset, its risk is raised for that, and beside the risk it says by how much: ${ui('92 found +8 open to everyone')}, say, reads 100. Changes plots the risk each sweep found, before that rise, so its line can sit below the figure here. Restricting who can open the dataset takes the rise away.`) +
           p(`${ui('Close')}, at the top right, puts the sweep away: the tab goes back to the card and the swept datasets, with nothing chosen. Opened again, a sweep starts afresh.`) },
       { h: 'The sky', body:
           p(`Under the header is the sky, the ${ui('Severity')} view. Each star is a column of the dataset, on a ray from the dataset at the centre.`) +
@@ -24610,7 +24615,7 @@ ${HDRS}
           sm('pii-identify') },
       { h: 'Changes', body:
           p(`${ui('Changes')} is a timeline of the dataset's sweeps (its last twelve), oldest on the left. The red dot on the button means there is something new.`) +
-          list(`<b>The line</b> is the risk each completed sweep found, each point in the colour of its worst severity.`,
+          list(`<b>The line</b> is the risk each completed sweep found, each point in the colour of its worst severity. It leaves out what the header adds for who can open the dataset, which no past sweep recorded.`,
                `<b>The track</b> has a marker for every sweep, saying how it ended: ${ui('Completed')}, ${ui('Failed')}, ${ui('Cancelled')} or ${ui('Sweeping')}. Under each are its day and time, with a calendar if its schedule started it or a person if someone did.`,
                `<b>Showing</b> is the sweep on screen and <b>Compared</b> the one before it. Between them, what changed: findings new, gone, more widespread or less.`,
                `<b>What moved</b>, underneath, gives each column's risk then and now as a bar. The columns that held are dimmed.`) +
@@ -26030,9 +26035,13 @@ function pisPaintResult() {
   const c = res.changes || null, cc = pisChangeCounts(c);
   const bits = [cc.nNew ? `${cc.nNew} new` : '', cc.nGone ? `${cc.nGone} gone` : '', cc.nUp ? `${cc.nUp} more widespread` : '',
                 cc.nDown ? `${cc.nDown} less widespread` : ''].filter(Boolean);
+  const bump = o.risk_base != null && o.risk > o.risk_base ? o.risk - o.risk_base : 0;   // raised for who can open it
   const verdict = `<div class="pis-verdict">${pisSevHtml(o.severity, true)}` +
       `<span class="pis-meter" data-tip="${esc(pisRiskWhy(o, live, x))}"><span class="pis-meter-l">Risk</span><b>${num(o.risk)}</b><small>/ 100</small>` +
-        `<span class="pis-meter-bar ${pisBand(o.risk || 0)}" aria-hidden="true"><i style="width:${Math.min(100, o.risk || 0)}%"></i></span></span>` +
+        `<span class="pis-meter-bar ${pisBand(o.risk || 0)}" aria-hidden="true"><i style="width:${Math.min(100, bump ? o.risk_base : o.risk || 0)}%"></i>` +
+          (bump ? `<i class="x" style="width:${bump}%"></i>` : '') + `</span>` +
+        // What the sweep found, and what being open to everyone adds: the Changes timeline plots the first.
+        (bump ? `<span class="pis-meter-split"><b>${pisN(o.risk_base)}</b> found <em>+${bump}</em> open to everyone</span>` : '') + `</span>` +
       `<span class="pis-vsep" aria-hidden="true"></span>` +
       stat('search', live.length, ` ${live.length === 1 ? 'finding' : 'findings'} in ${pisN(colsHit)} of ${pisPl(nCols, 'column')}`) +
       stat('doc', o.hidden || 0, ' hidden in free text') +
@@ -26160,7 +26169,8 @@ function pisTimelineSvg(res, W, H, o) {
     `<text x="24" y="34" class="tl-h">Every sweep of ${name}</text>` +
     (n ? `<text x="${W - 24}" y="34" text-anchor="end" class="tl-hs">${n === 12 ? 'The last 12 sweeps' : pisPl(n, 'sweep')} since ${esc(pisDay(runs[0].requestedAt || runs[0].updatedAt))}</text>` : '');
   // the risk each sweep found: a scale of 0 to 100, the sweep showing and the one compared with marked across it and the track
-  s += `<text x="${x0 - 34}" y="${yT - 18}" text-anchor="end" class="tl-ax">RISK</text>`;
+  // The risk each sweep itself found: the header adds to it for who can open the dataset now, which no past sweep recorded.
+  s += `<text x="34" y="${(yT + yB) / 2}" transform="rotate(-90 34 ${(yT + yB) / 2})" text-anchor="middle" class="tl-ax">RISK FOUND</text>`;
   for (const v of [0, 25, 50, 75, 100]) s += `<line x1="${x0 - 30}" x2="${x1 + 30}" y1="${f(Y(v))}" y2="${f(Y(v))}" class="tl-grid${v ? '' : ' base'}"/>` +
     `<text x="${x0 - 40}" y="${f(Y(v) + 4)}" text-anchor="end" class="tl-axn">${v}</text>`;
   const band = (i, cls, label) => `<g class="tl-band ${cls}" aria-hidden="true"><rect x="${f(X(i) - 30)}" y="58" width="60" height="${yK + 6}" rx="14"/>` +
