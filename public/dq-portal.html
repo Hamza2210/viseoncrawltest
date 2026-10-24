@@ -907,6 +907,7 @@
   .cmp-advitem { margin: 6px 0; padding-left: 8px; border-left: 2px solid var(--border); }
   .cmp-note { font-style: italic; margin-top: 10px; }
   .cmp-sweep { margin: 12px 0 4px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--card-2); font-size: 12.5px; }
+  .cmp-sweep .cmp-sweep-risk { margin-left: 8px; font-size: 12px; font-weight: 650; color: var(--muted); }
   .cmp-sweep h4 { margin: 0 0 6px; font-size: 13px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
   .cmp-sweep p { margin: 4px 0; }
   .cmp-sweep table { width: 100%; border-collapse: collapse; margin: 8px 0 6px; }
@@ -4270,8 +4271,9 @@
      word as well as a colour. */
   #piiSweepPanel { --pii-crit: #fb7185; --pii-high: #fb923c; --pii-med: #fbbf24; --pii-low: #7aa2ff; }
   .pis-card { padding: 18px 22px 20px; }
-  .pis-pickrow { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(180px, 1fr) auto auto; align-items: end; gap: 14px; }
-  @media (max-width: 1100px) { .pis-pickrow { grid-template-columns: minmax(0, 1fr) minmax(160px, 220px) auto; } .pis-pickrow .pis-or { grid-column: 1 / -1; border-left: 0; padding-left: 0; } }
+  .pis-pickrow { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(250px, 1fr) auto auto; align-items: end; gap: 14px; }
+  .pis-pickrow .pis-field-l { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  @media (max-width: 1100px) { .pis-pickrow { grid-template-columns: minmax(0, 1fr) minmax(250px, 300px); } }
   @media (max-width: 900px) { .pis-pickrow { grid-template-columns: minmax(0, 1fr); } }
   .pis-field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
   .pis-field-l { font-size: 12.5px; font-weight: 650; color: var(--text); }
@@ -4410,8 +4412,8 @@
   .pis-ico svg { width: 100%; height: 100%; }
   button.dsx-btn.pis-go { display: inline-flex; align-items: center; gap: 9px; padding: 0 26px; }
   button.dsx-btn.pis-go .pis-ico { width: 17px; height: 17px; }
-  .pis-pickrow .pis-or { align-self: center; display: flex; flex-direction: column; gap: 4px; max-width: 230px; padding-left: 18px;
-    border-left: 1px solid var(--border); font-size: 12.5px; color: var(--muted); line-height: 1.45; }
+  .pis-pickrow .pis-or { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin-top: -2px;
+    font-size: 12.5px; color: var(--muted); line-height: 1.45; }
   .pis-pickrow .pis-or .linkbtn { margin: 0; display: inline-flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 650; }
   .pis-pickrow .pis-or .pis-ico { width: 14px; height: 14px; }
   #pisStage.card:has(> .pis-top) { background: none; border: 0; padding: 0; box-shadow: none; }
@@ -4440,16 +4442,11 @@
   .pis-note.worse .pis-ico { color: var(--pii-crit); }
   .pis-note .linkbtn { display: inline-flex; align-items: center; gap: 5px; font-weight: 650; }
   .pis-note .linkbtn .pis-ico { width: 14px; height: 14px; color: currentColor; }
-  /* In step with the assessments: which of the two is behind, and the press that catches it up */
-  .pis-note.sync { border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); background: color-mix(in srgb, var(--accent) 8%, var(--card-2)); }
-  .pis-note.sync .pis-ico { color: var(--accent); } .pis-note.sync .pis-note-t { flex: 1; min-width: 240px; font-size: 13px; line-height: 1.5; }
-  .pis-note.sync .dsx-btn { display: inline-flex; align-items: center; gap: 7px; height: 34px; font-size: 12.5px; }
-  .dsx-sync { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 10px; padding: 9px 12px; border-radius: 10px;
-    border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--border)); background: color-mix(in srgb, var(--accent) 8%, var(--card-2)); }
-  .dsx-sync > .pis-ico { flex: none; width: 18px; height: 18px; color: var(--accent); }
-  .dsx-sync .dsx-sync-t { flex: 1; min-width: 240px; font-size: 13px; line-height: 1.5; }
-  .dsx-sync .dsx-btn { display: inline-flex; align-items: center; gap: 7px; }
-  .dsx-sync .dsx-btn .pis-ico { width: 15px; height: 15px; }
+  /* Whether, and how much of it, a dataset's assessments sweep: beside the rows box, as tall as it */
+  .pis-auto { display: flex; align-items: center; gap: 9px; height: 50px; padding: 0 14px; box-sizing: border-box; border: 1px solid var(--border);
+    border-radius: 12px; background: var(--card-2); font-size: 13px; font-weight: 600; color: var(--text); cursor: pointer; white-space: nowrap; }
+  .pis-auto input { width: 16px; height: 16px; margin: 0; accent-color: var(--accent); cursor: inherit; }
+  .pis-auto:has(input:disabled) { cursor: default; color: var(--muted); }
   .pis-findhead { gap: 10px 14px; }
   button.pis-fchip { height: 32px; padding: 0 8px 0 12px; gap: 7px; font-size: 13px; }
   button.pis-fchip .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--k); }
@@ -6531,7 +6528,6 @@
     <div class="card pis-card" id="pisPick">
       <div class="pis-pickrow" id="pisPickRow"></div>
       <p class="hint pis-hint" id="pisHint" role="status" aria-live="polite"></p>
-      <input type="file" id="pisFile" hidden accept=".csv,.tsv,.txt,.parquet,.pq,.json,.ndjson,.jsonl,.xlsx,.xlsm,.xls,.qvd">
     </div>
     <div class="card pis-card" id="pisStage" style="display:none;" aria-live="polite"></div>
     <div class="card pis-card" id="pisListCard">
@@ -6656,7 +6652,6 @@
           <option value="qlik">This app's tables (Qlik)</option>
           <option value="tag">Datasets with a tag (one task)</option>
           <option value="source-watch">Source monitoring only (no assessment)</option>
-          <option value="pii-sweep">PII sweep of one dataset</option>
           <option value="athena">Qlik Open Lakehouse</option>
           <option value="redshift">Amazon Redshift</option>
           <option value="s3">Amazon S3 file</option>
@@ -6712,13 +6707,6 @@
           <p class="hint" style="margin:8px 0;">It alerts on a source that has stopped loading, lost rows, changed columns, or become unreachable. Alerts go to the dataset owner (or your organisation's alert recipients), like any other incident.</p>
         </div>
 
-        <div id="schPiiWrap" style="display:none;">
-          <label for="schPiiDs">Dataset</label>
-          <select id="schPiiDs" style="width:100%;"></select>
-          <label for="schPiiRows">Sample rows <span class="hint" style="font-weight:400;">(optional)</span></label>
-          <input type="number" id="schPiiRows" min="1" step="1" placeholder="Leave empty to read every row" />
-          <p class="hint" style="margin:8px 0;">Reads every value of the dataset for personal data, through its saved connection, and lists what is new since the sweep before. A dataset read through an on-premises agent is queued for that agent. Results are on the <strong>PII sweep</strong> tab; no value found is ever stored.</p>
-        </div>
 
         <p class="hint" id="schAlertNote" style="margin:14px 0 0;"></p>
 
@@ -7431,6 +7419,8 @@ function cmpCtrlHtml(ct, opts) {
   if (ct.status === 'FAIL' && !opts.dismissedView) {
     const btns = [];
     if (recs.length) btns.push(`<button type="button" class="cmp-btn cmp-records-btn" data-cid="${esc(ct.id)}">View ${recs.length} record${recs.length === 1 ? '' : 's'}</button>`);
+    // A control from this run's PII sweep: where each find sits is on the PII sweep tab, which this opens on its column.
+    if (ct.source === 'pii_sweep' && opts.key) btns.push(`<button type="button" class="cmp-btn cmp-sweep-open" data-key="${esc(opts.key)}" data-col="${esc(ct.column || '')}">See where, in PII sweep</button>`);
     btns.push(aiBtn('Explain', `data-cid="${esc(ct.id)}"`, 'cmp-explain-btn ai-sm'));
     if (opts.key) btns.push(`<button type="button" class="cmp-btn cmp-dismiss-btn" data-cid="${esc(ct.id)}" data-sev="${esc(ct.severity || 'medium')}">Not a compliance issue</button>`);
     actions = `<div class="cmp-btns">${btns.join('')}</div>`;
@@ -7466,36 +7456,52 @@ function cmpCtrlHtml(ct, opts) {
 }
 const CMP_SWEEP_TAG = { critical: ['red', 'Critical'], high: ['red', 'High'], medium: ['amber', 'Medium'], low: ['green', 'Low'] };
 /**
- * The dataset's newest PII sweep as this assessment read it (dq/compliance/lens.py pii_sweep): what it
- * found, column by column, and whether these checks found the same. These checks judge a sample of
- * whole values; a sweep reads every value and looks inside free text. A column it found is personal
- * data here too, so its values are redacted like any other.
+ * The PII sweep in a Compliance section (dq/compliance/lens.py pii_sweep). Each assessment sweeps its dataset first,
+ * and the sweep of its own run (`this_run`) is the Compliance section's personal data: its columns are the controls, as
+ * rated on the PII sweep tab, so this only says so. A run that did not sweep (switched off, or an agent older than
+ * that) judged personal data from a sample of whole values, beside the newest sweep there is, from an earlier run.
  */
 function cmpSweepHtml(comp, key) {
   const s = comp && comp.pii_sweep;
-  const open = k => k ? ` <button type="button" class="linkbtn lngb cmp-sweep-open" data-key="${esc(k)}">${s ? 'Open the sweep' : 'Sweep it'}</button>` : '';
-  if (!s) return key ? `<p class="hint cmp-sweep-none">No PII sweep has read every value of this dataset. A sweep also finds personal data inside free text, which these checks do not look for.${open(key)}</p>` : '';
+  const open = k => k ? ` <button type="button" class="linkbtn lngb cmp-sweep-open" data-key="${esc(k)}">Open the sweep</button>` : '';
+  if (!s) return key ? `<p class="hint cmp-sweep-none">This run did not sweep the dataset for personal data, so these checks judged it from a sample of whole values. Each assessment sweeps its dataset first unless that is switched off for it on the PII sweep tab.</p>` : '';
   const cols = (s.columns || []).filter(c => c.in_dataset !== false);
   const tag = CMP_SWEEP_TAG[s.severity] || ['green', 'No personal data'];
   const read = s.complete ? 'read every row' : `read the first ${Number(s.rows_scanned || 0).toLocaleString()} of ${Number(s.rows_total || 0).toLocaleString()} rows`;
+  const risk = s.risk != null ? `<span class="cmp-sweep-risk">Risk ${Number(s.risk)} / 100</span>` : '';
+  if (s.this_run) {
+    const found = cols.filter(c => !c.name_only);
+    return `<div class="cmp-sweep this-run"><h4>PII sweep <span class="tag ${tag[0]}">${esc(tag[1])}</span>${risk}</h4>` +
+      `<p>The personal data here is what the PII sweep that ran with this assessment found. It ${read} and ` +
+      (found.length ? `found personal data in ${found.length} column${found.length === 1 ? '' : 's'}: each is a control below, rated as the sweep rated it, and its values are redacted from stored samples.`
+                    : 'found none.') +
+      ` The PII sweep tab shows the same findings, and where each one sits.${open(key)}</p></div>`;
+  }
   const only = cols.filter(c => !c.assessment_finds);
   const missed = s.not_found_by_sweep || [];
   const rows = cols.map(c => `<tr><td><code>${esc(c.column)}</code>${c.hidden ? '<small>hidden in free text</small>' : c.name_only ? '<small>known by its name</small>' : ''}</td>` +
     `<td>${esc((c.kinds || []).join(', '))}</td><td>${c.severity ? `<span class="tag ${(CMP_SWEEP_TAG[c.severity] || ['muted'])[0]}">${esc((CMP_SWEEP_TAG[c.severity] || [0, c.severity])[1])}</span>` : ''}</td>` +
     `<td>${c.assessment_finds ? 'Found by these checks too' : '<b>Found only by the sweep</b>'}</td></tr>`).join('');
-  return `<div class="cmp-sweep"><h4>PII sweep <span class="tag ${tag[0]}">${esc(tag[1])}</span></h4>` +
-    `<p>The sweep of ${esc(rcxWhen(s.swept_at))} ${read} and ${cols.length ? `found personal data in ${cols.length} column${cols.length === 1 ? '' : 's'}` +
+  return `<div class="cmp-sweep"><h4>PII sweep <span class="tag ${tag[0]}">${esc(tag[1])}</span>${risk}</h4>` +
+    `<p>This run did not sweep the dataset, so these checks judged it from a sample, beside its newest sweep, from an earlier run. The sweep of ${esc(rcxWhen(s.swept_at))} ${read} and ${cols.length ? `found personal data in ${cols.length} column${cols.length === 1 ? '' : 's'}` +
       (only.length ? `, ${only.length === cols.length ? 'none' : `${cols.length - only.length}`} of which these checks found as well` : ', all of which these checks found as well') +
       '. Every one is personal data here too: its values are redacted from stored samples.' : 'found no personal data.'}${open(key)}</p>` +
     (rows ? `<table><thead><tr><th>Column</th><th>What</th><th>Rating</th><th>Here</th></tr></thead><tbody>${rows}</tbody></table>` : '') +
     (missed.length ? `<p>These checks found personal data in ${missed.map(c => `<code>${esc(c)}</code>`).join(', ')} by its values, where the sweep found none: a finding there may have been dismissed, or the data changed since the sweep.</p>` : '') +
     `</div>`;
 }
-// A sweep opened from a Compliance section: the PII sweep tab, on this dataset.
+// A sweep opened from a Compliance section: the PII sweep tab, on this dataset, and on the control's column if it was one.
 document.addEventListener('click', e => {
   const b = e.target.closest && e.target.closest('.cmp-sweep-open'); if (!b) return;
   switchTab('piisweep');
-  pisOpen(b.dataset.key).then(() => { const s = $('#pisStage'); if (s && s.style.display !== 'none') s.scrollIntoView({ behavior: dqReduced() ? 'auto' : 'smooth', block: 'start' }); });
+  pisOpen(b.dataset.key).then(() => {
+    const col = b.dataset.col;
+    if (col && pis.res && pisColumns(pis.res).some(c => c.name === col)) {
+      Object.assign(pis, { view: 'sky', lens: 'severity', col, detail: '', listed: false });
+      pisPaintSky();
+    }
+    const s = $('#pisStage'); if (s && s.style.display !== 'none') s.scrollIntoView({ behavior: dqReduced() ? 'auto' : 'smooth', block: 'start' });
+  });
 });
 function compliancePanel(comp, prefix) {
   if (!comp) return '';   // no block at all (a run from before the lens shipped) - show nothing;
@@ -12133,7 +12139,6 @@ function dsxHeadHtml(key, name, ds) {
       `</div></div>` +
     `<div class="dsx-kpis" id="dsxKpis"></div>` +
     `<div class="dsx-gov" id="dsxGov"></div>` +
-    `<div id="dsxSync"></div>` +
     `<div id="dsxNote"></div>`;
 }
 
@@ -12633,7 +12638,6 @@ async function selectDataset(key, name, initialTab) {
   applyDashMax();                                  // the Maximise button is new: label it for the layout
   dsxPaintKpis(ds, null);
   updateDetailTrust(key);
-  dsxSyncNote(key).catch(() => { /* the line is a hint: without the sweeps' list there is simply none */ });
   // A failed gate puts a dot on Failed records, so the tab to open next says so before it is opened.
   const gateDot = ds && ds.gate === false;
   const bar = DS_TABS.map(([k, l]) => `<button type="button" role="tab" aria-selected="${k === dsTab}" ` +
@@ -22910,15 +22914,15 @@ const GD_SHOTS = {
   "overview-top-p": [1600, 609, "2906120567"],
   "overview-top-q": [1600, 584, "5d61e45e4c"],
   "passport": [1600, 3230, "6eed9c1878"],
-  "pii-changes": [1600, 815, "8c11ab023c"],
-  "pii-column": [1600, 1399, "4f259c64ba"],
-  "pii-findings": [1600, 1087, "266df3e953"],
-  "pii-head": [1600, 324, "cbe99a5ed1"],
-  "pii-identify": [1600, 815, "187439dc7a"],
-  "pii-rule": [1600, 815, "0d5dc40103"],
-  "pii-rules": [1600, 815, "71bdeecf74"],
-  "pii-sky": [1600, 1018, "2d3514234f"],
-  "pii-start": [1600, 869, "ad750dc3d2"],
+  "pii-changes": [1600, 815, "e5225d8ab1"],
+  "pii-column": [1600, 1399, "c3d58d4fef"],
+  "pii-findings": [1600, 1087, "6477949e2b"],
+  "pii-head": [1600, 324, "eb7a865958"],
+  "pii-identify": [1600, 815, "9b28f65973"],
+  "pii-rule": [1600, 815, "9471d5817c"],
+  "pii-rules": [1600, 815, "b7ab44eab0"],
+  "pii-sky": [1600, 1018, "2b83af475e"],
+  "pii-start": [1600, 923, "b2c729371a"],
   "profile": [1600, 526, "104f28f43a"],
   "quality-space": [1600, 812, "7bfbdb7881"],
   "records-policy": [1600, 433, "0850fe5c47"],
@@ -22928,7 +22932,7 @@ const GD_SHOTS = {
   "schedule-form-p": [1600, 1133, "b82b8c3aca"],
   "schedule-form-q": [1600, 1181, "2240ecc99a"],
   "schedule-list": [1600, 776, "8070908fef"],
-  "schedule-watch": [962, 676, "27b968803e"],
+  "schedule-watch": [962, 678, "af7b7f024c"],
   "source-form": [1600, 1011, "60518ad7b0"],
   "source-menu": [1600, 913, "23d4212bf0"],
   "source-picker": [1600, 772, "b10b223d5e"],
@@ -23093,7 +23097,7 @@ const GD_SHOW = {
   'approvals': { tab: 'approvals', sel: '#approvalsBody', tip: 'Runs and proposals waiting for a decision.' },
   'mcp-url': { tab: 'assistant', sel: '#mcpUrl', tip: 'The address to add in your assistant as a custom connector.' },
   'pii-start': { tab: 'piisweep', sel: '#pisPickRow',
-    tip: 'Choose a dataset here, leave <b>Sample rows</b> empty to read every row, and press <b>Sweep for PII</b>.' },
+    tip: 'Choose a dataset here to open its newest sweep. Each assessment sweeps it first; <b>Run again</b> does that now.' },
   'pii-swept': { tab: 'piisweep', sel: '#pisListCard', tip: 'Every dataset swept so far, riskiest first. <b>Open</b> shows its newest sweep.' },
   'pii-head': { tab: 'piisweep', prep: gdOpenSweep(), sel: '#pisStage .pis-top', miss: GD_NO_SWEEP,
     tip: 'The sweep open: its rating, its risk and what it found, what you can do with it, and <b>Close</b> at the top right.' },
@@ -24559,33 +24563,33 @@ ${HDRS}
   G.push({
     id: 'pii-sweep', cat: 'Compliance', icon: 'shield', tint: '#fb7185',
     title: 'Sweep a dataset for personal data', sub: 'Every value read, every find located and rated, no value kept',
-    keywords: 'pii sweep personal data hidden free text notes description card number phone email passport nhs national insurance date of birth credential password key severity risk exposure restrict label dismiss schedule export locations gdpr ccpa pci sky star constellation who it identifies changes timeline rules list close',
+    keywords: 'pii sweep personal data hidden free text notes description card number phone email passport nhs national insurance date of birth credential password key severity risk exposure restrict label dismiss schedule export locations gdpr ccpa pci sky star constellation who it identifies changes timeline rules list close run again assessment compliance rows each sweep reads switched off',
     open: { tab: 'piisweep', label: 'Open PII sweep' },
     sections: [
       { h: 'What it is', body:
-          p(`An assessment judges each column from a sample. A sweep reads every value of one dataset (or a sample, if you ask for one) and finds personal data wherever it is, including inside free text such as notes, comments and descriptions, where nobody would think to look.`) +
+          p(`A sweep reads every value of a dataset and finds personal data wherever it is, including inside free text such as notes, comments and descriptions, where nobody would think to look.`) +
           p(`Each find says what it is, how serious it is, and where it is: the column, the row, and the characters it occupies. The value itself is never written down; it stays in your source.`) +
-          p(`Assessments keep in step with it. From its next run, an assessment treats every column the newest sweep found personal data in as personal data too: its values are redacted from stored samples, and its Compliance section shows what the sweep found and which of it the assessment's own checks would have missed. A finding you dismiss here leaves the assessment as well. The Data Passport counts the sweep in its personal-data part.`) },
-      { h: 'Start a sweep', body:
-          p(`${go('piisweep', 'PII sweep')} is in the menu on the left. The card at the top of the tab starts a sweep; under it is every dataset swept so far.`) +
-          steps(`Press ${ui('Choose a dataset')} and pick one, or type to find it by name. A database or warehouse table is read again through the saved connection its last assessment used; one on an on-premises agent is read by that agent. A dataset swept before shows its rating beside its name, and picking it opens its newest sweep.`,
-                `Leave ${ui('Sample rows')} empty to read every row, or type a number to read only that many.`,
-                `Press ${ui('Sweep for PII')}. A card says what the sweep is doing and how many rows it has read so far, and ${ui('Cancel this sweep')} stops it. When it finishes, its result opens in that card.`,
-                `To sweep a file that has not been assessed, or an uploaded file (uploads are not kept once assessed), press ${ui('Upload a file to sweep')} instead. The file is deleted once it has been read.`) +
-          shot('pii-start', `${n(1)} Choose the dataset, ${n(2)} leave Sample rows empty to read every row, and ${n(3)} press Sweep for PII. ${n(4)} Sweep a file instead. Underneath, ${n(5)} Open shows a swept dataset's newest sweep.`) +
+          p(`Every assessment sweeps its dataset first, in the same run, so the two never drift apart. Its Compliance section then shows what that sweep found: each column with personal data is a control there, rated as the sweep rated it, and its values are redacted from stored samples. A finding you dismiss here is gone from the next run's Compliance section too. The Data Passport counts the sweep in its personal-data part.`) },
+      { h: 'How a dataset is swept', body:
+          p(`${go('piisweep', 'PII sweep')} is in the menu on the left. There is nothing to start there: each assessment sweeps its dataset first, whoever or whatever started it (a person, ${go('schedules', 'a schedule')}, or source monitoring). The card at the top of the tab picks a dataset and says how its assessments sweep it; under it is every dataset swept so far.`) +
+          steps(`Press ${ui('Choose a dataset')} and pick one, or type to find it by name. Picking a dataset swept before opens its newest sweep.`,
+                `${ui('Rows each sweep reads')}: leave it empty to read every row, or type a number for each sweep of this dataset to read only that many (a very large table, say). ${ui('Sweep with each assessment')} switches its sweeping off and on.${ADMIN ? ' Both are saved as soon as you change them.' : ' Only an admin can change them.'}`,
+                `${ui('Run again')} assesses the dataset again now, through the saved connection its last assessment used (one on an on-premises agent runs on that agent). A card says what the sweep is doing and how many rows it has read, and ${ui('Cancel this run')} stops the sweep and its assessment. When the sweep finishes, its result opens in that card, while its assessment finishes in the background.`,
+                `A new file is swept as it is assessed: ${ui('Assess a new file')} goes to the Upload tab. An uploaded file is not kept once assessed, so ${ui('Upload it again')} sweeps it again.`) +
+          shot('pii-start', `${n(1)} Choose the dataset, ${n(2)} how many rows each of its sweeps reads (empty: every row), ${n(3)} whether its assessments sweep it at all, and ${n(4)} Run again. ${n(5)} Assess a new file. Underneath, ${n(6)} Open shows a swept dataset's newest sweep.`) +
           sm('pii-start') +
-          tip(`A Qlik app table can only be read by the app itself. Export it and upload the file to sweep it.`) },
+          tip(`A Qlik app table is swept when its app is assessed: ${ui('Run again')} on one assesses it in the app.`) },
       { h: 'The swept datasets', body:
           p(`${ui('Swept datasets')}, under the card, lists every dataset swept so far, riskiest first. Each row gives the rating (the worst severity found), the risk out of 100, how many findings there are, how many sit hidden in free text, how many rows identify someone, who can see the dataset, and when it was last swept.`) +
           list(`${ui('+1 new')} beside a rating counts the serious findings that are new since the sweep before.`,
-               `Under the date: a sweep under way and how many rows it has read, one that failed or was cancelled (point at it for why), and whether the dataset is on a schedule.`,
+               `Under the date: a sweep under way and how many rows it has read, one that failed or was cancelled (point at it for why), and whether sweeping is switched off for the dataset.`,
                `${ui('Open')} shows the dataset's newest sweep, between the card and the list. ${ui('Refresh')}, at the top of the list, reads it again.`) +
           sm('pii-swept') },
       { h: 'An open sweep', body:
           p(`An open sweep has two parts: a header saying what was found, and under it the sky (or a list, if you choose one).`) +
-          shot('pii-head', `${n(1)} The dataset, and who can open it: point at that for exactly who. ${n(2)} Sweep it again, put it on a schedule, export where every find is (a CSV with no values in it)${ADMIN ? ', or delete its sweeps' : ''}. ${n(3)} Close puts the sweep away. ${n(4)} The rating and the risk out of 100: point at the risk for what raised it. ${n(5)} What is new since the sweep before: press it to see what changed.`) +
+          shot('pii-head', `${n(1)} The dataset, and who can open it: point at that for exactly who. ${n(2)} Run it again, schedule its assessment, export where every find is (a CSV with no values in it)${ADMIN ? ', or delete its sweeps' : ''}. ${n(3)} Close puts the sweep away. ${n(4)} The rating and the risk out of 100: point at the risk for what raised it. ${n(5)} What is new since the sweep before: press it to see what changed.`) +
           sm('pii-head') +
-          p(`Under the dataset's name are when it was swept, how many rows were read and how many columns. A sample says so, with a note to sweep again with ${ui('Sample rows')} empty to read every row. Beside the rating and the risk, one line gives the findings and how many of the columns they are in, how many hide in free text, and how many rows identify someone.`) +          p(`${ui('Close')}, at the top right, puts the sweep away: the tab goes back to the card and the swept datasets, with nothing chosen. Opened again, a sweep starts afresh.`) },
+          p(`Under the dataset's name are when it was swept (and that it was with its assessment), how many rows were read and how many columns. A sweep that read only some rows says so: empty ${ui('Rows each sweep reads')} for the next to read every row. Beside the rating and the risk, one line gives the findings and how many of the columns they are in, how many hide in free text, and how many rows identify someone.`) +          p(`${ui('Close')}, at the top right, puts the sweep away: the tab goes back to the card and the swept datasets, with nothing chosen. Opened again, a sweep starts afresh.`) },
       { h: 'The sky', body:
           p(`Under the header is the sky, the ${ui('Severity')} view. Each star is a column of the dataset, on a ray from the dataset at the centre.`) +
           list(`<b>The further out, the riskier.</b> The rings mark a risk of 25, 50, 75 and 100.`,
@@ -24629,20 +24633,18 @@ ${HDRS}
           sm('pii-findings') +
           p(`${ui('See them in the list')} in a view, and ${ui('See it in the list')} in a finding's pane, open the list narrowed to those findings without changing what opens next time; the ${ui('×')} on the chip above the table shows every finding again. A find inside free text is rated a level higher than the same kind held in its own column.`) },
       { h: 'Act on it', body:
-          p(`Under the sky, or the list, is the next step for this dataset, and ${ui('All steps')} shows the rest: restrict it with a tag, assess it again so its columns are redacted, clean the free text, and deal with each kind of data at source. ${showme('pii-next')}`) +
+          p(`Under the sky, or the list, is the next step for this dataset, and ${ui('All steps')} shows the rest: restrict it with a tag, clean the free text, and deal with each kind of data at source. ${showme('pii-next')}`) +
           list(`${ui('Label the column as personal data')}, beside the sky or in a finding's pane, labels the column for every assessment.`,
                `${ui('Restrict with a tag')} limits who can open the dataset to the people granted that tag.`,
                `${ui('Export locations')} gives every location as a CSV, with no values in it.`) +
           (GOV ? p(`A finding that is not personal data (test data, a product named like a person) can be dismissed with a reason. It stays set aside on later sweeps until someone restores it, and is left out of the rating.`)
                : note(`An admin can dismiss a finding that is not personal data.`)) },
-      { h: 'In step with assessments', body:
-          p(`An assessment reads the dataset's newest sweep when it runs, and treats what the sweep found as personal data. The two are in step when the assessment ran after the sweep, within 12 hours of it. When one of them is behind, both say so, with the one press that catches it up:`) +
-          list(`<b>Assessed since the sweep</b>, more than 12 hours later, so the data may have changed: the dataset on the ${go('dashboard', 'Overview')} offers ${ui('Sweep for PII now')}, and the sweep itself ${ui('Sweep again')}. One press starts a sweep of every row, says it has started, and opens PII sweep with it under way.`,
-               `<b>Swept since the assessment</b>, which has not read the sweep yet: the Overview offers ${ui('Re-run now')}, and the sweep ${ui('Assess it again')}.`,
-               `<b>Never swept</b>: choosing the dataset here says when it was last assessed, and its Compliance section on the Overview offers a sweep.`) +
-          tip(`Once the one that was behind has run, neither asks again until one of them runs again, so you never need to run both every time.`) },
-      { h: 'On a schedule', body:
-          p(`Press ${ui('Schedule')} on a result, or in ${go('schedules', 'Schedules')} choose ${ui('PII sweep of one dataset')}. Each scheduled sweep says what changed since the last, so new personal data shows up as new. ${see('schedules', 'Schedule checks')}`) },
+      { h: 'With its assessment', body:
+          p(`Because each assessment sweeps first, the PII sweep tab and the dataset's Compliance section on the ${go('dashboard', 'Overview')} always show the same findings: the Compliance section says its personal data is what the sweep that ran with it found, and ${ui('See where, in PII sweep')} on a control opens its column here.`) +
+          list(`<b>A sweep that fails</b> never stops its assessment. That run's Compliance section judges personal data from a sample of whole values, as an assessment did before sweeps, and says so.`,
+               `<b>Sweeping switched off</b> for a dataset does the same, on every run until it is switched back on.`,
+               `<b>An on-premises agent</b> sweeps once it is on the version that does: an older one assesses without sweeping, and its run's sweep reads as failed, saying why.`) +
+          tip(`To sweep a dataset regularly, schedule its assessment: ${ui('Schedule')} on an open sweep sets that up in ${go('schedules', 'Schedules')}. Each run lists what changed since the sweep before.`) },
     ],
   });
 
@@ -25278,8 +25280,8 @@ function initGuidesTab() {
 // column, the row, the characters), never what it was. The worker reads (dq/pii_sweep.py); the API
 // starts it from the dataset's saved connection or from a file uploaded for it, and serves the result
 // with who can see the dataset. This draws the picker, the progress, the result and the list.
-let pis = { list: null, sel: '', q: '', open: false, rowsRaw: '', busy: false, fq: '', riskAsc: false, menuF: '', focus: null, seen: '', run: null, res: null,
-            history: [], canDismiss: false, openF: '', sev: '', showDismissed: false, locAll: {}, uploadKey: '', listTimer: null,
+let pis = { list: null, sel: '', q: '', open: false, rowsRaw: null, busy: false, fq: '', riskAsc: false, menuF: '', focus: null, seen: '', run: null, res: null,
+            history: [], canDismiss: false, openF: '', sev: '', showDismissed: false, locAll: {}, listTimer: null,
             // the sky: list or sky (kept in this browser), the view, the column open beside it, a Rules chip, the explainer, the steps
             view: 'sky', lens: 'severity', col: '', chip: '', howto: false, listed: false, todoOpen: false, hover: '', sky: null,
             sideTop: {}, sideKey: '', detail: '', detKey: '' };
@@ -25303,7 +25305,7 @@ const PIS_FIX = {
   contact: 'Contact details belong in the columns meant for them, not in notes and descriptions where nobody manages them.',
   online: 'IP addresses and precise locations identify people too. Truncate or round them where the detail is not needed.',
 };
-const PIS_PHASE = { queued: 'Waiting for a worker', reading: 'Connecting to the data', scanning: 'Reading every value', uploading: 'Uploading the file' };
+const PIS_PHASE = { queued: 'Waiting for a worker', reading: 'Connecting to the data', scanning: 'Reading every value' };
 
 const pisN = n => (n == null ? '-' : Number(n).toLocaleString());
 const pisBand = r => (r >= 80 ? 'critical' : r >= 60 ? 'high' : r >= 40 ? 'medium' : 'low');
@@ -25319,79 +25321,8 @@ function pisSampleOf(raw) {
   if (!s) return {};
   return /^\d+$/.test(s) && Number(s) >= 1 ? { max_rows: Number(s) } : null;
 }
-const PIS_SAMPLE_ERR = 'Sample rows is a whole number of 1 or more. Leave it empty to read every row.';
+const PIS_SAMPLE_ERR = 'Rows each sweep reads is a whole number of 1 or more. Leave it empty to read every row.';
 function pisDs(key) { return ((pis.list || {}).datasets || []).find(d => d.key === key) || null; }
-// ---- In step with the assessments ----
-// An assessment reads the dataset's newest sweep when it runs. So the two are in step when the assessment ran after
-// the sweep and within 12 hours of it; assessed later than that, the data may have changed since the sweep (the sweep
-// is behind), and swept since, the assessment has not read the sweep (the assessment is behind). Each side says which,
-// with the one press that catches it up; neither asks again once the other has caught up, so they cannot ping-pong.
-const PIS_STEP_MS = 12 * 3600e3;
-const pisRunAt = id => { const m = /^(\d{4}-\d{2}-\d{2})T(\d{2})-(\d{2})-(\d{2})Z/.exec(String(id || ''));
-                         return m ? Date.parse(`${m[1]}T${m[2]}:${m[3]}:${m[4]}Z`) : NaN; };
-const pisAt = ms => isNaN(ms) ? '' : rcxWhen(new Date(ms).toISOString());
-/** A dataset in the sweeps' list: 'running' (a sweep under way), 'never' (assessed, never swept), 'sweep' (assessed
- *  again since the sweep), 'assess' (swept since the assessment), or '' (in step, or nothing to set side by side). */
-function pisStep(d) {
-  if (!d) return { k: '' };
-  const c = d.current, l = d.latest, A = pisRunAt(d.assessedAt), S = l ? Date.parse(l.generated_at_utc) : NaN;
-  if (c && (c.state === 'QUEUED' || c.state === 'RUNNING')) return { k: 'running', A, S };
-  if (isNaN(A) || d.how === 'qlik') return { k: '', A, S };
-  if (!l || isNaN(S)) return { k: 'never', A, S };
-  if (A - S > PIS_STEP_MS) return { k: 'sweep', A, S };
-  if (S > A) return { k: 'assess', A, S };
-  return { k: '', A, S };
-}
-/** The open sweep beside its dataset's latest assessment (only when it is the newest sweep): as pisStep, from what the
- *  result itself says of the assessment, including whether it read this sweep. */
-function pisStepOf(res) {
-  const av = res.assessment, newest = (pis.history || []).find(h => h.state === 'SUCCEEDED');
-  if (!av || !av.assessed_at || (newest && newest.sweepId !== res.sweep_id)) return { k: '' };
-  const A = Date.parse(av.assessed_at), S = Date.parse(res.generated_at_utc);
-  if (A - S > PIS_STEP_MS) return { k: 'sweep', A, S };
-  if (!av.read_this_sweep) return { k: 'assess', A, S };
-  return { k: '', A, S };
-}
-/** On the Overview: the open dataset beside its PII sweep, saying which is behind, with the press that catches it up.
- *  A dataset never swept has nothing to be out of step with, so it gets no line here (its Compliance section offers a
- *  sweep, and choosing it on the PII sweep says when it was assessed). */
-function pisSyncHtml(d) {
-  const st = pisStep(d); if (!st.k || st.k === 'never') return '';
-  const name = esc(d.name || ''), key = esc(d.key);
-  const sweep = d.how === 'source' ? `<button type="button" class="dsx-btn primary lngb" data-sweepnow="${key}">${pisIco('search')}Sweep for PII now</button>`
-    : d.how === 'upload' ? `<button type="button" class="dsx-btn primary lngb" data-sweepnow="${key}">${pisIco('search')}Upload it to sweep</button>` : '';
-  const say = st.k === 'running' ? [`A PII sweep of ${name} is under way.`, `<button type="button" class="dsx-btn lngb" data-sweepopen="${key}">Open PII sweep</button>`]
-    : st.k === 'sweep' ? [`<b>Last swept for PII on ${esc(pisAt(st.S))}</b>, before this assessment of ${esc(pisAt(st.A))}: the data may have changed since. Sweep it again to bring the two in step.`, sweep]
-    : [`<b>Swept for PII on ${esc(pisAt(st.S))}</b>, after this assessment of ${esc(pisAt(st.A))}, which has not read the sweep: what it found is treated as personal data from the next run.`,
-       `<button type="button" class="dsx-btn lngb" data-dsx="rerun">↻ Re-run now</button>`];
-  return `<div class="dsx-sync ${st.k}" role="status">${pisIco(st.k === 'assess' ? 'refresh' : 'shield')}<span class="dsx-sync-t">${say[0]}</span>${say[1] || ''}</div>`;
-}
-/** The Overview's line for the open dataset, once the sweeps' list (read at most once a minute) is in. */
-async function dsxSyncNote(key) {
-  const box = $('#dsxSync'); if (!box || !APP_ID) return;
-  if (!pis.list || Date.now() - (pis.listAt || 0) > 60e3) await pisLoadList();
-  if (!dashSelected || dashSelected.key !== key || !$('#dsxSync')) return;     // another dataset opened meanwhile
-  $('#dsxSync').innerHTML = pisSyncHtml(pisDs(key));
-}
-/** Sweep a dataset now, from anywhere: the PII sweep tab, its sweep under way, and word that it has started. A file
- *  that was uploaded has to be chosen again, so its picker opens instead (from the press itself, as it must). */
-function pisSweepNow(key) {
-  const d = pisDs(key);
-  switchTab('piisweep');
-  window.scrollTo({ top: 0 });
-  if (!d) return;
-  if (pis.busy) { pisHint('A sweep is already running. It has to finish, or be cancelled, before another starts.', 'err'); return; }
-  pis.sel = key; pis.open = false; pis.q = ''; pis.rowsRaw = '';                 // every row
-  pisPaintPick();
-  if (d.how === 'upload') { pis.uploadKey = key; $('#pisFile').click(); return; }
-  pisStart().then(ok => { if (ok) dqDone('PII sweep started', `<strong>${esc(d.name || '')}</strong> is being swept for personal data. Its progress is here, and the result opens when it finishes.`); });
-}
-document.addEventListener('click', e => {
-  const b = e.target.closest && e.target.closest('[data-sweepnow], [data-sweepopen]'); if (!b) return;
-  if (b.dataset.sweepnow) { pisSweepNow(b.dataset.sweepnow); return; }
-  switchTab('piisweep');
-  pisOpen(b.dataset.sweepopen);
-});
 function pisName(key) { const d = pisDs(key); return d ? d.name : String(key || '').split('/').pop(); }
 function pisSevHtml(s, big) {
   return s ? `<span class="pis-sev ${s}${big ? ' big' : ''}">${PIS_SEV_L[s] || esc(s)}</span>`
@@ -25449,33 +25380,53 @@ function pisHowText(d) {
   const src = sourceLabel(d.sourceFormat) || (d.how === 'upload' ? 'Uploaded file' : '');
   return [src, d.latest ? `swept ${rcxWhen(d.latest.generated_at_utc)}` : 'not swept yet'].filter(Boolean).join(' · ');
 }
+/**
+ * The card at the top: the dataset, how its assessments sweep it (the rows each sweep reads, and whether they sweep at
+ * all: an admin's to change), and Run again, which assesses it again and so sweeps it first. A new file is swept as it
+ * is assessed, on the Upload tab.
+ */
 function pisPaintPick() {
   const row = $('#pisPickRow'); if (!row) return;
-  const d = pisDs(pis.sel), up = !!d && d.how === 'upload';
-  const ready = !!d && !pis.busy && (d.how === 'source' || up);
-  row.innerHTML = `<div class="pis-field"><span class="pis-field-l">Scan configuration</span><div class="rcx-pick${pis.open ? ' open' : ''}">` +
+  const d = pisDs(pis.sel), set = (d && d.settings) || {}, can = !!d && !!pis.canDismiss, up = !!d && d.how === 'upload';
+  const ready = !!d && !pis.busy && !set.off && (d.how === 'source' || d.how === 'qlik' || up);
+  const rows = pis.rowsRaw != null ? pis.rowsRaw : (set.maxRows ? String(set.maxRows) : '');
+  const lock = d && !pis.canDismiss ? ' data-tip="Only an admin can change how a dataset is swept"' : '';
+  row.innerHTML = `<div class="pis-field"><span class="pis-field-l">Dataset</span><div class="rcx-pick${pis.open ? ' open' : ''}">` +
     `<button type="button" class="rcx-pick-btn lngb${d ? '' : ' empty'}" data-pis="open" aria-haspopup="listbox" aria-expanded="${pis.open}">` +
     (d ? `<span class="ifr-dsi" aria-hidden="true">${srcIcon(d.sourceFormat)}</span><span class="rcx-pick-t"><span class="rcx-pick-n">${esc(d.name)}</span>` +
          `<span class="rcx-pick-s">${esc(pisHowText(d))}</span></span>`
        : `<span class="rcx-pick-t"><span class="rcx-pick-n">Choose a dataset</span></span>`) +
     `<span class="rcx-caret" aria-hidden="true">▾</span></button>${pis.open ? pisPopHtml() : ''}</div></div>` +
-    `<label class="pis-field"><span class="pis-field-l">Sample rows <span class="pis-opt">(optional)</span></span>` +
-    `<input class="pis-rows" data-pis-rows type="number" min="1" step="1" inputmode="numeric" placeholder="Empty = every row" value="${esc(pis.rowsRaw)}"></label>` +
-    `<div class="pis-go-wrap"><button type="button" class="dsx-btn primary pis-go" data-pis="go"${ready ? '' : ' disabled'}>` +
-    `${pisIco('search')}<span>${pis.busy ? 'Sweeping…' : up ? 'Upload the file again' : 'Sweep for PII'}</span></button></div>` +
-    `<div class="pis-or"><span>Or sweep a file that has not been assessed yet.</span>` +
-    `<button type="button" class="linkbtn lngb" data-pis="upload-new">Upload a file to sweep ${pisIco('arrow')}</button></div>`;
+    `<label class="pis-field"${lock}><span class="pis-field-l">Rows each sweep reads <span class="pis-opt">(optional)</span></span>` +
+    `<input class="pis-rows" data-pis-rows type="number" min="1" step="1" inputmode="numeric" placeholder="Empty = every row" value="${esc(rows)}"${can ? '' : ' disabled'}></label>` +
+    `<label class="pis-auto"${lock}><input type="checkbox" data-pis-auto${set.off ? '' : ' checked'}${can ? '' : ' disabled'}><span>Sweep with each assessment</span></label>` +
+    `<div class="pis-go-wrap"><button type="button" class="dsx-btn primary pis-go" data-pis="go"${ready ? '' : ' disabled'} ` +
+    `data-tip="${up ? 'Upload the file again: its assessment sweeps it first' : 'Assess it again: the assessment sweeps it first, in the same run'}">` +
+    `${pisIco('refresh')}<span>${pis.busy ? 'Running…' : up ? 'Upload it again' : 'Run again'}</span></button></div>` +
+    `<div class="pis-or"><span>Each assessment sweeps its dataset first, so a new file is swept as it is assessed.</span>` +
+    `<button type="button" class="linkbtn lngb" data-pis="upload-new">Assess a new file ${pisIco('arrow')}</button></div>`;
+}
+/** Save how the chosen dataset's assessments sweep it: { off }, { max_rows } or { every_row }. */
+async function pisSaveSettings(patch) {
+  const d = pisDs(pis.sel); if (!d) return;
+  try {
+    const r = await pisApi({ action: 'set-settings', dataset_key: d.key, ...patch });
+    d.settings = r.settings; pis.rowsRaw = null; pisPaintPick();
+    const set = d.settings || {};
+    pisHint(set.off ? `${d.name} is no longer swept when it is assessed. Its Compliance section judges personal data from a sample of whole values until it is switched back on.`
+      : `Each assessment of ${d.name} now sweeps ${set.maxRows ? `its first ${pisN(set.maxRows)} rows` : 'every row'} for personal data before assessing it.`);
+  } catch (e) { pis.rowsRaw = null; pisPaintPick(); pisHint(rcxErrText(e), 'err'); }
 }
 function pisOptsHtml() {
   const q = (pis.q || '').trim().toLowerCase(), all = ((pis.list || {}).datasets || []);
   const rank = d => (d.how === 'source' ? 0 : d.how === 'upload' ? 1 : 2);
   const opts = all.filter(d => !q || String(d.name || '').toLowerCase().includes(q))
     .sort((a, b) => rank(a) - rank(b) || String(a.name).localeCompare(String(b.name)));
-  if (!opts.length) return `<div class="rcx-none">${all.length ? 'No dataset matches.' : `No dataset has been assessed in this ${SCOPE_NOUN} yet. Upload a file to sweep it instead.`}</div>`;
+  if (!opts.length) return `<div class="rcx-none">${all.length ? 'No dataset matches.' : `No dataset has been assessed in this ${SCOPE_NOUN} yet. Each assessment sweeps its dataset: assess one to begin.`}</div>`;
   return opts.map(d => `<button type="button" role="option" class="rcx-opt lngb${d.key === pis.sel ? ' sel' : ''}" data-pis="pick" data-key="${esc(d.key)}" aria-selected="${d.key === pis.sel}">` +
     `<span class="ifr-dsi" aria-hidden="true">${srcIcon(d.sourceFormat)}</span><span class="rcx-opt-n">${esc(d.name)}</span>` +
-    (d.how === 'upload' ? `<span class="pis-opt-tag" data-tip="Its file was not kept after assessment: upload it again to sweep it">Upload again</span>`
-      : d.how === 'qlik' ? `<span class="pis-opt-tag" data-tip="Only the Qlik app can read its tables: sweep an export of it as a file">App table</span>` : '') +
+    (d.how === 'upload' ? `<span class="pis-opt-tag" data-tip="Its file was not kept after assessment: upload it again, and its assessment sweeps it">Upload again</span>`
+      : d.how === 'qlik' ? `<span class="pis-opt-tag" data-tip="A Qlik app table: Run again assesses it in the app, which sweeps it">App table</span>` : '') +
     (d.latest ? pisSevHtml(d.latest.severity) : `<span class="rcx-opt-s">${esc(sourceLabel(d.sourceFormat))}</span>`) + `</button>`).join('');
 }
 function pisPopHtml() {
@@ -25490,8 +25441,9 @@ function pisStageLoader(phase, detail) {
   st.style.display = '';
   st.innerHTML = `<div class="pis-loader">${dqLoader(PIS_PHASE[phase] || 'Working', detail || ' ')}` +
     `<div class="pis-progress" hidden><i style="width:0%"></i></div>` +
-    `<p class="hint">Every value is read where the worker can reach it. Only where each find sits is written down, never the value.</p>` +
-    `<button type="button" class="linkbtn lngb pis-cancel" data-pis="cancel"${pis.run ? '' : ' hidden'}>Cancel this sweep</button></div>`;
+    `<p class="hint">The sweep reads each value where the worker can reach it, and writes down only where each find sits, never the value. ` +
+    `Its assessment runs straight after, in the same run, and its Compliance section shows what the sweep found.</p>` +
+    `<button type="button" class="linkbtn lngb pis-cancel" data-pis="cancel"${pis.run ? '' : ' hidden'}>Cancel this run</button></div>`;
 }
 function pisLoaderUpdate(phase, detail, pct) {
   const box = $('#pisStage .pis-loader'); if (!box) { pisStageLoader(phase, detail); return; }
@@ -25506,14 +25458,14 @@ function pisStageCancelled(s) {
   const st = $('#pisStage'); if (!st) return;
   const by = s && s.cancelledBy ? ` Cancelled by ${s.cancelledBy}${s.cancelledAt ? ', ' + rcxWhen(s.cancelledAt) : ''}.` : '';
   st.style.display = '';
-  st.innerHTML = `<div class="pis-fail cancelled" role="status"><b>Sweep cancelled</b><p>${esc(((s && s.detail) || 'It was stopped before it finished.') + by)} ` +
-    `Nothing it had read was kept. Sweep again whenever you are ready.</p>` +
+  st.innerHTML = `<div class="pis-fail cancelled" role="status"><b>Run cancelled</b><p>${esc(((s && s.detail) || 'It was stopped before it finished.') + by)} ` +
+    `Nothing it had read was kept. Run it again whenever you are ready.</p>` +
     `<div class="pis-fail-acts"><button type="button" class="linkbtn lngb" data-pis="close">Close</button></div></div>`;
 }
 async function pisCancel() {
   const run = pis.run; if (!run) return;
-  if (!await dqConfirm('Cancel this sweep?\n\nIt stops where it is, and nothing it has read is kept. You can sweep again at any time.',
-                       { title: 'Cancel the sweep', okLabel: 'Cancel the sweep', cancelLabel: 'Keep it running' })) return;
+  if (!await dqConfirm('Cancel this run?\n\nIts sweep and its assessment stop where they are, and nothing they have read is kept. You can run it again at any time.',
+                       { title: 'Cancel the run', okLabel: 'Cancel the run', cancelLabel: 'Keep it running' })) return;
   try {
     await pisApi({ action: 'cancel', dataset_key: run.key, sweep_id: run.sweepId });
   } catch (e) {
@@ -25530,36 +25482,21 @@ function pisStageFail(title, msg) {
   st.innerHTML = `<div class="pis-fail" role="alert"><b>${esc(title)}</b><p>${esc(msg)}</p>` +
     `<div class="pis-fail-acts"><button type="button" class="linkbtn lngb" data-pis="close">Close</button></div></div>`;
 }
+/** Run again: the dataset assessed again, which sweeps it first in the same run. A database or warehouse table goes
+ *  through its saved connection, followed here from the press; an upload's file is chosen again on the Upload tab, and
+ *  a Qlik app table is assessed in the app. */
 async function pisStart() {
   const d = pisDs(pis.sel); if (!d || pis.busy) return;
-  if (d.how === 'upload') { pis.uploadKey = d.key; $('#pisFile').click(); return; }
-  if (d.how !== 'source') { pisHint('Only the Qlik app can read its tables. Export the table and upload the file to sweep it.', 'err'); return; }
-  const sample = pisSampleOf(pis.rowsRaw);
-  if (!sample) { pisHint(PIS_SAMPLE_ERR, 'err'); return; }
+  if (d.how === 'upload') { reUploadPrompt(d.name); return; }
+  if (d.how === 'qlik') { reRunTable(d.name, 'qlik', d.resultPrefix || ''); return; }
+  if ((d.settings || {}).off) { pisHint(`${d.name} is not swept with its assessments. Tick Sweep with each assessment first.`, 'err'); return; }
   pis.busy = true; pis.res = null; pisPaintPick(); pisHint('');
   pisStageLoader('queued', 'Asking for a worker');
   try {
-    const r = await pisApi({ action: 'start', dataset_key: d.key, ...sample });
-    pisFollow({ key: d.key, sweepId: r.sweepId, job: agentJobOf(r), startedAt: Date.now() });
+    const r = await pisApi({ action: 'start', dataset_key: d.key });
+    pisFollow({ key: r.datasetKey || d.key, sweepId: r.sweepId, job: agentJobOf(r), startedAt: Date.now() });
     return true;
-  } catch (e) { pis.busy = false; pisPaintPick(); pisStageFail('Could not start the sweep', rcxErrText(e)); }
-}
-async function pisUpload(file) {
-  if (!file || pis.busy) return;
-  const key = pis.uploadKey || '';
-  pis.uploadKey = '';
-  const sample = pisSampleOf(pis.rowsRaw);
-  if (!sample) { pisHint(PIS_SAMPLE_ERR, 'err'); return; }
-  pis.busy = true; pis.res = null; pisPaintPick(); pisHint('');
-  pisStageLoader('uploading', file.name);
-  try {
-    const up = await pisApi({ action: 'upload', filename: file.name, content_type: file.type || undefined, ...(key ? { dataset_key: key } : {}) });
-    if (up.maxUploadBytes && file.size > up.maxUploadBytes) throw new Error(`The file is larger than the ${Math.round(up.maxUploadBytes / 1048576)} MB upload limit.`);
-    await uploadToS3(up.upload.url, up.upload.fields, file, p => pisLoaderUpdate('uploading', `${file.name}: ${p}%`, p));
-    const r = await pisApi({ action: 'start', dataset_key: up.datasetKey, sweep_id: up.sweepId, input_uri: up.inputUri, ...sample });
-    pisLoaderUpdate('queued', 'Asking for a worker');
-    pisFollow({ key: up.datasetKey, sweepId: r.sweepId, job: agentJobOf(r), startedAt: Date.now() });
-  } catch (e) { pis.busy = false; pisPaintPick(); pisStageFail('Could not sweep the file', rcxErrText(e)); }
+  } catch (e) { pis.busy = false; pisPaintPick(); pisStageFail('Could not run it again', rcxErrText(e)); }
 }
 async function pisFollow(run) {
   pis.run = run;
@@ -25617,9 +25554,10 @@ async function pisOpen(key, sweepId) {
       if (s && (s.state === 'FAILED' || s.state === 'ERROR')) { pisStageFail('The last sweep failed', s.error || 'The worker did not say why.'); return; }
       if (s && s.state === 'CANCELLED') { pisStageCancelled(s); return; }
       st.style.display = 'none';
-      const A = pisRunAt((pisDs(key) || {}).assessedAt);
-      pisHint(isNaN(A) ? `${pisName(key)} has not been swept yet. Press Sweep for PII to sweep it now.`
-        : `${pisName(key)} was last assessed on ${pisAt(A)} and has not been swept yet. Press Sweep for PII to bring the two in step.`);
+      const d = pisDs(key) || {};
+      pisHint((d.settings || {}).off ? `${pisName(key)} has not been swept, and is not swept with its assessments. Tick Sweep with each assessment to switch it on.`
+        : d.how === 'upload' ? `${pisName(key)} has not been swept yet. Upload its file again: its assessment sweeps it first.`
+        : `${pisName(key)} has not been swept yet. Each assessment sweeps it first: press Run again to assess and sweep it now.`);
       return;
     }
     if (!pis.res || pis.res.dataset_key !== key) { pis.openF = ''; pis.sev = ''; pis.locAll = {}; pis.showDismissed = false; }
@@ -25997,7 +25935,7 @@ function pisNextHtml(items) {
   if (!items.length) return '';
   const left = items.filter(i => !i.done), t = left[0];
   return `<div class="pis-next"><div class="pis-next-row"><span class="pis-next-ic">${pisIco('bulb')}</span>` +
-    `<div class="pis-next-t"><b>${t ? `Next: ${esc(t.t)}` : 'Every step is done'}</b><small>${esc(t ? t.s : 'Sweep it again now and then, or on a schedule, to keep it that way.')}</small></div>` +
+    `<div class="pis-next-t"><b>${t ? `Next: ${esc(t.t)}` : 'Every step is done'}</b><small>${esc(t ? t.s : 'Each assessment sweeps it again, so a schedule for its assessment keeps it that way.')}</small></div>` +
     (t && t.btn ? `<button type="button" class="dsx-btn lngb" data-pis="${t.btn[0]}">${esc(t.btn[1])}</button>` : '') +
     (items.length > 1 ? `<button type="button" class="linkbtn lngb pis-more" data-pis="todo" aria-expanded="${!!pis.todoOpen}">` +
       `${pis.todoOpen ? 'Fewer steps' : `All ${items.length} steps`} ${pisIco(pis.todoOpen ? 'chevron' : 'arrow')}</button>` : '') +
@@ -26015,10 +25953,11 @@ function pisPaintResult() {
   const head = `<div class="pis-head"><div class="pis-head-l"><span class="pis-dsi" aria-hidden="true">${srcIcon(d.sourceFormat || (res.source || {}).format)}</span>` +
       `<div style="min-width:0"><div class="pis-title"><h3>${esc(res.dataset || d.name || '')}</h3>` +
       (who ? `<span class="pis-who ${esc(x.audience || '')}" data-tip="${esc(pisWho(x))} can open this dataset">${esc(who)}</span>` : '') + `</div>` +
-      `<p class="pis-sub">Swept <b>${esc(rcxWhen(res.generated_at_utc))}</b> • ${rowsTxt} • ${pisPl(nCols, 'column')}</p></div></div>` +
+      `<p class="pis-sub">Swept <b>${esc(rcxWhen(res.generated_at_utc))}</b>${res.assessment_run ? ' with its assessment' : ''} • ${rowsTxt} • ${pisPl(nCols, 'column')}</p></div></div>` +
     `<div class="pis-acts">` +
-      (d.how === 'source' ? btn('again', 'refresh', 'Sweep again') : d.how === 'upload' ? btn('again', 'refresh', 'Upload again') : '') +
-      (d.how === 'source' ? btn('schedule', 'calendar', d.schedule ? 'On a schedule' : 'Schedule') : '') +
+      (d.how === 'source' || d.how === 'qlik' ? btn('again', 'refresh', 'Run again', '', 'Assess it again: the assessment sweeps it first, in the same run')
+        : d.how === 'upload' ? btn('again', 'refresh', 'Upload again', '', 'Upload the file again: its assessment sweeps it first') : '') +
+      (d.how === 'source' ? btn('schedule', 'calendar', 'Schedule', '', 'Schedule its assessment: each run sweeps it first') : '') +
       btn('export', 'download', 'Export locations', '', 'Every location found, as a CSV. It holds no values.') +
       (pis.canDismiss ? btn('delete', 'trash', 'Delete sweeps', 'danger', 'Delete every sweep of this dataset') : '') +
       `<span class="pis-acts-sep" aria-hidden="true"></span>` +
@@ -26041,20 +25980,12 @@ function pisPaintResult() {
         `${cc.nNew ? `${pisN(cc.nNew)} new` : pisPl(cc.nNew + cc.nGone + cc.nUp + cc.nDown, 'change')} since ${esc(pisDay(c.previous_at))}</button>` : '') +
     `</div>`;
   const partial = res.complete ? '' : `<div class="pis-note partial">${pisIco('alert')}<span>Read the first ${pisN(res.rows_scanned)} rows of ` +
-    `${res.rows_total != null ? pisN(res.rows_total) : 'more'}. Sweep again with Sample rows left empty to read every row.</span></div>`;
-  // Beside its latest assessment: which of the two is behind, and the press that catches it up.
-  const step = pisStepOf(res);
-  const sync = step.k === 'sweep' ? `<div class="pis-note sync" role="status">${pisIco('refresh')}<span class="pis-note-t"><b>Assessed again on ${esc(pisAt(step.A))}</b>, ` +
-      `after this sweep: the data may have changed since. Sweep it again to bring the two in step.</span>` +
-      (d.how === 'source' || d.how === 'upload' ? btn('again', 'refresh', d.how === 'upload' ? 'Upload again' : 'Sweep again', 'primary') : '') + `</div>`
-    : step.k === 'assess' ? `<div class="pis-note sync" role="status">${pisIco('refresh')}<span class="pis-note-t"><b>Its latest assessment, on ${esc(pisAt(step.A))}</b>, ` +
-      `ran before this sweep and has not read it: from its next run it treats what this sweep found as personal data, and keeps those values out of stored samples.</span>` +
-      btn('reassess', 'refresh', 'Assess it again') + `</div>` : '';
+    `${res.rows_total != null ? pisN(res.rows_total) : 'more'}. Empty Rows each sweep reads, above, and its next assessment reads every row.</span></div>`;
   const seen = `${res.dataset_key}|${res.sweep_id || ''}`, fresh = pis.seen !== seen;
   pis.seen = seen;
   if (fresh && pis.view === 'sky' && pisPref('howto') !== 'seen') pis.howto = true;   // the first sky this browser shows explains itself
   st.style.display = '';
-  st.innerHTML = `<div class="card pis-card pis-top">${head}${verdict}${partial}${sync}</div><div class="card pis-card pis-skycard" id="pisSkyCard"></div>`;
+  st.innerHTML = `<div class="card pis-card pis-top">${head}${verdict}${partial}</div><div class="card pis-card pis-skycard" id="pisSkyCard"></div>`;
   const motion = fresh && !dqReduced();
   pisPaintSky(motion);
   if (motion) pisEnter(st);
@@ -26509,7 +26440,8 @@ function pisAssessmentLine(res, col) {
   const own = why.filter(w => w !== 'sweep');
   const by = { values: 'its values', name: 'its name', label: 'a label', framework: 'your framework' };
   if (own.length) return `The assessment's own checks treat this column as personal data too, by ${own.map(w => by[w] || w).join(' and ')}.`;
-  if (why.includes('sweep')) return 'The assessment treats this column as personal data because a sweep found it, and redacts its values.';
+  if (why.includes('sweep')) return av.read_this_sweep ? 'The assessment that ran with this sweep treats this column as personal data because the sweep found it, and redacts its values.'
+    : 'The assessment treats this column as personal data because a sweep found it, and redacts its values.';
   if (av.read_this_sweep) return 'The assessment does not treat this column as personal data.';
   return 'The assessment ran before this sweep. From its next run it treats this column as personal data and redacts its values.';
 }
@@ -26590,7 +26522,7 @@ function pisTodoItems(res, live) {
   } else if (av.read_this_sweep) {
     items.push({ done: true, t: 'The assessment redacts these columns', s: `Its latest run read this sweep: the ${n} with a finding are personal data to it, and their values stay out of stored samples.` });
   } else {
-    items.push({ t: 'Assess it again, to redact these columns', s: `The latest assessment ran before this sweep. Its next run treats the ${n} with a finding as personal data and keeps their values out of stored samples.` });
+    items.push({ t: 'Run it again, to redact these columns', s: `The latest assessment ran before this sweep. Run it again: it sweeps first, then treats the ${n} with a finding as personal data and keeps their values out of stored samples.`, btn: ['again', 'Run again'] });
   }
   const swept = new Set(fcols.map(c => String(c).toLowerCase()));
   const missed = Object.keys((av && av.basis) || {}).filter(c => (av.basis[c] || []).includes('values') && !swept.has(c.toLowerCase()));
@@ -26607,8 +26539,6 @@ function pisTodoItems(res, live) {
   const worst = c => Math.min(...live.filter(f => f.category === c).map(f => PIS_SEV.indexOf(f.severity)));
   cats.sort((a, b) => worst(a) - worst(b)).forEach(c => items.push({ t: `${PIS_CAT_L[c] || c}: deal with it at source`, s: PIS_FIX[c] }));
   items.push({ t: 'Export where it is', s: 'A CSV of every location found: the row, the column, the kind and the characters. It holds no values.', btn: ['export', 'Export locations'] });
-  const d = pisDs(res.dataset_key) || {};
-  if (d.how === 'source' && !d.schedule) items.push({ t: 'Sweep it on a schedule', s: 'Catch new personal data as it arrives. Each sweep lists what changed since the one before.', btn: ['schedule', 'Schedule'] });
   return items;
 }
 function pisTodoHtml(items) {
@@ -26625,7 +26555,7 @@ function pisPaintList() {
   const never = all.filter(d => !d.latest && !d.current && d.how === 'source').length;
   if (!swept.length) {
     box.innerHTML = dqEmpty({ icon: '🔎', title: 'Nothing swept yet',
-      body: 'Choose a dataset above and press Sweep for PII. Each sweep is listed here with its rating, and on a schedule it says what changed since the last.' });
+      body: 'Each assessment sweeps its dataset first, so a dataset is listed here once it has been assessed. Choose one above and press Run again to sweep it now.' });
     return;
   }
   swept.sort((a, b) => (((b.latest || {}).risk) || -1) - (((a.latest || {}).risk) || -1) || String(a.name).localeCompare(String(b.name)));
@@ -26642,12 +26572,12 @@ function pisPaintList() {
       `<td class="pis-num">${l ? pisN(l.hidden) : ''}</td><td class="pis-num">${l ? pisN(l.identity_rows) : ''}</td>` +
       `<td>${esc(pisWho(d.exposure))}</td>` +
       `<td>${l ? esc(rcxWhen(l.generated_at_utc)) : ''}${run ? (l ? '<br>' : '') + run : ''}` +
-        `${d.schedule ? `<br><span class="dash-muted">${d.schedule.state === 'DISABLED' ? 'Schedule paused' : 'On a schedule'}</span>` : ''}</td>` +
+        `${(d.settings || {}).off ? `<br><span class="dash-muted">Not swept with its assessments</span>` : ''}</td>` +
       `<td><button type="button" class="pis-rowbtn lngb" data-pis="open-ds" data-key="${esc(d.key)}"${l ? '' : ' disabled'}>Open</button></td></tr>`;
   }).join('');
   box.innerHTML = `<div class="pis-tbl-wrap"><table class="pis-tbl pis-list-tbl"><thead><tr><th>Dataset</th><th>Rating</th><th>Risk</th><th>Findings</th>` +
     `<th>Hidden in text</th><th>Identify someone</th><th>Who can see it</th><th>Last swept</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>` +
-    (never ? `<p class="hint" style="margin-top:10px">${pisPl(never, 'more dataset')} ${never === 1 ? 'has' : 'have'} not been swept yet.</p>` : '');
+    (never ? `<p class="hint" style="margin-top:10px">${pisPl(never, 'more dataset')} ${never === 1 ? 'has' : 'have'} not been swept yet: each is swept at its next assessment.</p>` : '');
   // Something under way: look again shortly, while the tab is open.
   if (swept.some(d => d.current && (d.current.state === 'QUEUED' || d.current.state === 'RUNNING')) && !pis.listTimer) {
     pis.listTimer = setTimeout(() => { pis.listTimer = null; const p = $('#piiSweepPanel'); if (p && p.style.display !== 'none' && !pis.run) pisLoadList(); }, 10000);
@@ -26709,7 +26639,7 @@ async function pisRestore(id) {
 }
 async function pisDelete() {
   const res = pis.res; if (!res) return;
-  if (!await dqConfirm(`Delete every sweep of ${res.dataset}?\n\nTheir findings, dismissals and schedule go. The dataset itself, and its assessments, stay.`,
+  if (!await dqConfirm(`Delete every sweep of ${res.dataset}?\n\nTheir findings and dismissals go. The dataset itself, and its assessments, stay, and its next assessment sweeps it again.`,
                        { title: 'Delete sweeps', danger: true, okLabel: 'Delete' })) return;
   try {
     await pisApi({ action: 'delete', dataset_key: res.dataset_key });
@@ -26730,17 +26660,12 @@ function pisCloseSweep() {
   const b = key && card.querySelector(`[data-pis="open-ds"][data-key="${CSS.escape(key)}"]`);
   if (b) b.focus({ preventScroll: true });
 }
-/** Open the Schedules form on a PII sweep of this dataset. */
-async function pisSchedule(key) {
-  const d = pisDs(key);
-  switchTab('schedules');                      // which resets the form, so fill it in after
-  if (d && d.schedule) { schBanner('info', `${d.name} is already swept on a schedule: edit it in the list.`); return; }
-  $('#schSourceKind').value = 'pii-sweep';
-  schSourceUI();
-  await populateSchPii(key);
-  $('#schLabel').value = `PII sweep: ${pisName(key)}`;
-  renderSchedulePreview();
-  const lbl = $('#schLabel'); if (lbl) lbl.focus();
+/** Schedule the dataset's assessment, on the Schedules tab, as its Schedule on the Overview does: each run sweeps it first. */
+function pisScheduleRun(key) {
+  (dsxRow(key) ? Promise.resolve() : loadDashboard()).then(() => {
+    const row = dsxRow(key);
+    if (row) dsxSchedule(row); else dqAlert('This dataset is not in the list of assessed datasets, so its assessment cannot be scheduled from here.', { title: 'Not scheduled' });
+  });
 }
 
 {
@@ -26754,13 +26679,12 @@ async function pisSchedule(key) {
         pis.open = !pis.open; pis.q = ''; pisPaintPick();
         if (pis.open) { const s = panel.querySelector('.rcx-search'); if (s) s.focus(); }
       } else if (a === 'pick') {
-        pis.sel = t.dataset.key; pis.open = false; pis.q = ''; pisPaintPick();
+        pis.sel = t.dataset.key; pis.open = false; pis.q = ''; pis.rowsRaw = null; pisPaintPick();
         const d = pisDs(pis.sel);
-        const assessed = d ? pisRunAt(d.assessedAt) : NaN;
-        pisHint(d && d.how === 'qlik' ? 'Only the Qlik app can read its tables. Export the table and upload the file to sweep it.'
-          : d && d.how === 'upload' ? 'This file was not kept after its assessment. Press the button to upload it again and sweep it.'
-          : d && !d.latest && !d.current && !isNaN(assessed)
-            ? `${d.name} was last assessed on ${pisAt(assessed)} and has not been swept yet. Press Sweep for PII to bring the two in step.` : '');
+        pisHint(!d ? '' : (d.settings || {}).off ? `${d.name} is not swept with its assessments. Tick Sweep with each assessment to switch it back on.`
+          : d.latest || d.current ? ''
+          : d.how === 'upload' ? 'This file was not kept after its assessment. Upload it again: its assessment sweeps it first.'
+          : `${d.name} has not been swept yet. Each assessment sweeps it first: press Run again to do that now.`);
         if (d && (d.latest || d.current)) pisOpen(d.key);
         const b = panel.querySelector('.rcx-pick-btn'); if (b) b.focus();
       } else if (a === 'go') {
@@ -26768,9 +26692,10 @@ async function pisSchedule(key) {
       } else if (a === 'again') {
         if (res) { pis.sel = res.dataset_key; pisStart(); }
       } else if (a === 'upload-new') {
-        pis.uploadKey = ''; $('#pisFile').click();
+        switchTab('upload');
+        if (typeof selectSource === 'function') selectSource('file');
       } else if (a === 'schedule') {
-        if (res) pisSchedule(res.dataset_key);
+        if (res) pisScheduleRun(res.dataset_key);
       } else if (a === 'export') {
         pisExport();
       } else if (a === 'delete') {
@@ -26863,14 +26788,6 @@ async function pisSchedule(key) {
         $('#pisStage').style.display = 'none';
       } else if (a === 'close-sweep') {
         pisCloseSweep();
-      } else if (a === 'reassess') {
-        // Assess it again, as the Overview's Re-run does: with the saved connection where there is one.
-        if (!res) return;
-        const key = res.dataset_key, name = (pisDs(key) || {}).name || res.dataset || '';
-        (dsxRow(key) ? Promise.resolve() : loadDashboard()).then(() => {
-          const row = dsxRow(key) || {};
-          reRunTable(row.name || name, row.sourceFormat || (pisDs(key) || {}).sourceFormat || '', row.resultPrefix || '');
-        });
       }
     });
     panel.addEventListener('keydown', e => {
@@ -26986,38 +26903,20 @@ async function pisSchedule(key) {
       pis.q = e.target.value;
       const opts = panel.querySelector('.rcx-opts'); if (opts) opts.innerHTML = pisOptsHtml();
     });
+    // How the dataset's assessments sweep it, saved as soon as it is changed (an admin's to change).
     panel.addEventListener('change', e => {
-      if (e.target.id === 'pisFile') { const f = e.target.files && e.target.files[0]; e.target.value = ''; if (f) pisUpload(f); }
+      if (e.target.matches('[data-pis-auto]')) { pisSaveSettings({ off: !e.target.checked }); return; }
+      if (!e.target.matches('[data-pis-rows]')) return;
+      const want = pisSampleOf(e.target.value);
+      if (!want) { pisHint(PIS_SAMPLE_ERR, 'err'); return; }
+      if ((want.max_rows || null) === ((((pisDs(pis.sel) || {}).settings) || {}).maxRows || null)) { pis.rowsRaw = null; return; }
+      pisSaveSettings(want.max_rows ? { max_rows: want.max_rows } : { every_row: true });
     });
     // `.rcx-pick` alone, not under #pisPickRow: a click that opened the picker has re-drawn it, so the
     // button it landed on is detached by now, and only its own old ancestors are left to match.
     document.addEventListener('click', e => { if (pis.open && !e.target.closest('.rcx-pick')) pisClosePick(); });
     const rf = $('#pisRefresh'); if (rf) rf.addEventListener('click', pisLoadList);
   }
-}
-
-// ---- A PII sweep on a schedule: the Schedules form's own fields for it ----
-async function populateSchPii(want) {
-  const sel = $('#schPiiDs'); if (!sel) return;
-  if (!pis.list) { try { pis.list = await pisApi({ action: 'datasets' }); } catch (e) { /* the list says why below */ } }
-  const cur = want || sel.value;
-  const ds = ((pis.list || {}).datasets || []).filter(d => d.how === 'source').sort((a, b) => String(a.name).localeCompare(String(b.name)));
-  sel.innerHTML = ds.length ? `<option value="">Choose a dataset…</option>` + ds.map(d => `<option value="${esc(d.key)}">${esc(d.name)}</option>`).join('')
-                            : `<option value="">(no dataset can be read from its source yet)</option>`;
-  if (cur && ![...sel.options].some(o => o.value === cur)) {
-    const o = document.createElement('option'); o.value = cur; o.textContent = pisName(cur); sel.appendChild(o);
-  }
-  sel.value = cur || '';
-  renderSchedulePreview();
-}
-{
-  const sel = $('#schPiiDs');
-  if (sel) sel.addEventListener('change', () => {
-    const lbl = $('#schLabel');
-    if (lbl && !lbl.value.trim() && sel.value) lbl.value = `PII sweep: ${pisName(sel.value)}`;
-    renderSchedulePreview();
-  });
-  const rows = $('#schPiiRows'); if (rows) rows.addEventListener('input', renderSchedulePreview);
 }
 
 function switchTab(name) {
@@ -27804,7 +27703,6 @@ function resetScheduleForm() {
   schEditingName = null;
   $('#schFormTitle').textContent = 'New schedule';
   $('#schLabel').value = ''; $('#schSample').value = '';
-  if ($('#schPiiRows')) $('#schPiiRows').value = '';
   $('#schFreq').value = 'daily'; $('#schTime').value = '06:00';
   $('#schDom').value = '1'; $('#schCustom').value = '';
   _tzClose();                   // a reset while the list is open would leave it hanging
@@ -28123,16 +28021,11 @@ function schSourceUI() {
   const qlik = kind === 'qlik';
   const tag = kind === 'tag';
   const watch = kind === 'source-watch';        // metadata monitoring: no connector form at all
-  const pii = kind === 'pii-sweep';             // one dataset, through the connection it already has
   if ($('#schQlikFields')) $('#schQlikFields').style.display = qlik ? '' : 'none';
-  if ($('#schSourceWrap')) $('#schSourceWrap').style.display = (qlik || tag || watch || pii) ? 'none' : 'block';
+  if ($('#schSourceWrap')) $('#schSourceWrap').style.display = (qlik || tag || watch) ? 'none' : 'block';
   if ($('#schTagWrap')) $('#schTagWrap').style.display = tag ? 'block' : 'none';
   if ($('#schWatchWrap')) $('#schWatchWrap').style.display = watch ? 'block' : 'none';
-  if ($('#schPiiWrap')) $('#schPiiWrap').style.display = pii ? 'block' : 'none';
-  // A sweep sends no email: its results, and what changed, are on the PII sweep tab.
-  if ($('#schAlertNote')) $('#schAlertNote').style.display = pii ? 'none' : '';
   if (tag) populateSchTags();
-  else if (pii) populateSchPii();
   else if (!qlik && !watch) renderSchedSourceFields(kind);
 }
 if ($('#schSourceKind')) $('#schSourceKind').addEventListener('change', schSourceUI);
@@ -28943,12 +28836,6 @@ async function saveSchedule() {
   } else if (kind === 'source-watch') {
     // Nothing to collect: the server builds the target list from every dataset in this
     // workspace that has a saved credential profile.
-  } else if (kind === 'pii-sweep') {
-    const key = ($('#schPiiDs') && $('#schPiiDs').value) || '';
-    if (!key) { schBanner('err', 'Choose the dataset to sweep.'); return; }
-    const sample = pisSampleOf(($('#schPiiRows') || {}).value);
-    if (!sample) { schBanner('err', PIS_SAMPLE_ERR); return; }
-    body.source = { dataset_key: key, ...sample };
   } else {
     const cfg = collectSchedSource();
     // When saved credentials are applied, the blank secret is injected server-side.
@@ -28976,11 +28863,8 @@ async function saveSchedule() {
     schBanner(r.action === 'updated' ? 'info' : 'ok', `Schedule ${r.action}.`);
     resetScheduleForm();
     loadSchedules();
-    if (kind === 'pii-sweep') pis.list = null;      // the PII sweep tab shows the dataset as scheduled
   } catch (e) {
-    // One sweep schedule per dataset, named after it: a second is a conflict, and the way on is to edit.
-    schBanner('err', kind === 'pii-sweep' && e.status === 409
-      ? 'This dataset is already swept on a schedule. Edit that schedule in the list instead.' : e.message);
+    schBanner('err', e.message);
   } finally {
     $('#schSave').disabled = false;
   }
@@ -29226,7 +29110,7 @@ function _tzClose() {
 // <select> stays in the DOM - hidden - and remains the single source of truth for the value.
 // Every existing read and write of #schSourceKind.value therefore keeps working as written.
 // These two are not data sources, so they have no brand mark of their own.
-const SCHED_KIND_ICON = { tag: '🏷️', 'source-watch': '👁️', reconcile: '⚖️', 'pii-sweep': '🔎' };
+const SCHED_KIND_ICON = { tag: '🏷️', 'source-watch': '👁️', reconcile: '⚖️' };
 function schedKindIcon(v) { return `<span class="skc-ic">${SCHED_KIND_ICON[v] || srcIcon(v)}</span>`; }
 
 function buildSchedKindSelect() {
@@ -29434,17 +29318,10 @@ function renderSchedulePreview() {
   const tz = ($('#schTz').value || 'UTC').trim();
   const label = $('#schLabel').value.trim();
   const sampleN = parseInt($('#schSample').value.trim(), 10);
-  const piiKind = (($('#schSourceKind') || {}).value || '') === 'pii-sweep';
-  const piiKey = piiKind ? (($('#schPiiDs') || {}).value || '') : '';
-  const tablesTxt = piiKind
-    ? (piiKey ? `${pisName(piiKey)}, read for personal data` : 'Choose a dataset')
-    : schSelected.length
+  const tablesTxt = schSelected.length
     ? (schSelected.length + ' table' + (schSelected.length === 1 ? '' : 's'))
     : 'All tables';
-  const sampleTxt = piiKind
-    ? ((pisSampleOf(($('#schPiiRows') || {}).value) || {}).max_rows
-      ? `The first ${pisSampleOf($('#schPiiRows').value).max_rows.toLocaleString()} rows (a sample)` : 'Every row')
-    : Number.isFinite(sampleN) && sampleN > 0
+  const sampleTxt = Number.isFinite(sampleN) && sampleN > 0
     ? sampleN.toLocaleString() + ' rows/table' : 'Whole tables';
 
   const isRate = /^rate\(/i.test(cron);
@@ -29472,8 +29349,8 @@ function renderSchedulePreview() {
     (isRate ? '' : ` <span class="dash-muted">(${esc(tz)})</span>`) + `</div>` +
     `<div class="sp-meta">` +
     `<span class="k">Assesses</span><span>${esc(tablesTxt)}</span>` +
-    `<span class="k">${piiKind ? 'Rows' : 'Sample'}</span><span>${esc(sampleTxt)}</span>` +
-    `<span class="k">${piiKind ? 'Results' : 'Alerts'}</span><span>${piiKind ? 'On the PII sweep tab, with what changed since the last sweep' : 'Dataset owner, else whoever submitted it'}</span>` +
+    `<span class="k">Sample</span><span>${esc(sampleTxt)}</span>` +
+    `<span class="k">Alerts</span><span>Dataset owner, else whoever submitted it</span>` +
     `</div>` +
     `<div class="sp-next-h">Next ${runs.length > 1 ? runs.length + ' runs' : 'run'}</div>` +
     runsHtml;
@@ -29500,9 +29377,6 @@ function renderSchedules(list) {
       // A watched pair, set from the Reconcile tab; its Edit opens the pair there.
       : s.sourceKind === 'reconcile'
       ? `<span class="ds-tag" style="cursor:default">${SCHED_KIND_ICON.reconcile} Reconcile</span>` + detail(s.sourceSummary || '')
-      // A dataset's PII sweep; its results are on the PII sweep tab.
-      : s.sourceKind === 'pii-sweep'
-      ? `<span class="ds-tag" style="cursor:default">${SCHED_KIND_ICON['pii-sweep']} PII sweep</span>` + detail(s.sourceSummary || '')
       : isSrc
         ? sourceChip(s.sourceKind) + detail(s.sourceSummary || '')
         : sourceChip('qlik') + detail((s.tables && s.tables.length)
@@ -29549,18 +29423,13 @@ function renderSchedules(list) {
     exp.querySelector('.v-tz').textContent = s.timezone || 'UTC';
     exp.querySelector('.v-tables').textContent = s.sourceKind === 'reconcile'
       ? `Reconcile${s.sourceSummary ? ' · ' + s.sourceSummary : ''}`
-      : s.sourceKind === 'pii-sweep'
-      ? `PII sweep${s.sourceSummary ? ' · ' + s.sourceSummary : ''}`
       : (s.sourceKind && s.sourceKind !== 'qlik')
       ? `${SOURCE_LABEL[s.sourceKind] || s.sourceKind}${s.sourceSummary ? ' · ' + s.sourceSummary : ''}`
       : ((s.tables && s.tables.length) ? s.tables.join(', ') : 'All tables');
     // What the schedule will actually do. Older schedules may still carry a stored address from
     // when the form asked for one; it is shown because it IS still what those runs will use.
-    exp.querySelector('.v-email').textContent = s.sourceKind === 'pii-sweep' ? 'On the PII sweep tab'
-      : s.email ? 'Dataset owner, else ' + s.email : 'Dataset owner, else whoever submitted it';
-    exp.querySelector('.v-sample').textContent = s.sourceKind === 'pii-sweep'
-      ? (s.maxRows ? `The first ${Number(s.maxRows).toLocaleString()} rows (a sample)` : 'Every row')
-      : s.sampleRows ? `${s.sampleRows} rows` : 'Whole tables';
+    exp.querySelector('.v-email').textContent = s.email ? 'Dataset owner, else ' + s.email : 'Dataset owner, else whoever submitted it';
+    exp.querySelector('.v-sample').textContent = s.sampleRows ? `${s.sampleRows} rows` : 'Whole tables';
   });
   $('#schList').querySelectorAll('.sched-caret').forEach(c => c.addEventListener('click', () => {
     const i = c.dataset.caret, exp = $(`tr[data-exp="${i}"]`);
@@ -29640,10 +29509,6 @@ function editSchedule(s) {
   } else if (kind === 'source-watch') {
     // Nothing to restore: the target list is rebuilt from the workspace on save, and there are
     // no connection details in this form to re-enter.
-  } else if (kind === 'pii-sweep') {
-    // The dataset and the row limit are all it holds; the connection is the dataset's own.
-    populateSchPii(s.datasetKey || '');
-    const rows = $('#schPiiRows'); if (rows) rows.value = s.maxRows ? String(s.maxRows) : '';
   } else {
     schBanner('info', 'Re-enter this source’s connection details - credentials aren’t stored back into the form.');
   }
