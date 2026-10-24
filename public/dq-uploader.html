@@ -4441,6 +4441,11 @@
   .pis-note.worse { background: color-mix(in srgb, var(--pii-crit) 10%, var(--card-2)); }
   .pis-note.worse .pis-ico { color: var(--pii-crit); }
   .pis-note .linkbtn { display: inline-flex; align-items: center; gap: 5px; font-weight: 650; }
+  /* Sweeping switched off for the dataset: how far behind its last sweep may be, and the press that switches it on */
+  .pis-note.off { border-color: color-mix(in srgb, var(--pii-med) 45%, var(--border)); background: color-mix(in srgb, var(--pii-med) 8%, var(--card-2)); }
+  .pis-note.off .pis-ico { color: var(--pii-med); }
+  .pis-note.off .pis-note-t { flex: 1; min-width: 240px; font-size: 13px; line-height: 1.5; }
+  .pis-note.off .dsx-btn { display: inline-flex; align-items: center; gap: 7px; height: 34px; font-size: 12.5px; }
   .pis-note .linkbtn .pis-ico { width: 14px; height: 14px; color: currentColor; }
   /* Whether, and how much of it, a dataset's assessments sweep: beside the rows box, as tall as it */
   .pis-auto { display: flex; align-items: center; gap: 9px; height: 50px; padding: 0 14px; box-sizing: border-box; border: 1px solid var(--border);
@@ -7458,13 +7463,20 @@ const CMP_SWEEP_TAG = { critical: ['red', 'Critical'], high: ['red', 'High'], me
 /**
  * The PII sweep in a Compliance section (dq/compliance/lens.py pii_sweep). Each assessment sweeps its dataset first,
  * and the sweep of its own run (`this_run`) is the Compliance section's personal data: its columns are the controls, as
- * rated on the PII sweep tab, so this only says so. A run that did not sweep (switched off, or an agent older than
- * that) judged personal data from a sample of whole values, beside the newest sweep there is, from an earlier run.
+ * rated on the PII sweep tab, so this only says so. A run that did not sweep judged personal data from a sample of
+ * whole values, beside the newest sweep there is, from an earlier run, and says why when the run said
+ * (`pii_sweep_skipped`, dq/pii_sweep.py for_assessment): switched off for the dataset, off for every dataset, or
+ * failed. An agent older than that, or a run from before every assessment swept, says nothing of why.
  */
 function cmpSweepHtml(comp, key) {
-  const s = comp && comp.pii_sweep;
-  const open = k => k ? ` <button type="button" class="linkbtn lngb cmp-sweep-open" data-key="${esc(k)}">Open the sweep</button>` : '';
-  if (!s) return key ? `<p class="hint cmp-sweep-none">This run did not sweep the dataset for personal data, so these checks judged it from a sample of whole values. Each assessment sweeps its dataset first unless that is switched off for it on the PII sweep tab.</p>` : '';
+  const s = comp && comp.pii_sweep, skipped = (comp && comp.pii_sweep_skipped) || '';
+  const open = (k, label) => k ? ` <button type="button" class="linkbtn lngb cmp-sweep-open" data-key="${esc(k)}">${label || 'Open the sweep'}</button>` : '';
+  const why = { switched_off: 'Sweeping is switched off for this dataset: this run did not sweep it',
+                off_everywhere: 'Sweeping is switched off for every dataset: this run did not sweep it',
+                failed: 'This run\'s PII sweep failed (the PII sweep tab says why)' }[skipped] || 'This run did not sweep the dataset';
+  if (!s) return key ? `<p class="hint cmp-sweep-none">${why}${skipped ? '' : ' for personal data'}, so these checks judged it from a sample of whole values.` +
+    (skipped === 'switched_off' ? ` An admin can switch it back on, on the PII sweep tab.${open(key, 'Open PII sweep')}`
+      : skipped ? open(key, 'Open PII sweep') : ' Each assessment sweeps its dataset first unless that is switched off for it on the PII sweep tab.') + `</p>` : '';
   const cols = (s.columns || []).filter(c => c.in_dataset !== false);
   const tag = CMP_SWEEP_TAG[s.severity] || ['green', 'No personal data'];
   const read = s.complete ? 'read every row' : `read the first ${Number(s.rows_scanned || 0).toLocaleString()} of ${Number(s.rows_total || 0).toLocaleString()} rows`;
@@ -7483,7 +7495,7 @@ function cmpSweepHtml(comp, key) {
     `<td>${esc((c.kinds || []).join(', '))}</td><td>${c.severity ? `<span class="tag ${(CMP_SWEEP_TAG[c.severity] || ['muted'])[0]}">${esc((CMP_SWEEP_TAG[c.severity] || [0, c.severity])[1])}</span>` : ''}</td>` +
     `<td>${c.assessment_finds ? 'Found by these checks too' : '<b>Found only by the sweep</b>'}</td></tr>`).join('');
   return `<div class="cmp-sweep"><h4>PII sweep <span class="tag ${tag[0]}">${esc(tag[1])}</span>${risk}</h4>` +
-    `<p>This run did not sweep the dataset, so these checks judged it from a sample, beside its newest sweep, from an earlier run. The sweep of ${esc(rcxWhen(s.swept_at))} ${read} and ${cols.length ? `found personal data in ${cols.length} column${cols.length === 1 ? '' : 's'}` +
+    `<p>${why}, so these checks judged it from a sample, beside its newest sweep, from an earlier run. The sweep of ${esc(rcxWhen(s.swept_at))} ${read} and ${cols.length ? `found personal data in ${cols.length} column${cols.length === 1 ? '' : 's'}` +
       (only.length ? `, ${only.length === cols.length ? 'none' : `${cols.length - only.length}`} of which these checks found as well` : ', all of which these checks found as well') +
       '. Every one is personal data here too: its values are redacted from stored samples.' : 'found no personal data.'}${open(key)}</p>` +
     (rows ? `<table><thead><tr><th>Column</th><th>What</th><th>Rating</th><th>Here</th></tr></thead><tbody>${rows}</tbody></table>` : '') +
@@ -24690,8 +24702,8 @@ ${HDRS}
                : note(`An admin can dismiss a finding that is not personal data.`)) },
       { h: 'With its assessment', body:
           p(`Because each assessment sweeps first, the PII sweep tab and the dataset's Compliance section on the ${go('dashboard', 'Overview')} always show the same findings: the Compliance section says its personal data is what the sweep that ran with it found, and ${ui('See where, in PII sweep')} on a control opens its column here.`) +
-          list(`<b>A sweep that fails</b> never stops its assessment. That run's Compliance section judges personal data from a sample of whole values, as an assessment did before sweeps, and says so.`,
-               `<b>Sweeping switched off</b> for a dataset does the same, on every run until it is switched back on.`,
+          list(`<b>A sweep that fails</b> never stops its assessment. That run's Compliance section judges personal data from a sample of whole values, as an assessment did before sweeps, and says the sweep failed.`,
+               `<b>Sweeping switched off</b> for a dataset does the same, on every run until it is switched back on, and its Compliance section says it is switched off. Its last sweep, opened here, says so too, and whether it has been assessed since${ADMIN ? `, with ${ui('Switch it back on')}` : ''}.`,
                `<b>An on-premises agent</b> sweeps once it is on the version that does: an older one assesses without sweeping, and its run's sweep reads as failed, saying why.`) +
           tip(`To sweep a dataset regularly, schedule its assessment: ${ui('Schedule')} on an open sweep sets that up in ${go('schedules', 'Schedules')}. Each run lists what changed since the sweep before.`) },
     ],
@@ -25357,6 +25369,9 @@ const PIS_FIX = {
 const PIS_PHASE = { queued: 'Waiting for a worker', reading: 'Connecting to the data', scanning: 'Reading every value' };
 
 const pisN = n => (n == null ? '-' : Number(n).toLocaleString());
+/** When a run started, from its id (2026-10-25T09-30-00Z...), in milliseconds; NaN for any other name. */
+const pisRunTime = id => { const m = /^(\d{4}-\d{2}-\d{2})T(\d{2})-(\d{2})-(\d{2})Z/.exec(String(id || ''));
+                           return m ? Date.parse(`${m[1]}T${m[2]}:${m[3]}:${m[4]}Z`) : NaN; };
 const pisBand = r => (r >= 80 ? 'critical' : r >= 60 ? 'high' : r >= 40 ? 'medium' : 'low');
 const pisPct = r => { const p = 100 * (Number(r) || 0); return (p >= 10 || p === 0 ? Math.round(p) : p >= 1 ? p.toFixed(1) : p.toFixed(2)) + '%'; };
 const pisPl = (n, one, many) => `${pisN(n)} ${n === 1 ? one : (many || one + 's')}`;
@@ -25461,6 +25476,7 @@ async function pisSaveSettings(patch) {
   try {
     const r = await pisApi({ action: 'set-settings', dataset_key: d.key, ...patch });
     d.settings = r.settings; pis.rowsRaw = null; pisPaintPick();
+    if (pis.res && pis.res.dataset_key === d.key) pisPaintResult();       // its note on being switched off comes and goes
     const set = d.settings || {};
     pisHint(set.off ? `${d.name} is no longer swept when it is assessed. Its Compliance section judges personal data from a sample of whole values until it is switched back on.`
       : `Each assessment of ${d.name} now sweeps ${set.maxRows ? `its first ${pisN(set.maxRows)} rows` : 'every row'} for personal data before assessing it.`);
@@ -26030,11 +26046,19 @@ function pisPaintResult() {
     `</div>`;
   const partial = res.complete ? '' : `<div class="pis-note partial">${pisIco('alert')}<span>Read the first ${pisN(res.rows_scanned)} rows of ` +
     `${res.rows_total != null ? pisN(res.rows_total) : 'more'}. Empty Rows each sweep reads, above, and its next assessment reads every row.</span></div>`;
+  // Sweeping switched off for the dataset: this sweep is the last it has, so say how far behind it may be, and (to an
+  // admin) offer to switch it back on.
+  const lastRun = pisRunTime(d.assessedAt);
+  const off = (d.settings || {}).off ? `<div class="pis-note off" role="status">${pisIco('alert')}<span class="pis-note-t"><b>Sweeping is switched off for this dataset.</b> ` +
+      (lastRun > Date.parse(res.generated_at_utc)
+        ? `It has been assessed since this sweep, last on ${esc(rcxWhen(new Date(lastRun).toISOString()))}, so these findings may be out of date.`
+        : 'Its assessments no longer sweep it, so these findings go out of date as its data changes.') +
+      `</span>${pis.canDismiss ? btn('switch-on', 'refresh', 'Switch it back on', 'primary') : ''}</div>` : '';
   const seen = `${res.dataset_key}|${res.sweep_id || ''}`, fresh = pis.seen !== seen;
   pis.seen = seen;
   if (fresh && pis.view === 'sky' && pisPref('howto') !== 'seen') pis.howto = true;   // the first sky this browser shows explains itself
   st.style.display = '';
-  st.innerHTML = `<div class="card pis-card pis-top">${head}${verdict}${partial}</div><div class="card pis-card pis-skycard" id="pisSkyCard"></div>`;
+  st.innerHTML = `<div class="card pis-card pis-top">${head}${verdict}${partial}${off}</div><div class="card pis-card pis-skycard" id="pisSkyCard"></div>`;
   const motion = fresh && !dqReduced();
   pisPaintSky(motion);
   if (motion) pisEnter(st);
@@ -26745,6 +26769,8 @@ function pisScheduleRun(key) {
         if (typeof selectSource === 'function') selectSource('file');
       } else if (a === 'schedule') {
         if (res) pisScheduleRun(res.dataset_key);
+      } else if (a === 'switch-on') {
+        if (res) { pis.sel = res.dataset_key; pisSaveSettings({ off: false }); }
       } else if (a === 'export') {
         pisExport();
       } else if (a === 'delete') {
