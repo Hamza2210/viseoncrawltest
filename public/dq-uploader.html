@@ -4598,8 +4598,12 @@
   .pis-fitem-r { font-weight: 750; font-variant-numeric: tabular-nums; }
   .pis-tag { padding: 1px 8px; border-radius: 999px; font-style: normal; font-size: 10.5px; font-weight: 750; background: color-mix(in srgb, var(--pii-crit) 18%, transparent);
     border: 1px solid color-mix(in srgb, var(--pii-crit) 50%, transparent); }
-  .pis-side-f { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
-  .pis-side-f > p:first-child { margin: 0 0 10px; font-size: 12.5px; line-height: 1.55; }
+  .pis-side-f { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); scroll-margin-top: 80px; }
+  .pis-side-ft { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 13.5px; outline: none; }
+  .pis-side-ft > i { flex: none; width: 9px; height: 9px; border-radius: 50%; }
+  .pis-side-ft span { margin-left: auto; font-size: 12px; font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .pis-side-ft:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 6px; }
+  .pis-side-ft + p { margin: 0 0 10px; font-size: 12.5px; line-height: 1.55; }
   .pis-side-f .pis-chips { margin-bottom: 4px; }
   .pis-mlocs { display: grid; gap: 6px; }
   .pis-mloc { display: grid; grid-template-columns: 112px minmax(0, 1fr); align-items: center; gap: 10px; font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
@@ -25030,7 +25034,8 @@ function initGuidesTab() {
 let pis = { list: null, sel: '', q: '', open: false, rowsRaw: '', busy: false, fq: '', riskAsc: false, menuF: '', focus: null, seen: '', run: null, res: null,
             history: [], canDismiss: false, openF: '', sev: '', showDismissed: false, locAll: {}, uploadKey: '', listTimer: null,
             // the sky: list or sky (kept in this browser), the view, the column open beside it, a Rules chip, the explainer, the steps
-            view: 'sky', lens: 'severity', col: '', colF: '', chip: '', howto: false, listed: false, todoOpen: false, hover: '', sky: null };
+            view: 'sky', lens: 'severity', col: '', colF: '', chip: '', howto: false, listed: false, todoOpen: false, hover: '', sky: null,
+            sideTop: {}, sideKey: '', reveal: null };
 const PIS_SEV = ['critical', 'high', 'medium', 'low'];
 const PIS_SEV_L = { critical: 'Critical', high: 'High', medium: 'Medium', low: 'Low' };
 const PIS_SEV_VAR = { critical: 'var(--pii-crit)', high: 'var(--pii-high)', medium: 'var(--pii-med)', low: 'var(--pii-low)' };
@@ -25276,6 +25281,7 @@ async function pisOpen(key, sweepId) {
     st.innerHTML = dqSkeleton('Loading the sweep', 4);
     pis.fq = ''; pis.sev = ''; pis.riskAsc = false; pis.focus = null; pis.listed = false; pis.todoOpen = false;
     pis.lens = 'severity'; pis.col = ''; pis.colF = ''; pis.chip = ''; pis.view = pisPref('view') === 'list' ? 'list' : 'sky';
+    pis.sideTop = {}; pis.sideKey = ''; pis.reveal = null;
   }
   try {
     const r = await pisApi({ action: 'result', dataset_key: key, ...(sweepId ? { sweep_id: sweepId } : {}) });
@@ -25519,7 +25525,7 @@ function pisSideHtml(res) {
 function pisColPanel(res, name) {
   if (name === '__clean') {
     const clean = pisColumns(res).filter(x => !(x.risk > 0));
-    return `<aside class="pis-side" aria-label="Clean columns"><div class="pis-side-h"><span class="pis-side-t">${pisIco('shield')}${pisPl(clean.length, 'clean column')}</span>` +
+    return `<aside class="pis-side" data-key="col:__clean" aria-label="Clean columns"><div class="pis-side-h"><span class="pis-side-t">${pisIco('shield')}${pisPl(clean.length, 'clean column')}</span>` +
       `<button type="button" class="pis-side-x lngb" data-pis="col" data-v="__clean" aria-label="Close the clean columns">${pisIco('cross')}</button></div>` +
       `<p class="pis-side-s">Nothing in their values matched a kind of personal data, and their names do not say they hold any.</p>` +
       `<div class="pis-cleanlist">${clean.slice(0, 120).map(x => `<code>${esc(x.name)}</code>`).join('')}` +
@@ -25531,7 +25537,7 @@ function pisColPanel(res, name) {
   const head = `<div class="pis-side-h"><code class="pis-side-code">${esc(name)}</code>${c.sev && c.role ? `<span class="pis-side-role">${esc(PIS_ROLE[c.role] || '')}</span>` : ''}` +
     `<button type="button" class="pis-side-x lngb" data-pis="col" data-v="${esc(name)}" aria-label="Close ${esc(name)}">${pisIco('cross')}</button></div>`;
   if (!c.finds.length) {
-    return `<aside class="pis-side" aria-label="${esc(name)}">${head}<div class="pis-side-v">${pisSevHtml(null, true)}</div>` +
+    return `<aside class="pis-side" data-key="col:${esc(name)}" aria-label="${esc(name)}">${head}<div class="pis-side-v">${pisSevHtml(null, true)}</div>` +
       `<p class="pis-side-s">Nothing in its ${c.nonNull != null ? pisPl(c.nonNull, 'value') : 'values'} matched a kind of personal data, and its name does not say it holds any.</p>` +
       `<p class="pis-side-s">Text columns are read, and number columns whose names say they may be personal. Dates and measurements are not.</p></aside>`;
   }
@@ -25544,11 +25550,12 @@ function pisColPanel(res, name) {
   const where = f.type === 'column_name'
     ? `<p class="pis-side-s">Nothing in its values matched a pattern: the column's name is the evidence. Label it, or dismiss it if the name misleads.</p>`
     : `<h6>Where it sits in each value</h6>${pisLocMini(res, f, 4)}`;
-  return `<aside class="pis-side" aria-label="${esc(name)}">${head}` +
+  return `<aside class="pis-side" data-key="col:${esc(name)}" aria-label="${esc(name)}">${head}` +
     `<div class="pis-side-v">${pisSevHtml(c.sev, true)}<span class="pis-side-risk"><b>${c.risk}</b><small>risk</small></span></div>` +
     (c.pii != null && c.nonNull ? `<p class="pis-side-s">${pisN(c.pii)} of ${pisPl(c.nonNull, 'value')} hold personal data.</p>` : '') +
     `<ul class="pis-fitems">${items}</ul>` +
-    `<div class="pis-side-f"><p>${esc(f.why || '')}.${harm ? ' ' + esc(harm.charAt(0).toUpperCase() + harm.slice(1)) + '.' : ''}</p>` +
+    `<div class="pis-side-f"><div class="pis-side-ft" tabindex="-1"><i style="background:${PIS_SEV_VAR[f.severity] || 'var(--muted)'}" aria-hidden="true"></i>` +
+      `<b>${esc(f.label)}</b><span>risk ${f.risk}</span></div><p>${esc(f.why || '')}.${harm ? ' ' + esc(harm.charAt(0).toUpperCase() + harm.slice(1)) + '.' : ''}</p>` +
       (regs ? `<div class="pis-chips">${regs}</div>` : '') + where +
       (aline ? `<p class="pis-side-s">${esc(aline)}</p>` : '') +
       `<div class="pis-side-a">${pis.canDismiss ? `<button type="button" class="pis-rowbtn lngb" data-pis="dismiss" data-id="${esc(f.id)}">Not personal data: dismiss</button>` : ''}` +
@@ -25576,9 +25583,9 @@ function pisIdentPanel(res) {
   const idn = res.identity || {}, o = res.overall || {}, g = idn.combinations || [];
   const head = `<div class="pis-side-h"><span class="pis-side-t">${pisIco('users')}Who it identifies</span></div>`;
   const withPii = `Personal data in ${pisPl(o.rows_with_pii || 0, 'row')} (${esc(String(o.rows_with_pii_pct || 0))}%).`;
-  if (!idn.rows) return `<aside class="pis-side">${head}<p class="pis-side-s">${withPii} None holds enough together to single a person out.</p></aside>`;
+  if (!idn.rows) return `<aside class="pis-side" data-key="lens:identify">${head}<p class="pis-side-s">${withPii} None holds enough together to single a person out.</p></aside>`;
   const ex = c => (c.example_rows || []).slice(0, 5).map(r => esc(String(r))).join(', ');
-  return `<aside class="pis-side">${head}<p class="pis-side-big"><b>${pisN(idn.rows)}</b> rows <small>(${esc(String(idn.pct))}%)</small></p>` +
+  return `<aside class="pis-side" data-key="lens:identify">${head}<p class="pis-side-big"><b>${pisN(idn.rows)}</b> rows <small>(${esc(String(idn.pct))}%)</small></p>` +
     `<p class="pis-side-s">hold enough together to single a person out <span class="pis-how" data-tip="${esc((idn.rule || '').replace(/^./, ch => ch.toUpperCase()))}.">how?</span> ${withPii}</p>` +
     `<ul class="pis-combos">${g.map(c => `<li><b>${pisPl(c.rows, 'row')}</b><span>${esc((c.labels || []).join(' + '))}</span>` +
       (ex(c) ? `<small>For example ${esc(res.row_key || 'row')} ${ex(c)}</small>` : '') +
@@ -25609,7 +25616,7 @@ function pisChangesPanel(res) {
         grp('More widespread', c.grown, f => `${pisN(f.before)} → ${pisPl(f.cells, 'value')}`) +
         grp('Less widespread', c.fell, f => `${pisN(f.before)} → ${pisPl(f.cells, 'value')}`);
   }
-  return `<aside class="pis-side">${head}${body}${pisSweepsHtml(res)}</aside>`;
+  return `<aside class="pis-side" data-key="lens:changes">${head}${body}${pisSweepsHtml(res)}</aside>`;
 }
 /** The last few sweeps of the dataset, oldest first: the one showing marked, an earlier one a button that opens it. */
 function pisSweepsHtml(res) {
@@ -25630,7 +25637,7 @@ function pisRulesPanel(res, chip) {
   const name = e.label || (by === 'rule' ? PIS_REG_L[key] : PIS_CAT_L[key]) || key;
   const why = by === 'rule' ? [...new Set(fs.map(f => String(f.harm || '')).filter(Boolean))].map(h => esc(h.charAt(0).toUpperCase() + h.slice(1)) + '.').join(' ')
     : esc(PIS_FIX[key] || '');
-  return `<aside class="pis-side"><div class="pis-side-h"><span class="pis-side-t">${pisIco(by === 'rule' ? 'shield' : 'doc')}${esc(name)}</span></div>` +
+  return `<aside class="pis-side" data-key="rule:${esc(chip)}"><div class="pis-side-h"><span class="pis-side-t">${pisIco(by === 'rule' ? 'shield' : 'doc')}${esc(name)}</span></div>` +
     `<p class="pis-side-s">${pisPl(fs.length, 'finding')} in ${pisPl(cols.size, 'column')} ` +
       `${by === 'rule' ? (fs.length === 1 ? 'falls under this rule' : 'fall under this rule') : (fs.length === 1 ? 'is of this kind' : 'are of this kind')}.</p>` +
     `<ul class="pis-fitems">${fs.map(f => `<li><button type="button" class="pis-fitem lngb" data-pis="col" data-v="${esc(f.column)}" data-f="${esc(f.id)}">` +
@@ -25749,7 +25756,26 @@ function pisPaintSky(animate) {
       `<button type="button" class="linkbtn lngb" data-pis="view" data-v="list">Show me a list instead</button></div></div>` : '') +
     (hint ? `<span class="pis-skyhint">${pisIco('target')}${hint}</span>` : '');
   if (animate) { clearTimeout(pis.skyT); pis.skyT = setTimeout(() => { const v = wrap.querySelector('svg'); if (v) v.classList.remove('pis-sky-in'); }, 2900); }
+  // The panel beside the sky keeps its place when drawn again (and a list is back where it was when a column opened from it
+  // closes); a finding picked from a list opens with its detail in view.
+  const sideEl = card.querySelector('.pis-side'), prevKey = pis.sideKey;
+  pis.sideKey = sideEl ? sideEl.dataset.key || '' : '';
+  if (sideEl) {
+    const key = pis.sideKey, det = pis.reveal ? sideEl.querySelector('.pis-side-f') : null;
+    if (det) pisRevealDetail(sideEl, det, pis.reveal);
+    else if (pis.sideTop[key] != null && (key === prevKey || !key.startsWith('col:'))) sideEl.scrollTop = pis.sideTop[key];
+  }
+  pis.reveal = null;
   if (pis.hover) pisSkyHover(pis.hover);
+}
+/** Bring a finding's detail into view: within the panel when it scrolls beside the sky, or in the page when it sits under it. */
+function pisRevealDetail(side, det, how) {
+  const behavior = how.smooth && !dqReduced() ? 'smooth' : 'auto', oy = getComputedStyle(side).overflowY;
+  if (oy !== 'auto' && oy !== 'scroll') { det.scrollIntoView({ block: 'start', behavior }); return; }
+  if (how.from) side.scrollTop = how.from;                    // from where the same panel was, so the move reads as one
+  const head = side.querySelector('.pis-side-h');
+  const to = side.scrollTop + det.getBoundingClientRect().top - side.getBoundingClientRect().top - (head ? head.offsetHeight : 0) - 6;
+  side.scrollTo({ top: Math.max(0, to), behavior });
 }
 /** A dataset coming into view: its two cards rise one after the other, its figures count up, its risk bar fills. */
 function pisEnter(st) {
@@ -26175,13 +26201,17 @@ async function pisSchedule(key) {
         if (t.closest('.pis-verdict')) { const c = $('#pisSkyCard'); if (c) c.scrollIntoView({ behavior: dqReduced() ? 'auto' : 'smooth', block: 'start' }); }
         else pisRefocus(`.pis-seg [data-pis="lens"][data-v="${t.dataset.v}"]`);
       } else if (a === 'col') {
-        const v = t.dataset.v, f = t.dataset.f || '';
-        pis.col = pis.col === v && !f ? '' : v; pis.colF = f;
+        const v = t.dataset.v, f = t.dataset.f || '', closing = pis.col === v && !f;
+        if (closing || f) delete pis.sideTop['col:' + v];      // a column opens at its top, or at the finding picked
+        pis.col = closing ? '' : v; pis.colF = f;
+        if (f) pis.reveal = { from: 0, smooth: false };
         pisPaintSky();
-        pisRefocus(`#pisSkyWrap [data-pis="col"][data-v="${CSS.escape(v)}"]`);
+        pisRefocus(f ? '.pis-side .pis-side-ft' : `#pisSkyWrap [data-pis="col"][data-v="${CSS.escape(v)}"]`);
       } else if (a === 'colf') {
-        pis.colF = t.dataset.id; pisPaintSky();
-        pisRefocus(`.pis-fitem[data-id="${CSS.escape(t.dataset.id)}"]`);
+        const sEl = panel.querySelector('#pisSkyCard .pis-side');
+        pis.colF = t.dataset.id; pis.reveal = { from: sEl ? sEl.scrollTop : 0, smooth: true };
+        pisPaintSky();
+        pisRefocus('.pis-side .pis-side-ft');
       } else if (a === 'view') {
         pis.view = t.dataset.v === 'list' ? 'list' : 'sky'; pisPref('view', pis.view); pis.listed = pis.view === 'list';
         if (pis.howto) { pis.howto = false; pisPref('howto', 'seen'); }
@@ -26256,7 +26286,8 @@ async function pisSchedule(key) {
       }
       if (e.key === 'Escape' && pis.col && !pis.menuF && e.target.closest && e.target.closest('#pisSkyCard')) {
         e.preventDefault();
-        const v = pis.col; pis.col = ''; pis.colF = ''; pisPaintSky(); pisRefocus(`#pisSkyWrap [data-pis="col"][data-v="${CSS.escape(v)}"]`);
+        const v = pis.col; delete pis.sideTop['col:' + v]; pis.col = ''; pis.colF = ''; pisPaintSky();
+        pisRefocus(`#pisSkyWrap [data-pis="col"][data-v="${CSS.escape(v)}"]`);
         return;
       }
       if (e.key === 'Escape' && pis.open) { e.preventDefault(); pisClosePick(); const b = panel.querySelector('.rcx-pick-btn'); if (b) b.focus(); }
@@ -26276,6 +26307,11 @@ async function pisSchedule(key) {
       const to = e.relatedTarget;
       if (e.target.closest && e.target.closest('.pis-star') && !(to && to.closest && to.closest('.pis-star'))) { pis.hover = ''; pisSkyHover(''); }
     });
+    // Where each panel beside the sky was scrolled to, to put it back after a redraw.
+    panel.addEventListener('scroll', e => {
+      const el = e.target;
+      if (el && el.classList && el.classList.contains('pis-side') && el.dataset.key) pis.sideTop[el.dataset.key] = el.scrollTop;
+    }, true);
     // The sky is drawn to the width it has: drawn again when that changes.
     let pisResizeT = null;
     window.addEventListener('resize', () => {
