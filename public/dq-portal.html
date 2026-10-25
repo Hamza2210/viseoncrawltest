@@ -916,6 +916,7 @@
   .cmp-sweep td small { display: block; color: var(--muted); }
   .cmp-sweep-none { margin: 10px 0 2px; }
   .cmp-btns { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+  .cmp-sweep-dismiss { margin: 8px 0 0; }
   .cmp-btn { background: var(--card-2); border: 1px solid var(--border); border-radius: 7px; color: var(--text); cursor: pointer; padding: 4px 10px; font: inherit; font-size: 12px; }
   .cmp-btn:hover { border-color: var(--accent); }
   .cmp-btn.active { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--card-2)); color: var(--accent2); }
@@ -7373,6 +7374,13 @@ function cmpMd(t) {   // minimal markdown for the AI explanation: **bold**, numb
 // construction. Quality-class controls (§5.6 data-quality) are tallied separately and never drive
 // the exposure grade. (Blind severity subtraction could decrement a same-severity FAIL owned by a
 // different, undismissed control and hide it.)
+// A dataset's "not a compliance issue" dismissals, as they apply to a compliance block: never to one of a PII
+// sweep's findings. Those are dismissed on the PII sweep tab, and leave the block with them, so the two agree.
+function cmpDismissedFor(key, comp) {
+  const all = key ? (entryFor(key).complianceDismissed || {}) : {};
+  const swept = new Set(((comp && comp.controls) || []).filter(c => c.source === 'pii_sweep').map(c => c.id));
+  return Object.fromEntries(Object.entries(all).filter(([id]) => !swept.has(id)));
+}
 function cmpRegrade(activeControls) {
   const c = { critical: 0, high: 0, medium: 0, low: 0, pass: 0, fail: 0, quality_fail: 0, quality_pass: 0 };
   (activeControls || []).forEach(ct => {
@@ -7425,12 +7433,17 @@ function cmpCtrlHtml(ct, opts) {
   if (ct.status === 'FAIL' && !opts.dismissedView) {
     const btns = [];
     if (recs.length) btns.push(`<button type="button" class="cmp-btn cmp-records-btn" data-cid="${esc(ct.id)}">View ${recs.length} record${recs.length === 1 ? '' : 's'}</button>`);
-    // A control from this run's PII sweep: where each find sits is on the PII sweep tab, which this opens on its column.
-    if (ct.source === 'pii_sweep' && opts.key) btns.push(`<button type="button" class="cmp-btn cmp-sweep-open" data-key="${esc(opts.key)}" data-col="${esc(ct.column || '')}">See where, in PII sweep</button>`);
+    // A control from a PII sweep: where each find sits is on the PII sweep tab, which this opens on its column. It is
+    // dismissed there too, finding by finding, so the sweep and this section never disagree about it.
+    const swept = ct.source === 'pii_sweep';
+    if (swept && opts.key) btns.push(`<button type="button" class="cmp-btn cmp-sweep-open" data-key="${esc(opts.key)}" data-col="${esc(ct.column || '')}">See where, in PII sweep</button>`);
     btns.push(aiBtn('Explain', `data-cid="${esc(ct.id)}"`, 'cmp-explain-btn ai-sm'));
-    if (opts.key) btns.push(`<button type="button" class="cmp-btn cmp-dismiss-btn" data-cid="${esc(ct.id)}" data-sev="${esc(ct.severity || 'medium')}">Not a compliance issue</button>`);
-    actions = `<div class="cmp-btns">${btns.join('')}</div>`;
+    if (opts.key && !swept) btns.push(`<button type="button" class="cmp-btn cmp-dismiss-btn" data-cid="${esc(ct.id)}" data-sev="${esc(ct.severity || 'medium')}">Not a compliance issue</button>`);
+    actions = `<div class="cmp-btns">${btns.join('')}</div>` + (swept && opts.key
+      ? `<p class="hint cmp-sweep-dismiss">Not personal data? Dismiss its findings on the PII sweep tab, and this control goes with them.</p>` : '');
   }
+  // Found by this run's own checks after the newest sweep, which found nothing there: the data has changed since.
+  const since = ct.since_sweep ? `<div class="cmp-ev">Found by this run's own checks, from a sample, after the dataset's newest PII sweep, which found nothing in this column. Its next assessment sweeps it.</div>` : '';
   // One accordion row: closed, it says what was checked, against which clauses, and how it came
   // out; open, it shows the evidence, what the control assesses, and what can be done about it.
   const fail = ct.status === 'FAIL';
@@ -7451,7 +7464,7 @@ function cmpCtrlHtml(ct, opts) {
       <div class="cmp-body" hidden>
         <div class="cmp-why">${esc(ct.why || ct.control || '')}</div>
         ${opts.dismissMeta ? `<div class="cmp-ev">Dismissed${opts.dismissMeta.by ? ' by ' + esc(opts.dismissMeta.by) : ''}${opts.dismissMeta.reason ? ` - “${esc(opts.dismissMeta.reason)}”` : ''}</div>` : ''}
-        ${exposure}${fullTable}${declared}${samples}${recsBlock}
+        ${exposure}${since}${fullTable}${declared}${samples}${recsBlock}
         ${ct.remediation ? `<div class="cmp-fix">↪ ${esc(ct.remediation)}</div>` : ''}
         ${refs.length ? `<div class="cmp-meta">${refs.map(x => `<span class="cmp-cite">${esc(x)}</span>`).join('')}</div>` : ''}
         ${ct.control ? `<div class="cmp-assesses"><span>Assesses:</span> ${esc(ct.control)}</div>` : ''}
@@ -7482,6 +7495,27 @@ function cmpSweepHtml(comp, key) {
   const tag = CMP_SWEEP_TAG[s.severity] || ['green', 'No personal data'];
   const read = s.complete ? 'read every row' : `read the first ${Number(s.rows_scanned || 0).toLocaleString()} of ${Number(s.rows_total || 0).toLocaleString()} rows`;
   const risk = s.risk != null ? `<span class="cmp-sweep-risk">Risk ${Number(s.risk)} / 100</span>` : '';
+  if (s.live) {
+    // Read live (DATAQUALITYENDPOINTS app.py _dq_compliance_live): the dataset's newest sweep as it stands, so this
+    // section and the PII sweep tab say the same. Beside it, only what the sweep could not have seen.
+    const found = cols.filter(c => !c.name_only), special = cols.filter(c => c.special);
+    const since = s.since_sweep || [], unread = s.not_read || [];
+    const list = a => a.map(c => `<code>${esc(c.column || c)}</code>`).join(', ');
+    const whose = s.this_run ? 'the PII sweep that ran with this assessment' : `the dataset's newest PII sweep, of ${esc(rcxWhen(s.swept_at))}`;
+    const head = `<div class="cmp-sweep this-run"><h4>PII sweep <span class="tag ${tag[0]}">${esc(tag[1])}</span>${risk}</h4>`;
+    if (comp.exempt) return head + `<p>Marked out of scope, so no controls are run. ${whose[0].toUpperCase() + whose.slice(1)} ${read} and ` +
+      (cols.length ? `found personal data in ${cols.length} column${cols.length === 1 ? '' : 's'}: its values are redacted from stored samples all the same.` : 'found none.') +
+      `${open(key)}</p></div>`;
+    return head + `<p>The personal data here is what ${whose} found, as the PII sweep tab shows it now. It ${read} and ` +
+      (found.length ? `found personal data in ${found.length} column${found.length === 1 ? '' : 's'}: each is a control below, rated as the sweep rates it.`
+                    : cols.length ? 'found none in its values.' : 'found none.') +
+      (special.length ? ` ${list(special)} ${special.length === 1 ? 'holds' : 'hold'} special category data, to review below.` : '') +
+      (!s.this_run && skipped ? ` ${why}.` : '') +
+      ` A finding dismissed on the PII sweep tab is gone from here too.${open(key)}</p>` +
+      (since.length ? `<p>This run's own checks found personal data in ${list(since)} from a sample, after that sweep, which found none there: the data has changed since. Its next assessment sweeps it.</p>` : '') +
+      (unread.length ? `<p>A sweep reads text, and numbers named for something personal, so it did not read ${list(unread)}: these checks judged ${unread.length === 1 ? 'it' : 'them'} from a sample.</p>` : '') +
+      `</div>`;
+  }
   if (s.this_run) {
     const found = cols.filter(c => !c.name_only);
     return `<div class="cmp-sweep this-run"><h4>PII sweep <span class="tag ${tag[0]}">${esc(tag[1])}</span>${risk}</h4>` +
@@ -7525,7 +7559,7 @@ function compliancePanel(comp, prefix) {
     <p class="hint">${esc(comp.note || 'Marked out of scope - no compliance controls are run.')} Toggle this in ⚙ Compliance policy.</p>
     ${comp.pii_sweep && (comp.pii_sweep.columns || []).length ? cmpSweepHtml(comp, prefix ? datasetKeyFromPrefix(prefix) : '') : ''}</div>`;
   const key = prefix ? datasetKeyFromPrefix(prefix) : '';
-  const dismissed = key ? (entryFor(key).complianceDismissed || {}) : {};
+  const dismissed = cmpDismissedFor(key, comp);
   const all = comp.controls || [];
   const active = all.filter(c => !dismissed[c.id]);
   const dropped = all.filter(c => dismissed[c.id]);
@@ -7536,6 +7570,7 @@ function compliancePanel(comp, prefix) {
   if (c.critical) chips.push(`<span class="tag red">${c.critical} critical</span>`);
   if (c.high) chips.push(`<span class="tag red">${c.high} high</span>`);
   if (c.medium) chips.push(`<span class="tag amber">${c.medium} medium</span>`);
+  if (c.low) chips.push(`<span class="tag muted">${c.low} low</span>`);
   if (c.pass) chips.push(`<span class="tag green">${c.pass} protected</span>`);
   // Data-quality (§5.6) is a separate, lower-weight signal - shown distinctly, not in the exposure grade.
   if (c.quality_fail) chips.push(`<span class="tag amber" data-tip="Data-quality accuracy signal (GDPR Art. 5(1)(d)) - separate from exposure risk.">DQ accuracy: attention</span>`);
@@ -7551,7 +7586,9 @@ function compliancePanel(comp, prefix) {
     ? `<details class="cmp-adv"${hasSpecial ? ' open' : ''}><summary>${advs.length} item(s) to review${hasSpecial ? ' - incl. sensitive-category data (GDPR Art. 9 / Art. 10)' : ' - matched by name, unconfirmed'}</summary>` +
       advs.map(a => `<div class="cmp-advitem"><strong>${esc(a.column)}</strong>${a.kind_label ? ` <span class="cmp-cite">${esc(a.kind_label)}</span>` : ''} - ${esc(a.note)}</div>`).join('') +
       `</details>` : '';
-  return `<div class="cmp-panel" data-prefix="${esc(prefix || '')}">
+  // A block read live (the dataset as it stands, its personal data from its newest PII sweep) is read live again.
+  const live = comp.pii_sweep && comp.pii_sweep.live ? ' data-live="1"' : '';
+  return `<div class="cmp-panel" data-prefix="${esc(prefix || '')}"${live}>
     <div class="cmp-title"><h3>Compliance controls</h3>
       <span class="tag ${gm.cls} cmp-grade">${esc(gm.label)}</span>
       <span class="cmp-fw" data-tip="The compliance lens is anchored on the ISO/IEC 29100 privacy principles, with GDPR &amp; PCI DSS clause citations.">${esc(comp.framework || 'ISO/IEC 29100')}</span>
@@ -7585,7 +7622,8 @@ document.addEventListener('click', async (e) => {
       aiBusy(btn, true, 'Explaining…');
       aiThinking(out, 'Reading the finding against the clauses it falls under…', { title, anchor: btn });
       try {
-        const r = await postJSON(`${API_BASE}/data-quality/compliance/explain`, HEADERS, { result_prefix: prefix, control_id: cid, actor: EMAIL || undefined });
+        const r = await postJSON(`${API_BASE}/data-quality/compliance/explain`, HEADERS, { result_prefix: prefix, control_id: cid, actor: EMAIL || undefined,
+          live: panel.dataset.live === '1' || undefined });
         aiAnswer(out, aiMd(r.explanation), aiFoot(r), { title, anchor: btn });
       } catch (err) { aiFail(out, err.message); }
       aiBusy(btn, false);
@@ -7625,7 +7663,7 @@ async function reloadCompliancePanel(panelEl) {
   const prefix = panelEl.dataset.prefix;
   const wasOpen = [...panelEl.querySelectorAll('.cmp-ctrl.open')].map(c => c.dataset.cid);
   try {
-    const r = await postJSON(`${API_BASE}/data-quality/result`, HEADERS, { result_prefix: prefix });
+    const r = await postJSON(`${API_BASE}/data-quality/result`, HEADERS, { result_prefix: prefix, live: panelEl.dataset.live === '1' || undefined });
     const tmp = document.createElement('div');
     tmp.innerHTML = compliancePanel(r.compliance, prefix) || '';
     const next = tmp.firstElementChild;
@@ -13949,15 +13987,20 @@ function cmpOpen(key, opts) {
   }
 }
 
-// "Sensitivity" is what this run found, never what anyone declared: personal data reported as
-// present (its values are never stored), special-category data when that was flagged.
+// "Sensitivity" is what was found, never what anyone declared: personal data reported as present (its
+// values are never stored), special-category data when that was flagged. Read live, it is what the
+// dataset's newest PII sweep found as it stands, so it says what the PII sweep tab says: the same
+// columns, every one it found anything in (by its values or by its name), and a special category only
+// where the sweep found one.
 function _cmpSensitivity(comp, key) {
   if (!comp) return 'Not assessed';
   if (comp.exempt) return 'Out of scope';
   if ((comp.advisory || []).some(a => a.kind === 'special_category')) return 'Special-category data';
-  const dismissed = entryFor(key).complianceDismissed || {};
+  const dismissed = cmpDismissedFor(key, comp);
   const cols = new Set((comp.controls || []).filter(c => c.class !== 'quality' && c.class !== 'custom' && c.column &&
     c.column !== '(dataset)' && !dismissed[c.id]).map(c => c.column));
+  const s = comp.pii_sweep;
+  if (s && s.live) (s.columns || []).forEach(c => cols.add(c.column));
   return cols.size ? `Personal data · ${_cmpPlural(cols.size, 'column')}` : 'No personal data found';
 }
 function _cmpMetaHtml(d, comp, loaded) {
@@ -14033,7 +14076,8 @@ async function loadComplianceCardDetail(pane, prefix, key, name) {
   const body = pane.querySelector('.cmp-detail-body');
   try {
     const [r] = await Promise.all([
-      postJSON(`${API_BASE}/data-quality/result`, HEADERS, { result_prefix: prefix }),
+      // The dataset as it stands: its personal data as its newest PII sweep shows it now.
+      postJSON(`${API_BASE}/data-quality/result`, HEADERS, { result_prefix: prefix, live: true }),
       ensureCustomFrameworks(),        // the picker + checklist need the custom-standard catalogue
     ]);
     if (pane._cmpTok !== tok) return;
@@ -14171,7 +14215,7 @@ function complianceDetailBody(comp, prefix, key, opts) {
   const attest = complianceAttestHtml(key, comp);
 
   // At-a-glance status chip per chooser card, from data already computed elsewhere.
-  const dismissed = entryFor(key).complianceDismissed || {};
+  const dismissed = cmpDismissedFor(key, comp);
   let findBadge;
   if (comp && comp.exempt) findBadge = '<span class="tag muted">Out of scope</span>';
   else if (comp) {
@@ -14253,7 +14297,7 @@ async function loadDsCompliance(panel, prefix) {
   const key = dashSelected && dashSelected.key;
   try {
     const [r] = await Promise.all([
-      postJSON(`${API_BASE}/data-quality/result`, HEADERS, { result_prefix: prefix }),
+      postJSON(`${API_BASE}/data-quality/result`, HEADERS, { result_prefix: prefix, live: true }),
       ensureCustomFrameworks(),        // the picker + checklist need the custom-standard catalogue
     ]);
     panel.innerHTML = complianceDetailBody(r.compliance, prefix, key);
@@ -14883,7 +14927,7 @@ function _pimsControlStatus(ctrl, comp, att, dismissed) {
 
 function iso27701Posture(comp, key) {
   const att = ((entryFor(key).complianceAttestations || {}).items) || {};
-  const dismissed = entryFor(key).complianceDismissed || {};
+  const dismissed = cmpDismissedFor(key, comp);
   const areas = [];
   let cur = null;
   ISO27701_CONTROLS.forEach(ctrl => {
@@ -15018,7 +15062,7 @@ function _dpiaLikelyRequired(comp, dismissed) {
 function complianceAttestHtml(key, comp) {
   const saved = (entryFor(key).complianceAttestations || {}).items || {};
   const meta = entryFor(key).complianceAttestations || {};
-  const dpiaReq = _dpiaLikelyRequired(comp, entryFor(key).complianceDismissed || {});
+  const dpiaReq = _dpiaLikelyRequired(comp, cmpDismissedFor(key, comp));
   // Show universal items always + domain items only for the dataset's selected framework.
   const fw = (entryFor(key).complianceContract || {}).framework || 'gdpr';
   const items = attestCatalogue(fw);
@@ -23323,7 +23367,9 @@ function apxCalls() {
                ['429', 'Too many runs in progress. Wait 30 to 60 seconds and try again.']] },
     { id: 'result',
       what: `Where a run has got to, and its verdict once it has finished. Ask every 15 to 30 seconds until <code>state</code> is no longer <code>PENDING</code> or <code>RUNNING</code>.`,
-      fields: [folder(`The run's folder: a <code>resultPrefix</code> from <code>run-by-tag</code>, <code>rerun-source</code> or <code>history</code>.`)],
+      fields: [folder(`The run's folder: a <code>resultPrefix</code> from <code>run-by-tag</code>, <code>rerun-source</code> or <code>history</code>.`),
+               { name: 'live', type: 'boolean', req: false, def: false, label: 'The dataset as it stands',
+                 desc: 'Its <code>compliance</code> with personal data as the dataset\'s newest PII sweep shows it now, dismissals and all, as the Compliance tab shows it. Leave it out for what this run recorded.' }],
       answer: [['state', '<code>PENDING</code> or <code>RUNNING</code> while it works; then <code>SUCCEEDED</code> (it passed the gate), <code>GATE_FAILED</code>, <code>FAILED</code> (the run broke), <code>ERROR</code> (the source could not be reached), <code>CANCELLED</code> (someone stopped it) or <code>ABORTED</code> (its worker stopped without finishing).'],
                ['summary', 'Once finished: the dataset, the <code>overall</code> score and status, a score per quality dimension (<code>criteria</code>), and the <code>compliance</code> grade.'],
                ['files', 'Links to the full report.']],
@@ -24595,7 +24641,7 @@ ${HDRS}
       { h: 'Inside a dataset', body:
           p(`A dataset's compliance, in the Compliance tab or on its own ${ui('Compliance')} tab in the dashboard, is four cards:`) +
           table(['Card', 'What it covers'], [
-            ['Exposure & findings', `Sensitive data in clear text, prohibited storage such as a stored card security code, and data quality as it affects personal data. Each control is a row citing its clause, such as ISO/IEC 29100 §5.6 or GDPR Art. 5(1)(d); open it, or ${ui('Expand all')}, for the evidence and what it assesses. ${ui('Explain (AI)')} explains a finding; ${ui('Not a compliance issue')} marks a false positive.`],
+            ['Exposure & findings', `Sensitive data in clear text, prohibited storage such as a stored card security code, and data quality as it affects personal data. Where the personal data is, and how serious, is the dataset's newest ${go('piisweep', 'PII sweep')} as that tab shows it now, so the two always agree. Each control is a row citing its clause, such as ISO/IEC 29100 §5.6 or GDPR Art. 5(1)(d); open it, or ${ui('Expand all')}, for the evidence and what it assesses. ${ui('Explain (AI)')} explains a finding; ${ui('Not a compliance issue')} marks a false positive. A finding from the PII sweep is dismissed on the PII sweep tab instead, and leaves here with it.`],
             ['Compliance policy', 'The rules you declare for this dataset (below). Controls run only for the fields you set.'],
             ['PIMS readiness', 'Everything already assessed, projected onto the ISO/IEC 27701 Annex A controls, marked as machine-evidenced or self-attested, with gaps listed.'],
             ['Governance attestations', 'Controls only people can confirm, such as a DPIA, a record of processing or a privacy notice, answered with notes and evidence links.'],
@@ -24631,7 +24677,7 @@ ${HDRS}
       { h: 'What it is', body:
           p(`A sweep reads every value of a dataset and finds personal data wherever it is, including inside free text such as notes, comments and descriptions, where nobody would think to look.`) +
           p(`Each find says what it is, how serious it is, and where it is: the column, the row, and the characters it occupies. The value itself is never written down; it stays in your source.`) +
-          p(`Every assessment sweeps its dataset first, in the same run, so the two never drift apart. Its Compliance section then shows what that sweep found: each column with personal data is a control there, rated as the sweep rated it, and its values are redacted from stored samples. A finding you dismiss here is gone from the next run's Compliance section too. The Data Passport counts the sweep in its personal-data part.`) },
+          p(`Every assessment sweeps its dataset first, in the same run, so the two never drift apart. The dataset's Compliance then shows what its newest sweep found, as this tab shows it: each column with personal data is a control there, rated as the sweep rated it, and special category data (health, ethnicity, religion and the like, known by a column's name or confirmed by its values) is flagged there for review. Its values are redacted from stored samples. A finding you dismiss here leaves the dataset's Compliance at once, and its grade with it. The Data Passport counts the sweep in its personal-data part.`) },
       { h: 'How a dataset is swept', body:
           p(`${go('piisweep', 'PII sweep')} is in the menu on the left. There is nothing to start there: each assessment sweeps its dataset first, whoever or whatever started it (a person, ${go('schedules', 'a schedule')}, or source monitoring). The card at the top of the tab picks a dataset and says how its assessments sweep it; under it is every dataset swept so far.`) +
           steps(`Press ${ui('Choose a dataset')} and pick one, or type to find it by name. Picking a dataset swept before opens its newest sweep.`,
@@ -26703,13 +26749,18 @@ async function pisDismiss(id) {
   try {
     await pisApi({ action: 'dismiss', dataset_key: res.dataset_key, finding_id: id, reason: String(reason).trim() });
     pis.openF = '';
-    await pisOpen(res.dataset_key, res.sweep_id); pisLoadList();
+    await pisOpen(res.dataset_key, res.sweep_id); pisLoadList(); pisRulingMoves();
   } catch (e) { dqAlert(rcxErrText(e), { title: 'Not dismissed' }); }
 }
 async function pisRestore(id) {
   const res = pis.res; if (!res) return;
-  try { await pisApi({ action: 'restore', dataset_key: res.dataset_key, finding_id: id }); await pisOpen(res.dataset_key, res.sweep_id); pisLoadList(); }
+  try { await pisApi({ action: 'restore', dataset_key: res.dataset_key, finding_id: id }); await pisOpen(res.dataset_key, res.sweep_id); pisLoadList(); pisRulingMoves(); }
   catch (e) { dqAlert(rcxErrText(e), { title: 'Not restored' }); }
+}
+// Compliance takes a dataset's personal data from its newest sweep, so a finding dismissed or restored here (or the
+// sweeps deleted) moves its grade too: the list of datasets is read again, for the Compliance tab and its badge.
+function pisRulingMoves() {
+  if (APP_ID) loadDashboard().then(cmpRepaintIfOpen).catch(() => {});
 }
 async function pisDelete() {
   const res = pis.res; if (!res) return;
@@ -26718,7 +26769,7 @@ async function pisDelete() {
   try {
     await pisApi({ action: 'delete', dataset_key: res.dataset_key });
     pis.res = null; $('#pisStage').style.display = 'none';
-    await pisLoadList();
+    await pisLoadList(); pisRulingMoves();
     dqDone('Sweeps deleted', `Every sweep of <strong>${esc(res.dataset)}</strong> is gone.`);
   } catch (e) { dqAlert(rcxErrText(e), { title: 'Not deleted' }); }
 }
