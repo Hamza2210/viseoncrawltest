@@ -2670,10 +2670,8 @@
     color: var(--muted); font-size: 12px; font-weight: 600; }
   #schedulePanel .schx-nav button:hover { color: var(--text); border-color: var(--accent); }
   .schx-body { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0; }
-  .schx-body.open { grid-template-columns: minmax(0, 1fr) minmax(360px, 440px); }
   .schx-main { min-width: 0; }
   .schx-grid { display: grid; grid-template-columns: 250px minmax(0, 1fr); }
-  .schx-body.open .schx-grid { grid-template-columns: 190px minmax(0, 1fr); }
   .schx-axis { height: 44px; }
   .schx-lab { height: 58px; display: flex; align-items: center; gap: 10px; padding-right: 10px; border-top: 1px solid #1a2440; min-width: 0; }
   #schedulePanel .schx-lab .schx-who { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 4px 6px 4px 0;
@@ -2747,85 +2745,86 @@
   .schx-who-list .bar { width: 4px; height: 14px; border-radius: 2px; flex: none; }
   .schx-who-list .t { margin-left: auto; color: var(--muted); font-weight: 500; }
 
-  /* The drawer: a summary of the schedule, then one row per choice. A row opens to change it. */
-  .schx-drawer { border-left: 1px solid #2c3d68; border-top: 1px solid #2c3d68; margin: 0 -16px -12px 14px; padding: 20px 24px 18px; border-radius: 14px 0 16px 0;
-    background: linear-gradient(180deg, #16203b, #111a30); display: flex; flex-direction: column; min-width: 0; }
-  .schx-drawer[hidden] { display: none; }
-  .schf-hd { display: flex; align-items: flex-start; gap: 10px; }
-  .schf-hd h3 { margin: 0; font-size: 17px; }
-  .schf-hd .x-close { margin-left: auto; }
-  .schf-sub { font-size: 12.5px; color: var(--muted); margin-top: 3px; }
-  #schPreview { margin: 16px 0 4px; padding: 13px 15px; border-radius: 13px; border: 1px solid #2c3d68;
-    background: linear-gradient(135deg, rgba(91,140,255,.12), rgba(167,139,250,.08)); }
-  #schPreview b { display: block; font-size: 15px; line-height: 1.35; }
-  #schPreview span { display: block; font-size: 12.5px; color: #aab6cf; margin-top: 2px; }
-  .schf-rows { margin-top: 8px; }
-  .schf-row { border-bottom: 1px solid #1d2843; }
-  #schedulePanel .schf-rh { width: 100%; display: grid; grid-template-columns: 20px 74px minmax(0, 1fr) 16px; align-items: center; gap: 10px;
-    min-height: 54px; padding: 6px 4px; border: 0; border-radius: 0; background: transparent; color: var(--text); text-align: left; font-weight: 400; }
-  .schf-rh > svg, .schf-static > svg { width: 16px; height: 16px; color: #7f8db0; }
-  .schf-rh .l, .schf-static .l { font-size: 12.5px; color: #8f9cb8; }
-  .schf-rh .v { font-size: 13.5px; font-weight: 600; min-width: 0; }
-  .schf-rh .v small { display: block; font-weight: 400; font-size: 11.5px; color: var(--muted); margin-top: 1px;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .schf-rh .chev { color: #5d6c90; transition: transform var(--dq-move) var(--dq-ease); }
-  .schf-rh .chev svg { width: 14px; height: 14px; display: block; }
-  #schedulePanel .schf-rh:hover .l { color: var(--text); }
-  #schedulePanel .schf-rh:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
-  .schf-row.open .schf-rh .l, .schf-row.open .schf-rh > svg { color: #8fb0ff; }
-  .schf-row.open .schf-rh .chev { transform: rotate(180deg); }
-  .schf-pick { display: none; padding: 2px 4px 16px 34px; }
-  .schf-row.open .schf-pick { display: block; }
-  .schf-static { display: grid; grid-template-columns: 20px 74px minmax(0, 1fr); align-items: center; gap: 10px; min-height: 54px;
-    padding: 8px 4px; border-bottom: 1px solid #1d2843; }
-  .schf-static #schAlertNote { margin: 0; font-size: 12px; line-height: 1.45; color: var(--muted); }
-  .schf-static #schAlertNote strong { color: var(--text); font-weight: 600; }
-  #schedulePanel .schf-static #schLabel { width: 100%; padding: 8px 10px; font-size: 13.5px; font-weight: 600; border-radius: 9px;
-    border: 1px solid transparent; background: transparent; color: var(--text); }
-  #schedulePanel .schf-static #schLabel:hover { border-color: #263659; }
-  #schedulePanel .schf-static #schLabel:focus { border-color: var(--accent); background: #0e1628; }
-  .schf-opts { display: flex; flex-wrap: wrap; gap: 6px; }
-  #schedulePanel .schf-opts button { padding: 6px 11px; border-radius: 9px; font-size: 12.5px; font-weight: 500; color: #b9c6e4;
+  /* The schedule form: a modal with room. The overlay scrolls rather than the form, so a list that
+     drops open inside it (a timezone, what to assess) is never cut off at an inner edge. */
+  #schModal { align-items: flex-start; overflow-y: auto; padding: 0 20px; }
+  #tableModal { z-index: 1100; }                        /* chosen from inside the schedule form */
+  #schModal .schm { width: min(1080px, 100%); max-height: none; overflow: visible; margin: 4vh auto; padding: 0;
+    background: linear-gradient(180deg, #151e37, #111a2e 300px); border: 1px solid #2c3d68; border-radius: 18px;
+    box-shadow: 0 30px 80px rgba(0,0,0,.6); }
+  @media (prefers-reduced-motion: no-preference) { #schModal.open .schm { animation: schmIn .22s var(--dq-ease); } }
+  @keyframes schmIn { from { opacity: 0; transform: translateY(10px) scale(.985); } }
+  .schm-head { display: flex; align-items: flex-start; gap: 12px; padding: 24px 30px 0; }
+  .schm-head h3 { margin: 0; font-size: 20px; }
+  .schm-sub { font-size: 13px; color: var(--muted); margin-top: 3px; }
+  .schm-head .x-close { margin-left: auto; }
+  #schFormBanner { margin: 16px 30px 0; }
+  .schm-body { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 36px; padding: 22px 30px 10px; }
+  .schm-fields { min-width: 0; }
+  .schm-sec { padding: 0 0 26px; }
+  .schm-sec + .schm-sec { border-top: 1px solid #1f2a47; padding-top: 22px; }
+  #schModal .schm-h { display: flex; align-items: center; gap: 10px; margin: 0 0 14px; font-size: 13.5px; font-weight: 700; color: #dfe6f5; }
+  .schm-h svg { width: 18px; height: 18px; color: #8fb0ff; flex: none; }
+  #schModal .schm-h label { display: inline; margin: 0; font: inherit; color: inherit; }
+  .schm-side { position: sticky; top: 16px; align-self: start; display: grid; gap: 22px; min-width: 0; }
+  #schPreview { padding: 16px 18px; border-radius: 14px; border: 1px solid #2c3d68;
+    background: linear-gradient(135deg, rgba(91,140,255,.13), rgba(167,139,250,.09)); }
+  #schPreview b { display: block; font-size: 16px; line-height: 1.35; }
+  #schPreview span { display: block; font-size: 12.5px; color: #aab6cf; margin-top: 3px; }
+  .schf-lab { font-size: 11px; letter-spacing: .07em; text-transform: uppercase; color: #7f8db0; font-weight: 700; margin-bottom: 9px; }
+  #schNextRuns { display: grid; gap: 6px; }
+  #schNextRuns span { padding: 7px 11px; border-radius: 9px; font-size: 12.5px; color: #c9d6f5; border: 1px dashed #3a5190;
+    background: rgba(91,140,255,.06); }
+  #schNextRuns .sp-empty { border: 0; background: none; padding: 0; color: var(--muted); }
+  #schModal .schf-opts { display: flex; flex-wrap: wrap; gap: 8px; }
+  #schModal .schf-opts button { padding: 9px 15px; border-radius: 10px; font-size: 13px; font-weight: 500; color: #b9c6e4;
     background: #111a2e; border: 1px solid #263659; }
-  #schedulePanel .schf-opts button:hover { border-color: #5b7cc9; color: var(--text); }
-  #schedulePanel .schf-opts button[aria-checked="true"] { color: #fff; background: #213159; border-color: #8fb0ff; }
-  .schf-days { display: flex; gap: 5px; margin-top: 12px; }
-  #schedulePanel .schf-days button { width: 36px; height: 32px; padding: 0; border-radius: 8px; font-size: 11.5px; font-weight: 700; color: #7f8db0;
+  #schModal .schf-opts button:hover { border-color: #5b7cc9; color: var(--text); }
+  #schModal .schf-opts button[aria-checked="true"] { color: #fff; background: #213159; border-color: #8fb0ff; }
+  #schModal .schf-days { display: flex; gap: 7px; margin-top: 16px; }
+  #schModal .schf-days button { width: 44px; height: 38px; padding: 0; border-radius: 10px; font-size: 12px; font-weight: 700; color: #7f8db0;
     background: #0e1628; border: 1px solid #22304f; }
-  #schedulePanel .schf-days button[aria-pressed="true"] { color: #fff; background: rgba(91,140,255,.22); border-color: #5b7cc9; }
-  .schf-line { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 12px; font-size: 12.5px; color: #8f9cb8; }
-  .schf-line[hidden] { display: none; }
-  #schedulePanel .schf-line input, #schedulePanel .schf-line select { width: auto; }
-  #schTime { font-variant-numeric: tabular-nums; width: 112px; font-weight: 700; }
+  #schModal .schf-days button[aria-pressed="true"] { color: #fff; background: rgba(91,140,255,.22); border-color: #5b7cc9; }
+  #schModal .schf-line { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 16px; font-size: 13px; color: #8f9cb8; }
+  #schModal .schf-line[hidden] { display: none; }
+  #schModal .schf-line input, #schModal .schf-line select { width: auto; }
+  #schTime { font-variant-numeric: tabular-nums; width: 120px; font-weight: 700; }
   #schTime::-webkit-calendar-picker-indicator { filter: invert(.7); cursor: pointer; opacity: .75; }
   #schTime::-webkit-calendar-picker-indicator:hover { opacity: 1; }
-  #schDom { width: 74px; }
-  #schedulePanel .schf-line .tzc { flex: 1 1 180px; min-width: 0; }
-  #schCustomWrap { margin-top: 12px; }
-  #schCustomWrap input { width: 100%; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; }
-  #schedulePanel .schf-pick label { display: block; margin: 14px 0 5px; font-weight: 600; font-size: 12.5px; }
-  #schedulePanel .schf-pick > label:first-child { margin-top: 2px; }
-  #schedulePanel .schf-pick #schKindCombo { width: 100%; }
-  #schedulePanel .schf-pick #schSample { width: 100%; }
-  .schf-sec { margin-top: 16px; }
-  .schf-lab { font-size: 11px; letter-spacing: .07em; text-transform: uppercase; color: #7f8db0; font-weight: 700; margin-bottom: 8px; }
-  #schNextRuns { display: flex; gap: 6px; flex-wrap: wrap; }
-  #schNextRuns span { padding: 5px 10px; border-radius: 8px; font-size: 12px; color: #c9d6f5; border: 1px dashed #3a5190;
-    background: rgba(91,140,255,.06); white-space: nowrap; }
-  #schNextRuns .sp-empty { border: 0; background: none; padding: 0; color: var(--muted); white-space: normal; }
-  .schf-ft { margin-top: auto; padding-top: 18px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; border-top: 1px solid #22304f; }
-  .schf-ft #schSave { padding: 9px 16px; }
-  .schf-ft #schCancelEdit { padding: 8px 14px; }
-  #schClash { order: -1; flex-basis: 100%; display: flex; align-items: center; gap: 7px; font-size: 12px; color: #6ee7b7; margin-bottom: 2px; }
-  #schClash:empty { display: none; }
+  #schDom { width: 80px; }
+  #schModal .schf-line .tzc { flex: 1 1 260px; min-width: 0; }
+  #schCustomWrap { margin-top: 16px; }
+  #schCustomWrap input { width: 100%; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; }
+  #schQlikFields > label, #schTagWrap > label { display: block; margin: 18px 0 6px; font-weight: 600; font-size: 12.5px; }
+  #schModal #schKindCombo, #schModal #schSample, #schModal #schLabel { width: 100%; }
+  #schAlertNote { margin: 0; font-size: 13px; line-height: 1.6; color: var(--muted); }
+  #schAlertNote strong { color: var(--text); font-weight: 600; }
+  /* Its week: a row a day from today, a cell an hour, shaded by how many other schedules start then. */
+  .schw { display: grid; grid-template-columns: 30px repeat(24, minmax(0, 1fr)); gap: 2px; }
+  .schw-h { font-size: 9.5px; color: var(--muted); height: 13px; white-space: nowrap; }
+  .schw-d { font-size: 10.5px; font-weight: 700; color: #94a2be; line-height: 14px; }
+  .schw-d.today { color: #8fb0ff; }
+  .schw-c { height: 14px; border-radius: 3px; background: #0f1628; position: relative; }
+  .schw-c.l1, .schm-key i.l1 { background: #1b2849; } .schw-c.l2, .schm-key i.l2 { background: #25375f; } .schw-c.l3 { background: #30467d; }
+  .schw-c.past { opacity: .4; }
+  .schw-c.me::after, .schm-key i.me::after { content: ''; position: absolute; inset: 3px; border-radius: 50%; background: #8fb0ff; box-shadow: 0 0 6px #5b8cff; }
+  .schw-c.busy, .schm-key i.busy { box-shadow: inset 0 0 0 1.5px #fbbf24; }
+  .schw-c.busy.me { box-shadow: inset 0 0 0 1.5px #fbbf24, 0 0 8px rgba(251,191,36,.5); }
+  .schm-key { display: flex; flex-wrap: wrap; gap: 5px 14px; margin-top: 10px; font-size: 11px; color: #7f8db0; }
+  .schm-key span { display: inline-flex; align-items: center; gap: 6px; }
+  .schm-key i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; position: relative; background: #0f1628; }
+  /* Its buttons stay in reach however long the form, at the foot of the window. */
+  .schm-foot { position: sticky; bottom: 0; z-index: 2; display: flex; align-items: center; gap: 12px; padding: 16px 30px 20px;
+    border-top: 1px solid #22304f; background: #111a2e; border-radius: 0 0 18px 18px; }
+  .schm-foot #schSave { padding: 10px 20px; }
+  .schm-foot #schCancelEdit { padding: 9px 16px; }
+  #schClash { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: #6ee7b7; }
   #schClash i { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); flex: none; }
   #schClash.busy { color: var(--run); } #schClash.busy i { background: var(--run); }
-  #schClash svg { width: 14px; height: 14px; flex: none; }
-  .schf-drawer-spacer { flex: 1; min-height: 8px; }
-  @media (max-width: 1180px) {
-    .schx-body.open { grid-template-columns: minmax(0, 1fr); }
-    .schx-body.open .schx-main { display: none; }
-    .schx-drawer { margin: 0; border-left: 0; border-radius: 12px; }
+  #schClash svg { width: 15px; height: 15px; flex: none; }
+  @media (max-width: 980px) {
+    .schm-body { grid-template-columns: minmax(0, 1fr); gap: 24px; }
+    .schm-side { position: static; }
   }
   @media (max-width: 900px) { .schx-grid { grid-template-columns: 170px minmax(0, 1fr); } }
   .chooser { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 4px; }
@@ -6853,160 +6852,153 @@
           <div id="schList"><p class="dash-muted">Loading…</p></div>
           <div class="schx-key" id="schKey"></div>
         </div>
-
-        <aside class="schx-drawer" id="schDrawer" hidden aria-labelledby="schFormTitle">
-          <div class="schf-hd">
-            <div><h3 id="schFormTitle">New schedule</h3><div class="schf-sub" id="schCtx"></div></div>
-            <button type="button" class="x-close" id="schClose" aria-label="Close the form">&times;</button>
-          </div>
-          <div id="schPreview" aria-live="polite"></div>
-
-          <div class="sched-form schf-rows">
-            <div class="schf-row" data-row="when">
-              <button type="button" class="schf-rh schx-b" aria-expanded="false" aria-controls="schWhenPick">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>
-                <span class="l">When</span><span class="v" id="schWhenV"></span>
-                <span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 10l5 5 5-5"/></svg></span>
-              </button>
-              <div class="schf-pick" id="schWhenPick">
-                <select id="schFreq" class="sr-only" tabindex="-1" aria-hidden="true">
-                  <option value="daily">Every day</option>
-                  <option value="weekly">Some days</option>
-                  <option value="monthly">Monthly</option>
-                  <option value="hours">Every few hours</option>
-                  <option value="custom">Custom</option>
-                </select>
-                <div class="schf-opts" role="radiogroup" aria-label="How often" id="schFreqOpts">
-                  <button type="button" class="schx-b" role="radio" data-freq="daily">Every day</button>
-                  <button type="button" class="schx-b" role="radio" data-freq="weekly">Some days</button>
-                  <button type="button" class="schx-b" role="radio" data-freq="monthly">Monthly</button>
-                  <button type="button" class="schx-b" role="radio" data-freq="hours">Every few hours</button>
-                  <button type="button" class="schx-b" role="radio" data-freq="custom">Custom</button>
-                </div>
-                <input type="hidden" id="schDow" value="MON,TUE,WED,THU,FRI" />
-                <div class="schf-days" id="schDowWrap" role="group" aria-label="On these days">
-                  <button type="button" class="schx-b" data-dow="MON" aria-label="Monday">M</button><button type="button" class="schx-b" data-dow="TUE" aria-label="Tuesday">T</button><button type="button" class="schx-b" data-dow="WED" aria-label="Wednesday">W</button><button type="button" class="schx-b" data-dow="THU" aria-label="Thursday">T</button><button type="button" class="schx-b" data-dow="FRI" aria-label="Friday">F</button><button type="button" class="schx-b" data-dow="SAT" aria-label="Saturday">S</button><button type="button" class="schx-b" data-dow="SUN" aria-label="Sunday">S</button>
-                </div>
-                <div class="schf-line" id="schDomWrap">on day <input type="number" id="schDom" min="1" max="28" value="1" aria-label="Day of the month" /> of each month</div>
-                <div class="schf-line" id="schHoursWrap">every
-                  <select id="schEvery" aria-label="Hours between runs">
-                    <option value="1">hour</option><option value="2">2 hours</option><option value="3">3 hours</option>
-                    <option value="4">4 hours</option><option value="6">6 hours</option><option value="8">8 hours</option>
-                    <option value="12">12 hours</option>
-                  </select></div>
-                <div class="schf-line" id="schWhen">
-                  <span id="schTimeWrap" style="display:inline-flex;align-items:center;gap:10px"><span class="sched-at" id="schAtLbl">at</span><input type="time" id="schTime" value="06:00" aria-label="Time" /></span>
-                  <span class="sched-at">in</span>
-                  <div class="tzc" id="schTzCombo">
-                    <select id="schTz" class="tzc-native" tabindex="-1" aria-hidden="true"><option value="UTC">UTC</option></select>
-                    <button type="button" class="tzc-btn" id="schTzBtn" aria-haspopup="listbox" aria-expanded="false" aria-label="Timezone">UTC</button>
-                    <div class="tzc-panel">
-                      <input type="text" class="tzc-search" id="schTzSearch" autocomplete="off" role="combobox"
-                             aria-controls="schTzList" aria-autocomplete="list"
-                             placeholder="Search: London, New York, +05:30">
-                      <div class="tzc-list" id="schTzList" role="listbox" aria-label="Timezone"></div>
-                    </div>
-                  </div>
-                </div>
-                <div id="schCustomWrap" style="display:none;">
-                  <input id="schCustom" placeholder="cron(0 6 * * ? *)  or  rate(1 day)" aria-label="Expression" />
-                  <div class="hint" style="margin-top:4px;">EventBridge Scheduler format: a 6-field cron
-                    (minute hour day-of-month month day-of-week year), or a rate.</div>
-                </div>
-              </div>
-            </div>
-
-            <div class="schf-row" data-row="assess">
-              <button type="button" class="schf-rh schx-b" aria-expanded="false" aria-controls="schAssessPick">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="6" rx="7" ry="2.6"/><path d="M5 6v12c0 1.4 3.1 2.6 7 2.6s7-1.2 7-2.6V6M5 12c0 1.4 3.1 2.6 7 2.6s7-1.2 7-2.6"/></svg>
-                <span class="l">Assess</span><span class="v" id="schAssessV"></span>
-                <span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 10l5 5 5-5"/></svg></span>
-              </button>
-              <div class="schf-pick" id="schAssessPick">
-                <label for="schKindBtn">What to assess</label>
-                <div class="tzc" id="schKindCombo">
-                <select id="schSourceKind" class="tzc-native" tabindex="-1" aria-hidden="true">
-                  <option value="qlik">This app's tables (Qlik)</option>
-                  <option value="tag">Datasets with a tag (one task)</option>
-                  <option value="source-watch">Source monitoring only (no assessment)</option>
-                  <option value="athena">Qlik Open Lakehouse</option>
-                  <option value="redshift">Amazon Redshift</option>
-                  <option value="s3">Amazon S3 file</option>
-                  <option value="snowflake">Snowflake</option>
-                  <option value="databricks">Databricks</option>
-                  <option value="oracle">Oracle</option>
-                  <option value="postgres">PostgreSQL</option>
-                  <option value="mysql">MySQL</option>
-                  <option value="sqlserver">SQL Server</option>
-                  <option value="progress">Progress OpenEdge</option>
-                  <option value="synapse">Azure Synapse</option>
-                  <option value="fabric">Microsoft Fabric</option>
-                  <option value="bigquery">Google BigQuery</option>
-                  <option value="gcs">Google Cloud Storage</option>
-                  <option value="azureblob">Azure Blob / ADLS</option>
-                  <option value="sharepoint">SharePoint / OneDrive</option>
-                  <option value="agentfile" id="schAgentFileOpt" hidden>Qlik On Premise Files</option>
-                </select>
-                  <button type="button" class="tzc-btn" id="schKindBtn" aria-haspopup="listbox" aria-expanded="false"></button>
-                  <div class="tzc-panel"><div class="tzc-list" id="schKindList" role="listbox" aria-label="Assess"></div></div>
-                </div>
-
-                <div id="schQlikFields">
-                  <label>Tables</label>
-                  <div class="chooser">
-                    <button type="button" class="btn-sm" id="schChooseTables">Choose tables…</button>
-                    <span class="summary" id="schTablesSummary">All tables</span>
-                  </div>
-                  <label for="schSample">Sample size <span class="hint" style="font-weight:400;">(optional)</span></label>
-                  <input type="number" id="schSample" min="1" placeholder="Leave empty to assess whole tables" />
-                </div>
-
-                <div id="schSourceWrap" style="display:none;">
-                  <p class="hint" style="margin:12px 0 8px;">The connection details are stored with the schedule so it can run unattended. Prefer a role or Secrets Manager ARN over raw passwords or keys where the source allows it.</p>
-                  <div id="schedCredsNote" style="margin:0 0 10px;"></div>
-                  <div class="src-form" id="schedSourceFields"></div>
-                </div>
-
-                <div id="schTagWrap" style="display:none;">
-                  <label for="schTagBtn">Tag</label>
-                  <!-- The native select stays as the VALUE holder so every existing read/write of
-                       #schTagSel keeps working; the button is the thing a person uses. -->
-                  <select id="schTagSel" class="sr-only" tabindex="-1" aria-hidden="true"></select>
-                  <div class="sched-tagpick">
-                    <button type="button" id="schTagBtn" class="sched-tagbtn"></button>
-                    <button type="button" id="schTagPrev" class="btn-sm" data-tip="Show every dataset this tag would assess">Preview datasets</button>
-                  </div>
-                  <p class="hint" style="margin:8px 0;">Assesses every <strong>source</strong> dataset carrying this tag in <strong>one task</strong>. Membership is captured when you save (re-save to refresh it). Datasets need a saved credential profile.</p>
-                </div>
-
-                <div id="schWatchWrap" style="display:none;">
-                  <p class="hint" style="margin:12px 0 0;">Checks your sources are still <strong>loading</strong>, without assessing anything: the row count, the column list and the newest event time, from catalog metadata only. No rows are read and no score is produced, so it is cheap enough to run hourly. A source that stops loading, loses rows, changes columns or becomes unreachable opens an incident.</p>
-                </div>
-              </div>
-            </div>
-
-            <div class="schf-static" data-row="alerts">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg>
-              <span class="l">Alerts</span><p id="schAlertNote"></p>
-            </div>
-            <div class="schf-static" data-row="name">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12V5a1 1 0 0 1 1-1h7l8 8-8 8z"/><circle cx="8.5" cy="8.5" r="1.4"/></svg>
-              <label class="l" for="schLabel" style="margin:0;font-weight:400">Name</label><input id="schLabel" autocomplete="off" />
-            </div>
-          </div>
-
-          <div class="schf-sec"><div class="schf-lab">Its next runs</div><div id="schNextRuns"></div></div>
-          <div class="schf-drawer-spacer"></div>
-          <div class="schf-ft">
-            <button id="schSave">Save schedule</button>
-            <button class="btn-secondary" id="schCancelEdit">Cancel</button>
-            <span id="schClash" role="status"></span>
-          </div>
-        </aside>
       </div>
       <div class="schx-card" id="schCard" hidden role="dialog" aria-modal="false"></div>
     </div>
 
+  </div>
+
+  <!-- A schedule, made or changed. A modal with room: every field at once on the left, and on the
+       right what the schedule will do, its next runs, and its week beside the other schedules'. -->
+  <div class="modal-overlay" id="schModal" role="dialog" aria-modal="true" aria-labelledby="schFormTitle">
+    <div class="modal schm">
+      <div class="schm-head">
+        <div><h3 id="schFormTitle">New schedule</h3><div class="schm-sub" id="schCtx"></div></div>
+        <button type="button" class="x-close" id="schClose" aria-label="Close the form">&times;</button>
+      </div>
+      <div class="banner" id="schFormBanner"></div>
+      <div class="schm-body">
+        <div class="sched-form schm-fields">
+          <section class="schm-sec" data-sec="when">
+            <h4 class="schm-h"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>When it runs</h4>
+            <select id="schFreq" class="sr-only" tabindex="-1" aria-hidden="true">
+              <option value="daily">Every day</option>
+              <option value="weekly">Some days</option>
+              <option value="monthly">Monthly</option>
+              <option value="hours">Every few hours</option>
+              <option value="custom">Custom</option>
+            </select>
+            <div class="schf-opts" role="radiogroup" aria-label="How often" id="schFreqOpts">
+              <button type="button" class="schx-b" role="radio" data-freq="daily">Every day</button>
+              <button type="button" class="schx-b" role="radio" data-freq="weekly">Some days</button>
+              <button type="button" class="schx-b" role="radio" data-freq="monthly">Monthly</button>
+              <button type="button" class="schx-b" role="radio" data-freq="hours">Every few hours</button>
+              <button type="button" class="schx-b" role="radio" data-freq="custom">Custom</button>
+            </div>
+            <input type="hidden" id="schDow" value="MON,TUE,WED,THU,FRI" />
+            <div class="schf-days" id="schDowWrap" role="group" aria-label="On these days">
+              <button type="button" class="schx-b" data-dow="MON" aria-label="Monday">M</button><button type="button" class="schx-b" data-dow="TUE" aria-label="Tuesday">T</button><button type="button" class="schx-b" data-dow="WED" aria-label="Wednesday">W</button><button type="button" class="schx-b" data-dow="THU" aria-label="Thursday">T</button><button type="button" class="schx-b" data-dow="FRI" aria-label="Friday">F</button><button type="button" class="schx-b" data-dow="SAT" aria-label="Saturday">S</button><button type="button" class="schx-b" data-dow="SUN" aria-label="Sunday">S</button>
+            </div>
+            <div class="schf-line" id="schDomWrap">on day <input type="number" id="schDom" min="1" max="28" value="1" aria-label="Day of the month" /> of each month</div>
+            <div class="schf-line" id="schHoursWrap">every
+              <select id="schEvery" aria-label="Hours between runs">
+                <option value="1">hour</option><option value="2">2 hours</option><option value="3">3 hours</option>
+                <option value="4">4 hours</option><option value="6">6 hours</option><option value="8">8 hours</option>
+                <option value="12">12 hours</option>
+              </select></div>
+            <div class="schf-line" id="schWhen">
+              <span id="schTimeWrap" style="display:inline-flex;align-items:center;gap:10px"><span class="sched-at" id="schAtLbl">at</span><input type="time" id="schTime" value="06:00" aria-label="Time" /></span>
+              <span class="sched-at">in</span>
+              <div class="tzc" id="schTzCombo">
+                <select id="schTz" class="tzc-native" tabindex="-1" aria-hidden="true"><option value="UTC">UTC</option></select>
+                <button type="button" class="tzc-btn" id="schTzBtn" aria-haspopup="listbox" aria-expanded="false" aria-label="Timezone">UTC</button>
+                <div class="tzc-panel">
+                  <input type="text" class="tzc-search" id="schTzSearch" autocomplete="off" role="combobox"
+                         aria-controls="schTzList" aria-autocomplete="list"
+                         placeholder="Search: London, New York, +05:30">
+                  <div class="tzc-list" id="schTzList" role="listbox" aria-label="Timezone"></div>
+                </div>
+              </div>
+            </div>
+            <div id="schCustomWrap" style="display:none;">
+              <input id="schCustom" placeholder="cron(0 6 * * ? *)  or  rate(1 day)" aria-label="Expression" />
+              <div class="hint" style="margin-top:4px;">EventBridge Scheduler format: a 6-field cron
+                (minute hour day-of-month month day-of-week year), or a rate.</div>
+            </div>
+          </section>
+          <section class="schm-sec" data-sec="assess">
+            <h4 class="schm-h"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="6" rx="7" ry="2.6"/><path d="M5 6v12c0 1.4 3.1 2.6 7 2.6s7-1.2 7-2.6V6M5 12c0 1.4 3.1 2.6 7 2.6s7-1.2 7-2.6"/></svg><label for="schKindBtn">What it assesses</label></h4>
+            <div class="tzc" id="schKindCombo">
+            <select id="schSourceKind" class="tzc-native" tabindex="-1" aria-hidden="true">
+              <option value="qlik">This app's tables (Qlik)</option>
+              <option value="tag">Datasets with a tag (one task)</option>
+              <option value="source-watch">Source monitoring only (no assessment)</option>
+              <option value="athena">Qlik Open Lakehouse</option>
+              <option value="redshift">Amazon Redshift</option>
+              <option value="s3">Amazon S3 file</option>
+              <option value="snowflake">Snowflake</option>
+              <option value="databricks">Databricks</option>
+              <option value="oracle">Oracle</option>
+              <option value="postgres">PostgreSQL</option>
+              <option value="mysql">MySQL</option>
+              <option value="sqlserver">SQL Server</option>
+              <option value="progress">Progress OpenEdge</option>
+              <option value="synapse">Azure Synapse</option>
+              <option value="fabric">Microsoft Fabric</option>
+              <option value="bigquery">Google BigQuery</option>
+              <option value="gcs">Google Cloud Storage</option>
+              <option value="azureblob">Azure Blob / ADLS</option>
+              <option value="sharepoint">SharePoint / OneDrive</option>
+              <option value="agentfile" id="schAgentFileOpt" hidden>Qlik On Premise Files</option>
+            </select>
+              <button type="button" class="tzc-btn" id="schKindBtn" aria-haspopup="listbox" aria-expanded="false"></button>
+              <div class="tzc-panel"><div class="tzc-list" id="schKindList" role="listbox" aria-label="Assess"></div></div>
+            </div>
+
+            <div id="schQlikFields">
+              <label>Tables</label>
+              <div class="chooser">
+                <button type="button" class="btn-sm" id="schChooseTables">Choose tables…</button>
+                <span class="summary" id="schTablesSummary">All tables</span>
+              </div>
+              <label for="schSample">Sample size <span class="hint" style="font-weight:400;">(optional)</span></label>
+              <input type="number" id="schSample" min="1" placeholder="Leave empty to assess whole tables" />
+            </div>
+
+            <div id="schSourceWrap" style="display:none;">
+              <p class="hint" style="margin:12px 0 8px;">The connection details are stored with the schedule so it can run unattended. Prefer a role or Secrets Manager ARN over raw passwords or keys where the source allows it.</p>
+              <div id="schedCredsNote" style="margin:0 0 10px;"></div>
+              <div class="src-form" id="schedSourceFields"></div>
+            </div>
+
+            <div id="schTagWrap" style="display:none;">
+              <label for="schTagBtn">Tag</label>
+              <!-- The native select stays as the VALUE holder so every existing read/write of
+                   #schTagSel keeps working; the button is the thing a person uses. -->
+              <select id="schTagSel" class="sr-only" tabindex="-1" aria-hidden="true"></select>
+              <div class="sched-tagpick">
+                <button type="button" id="schTagBtn" class="sched-tagbtn"></button>
+                <button type="button" id="schTagPrev" class="btn-sm" data-tip="Show every dataset this tag would assess">Preview datasets</button>
+              </div>
+              <p class="hint" style="margin:8px 0;">Assesses every <strong>source</strong> dataset carrying this tag in <strong>one task</strong>. Membership is captured when you save (re-save to refresh it). Datasets need a saved credential profile.</p>
+            </div>
+
+            <div id="schWatchWrap" style="display:none;">
+              <p class="hint" style="margin:12px 0 0;">Checks your sources are still <strong>loading</strong>, without assessing anything: the row count, the column list and the newest event time, from catalog metadata only. No rows are read and no score is produced, so it is cheap enough to run hourly. A source that stops loading, loses rows, changes columns or becomes unreachable opens an incident.</p>
+            </div>
+          </section>
+          <section class="schm-sec" data-sec="name">
+            <h4 class="schm-h"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12V5a1 1 0 0 1 1-1h7l8 8-8 8z"/><circle cx="8.5" cy="8.5" r="1.4"/></svg><label for="schLabel">Its name</label></h4>
+            <input id="schLabel" autocomplete="off" />
+          </section>
+          <section class="schm-sec" data-sec="alerts">
+            <h4 class="schm-h"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg>Who is told</h4>
+            <p id="schAlertNote"></p>
+          </section>
+        </div>
+        <aside class="schm-side">
+          <div id="schPreview" aria-live="polite"></div>
+          <div><div class="schf-lab">Its next runs</div><div id="schNextRuns"></div></div>
+          <div><div class="schf-lab">Its week, beside the others</div><div id="schWeek"></div>
+            <div class="schm-key"><span><i class="me"></i>This schedule</span><span><i class="l2"></i>Others start then</span><span><i class="busy"></i>Three or more at once</span></div></div>
+        </aside>
+      </div>
+      <div class="schm-foot">
+        <span id="schClash" role="status"></span>
+        <button class="btn-secondary" id="schCancelEdit">Cancel</button>
+        <button id="schSave">Save schedule</button>
+      </div>
+    </div>
   </div>
 
   <!-- Dataset filters. A modal rather than an inline chip row: with four groups (and a Source
@@ -12818,8 +12810,8 @@ function dsxSchedule(d) {
     if (el.tagName === 'SELECT' && ![...el.options].some(o => o.value === plan.fields[f])) return;
     el.value = plan.fields[f];
   });
-  schDrawer(true);
-  schRowShow(plan.kind === 'qlik' ? 'when' : 'assess');
+  schForm(true);
+  if (plan.kind !== 'qlik') schFormGo('assess');
   renderSchedulePreview();
   schBanner('info', plan.kind === 'qlik'
     ? `Scheduling ${d.name}: choose when it runs, then save.`
@@ -23905,10 +23897,10 @@ const GD_SHOTS = {
   "rules-tab": [1600, 1344, "b4dfa30a3e"],
   "run-result": [1600, 1381, "27d7222b2c"],
   "runs-on-agent": [1600, 1100, "8445708325"],
-  "schedule-form-p": [1600, 1323, "2686f719df"],
-  "schedule-form-q": [1600, 1323, "396992f045"],
-  "schedule-river": [1600, 876, "862bfde1b6"],
-  "schedule-watch": [774, 678, "23f3e21035"],
+  "schedule-form-p": [1600, 1361, "8dcfe745da"],
+  "schedule-form-q": [1600, 1399, "9243ac0f63"],
+  "schedule-river": [1600, 876, "fe140debf3"],
+  "schedule-watch": [1348, 678, "52d4ac9156"],
   "source-form": [1600, 1011, "60518ad7b0"],
   "source-menu": [1600, 913, "23d4212bf0"],
   "source-picker": [1600, 772, "b10b223d5e"],
@@ -24055,7 +24047,7 @@ const GD_SHOW = {
   'watch-table': { tab: 'sourcewatch', sel: '#watchList',
     tip: 'Every source, whether it is monitored, and if not, why not.' },
   'sch-form': { tab: 'schedules', sel: '#schNew', tip: 'Start a new schedule here: say when it runs and what it assesses, and name it.' },
-  'sch-kind': { tab: 'schedules', prep: () => { resetScheduleForm(); schDrawer(true); schRowShow('assess'); }, sel: '#schKindBtn',
+  'sch-kind': { tab: 'schedules', prep: () => { resetScheduleForm(); schForm(true); }, sel: '#schKindBtn',
     tip: 'Choose what the schedule runs. <b>Source monitoring only</b> is in this list.' },
   'sch-list': { tab: 'schedules', sel: '#schList', tip: 'A lane per schedule: what ran, and what runs next. Press a run, or a name, for more.' },
   'cmp-estate': { tab: 'compliance', sel: '#cmpEstate', tip: 'Every dataset against every principle. Point at a square, or press a name to open it.' },
@@ -25278,8 +25270,8 @@ function buildGuides() {
                 `Under ${ui('Assess')}, pick what to run.${Q ? ` For app tables, ${ui('Choose tables…')} or leave it on all tables, and optionally set a sample size.` : ''}`,
                 `For a source, choose a saved ${ui('Credential profile')} and press ${ui('Apply')}, or fill in the connection by hand. Prefer a role or a Secrets Manager ARN to a raw password where the source allows it.`,
                 `Name it, or keep the name it offers.`,
-                `Check the summary, its next runs, and whether it starts in a busy hour. The river draws it as a dashed lane while you choose. Then press ${ui('Save schedule')}.`) +
-          shot('schedule-form', `${n(1)} What it will do, in a sentence. ${n(2)} When it runs, ${n(3)} what it assesses and ${n(4)} its name. ${n(5)} ${ui('Save schedule')}, with whether it starts in a busy hour above it. The dashed lane is the schedule being made.`) },
+                `Check the summary on the right, its next runs, and its week beside the other schedules: an amber edge marks an hour in which three or more would start. Then press ${ui('Save schedule')}.`) +
+          shot('schedule-form', `${n(1)} When it runs, ${n(2)} what it assesses and ${n(3)} its name. ${n(4)} What it will do, its next runs, and its week beside the others. ${n(5)} ${ui('Save schedule')}, with whether it starts in a busy hour beside it.`) },
       { h: 'Who gets the alerts', body:
           p(`Each dataset's owner, or whoever submitted it when it has no owner. A dataset with neither raises no email.`) },
       { h: 'Manage your schedules', body: table(['Action', 'What it does'], [
@@ -27958,6 +27950,7 @@ function switchTab(name) {
   $('#appDataPanel').style.display = name === 'appdata' ? 'block' : 'none';
   $('#tagrunPanel').style.display = name === 'tagrun' ? 'block' : 'none';
   $('#schedulePanel').style.display = name === 'schedules' ? 'block' : 'none';
+  if (name !== 'schedules' && typeof schFormIsOpen === 'function' && schFormIsOpen()) schForm(false);
   // Painted on every switch rather than once at boot: EMAIL is resolved asynchronously in portal
   // mode (/portal/auth/me), so a note written at boot would name nobody.
   if (name === 'tagrun' || name === 'schedules') paintAlertNotes();
@@ -28011,7 +28004,7 @@ function switchTab(name) {
     buildSchedKindSelect();       // likewise before the reset, so its `.value =` repaints the button
     $('#schCtx').textContent = APP_ID
       ? scopeCtxLabel() : 'Open from inside a Qlik app to schedule its checks.';
-    schDrawer(false, { keep: true });
+    schForm(false, { keep: true });
     resetScheduleForm();
     loadSchedules();
   }
@@ -28658,7 +28651,7 @@ async function pollInto(resultPrefix, bodyEl, opts) {
 
 $('#listTablesBtn').addEventListener('click', listAppTables);
 $('#assessAllBtn').addEventListener('click', assessEntireApp);
-$('#scheduleThisApp').addEventListener('click', e => { e.preventDefault(); switchTab('schedules'); schDrawer(true); });
+$('#scheduleThisApp').addEventListener('click', e => { e.preventDefault(); switchTab('schedules'); schForm(true); });
 $('#assessTablesBtn').addEventListener('click', assessSelectedTables);
 $('#selectAllTables').addEventListener('click', () => {
   document.querySelectorAll('.tablecb').forEach(cb => cb.checked = true); _lastTableIdx = null; syncTableRows(); updateAssessBtn();
@@ -28678,6 +28671,9 @@ let schEditingName = null;
 let schBannerTimer = null;
 function schBanner(kind, msg) {
   const cls = ({ ok: 'ok', info: 'info', warn: 'warn', err: 'err' })[kind] || 'err';
+  // While the form is open its own banner says it, and stays until the form closes: the page's
+  // banner is behind the overlay, where nobody would read it.
+  if (schFormIsOpen()) { showBanner($('#schFormBanner'), cls, msg); return; }
   showBanner($('#schBanner'), cls, msg);
   if (schBannerTimer) clearTimeout(schBannerTimer);
   schBannerTimer = setTimeout(() => {
@@ -28752,22 +28748,17 @@ $('#schDowWrap').addEventListener('click', e => {
 });
 // Live preview: recompute on any form edit (delegated so it covers every field).
 ['input', 'change'].forEach(ev =>
-  document.querySelector('#schedulePanel .sched-form').addEventListener(ev, renderSchedulePreview));
+  document.querySelector('#schModal .sched-form').addEventListener(ev, renderSchedulePreview));
 
-// One row open at a time: each is one decision, and the summary above says what all of them add up to.
-function schRowOpen(which) {
-  document.querySelectorAll('#schDrawer .schf-row').forEach(r => {
-    const on = r.dataset.row === which && !r.classList.contains('open');
-    r.classList.toggle('open', on);
-    r.querySelector('.schf-rh').setAttribute('aria-expanded', String(on));
-  });
+// A way in that starts somewhere in particular (a source's connection) brings that part into view.
+function schFormGo(which) {
+  const sec = document.querySelector(`#schModal .schm-sec[data-sec="${which}"]`); if (!sec) return;
+  setTimeout(() => {
+    sec.scrollIntoView({ block: 'nearest' });
+    const f = sec.querySelector('button:not([disabled]), input:not([type="hidden"]), select:not([tabindex="-1"])');
+    if (f) f.focus({ preventScroll: true });
+  }, 60);
 }
-function schRowShow(which) {
-  const r = document.querySelector(`#schDrawer .schf-row[data-row="${which}"]`);
-  if (r && !r.classList.contains('open')) schRowOpen(which);
-}
-document.querySelectorAll('#schDrawer .schf-rh').forEach(h =>
-  h.addEventListener('click', () => schRowOpen(h.closest('.schf-row').dataset.row)));
 
 let schSelected = [];        // chosen table names; [] = all tables
 
@@ -28796,39 +28787,53 @@ function resetScheduleForm() {
   schSelected = [];
   updateTablesSummary();
   schFreqUI();
-  schRowShow('when');
+  const fb = $('#schFormBanner'); if (fb) { fb.className = 'banner'; fb.innerHTML = ''; }
 }
 
-// The form is a drawer beside the river, so the schedule being made is drawn among the others
-// while it is made. Opening it moves the river on, so that what is to come has the room.
-function schDrawer(open, opts) {
-  const d = $('#schDrawer'); if (!d) return;
-  const was = !d.hidden;
-  d.hidden = !open;
-  $('#schBody').classList.toggle('open', !!open);
+// The form is a modal: room for every field at once. Shut, it is reset unless told to keep what it holds.
+function schFormIsOpen() { const m = $('#schModal'); return !!(m && m.classList.contains('open')); }
+let _schFormFrom = null;
+function schForm(open, opts) {
+  const m = $('#schModal'); if (!m) return;
+  // On the page itself: an overlay inside a panel that is ever transformed would be placed by it.
+  if (m.parentNode !== document.body) document.body.appendChild(m);
+  const was = schFormIsOpen();
   schCardHide();
-  if (!open && was && !(opts && opts.keep)) resetScheduleForm();
-  if (open && !was) {
-    schRowShow('when');
-    const f = (opts && opts.focus) ? $(opts.focus) : d.querySelector('.schf-row.open .schf-rh');
-    if (f) setTimeout(() => { try { f.focus({ preventScroll: true }); } catch (e) {} }, 30);
+  if (open) {
+    m.classList.add('open');
+    if (!was) {
+      _schFormFrom = document.activeElement;
+      m.scrollTop = 0;
+      renderSchedulePreview();
+      const f = (opts && opts.focus) ? $(opts.focus) : m.querySelector('#schFreqOpts [aria-checked="true"]');
+      if (f) setTimeout(() => { try { f.focus({ preventScroll: true }); } catch (e) {} }, 30);
+    }
+    return;
   }
-  schPaint();
-  if (open && !was) {
-    const c = $('#schActiveCard');
-    if (c && c.getBoundingClientRect().top < 0) c.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }
+  m.classList.remove('open');
+  _tzClose();
+  if (was && !(opts && opts.keep)) resetScheduleForm();
+  if (was && _schFormFrom && document.contains(_schFormFrom) && _schFormFrom.offsetParent) _schFormFrom.focus();
+  _schFormFrom = null;
 }
-$('#schCancelEdit').addEventListener('click', () => schDrawer(false));
-$('#schClose').addEventListener('click', () => schDrawer(false));
-$('#schDrawer').addEventListener('keydown', e => {
+$('#schCancelEdit').addEventListener('click', () => schForm(false));
+$('#schClose').addEventListener('click', () => schForm(false));
+$('#schModal').addEventListener('keydown', e => {
   // A list open inside the form closes itself on Escape and marks the key used; only a free Escape closes the form.
-  if (e.key === 'Escape' && !e.defaultPrevented) { e.preventDefault(); schDrawer(false); const n = $('#schNew'); if (n) n.focus(); }
+  if (e.key === 'Escape' && !e.defaultPrevented) { e.preventDefault(); schForm(false); return; }
+  // Tab stays inside the window while it is open.
+  if (e.key !== 'Tab') return;
+  const all = [...$('#schModal').querySelectorAll('button, input, select, textarea, [tabindex]:not([tabindex="-1"])')]
+    .filter(el => !el.disabled && el.tabIndex >= 0 && el.offsetParent !== null);
+  if (!all.length) return;
+  const first = all[0], last = all[all.length - 1];
+  if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+  else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
 });
 $('#schNew').addEventListener('click', () => {
   if (!APP_ID) { schBanner('err', 'Open from inside a Qlik app to schedule its checks.'); return; }
   resetScheduleForm();
-  schDrawer(true);
+  schForm(true);
 });
 
 // ---- table picker modal ----
@@ -29862,7 +29867,7 @@ if ($('#watchRefresh')) $('#watchRefresh').addEventListener('click', () => {
 if ($('#watchToSched')) $('#watchToSched').addEventListener('click', () => {
   switchTab('schedules');
   $('#schSourceKind').value = 'source-watch'; schSourceUI();
-  schDrawer(true); renderSchedulePreview();
+  schForm(true); renderSchedulePreview();
 });
 // ---- A check in progress ----------------------------------------------------------------------
 // The radar steps aside for the assessing loader while a check runs, and the table dims: both are
@@ -29997,8 +30002,8 @@ async function saveSchedule() {
     const hdr = { ...HEADERS };
     if (BEARER) hdr['X-Qlik-Bearer'] = BEARER;
     const r = await postJSON(`${API_BASE}/data-quality/schedules`, hdr, body);
+    schForm(false);
     schBanner(r.action === 'updated' ? 'info' : 'ok', `Schedule ${r.action}.`);
-    schDrawer(false);
     loadSchedules();
   } catch (e) {
     schBanner('err', e.message);
@@ -30651,16 +30656,16 @@ function _schLane(s, a, b) {
 }
 
 function _schDay(off) { const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() + off); return d.getTime(); }
-// The window drawn. With the form open, "now" moves left so the runs to come have the room.
+// The window drawn: a little behind now, and more ahead.
 function schWindow() {
-  const open = !$('#schDrawer').hidden, v = schx.view, k = schx.shift;
+  const v = schx.view, k = schx.shift;
   if (v === 'day') {
     const h = new Date(); h.setMinutes(0, 0, 0);
-    const a = h.getTime() - (open ? 3.5 : 8.5) * SCH_H + k * SCH_D;
+    const a = h.getTime() - 8.5 * SCH_H + k * SCH_D;
     return { a, b: a + SCH_D, v };
   }
-  if (v === 'month') return { a: _schDay((open ? -4 : -14) + 30 * k), b: _schDay((open ? 26 : 16) + 30 * k), v };
-  return { a: _schDay((open ? -1 : -3) + 7 * k), b: _schDay((open ? 6 : 4) + 7 * k), v };
+  if (v === 'month') return { a: _schDay(-14 + 30 * k), b: _schDay(16 + 30 * k), v };
+  return { a: _schDay(-3 + 7 * k), b: _schDay(4 + 7 * k), v };
 }
 function _schFmt(t, o) { try { return new Intl.DateTimeFormat(undefined, o).format(new Date(t)); } catch (e) { return new Date(t).toISOString(); } }
 function _schWhen(t) { return _schFmt(t, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }); }
@@ -30837,14 +30842,14 @@ function _schLaneLabel(l, i) {
 
 function schPaint() {
   const host = $('#schList'); if (!host) return;
-  const win = schWindow(), open = !$('#schDrawer').hidden;
+  const win = schWindow();
   schx.win = win;
   document.querySelectorAll('#schedulePanel [data-schv]').forEach(b => b.setAttribute('aria-checked', String(b.dataset.schv === win.v)));
   const ttl = $('#schRiverTitle');
   if (ttl) ttl.textContent = schx.shift === 0 ? ({ day: 'These 24 hours', week: 'This week', month: 'This month' })[win.v]
     : `${_schFmt(win.a, { day: 'numeric', month: 'short' })} to ${_schFmt(win.b - 1, { day: 'numeric', month: 'short' })}`;
   schCardHide();
-  if (!schx.list.length && !open) {
+  if (!schx.list.length) {
     host.innerHTML = dqEmpty({ icon: '⏰', title: 'No schedules yet',
       body: 'A schedule assesses on its own, at the times you choose, and alerts the people who own the datasets. Each one gets a lane here, with how every run went.',
       action: { id: 'schNewEmpty', label: 'New schedule' } });
@@ -30855,8 +30860,6 @@ function schPaint() {
     return;
   }
   const lanes = schx.list.map(s => Object.assign(_schLane(s, win.a, win.b), { col: s.state === 'ENABLED' ? s._col : SCH_PAUSED_COL }));
-  const ghost = open ? schPreviewLane(win) : null;
-  if (ghost) lanes.unshift(ghost);
   const clashes = schClashes(lanes, win.a, win.b);
   schx.lanes = lanes; schx.clashes = clashes;
   host.innerHTML = `<div class="schx-grid"><div class="schx-labs"><div class="schx-axis"></div>${lanes.map(_schLaneLabel).join('')}</div><div class="schx-vis"></div></div>`;
@@ -31025,7 +31028,6 @@ function schOpenFire(i, t, from) {
 }
 
 $('#schActiveCard').addEventListener('click', e => {
-  if (e.target.closest('#schDrawer')) return;
   const t = e.target.closest('[data-act], .schx-run, .schx-clash');
   if (!t || !t.closest('#schList, #schCard')) { if (!e.target.closest('#schCard')) schCardHide(); return; }
   if (t.classList.contains('schx-run')) { schOpenFire(+t.dataset.l, +t.dataset.t, null); return; }
@@ -31096,15 +31098,9 @@ function _schFormSched() {
   }
   if (kind !== 'qlik' && kind !== 'tag' && kind !== 'source-watch') {
     const cfg = typeof collectSchedSource === 'function' ? collectSchedSource() : {};
-    s.sourceSummary = [cfg.database, cfg.schema, cfg.table].filter(Boolean).join('.') || cfg.path || cfg.key || cfg.url || '';
+    s.sourceSummary = cfg.table ? [cfg.database, cfg.schema, cfg.table].filter(Boolean).join('.') : (cfg.path || cfg.key || cfg.url || '');
   }
   return s;
-}
-function schPreviewLane(win) {
-  const s = _schFormSched(), now = Date.now();
-  const fires = schedRuns(s.cron, s.timezone, Math.max(win.a, now + 1), win.b, 1500).map(t => ({ t, st: 'due' }));
-  const ok = !s.cron || /^rate\(/i.test(s.cron) || !!_cronParse(s.cron);
-  return { s, on: true, ghost: true, fires, ok, pausedAt: 0, col: '#8fb0ff' };
 }
 function _schTagNames(tag) {
   const out = [];
@@ -31119,28 +31115,13 @@ function renderSchedulePreview() {
   const city = tz === 'UTC' ? 'UTC' : tz.split('/').pop().replace(/_/g, ' ') + ' time';
   const whenTxt = !cron ? (mode === 'weekly' ? 'Choose a day' : 'Enter an expression') : ok ? cronHuman(cron) : cron;
   // What it covers, for the Assess row and the summary.
-  let what = '', whatSub = '';
-  if (k === 'qlik') {
-    what = "This app's tables";
-    const n = parseInt(($('#schSample').value || '').trim(), 10);
-    whatSub = (schSelected.length ? `${schSelected.length} table${schSelected.length === 1 ? '' : 's'}: ${schSelected.slice(0, 4).join(', ')}${schSelected.length > 4 ? '…' : ''}` : 'All tables')
-      + (Number.isFinite(n) && n > 0 ? ` · ${n.toLocaleString()} rows each` : ' · whole tables');
-  } else if (k === 'tag') {
-    what = s.tag ? `Datasets tagged ${s.tag}` : 'Datasets with a tag';
-    const names = s.tag ? _schTagNames(s.tag) : [];
-    whatSub = s.tag ? (names.length ? names.slice(0, 5).join(', ') + (names.length > 5 ? ` and ${names.length - 5} more` : '') : 'Membership is captured when you save') : 'Choose a tag';
-  } else if (k === 'source-watch') {
-    what = 'Source monitoring'; whatSub = 'Every source with a saved connection, metadata only';
-  } else {
-    what = SOURCE_LABEL[k] || k; whatSub = s.sourceSummary || 'Fill in the connection';
-  }
+  const what = k === 'qlik' ? "This app's tables" : k === 'tag' ? (s.tag ? `Datasets tagged ${s.tag}` : 'Datasets with a tag')
+    : k === 'source-watch' ? 'Source monitoring' : (SOURCE_LABEL[k] || k);
   const tell = k === 'source-watch' ? 'an incident when a source stops loading' : "owners told if one fails";
   const subj = k === 'tag' && s.tag ? (Array.isArray(s.members) ? (s.members.length === 1 ? `The one dataset tagged ${s.tag}` : `The ${s.members.length} datasets tagged ${s.tag}`) : `The datasets tagged ${s.tag}`)
     : k === 'qlik' ? (schSelected.length ? `${schSelected.length} of this app's tables` : "All of this app's tables")
     : k === 'source-watch' ? 'Every monitored source' : `${what}${s.sourceSummary ? ' ' + s.sourceSummary : ''}`;
   host.innerHTML = `<b>${esc(whenTxt)}${ok && !isRate ? ', ' + esc(city) : ''}</b><span>${esc(subj)} · ${esc(tell)}</span>`;
-  const wv = $('#schWhenV'); if (wv) wv.innerHTML = `${esc(whenTxt)}<small>${esc(isRate ? 'Counted from when it is saved' : tz)}</small>`;
-  const av = $('#schAssessV'); if (av) av.innerHTML = `${esc(what)}<small>${esc(whatSub)}</small>`;
   // A name it can be given, until it is given one.
   const lab = $('#schLabel');
   if (lab) lab.placeholder = (k === 'tag' && s.tag ? s.tag.charAt(0).toUpperCase() + s.tag.slice(1)
@@ -31175,11 +31156,38 @@ function renderSchedulePreview() {
       delete cl.dataset.tip;
     }
   }
-  if (!$('#schDrawer').hidden) _schPaintGhost();
+  schPaintWeek(s, ok);
 }
-// Redraws the river for the form, but not on every keystroke in a busy form: once the typing stops.
-let _schGhostT = null;
-function _schPaintGhost() { clearTimeout(_schGhostT); _schGhostT = setTimeout(schPaint, 120); }
+// Its week beside the others: a row a day from today, a cell an hour, shaded by how many other
+// schedules start in it, this one's runs marked, and an amber edge where three or more would start.
+function schPaintWeek(s, ok) {
+  const host = $('#schWeek'); if (!host) return;
+  const a = _schDay(0), b = _schDay(7), now = Date.now(), pad = n => String(n).padStart(2, '0');
+  const key = t => { const d = new Date(t); d.setMinutes(0, 0, 0); return d.getTime(); };
+  const by = new Map();
+  schx.list.filter(o => o.name !== schEditingName && o.state === 'ENABLED').forEach(o => {
+    const seen = new Set();
+    schedRuns(o.cron, o.timezone, a, b, 3000).forEach(t => {
+      const k = key(t); if (seen.has(k)) return;
+      seen.add(k); if (!by.has(k)) by.set(k, []); by.get(k).push(o.label);
+    });
+  });
+  const mine = new Set(ok ? schedRuns(s.cron, s.timezone, a, b, 3000).map(key) : []);
+  let g = '<span></span>' + Array.from({ length: 24 }, (_, h) => `<span class="schw-h">${h % 6 ? '' : pad(h)}</span>`).join('');
+  for (let d = 0; d < 7; d++) {
+    const day = _schDay(d);
+    g += `<span class="schw-d${d ? '' : ' today'}">${esc(_schFmt(day, { weekday: 'short' }))}</span>`;
+    for (let h = 0; h < 24; h++) {
+      const t = new Date(day); t.setHours(h, 0, 0, 0);
+      const k = t.getTime(), names = by.get(k) || [], me = mine.has(k), n = names.length + (me ? 1 : 0);
+      const cls = ['schw-c', names.length ? 'l' + Math.min(3, names.length) : '', me ? 'me' : '', n >= 3 ? 'busy' : '', k + SCH_H <= now ? 'past' : ''].filter(Boolean).join(' ');
+      const who = (me ? ['this one'] : []).concat(names);
+      const tip = `${_schFmt(k, { weekday: 'short' })} ${pad(h)}:00` + (who.length ? ': ' + who.join(', ') : ': nothing starts');
+      g += `<span class="${cls}" data-tip="${esc(tip)}"></span>`;
+    }
+  }
+  host.innerHTML = `<div class="schw" role="img" aria-label="This schedule's week beside the other schedules">${g}</div>`;
+}
 
 async function schAction(act, s) {
   if (!s) return;
@@ -31211,7 +31219,7 @@ This cannot be undone. Assessments already run keep their `
             { title: 'Delete schedule', danger: true, okLabel: 'Delete' })) return;
       await postJSON(`${API_BASE}/data-quality/schedules/delete`, HEADERS,
         { app_id: APP_ID, name: s.name });
-      if (schEditingName === s.name) schDrawer(false);
+      if (schEditingName === s.name) schForm(false);
       await loadSchedules();
       await dqDone('Schedule deleted',
         `<strong>${esc(s.label)}</strong> is gone. Runs it already made keep their history.`);
@@ -31276,13 +31284,13 @@ function editSchedule(s) {
   } else if (kind === 'source-watch') {
     // Nothing to restore: the target list is rebuilt from the workspace on save, and there are
     // no connection details in this form to re-enter.
-  } else {
-    schBanner('info', 'Re-enter this source’s connection details - credentials aren’t stored back into the form.');
   }
   schFreqUI();
-  schDrawer(true);
-  // A source's details have to be typed in again, so that is the row to open.
-  schRowShow(kind === 'qlik' || kind === 'tag' || kind === 'source-watch' ? 'when' : 'assess');
+  schForm(true);
+  if (!(kind === 'qlik' || kind === 'tag' || kind === 'source-watch'))
+    schBanner('info', 'Re-enter this source’s connection details - credentials aren’t stored back into the form.');
+  // A source's details have to be typed in again, so that is where it starts.
+  if (!(kind === 'qlik' || kind === 'tag' || kind === 'source-watch')) schFormGo('assess');
   renderSchedulePreview();
 }
 
