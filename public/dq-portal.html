@@ -24097,13 +24097,13 @@ const GD_SHOTS = {
   "overview-top-q": [1600, 584, "5d61e45e4c"],
   "passport": [1600, 3230, "6eed9c1878"],
   "pii-changes": [1600, 815, "e5225d8ab1"],
-  "pii-column": [1600, 1399, "c3d58d4fef"],
-  "pii-findings": [1600, 1087, "6477949e2b"],
-  "pii-head": [1600, 324, "eb7a865958"],
-  "pii-identify": [1600, 815, "9b28f65973"],
+  "pii-column": [1600, 1399, "aac0753e6e"],
+  "pii-findings": [1600, 1087, "775a59d084"],
+  "pii-head": [1600, 324, "93cd0ec2bc"],
+  "pii-identify": [1600, 815, "1dca4f4ace"],
   "pii-rule": [1600, 815, "9471d5817c"],
   "pii-rules": [1600, 815, "b7ab44eab0"],
-  "pii-sky": [1600, 1018, "2b83af475e"],
+  "pii-sky": [1600, 1018, "d9dcbc0ce4"],
   "pii-start": [1600, 923, "b2c729371a"],
   "profile": [1600, 526, "104f28f43a"],
   "quality-space": [1600, 812, "7bfbdb7881"],
@@ -25818,7 +25818,7 @@ ${HDRS}
           tip(`Drag the left edge of any list beside the sky to make it wider or narrower, or focus the edge and use the arrow keys. The width is kept in this browser for every list, and a double-click on the edge puts it back.`) },
       { h: 'Who it identifies', body:
           p(`${ui('Who it identifies')}, the second view, joins the columns that, together in one row, single a person out: a name with a date of birth, say. A caption under the constellation says how many rows they single out, and the columns outside it step back.`) +
-          shot('pii-identify', `${n(1)} The columns that single a person out, joined. ${n(2)} How many rows that is, which columns hold it together, and example rows. ${n(3)} Restrict who can open the dataset. ${n(4)} The findings in those columns, in the list.`) +
+          shot('pii-identify', `${n(1)} The columns that single a person out, joined. ${n(2)} How many rows that is, which columns hold it together, and example rows. ${n(3)} The findings in those columns, in the list.`) +
           sm('pii-identify') },
       { h: 'Changes', body:
           p(`${ui('Changes')} is a timeline of the dataset's sweeps (its last twelve), oldest on the left. The red dot on the button means there is something new.`) +
@@ -25843,7 +25843,7 @@ ${HDRS}
           p(`${ui('See them in the list')} in a view, and ${ui('See it in the list')} in a finding's pane, open the list narrowed to those findings without changing what opens next time; the ${ui('×')} on the chip above the table shows every finding again. A find inside free text is rated a level higher than the same kind held in its own column.`) },
       { h: 'Act on it', body:
           p(`Under the sky, or the list, is the next step for this dataset, and ${ui('All steps')} shows the rest: restrict it with a tag, clean the free text, and deal with each kind of data at source. ${showme('pii-next')}`) +
-          list(`${ui('Label the column as personal data')}, beside the sky or in a finding's pane, labels the column for every assessment.`,
+          list(`${ui('Label the column as personal data')}, in a finding's pane, labels the column for every assessment.`,
                `${ui('Restrict with a tag')} limits who can open the dataset to the people granted that tag.`,
                `${ui('Export locations')} gives every location as a CSV, with no values in it.`) +
           (GOV ? p(`A finding that is not personal data (test data, a product named like a person) can be dismissed with a reason. It stays set aside on later sweeps until someone restores it, and is left out of the rating.`)
@@ -27028,8 +27028,9 @@ function pisColPanel(res, name) {
     `<div class="pis-side-v">${pisSevHtml(c.sev, true)}<span class="pis-side-risk"><b>${c.risk}</b><small>risk</small></span></div>` +
     (c.pii != null && c.nonNull ? `<p class="pis-side-s">${pisN(c.pii)} of ${pisPl(c.nonNull, 'value')} hold personal data.</p>` : '') +
     `<h6>${pisPl(c.finds.length, 'finding')} <small>pick one to read it in full</small></h6><ul class="pis-fitems">${items}</ul>` +
-    `<div class="pis-side-acts"><button type="button" class="dsx-btn primary lngb" data-pis="label" data-col="${esc(name)}"${labelled ? ' disabled' : ''}>` +
-      `${labelled ? 'Labelled as personal data' : 'Label the column as personal data'}</button></div></aside>`;
+    // What to do about it is in a finding's pane, beside Not personal data: offered here as well, it
+    // was the same button twice, one of them without its alternative.
+    (labelled ? `<p class="pis-side-s">Labelled as personal data.</p>` : '') + `</aside>`;
 }
 /** A finding picked from a list, in a pane wide enough to read: what it is and how sure, why it matters, the rules it
  *  touches, where it sits in each value (no value shown), what the assessment makes of its column, and what to do. */
@@ -27078,7 +27079,6 @@ function pisIdentPanel(res) {
     `<ul class="pis-combos">${g.map(c => `<li><b>${pisPl(c.rows, 'row')}</b><span>${esc((c.labels || []).join(' + '))}</span>` +
       (ex(c) ? `<small>For example ${esc(res.row_key || 'row')} ${ex(c)}</small>` : '') +
       `<button type="button" class="linkbtn lngb" data-pis="in-list" data-by="combo" data-v="${esc((c.labels || []).join('|'))}">See them in the list ${pisIco('arrow')}</button></li>`).join('')}</ul>` +
-    ((res.exposure || {}).audience === 'everyone' ? `<div class="pis-side-acts"><button type="button" class="dsx-btn primary lngb" data-pis="restrict">${pisIco('lock')}Restrict who can open it</button></div>` : '') +
     `</aside>`;
 }
 function pisChangesPanel(res) {
