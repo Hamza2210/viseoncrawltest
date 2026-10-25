@@ -3920,65 +3920,89 @@
   .rcx-key code { font-size: 13px; font-weight: 700; color: var(--accent); background: none; }
   .rcx-key small { font-size: 11.5px; color: var(--muted); }
   @media (max-width: 760px) { .rcx-head { grid-template-columns: minmax(0, 1fr); } .rcx-hside.right { flex-direction: row; text-align: left; } }
-  .rcx-verdict { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; margin: 18px 0 6px; }
-  .rcx-verdict b { font-size: 24px; font-weight: 800; letter-spacing: -.01em; }
+  /* The verdict: how much agrees, big, and how many rows differ, in one line */
+  .rcx-verdict { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; margin: 20px 0 4px; }
+  .rcx-verdict b { font-size: 40px; font-weight: 800; line-height: 1; letter-spacing: -.02em; }
   .rcx-verdict.ok b { color: var(--ok); } .rcx-verdict.warn b { color: var(--run); } .rcx-verdict.bad b { color: var(--err); }
-  .rcx-verdict span { font-size: 13.5px; color: var(--muted); }
-  /* The balance: the whole table, then what differs at its own scale, then the counts */
-  .rcx-balance { margin-top: 10px; }
-  .rcx-bar { display: flex; height: 14px; border-radius: 7px; overflow: hidden; background: color-mix(in srgb, var(--border) 60%, transparent); }
-  .rcx-bar i { display: block; height: 100%; }
-  .rcx-bar-diff { height: 22px; border-radius: 8px; margin-top: 4px; }
-  .rcx-bar i.carried { background: var(--ok); } .rcx-bar i.changed { background: var(--run); } .rcx-bar i.missing { background: var(--err); } .rcx-bar i.extra { background: #6f9bff; }
-  .rcx-bar-all i + i { box-shadow: -1px 0 0 var(--card); }
-  .rcx-bar-diff i + i { box-shadow: -2px 0 0 var(--card); }
-  .rcx-bar-cap { margin: 8px 0 10px; font-size: 12.5px; color: var(--muted); }
-  .rcx-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; margin-top: 12px; }
-  .rcx-tile { position: relative; display: flex; flex-direction: column; gap: 2px; padding: 12px 14px 12px 18px; border: 1px solid var(--border); border-radius: 12px; background: var(--card-2);
-    color: var(--text); font: inherit; text-align: left; box-shadow: none; }
-  .rcx-tile::before { content: ''; position: absolute; left: 0; top: 10px; bottom: 10px; width: 4px; border-radius: 2px; background: var(--border); }
-  .rcx-tile.carried::before { background: var(--ok); } .rcx-tile.changed::before { background: var(--run); } .rcx-tile.missing::before { background: var(--err); } .rcx-tile.extra::before { background: #6f9bff; }
-  .rcx-tile b { font-size: 22px; font-weight: 800; letter-spacing: -.01em; font-variant-numeric: tabular-nums; }
-  .rcx-tile span { font-size: 12.5px; font-weight: 700; }
-  .rcx-tile small { font-size: 11.5px; color: var(--muted); line-height: 1.4; }
-  .rcx-tile i { position: absolute; right: 12px; top: 12px; font-style: normal; font-size: 11.5px; font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; }
-  .rcx-tile.none { opacity: .55; }
-  button.rcx-tile { cursor: pointer; transition: border-color .15s, transform .15s; }
-  button.rcx-tile:hover { border-color: color-mix(in srgb, var(--accent) 50%, var(--border)); transform: translateY(-1px); }
-  button.rcx-tile:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-  .rcx-flash { animation: rcxflash 1.2s ease; }
-  @keyframes rcxflash { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 55%, transparent); } 100% { box-shadow: 0 0 0 14px transparent; } }
-  @media (prefers-reduced-motion: reduce) { .rcx-flash { animation: none; } button.rcx-tile:hover { transform: none; } }
-  .rcx-card h4 { margin: 22px 0 10px; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
-  .rcx-card h4 small { margin-left: 6px; font-weight: 600; letter-spacing: 0; text-transform: none; }
-  .rcx-strip { display: flex; flex-wrap: wrap; gap: 8px; }
-  .rcx-cell { position: relative; display: flex; flex-direction: column; gap: 4px; min-width: 120px; padding: 9px 11px 11px; border: 1px solid var(--border); border-radius: 10px;
+  .rcx-v-u { font-size: 15px; font-weight: 700; color: #c9d6f5; }
+  .rcx-v-say { font-size: 15px; color: var(--muted); margin-left: 6px; }
+  /* What differs: a card for each kind, with the cause in a line and a picture that shows it */
+  .rcx-finds { display: grid; grid-template-columns: repeat(var(--n, 3), minmax(0, 1fr)); gap: 14px; margin-top: 16px; }
+  @media (max-width: 1100px) { .rcx-finds { grid-template-columns: minmax(0, 1fr); } }
+  .rcx-find { position: relative; display: flex; flex-direction: column; gap: 10px; padding: 18px 18px 14px; border: 1px solid var(--border); border-radius: 16px;
     background: var(--card-2); overflow: hidden; }
-  .rcx-cell-n { font-size: 12.5px; font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .rcx-cell-v { font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; }
-  .rcx-cell.ok .rcx-cell-v { color: var(--ok); } .rcx-cell.warn .rcx-cell-v { color: var(--run); } .rcx-cell.bad .rcx-cell-v { color: var(--err); }
-  .rcx-cell i { position: absolute; left: 0; bottom: 0; height: 3px; width: var(--w, 0%); background: var(--ok); }
-  .rcx-cell.warn i { background: var(--run); } .rcx-cell.bad i { background: var(--err); }
-  .rcx-pii { margin-left: 5px; font-size: 8px; color: #c4b2f5; vertical-align: middle; }
-  .rcx-unmapped { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 10px; font-size: 12px; color: var(--muted); }
-  .rcx-uchip { display: inline-flex; align-items: baseline; gap: 5px; padding: 2px 9px; border: 1px dashed var(--border); border-radius: 999px; font-size: 12px; color: var(--muted); }
-  .rcx-uchip small { font-size: 10px; text-transform: uppercase; letter-spacing: .05em; }
-  .rcx-facts ul { margin: 0; padding-left: 20px; font-size: 13.5px; line-height: 1.6; }
-  .rcx-facts li.part { color: var(--run); }
-  .rcx-tbl-wrap { overflow-x: auto; }
-  .rcx-tbl { width: 100%; border-collapse: collapse; font-size: 12.5px; }
-  .rcx-tbl th { padding: 6px 10px; text-align: left; font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--border); }
-  .rcx-tbl td { padding: 7px 10px; border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent); vertical-align: top; overflow-wrap: anywhere; }
-  .rcx-tbl td.k { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; white-space: nowrap; }
-  .rcx-tbl td small { color: var(--muted); }
+  .rcx-find::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 4px; background: var(--c); }
+  .rcx-find-n { display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap; }
+  .rcx-find-n b { font-size: 34px; font-weight: 800; line-height: 1; color: var(--c); font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+  .rcx-find-n span { font-size: 14px; font-weight: 650; color: #c9d6f5; }
+  .rcx-find-why { font-size: 15px; font-weight: 700; line-height: 1.4; color: var(--text); }
+  .rcx-find-why span[data-tip] { text-decoration: underline dotted color-mix(in srgb, var(--muted) 60%, transparent); text-underline-offset: 4px; }
+  .rcx-fchips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .rcx-fchip { padding: 3px 9px; border-radius: 8px; font-size: 12px; background: color-mix(in srgb, var(--c) 10%, var(--card)); color: #c9d6f5; }
+  .rcx-fchip.more { background: none; color: var(--muted); }
+  .rcx-find-viz { border-radius: 11px; background: #0b1324; border: 1px solid color-mix(in srgb, var(--border) 70%, transparent); padding: 6px 8px; }
+  .rcx-viz { display: block; width: 100%; height: auto; }
+  .rcx-viz-lab { font-size: 11px; font-weight: 700; fill: #e6ecf8; }
+  .rcx-viz-ax { font-size: 10px; fill: #6f7d9c; }
+  .rcx-viz.share { padding: 6px 4px; display: grid; gap: 8px; }
+  .rcx-sh-t { font-size: 12px; font-weight: 700; color: #c9d6f5; }
+  .rcx-sh { display: grid; grid-template-columns: 74px minmax(0, 1fr) 54px; gap: 8px; align-items: center; font-size: 11.5px; color: var(--muted); }
+  .rcx-sh i { height: 9px; border-radius: 5px; background: #16213b; overflow: hidden; } .rcx-sh i b { display: block; height: 100%; border-radius: 5px; }
+  .rcx-sh em { font-style: normal; font-weight: 700; color: var(--text); text-align: right; font-variant-numeric: tabular-nums; }
+  .rcx-viz.pairs { display: grid; gap: 6px; padding: 6px 4px; font-size: 12.5px; }
+  .rcx-viz.pairs div { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .rcx-viz.pairs .l { color: #c9d6f5; } .rcx-viz.pairs .to { color: var(--run); font-weight: 800; } .rcx-viz.pairs .r { color: #fff; font-weight: 700; }
+  .rcx-find-ft { display: flex; align-items: center; gap: 10px; margin-top: auto; padding-top: 2px; font-size: 12px; color: var(--muted); }
+  .rcx-find-ft span { flex: 1; min-width: 0; }
+  .rcx-find-ft button { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
+  .rcx-notes { margin: 12px 0 0; padding-left: 20px; font-size: 13px; color: var(--run); line-height: 1.6; }
+  /* Below the cards: the columns in one row, and the pair over time */
+  .rcx-lower { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 14px; }
+  .rcx-lower > div { padding: 2px 16px 14px; border: 1px solid var(--border); border-radius: 14px; background: var(--card-2); }
+  .rcx-cols { flex: 1 1 520px; min-width: 0; }
+  .rcx-hist { flex: 0 1 380px; min-width: 260px; }
+  .rcx-hist:empty { display: none; }
+  .rcx-colchips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .rcx-col { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 9px; font-size: 12.5px; border: 1px solid var(--border); background: var(--card); color: #b9c6e4; }
+  .rcx-col i { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); flex: none; }
+  .rcx-col.warn { border-color: color-mix(in srgb, var(--run) 60%, transparent); background: color-mix(in srgb, var(--run) 9%, var(--card)); color: var(--text); }
+  .rcx-col.bad { border-color: color-mix(in srgb, var(--err) 60%, transparent); background: color-mix(in srgb, var(--err) 9%, var(--card)); color: var(--text); }
+  .rcx-col.warn i { background: var(--run); } .rcx-col.bad i { background: var(--err); }
+  .rcx-col b { font-weight: 800; } .rcx-col.warn b { color: var(--run); } .rcx-col.bad b { color: var(--err); }
+  .rcx-col.off { border-style: dashed; color: var(--muted); background: none; } .rcx-col.off i { background: none; box-shadow: inset 0 0 0 1.5px #5d6c90; }
+  .rcx-col small { font-size: 11px; }
+  .rcx-pii { font-size: 9.5px; font-weight: 800; color: #c4b2f5; letter-spacing: .03em; }
+  .rcx-hbars { display: flex; align-items: flex-end; gap: 5px; height: 58px; }
+  .rcx-hb { flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; gap: 1px; min-width: 6px; }
+  .rcx-hb i { display: block; border-radius: 2px; } .rcx-hb i.missing { background: var(--err); } .rcx-hb i.changed { background: var(--run); } .rcx-hb i.extra { background: #6f9bff; }
+  .rcx-hb.zero::after { content: ''; height: 3px; border-radius: 2px; background: var(--ok); opacity: .7; }
+  .rcx-hist p { margin: 8px 0 0; font-size: 12.5px; color: var(--muted); }
+  .rcx-card h4 { margin: 14px 0 10px; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  .rcx-card h4 small { margin-left: 6px; font-weight: 600; letter-spacing: 0; text-transform: none; }
   .rcx-mask { display: inline-block; padding: 1px 7px; border-radius: 5px; background: rgba(139,92,246,.14); border: 1px solid rgba(139,92,246,.35); color: #c4b2f5; letter-spacing: .1em; font-size: 11px; }
   .rcx-empty { color: var(--muted); font-style: italic; }
-  .rcx-keys p { margin: 0; line-height: 1.9; }
-  .rcx-keys code { padding: 1px 6px; border: 1px solid var(--border); border-radius: 5px; background: var(--card-2); font-size: 11.5px; }
-  .rcx-more { font-size: 12px; color: var(--muted); }
-  .rcx-hist-row { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; }
-  .rcx-spark { width: 320px; max-width: 100%; height: 54px; color: var(--accent); }
-  .rcx-hist-row p { margin: 0; font-size: 13px; color: var(--muted); }
+  /* The rows behind a card, in a window */
+  #rcxRows .rcx-rows { width: min(900px, 100%); max-height: 86vh; padding: 0; border-top: 4px solid var(--c); }
+  .rcx-rows-hd { display: flex; align-items: flex-start; gap: 12px; padding: 18px 22px 6px; }
+  .rcx-rows-hd h3 { margin: 0; font-size: 18px; } .rcx-rows-hd h3 b { color: var(--c); font-size: 22px; }
+  .rcx-rows-hd p { margin: 6px 0 0; font-size: 13.5px; color: #c9d6f5; }
+  .rcx-rows-hd .x-close { margin-left: auto; }
+  .rcx-rows-body { padding: 10px 22px 14px; overflow-y: auto; }
+  .rcx-rr-h, .rcx-rr { display: grid; grid-template-columns: minmax(90px, 140px) minmax(80px, 150px) minmax(0, 1fr) minmax(0, 1fr) 64px; gap: 12px; align-items: center; }
+  .rcx-rr-h { padding: 0 12px 6px; font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
+  .rcx-rr { padding: 9px 12px; margin-bottom: 6px; border: 1px solid var(--border); border-radius: 10px; background: var(--card-2); font-size: 13px; }
+  .rcx-rr code { font-size: 12px; color: #9fb0d0; background: none; overflow: hidden; text-overflow: ellipsis; }
+  .rcx-rr .c { color: var(--muted); overflow-wrap: anywhere; } .rcx-rr .c small { color: var(--muted); }
+  .rcx-rr .l { color: #c9d6f5; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+  .rcx-rr .r { color: var(--text); font-weight: 700; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; padding: 2px 8px; border-radius: 6px;
+    background: color-mix(in srgb, var(--run) 12%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--run) 45%, transparent); justify-self: start; }
+  .rcx-rr .x { text-align: right; font-weight: 800; color: var(--run); font-variant-numeric: tabular-nums; }
+  .rcx-rk-h { display: flex; gap: 14px; margin-bottom: 10px; font-size: 12px; font-weight: 700; }
+  .rcx-rk-h .yes::before { content: '✓ '; color: var(--ok); } .rcx-rk-h .no { color: var(--c); } .rcx-rk-h .no::before { content: '✕ '; }
+  .rcx-rk { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 6px; }
+  .rcx-rk code { padding: 5px 8px; border: 1px solid var(--border); border-radius: 7px; background: var(--card-2); font-size: 12px; text-align: center; overflow: hidden; text-overflow: ellipsis; }
+  .rcx-rows-ft { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 12px 22px 16px; border-top: 1px solid var(--border); font-size: 12.5px; color: var(--muted); }
+  .rcx-rows-ft span { flex: 1; min-width: 160px; }
   .rcx-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-top: 22px; padding-top: 14px; border-top: 1px solid var(--border); font-size: 12px; color: var(--muted); }
   /* The watch strip and the AI button, under the verdict */
   .rcx-tools { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; margin: 14px 0 0; padding: 10px 14px;
@@ -21955,10 +21979,8 @@ function rcxClosePick() { if (rcx.open) { rcx.open = ''; rcx.q = ''; rcxPaintPic
         [rcx.left, rcx.right] = [rcx.right, rcx.left]; rcx.key = rcx.key ? { left: rcx.key.right, right: rcx.key.left } : null; rcxPaintPick();
       } else if (a === 'go' || a === 'again') {
         rcxStart();
-      } else if (a === 'jump') {
-        const stage = $('#rcxStage'), to = t.dataset.to;
-        const el = to === 'changed' ? stage.querySelector('.rcx-tbl-wrap') : stage.querySelector(`.rcx-keys[data-kind="${to}"]`);
-        if (el) { el.scrollIntoView({ behavior: dqReduced() ? 'auto' : 'smooth', block: 'start' }); el.classList.remove('rcx-flash'); void el.offsetWidth; el.classList.add('rcx-flash'); }
+      } else if (a === 'rows') {
+        rcxRowsOpen(t.dataset.kind);
       } else if (a === 'rekey') {
         const res = rcx.result || {}, k = res.key || {};
         rcx.keyPick = { cols: { left: (res.left || {}).columns || [], right: (res.right || {}).columns || [] }, cands: {}, title: 'Match on a different key',
@@ -22305,39 +22327,24 @@ function rcxResultHtml(res, hist) {
   const diff = (c.changed || 0) + (c.missing || 0) + (c.extra || 0);
   const agree = c.compared ? (c.carried / c.compared) * 100 : (diff ? 0 : 100);
   const verdictCls = diff === 0 ? 'ok' : agree >= 99 ? 'warn' : 'bad';
-  const verdict = diff === 0 ? 'They agree' : `${rcxPct(agree)} of the rows agree`;
-  const bits = [c.missing ? `${rcxN(c.missing)} missing on the right` : '', c.extra ? `${rcxN(c.extra)} only on the right` : '',
-                c.changed ? `${rcxN(c.changed)} changed` : ''].filter(Boolean);
-  const sub = diff === 0 ? `${rcxN(c.carried)} rows, identical on both sides` : bits.join(' · ');
+  const total = Math.max(c.left_rows || 0, c.right_rows || 0);
   const side = (S, cls) => `<div class="rcx-hside ${cls}"><span class="ifr-dsi" aria-hidden="true">${srcIcon(S.kind)}</span>` +
     `<div><b>${esc(S.name || S.dataset_key || '')}</b><span>${esc(sourceLabel(S.kind) || S.kind || '')} · ${esc(S.kind === 'qlik' ? 'read out of the app' : RCX_FILE.has(String(S.kind || '').toLowerCase()) ? 'fetched onto the worker' : [S.schema, S.table].filter(Boolean).join('.'))} · ${rcxN(S.rows)} rows</span></div></div>`;
   const keyTxt = (key.left || []).join(' + ') + ((key.right || []).join(' + ') !== (key.left || []).join(' + ') ? ` ↔ ${(key.right || []).join(' + ')}` : '');
   const how = RCX_KEY_HOW[key.how] || '';
-  const strip = (res.columns || []).map(col => {
-    const a = col.agree == null ? null : col.agree * 100, cls = !col.changed ? 'ok' : a >= 99 ? 'warn' : 'bad';
-    return `<div class="rcx-cell ${cls}" data-tip="${esc(col.left)}${col.right !== col.left ? ' ↔ ' + esc(col.right) : ''}: ${col.changed ? rcxN(col.changed) + ' changed' : 'agree completely'}${col.pii ? ' · personal data, values never pulled' : ''}">` +
-      `<span class="rcx-cell-n">${esc(col.left)}${col.pii ? '<span class="rcx-pii" aria-label="personal data">●</span>' : ''}</span><span class="rcx-cell-v">${col.changed ? rcxPct(a) : '100%'}</span><i style="--w:${a == null ? 0 : a}%"></i></div>`;
-  }).join('');
-  const um = res.unmapped || {};
-  const unmapped = [...(um.left || []).map(u => ({ ...u, side: 'left' })), ...(um.right || []).map(u => ({ ...u, side: 'right' }))];
-  const unmappedHtml = unmapped.length ? `<div class="rcx-unmapped"><span>Not compared:</span>${unmapped.map(u => `<span class="rcx-uchip" data-tip="${esc(u.reason)}">${esc(u.column)}<small>${u.side}</small></span>`).join('')}</div>` : '';
-  const facts = [];
-  (res.explain || []).forEach(x => facts.push(`<li class="why ${esc(x.kind || '')}">${esc(x.text)}</li>`));
-  const w = res.where || {};
-  if (w.missing && c.missing) facts.push(`<li class="where">${rcxWhereText(w.missing, 'missing', c.missing)}</li>`);
-  if (w.extra && c.extra) facts.push(`<li class="where">${rcxWhereText(w.extra, 'extra', c.extra)}</li>`);
+  const notes = [];
   const dk = c.duplicate_keys || {};
-  if (dk.left || dk.right) facts.push(`<li>Duplicate keys: ${[dk.left ? `${rcxN(dk.left)} on the left` : '', dk.right ? `${rcxN(dk.right)} on the right` : ''].filter(Boolean).join(', ')}. Only the first row of each was compared.</li>`);
-  if (res.status === 'partial') facts.push(`<li class="part">More rows differ than could be pulled, so the counts of changed, missing and extra are what was reached, not the total.</li>`);
-  const factsHtml = facts.length ? `<div class="rcx-facts"><h4>${diff ? 'What the differences have in common' : 'Notes'}</h4><ul>${facts.join('')}</ul></div>` : '';
+  if (dk.left || dk.right) notes.push(`Duplicate keys: ${[dk.left ? `${rcxN(dk.left)} on the left` : '', dk.right ? `${rcxN(dk.right)} on the right` : ''].filter(Boolean).join(', ')}. Only the first row of each was compared.`);
+  if (res.status === 'partial') notes.push('More rows differ than could be pulled, so the counts of changed, missing and extra are what was reached, not the total.');
   return `<div class="rcx-head">${side(L, 'left')}<div class="rcx-key"><span class="rcx-key-l">Matched on</span><code>${esc(keyTxt)}</code>${how ? `<small>${esc(how)}${key.how === 'values' && key.confidence != null ? ` (${Math.round(key.confidence * 100)}%)` : ''}</small>` : ''}</div>${side(R, 'right')}</div>` +
-    `<div class="rcx-verdict ${verdictCls}"><b>${esc(verdict)}</b><span>${esc(sub)}</span></div>` +
+    `<div class="rcx-verdict ${verdictCls}"><b>${diff === 0 ? 'They agree' : esc(rcxPct(agree))}</b>` +
+      (diff ? `<span class="rcx-v-u">of the rows agree</span>` : '') +
+      `<span class="rcx-v-say">${diff === 0 ? `${rcxN(c.carried)} rows, identical on both sides.` : `${rcxN(diff)} of ${rcxN(total)} rows differ.`}</span></div>` +
     `<div class="rcx-tools"><div class="rcx-watch" id="rcxWatch">${rcxWatchHtml(res)}</div>${aiBtn('Explain with AI', 'data-rcx="ai"', 'rcx-ai')}</div>` +
     `<div class="ai-out" id="rcxAi" hidden></div>` +
-    rcxBalanceHtml(c, L, R) +
-    (strip ? `<div class="rcx-strip-wrap"><h4>How far each column agrees</h4><div class="rcx-strip">${strip}</div>${unmappedHtml}</div>` : '') +
-    factsHtml + rcxSamplesHtml(res) +
-    `<div class="rcx-hist" id="rcxHist">${rcxHistoryHtml(hist, res)}</div>` +
+    (diff ? rcxFindsHtml(res) : '') +
+    (notes.length ? `<ul class="rcx-notes">${notes.map(n => `<li>${esc(n)}</li>`).join('')}</ul>` : '') +
+    `<div class="rcx-lower">${rcxColsHtml(res)}<div class="rcx-hist" id="rcxHist">${rcxHistoryHtml(hist, res)}</div></div>` +
     `<div class="rcx-foot"><span>${rcxN((res.queries || {}).left + (res.queries || {}).right)} queries · ${((res.elapsed_ms || 0) / 1000).toFixed(1)} s · ${(res.levels || []).length} pass${(res.levels || []).length === 1 ? '' : 'es'}` +
     `${res.finished_at ? ` · ${esc(rcxWhen(res.finished_at))}` : ''}</span><span class="rcx-foot-acts"><button type="button" class="linkbtn lngb" data-rcx="rekey">Match on a different key</button><button type="button" class="dsx-btn lngb" data-rcx="again">Reconcile again</button></span></div>`;
 }
@@ -22372,69 +22379,276 @@ function rcxVal(v) {
   if (v == null || v === '') return `<span class="rcx-empty">empty</span>`;
   return esc(String(v));
 }
-function rcxSamplesHtml(res) {
-  const s = res.samples || {}, c = res.counts || {};
-  let html = '';
-  if ((s.changed || []).length) {
-    const rows = [];
-    s.changed.slice(0, 60).forEach(r => Object.keys(r.columns || {}).forEach(col => {
-      const x = r.columns[col];
-      rows.push(`<tr><td class="k">${esc(r.key)}</td><td>${esc(col)}${x.right_column && x.right_column !== col ? `<small> ↔ ${esc(x.right_column)}</small>` : ''}</td><td>${rcxVal(x.left)}</td><td>${rcxVal(x.right)}</td></tr>`);
-    }));
-    html += `<div class="rcx-tbl-wrap"><h4>Rows that changed <small>${s.changed.length < c.changed ? `${s.changed.length} of ${rcxN(c.changed)}` : rcxN(c.changed)}</small></h4>` +
-      `<table class="rcx-tbl"><thead><tr><th>Key</th><th>Column</th><th>Left</th><th>Right</th></tr></thead><tbody>${rows.join('')}</tbody></table></div>`;
+
+// ---- What differs, a card for each kind ----
+// One card per kind of difference: how many, the cause in a line, and a small picture that shows
+// it. Every finding's own sentence stays as the tip on its words, so nothing the engine found is
+// lost; the rows themselves wait behind a button rather than filling the page.
+const RCX_KINDS = [
+  ['missing', 'var(--err)', (l, r) => `not in ${r}`, (l, r) => `in ${l}, not in ${r}`, 'See the keys'],
+  ['changed', 'var(--run)', () => 'changed', () => 'the same row on both sides, a value differs', 'See the rows'],
+  ['extra', '#6f9bff', (l, r) => `only in ${r}`, (l, r) => `in ${r}, not in ${l}`, 'See the keys'],
+];
+const RCX_CHANGE_KINDS = new Set(['ratio', 'offset', 'rounding', 'case', 'whitespace', 'shift']);
+function rcxQuote(v) { v = String(v == null ? '' : v); return v === '' ? 'empty' : `'${v.length > 40 ? v.slice(0, 37) + '...' : v}'`; }
+function rcxNumTxt(v) { const n = Number(v); return Number.isFinite(n) ? (Math.abs(n) >= 1000 ? n.toLocaleString() : String(parseFloat(n.toPrecision(6)))) : String(v); }
+/** A finding in a few words, for a card's cause line. */
+function rcxFactShort(f) {
+  const col = esc(f.column || (f.columns || [])[0] || '');
+  switch (f.kind) {
+    case 'ratio': return `every ${col} is ${esc(rcxNumTxt(f.factor))} times the left value`;
+    case 'offset': return `every ${col} is ${f.offset > 0 ? 'higher' : 'lower'} by exactly ${esc(rcxNumTxt(Math.abs(f.offset)))}`;
+    case 'rounding': return `every ${col} is the left value rounded to ${f.places} decimal place${f.places === 1 ? '' : 's'}`;
+    case 'case': return `${col} differs only in letter case`;
+    case 'whitespace': return `${col} differs only in surrounding spaces`;
+    case 'shift': {
+      const s = Math.abs(f.seconds || 0), h = s / 3600;
+      return `every ${col} is ${s % 3600 === 0 ? `${h} hour${h === 1 ? '' : 's'}` : `${s} seconds`} ${f.seconds > 0 ? 'later' : 'earlier'}`;
+    }
+    case 'slice': return `${f.share >= 0.995 ? 'all have' : `${rcxShare(f.share)} have`} ${(f.columns || []).map((cn, i) => `${esc(cn)} = ${esc(rcxQuote((f.values || [])[i]))}`).join(' and ')}`;
+    case 'range': return `${f.share >= 0.995 ? 'all have' : 'most have'} ${col} between ${esc(rcxNumTxt(f.lo))} and ${esc(rcxNumTxt(f.hi))}`;
   }
-  const keys = (list, total, label, kind) => list && list.length
-    ? `<div class="rcx-keys" data-kind="${kind}"><h4>${label} <small>${list.length < total ? `${list.length} of ${rcxN(total)}` : rcxN(total)}</small></h4><p>${list.slice(0, 40).map(k => `<code>${esc(k)}</code>`).join(' ')}${total > 40 ? ` <span class="rcx-more">and ${rcxN(total - 40)} more</span>` : ''}</p></div>` : '';
-  html += keys(s.missing, c.missing, 'Missing on the right', 'missing') + keys(s.extra, c.extra, 'Only on the right', 'extra');
-  if (s.key_masked && html) html += `<p class="hint">Keys are shown hashed: the key is personal data.</p>`;
-  return html;
+  return esc(f.text || '');
 }
+function rcxWhereShort(w) {
+  const days = rcxIsDay(w.from) && rcxIsDay(w.to);
+  if (w.from === w.to) return `${esc(w.column)} ${days ? 'on' : 'at'} ${esc(days ? rcxDay(w.from) : rcxWhen(w.from))}`;
+  return `${esc(w.column)} within ${esc(rcxSpan(w.span_seconds))}`;
+}
+/** The facts behind one kind of difference: what the changed values have in common, what singles
+ *  the rows out, and the window they fall in. */
+function rcxKindFacts(res, kind) {
+  const ex = res.explain || [];
+  return { change: kind === 'changed' ? ex.filter(f => RCX_CHANGE_KINDS.has(f.kind)) : [],
+           cls: ex.filter(f => (f.kind === 'slice' || f.kind === 'range') && f.class === kind),
+           where: ((res.counts || {})[kind] && (res.where || {})[kind]) || null };
+}
+function rcxCauseHtml(res, kind) {
+  const F = rcxKindFacts(res, kind), parts = [];
+  const lead = F.change[0] || F.cls[0];
+  if (lead) parts.push(`<span data-tip="${esc(lead.text || '')}">${rcxFactShort(lead)}</span>`);
+  if (F.change[0] && F.cls[0]) parts.push(`<span data-tip="${esc(F.cls[0].text || '')}">${rcxFactShort(F.cls[0])}</span>`);
+  else if (F.where) parts.push(`<span data-tip="${esc(rcxWhereText(F.where, kind, (res.counts || {})[kind]).replace(/<[^>]+>/g, ''))}">${lead ? '' : 'all have '}${rcxWhereShort(F.where)}</span>`);
+  if (!parts.length) {
+    if (kind !== 'changed') return 'No one value singles them out.';
+    const cols = (res.columns || []).filter(x => x.changed).map(x => esc(x.left));
+    return cols.length ? `In ${cols.length === 1 ? cols[0] : cols.slice(0, -1).join(', ') + ' and ' + cols[cols.length - 1]}.` : 'A value differs on each.';
+  }
+  const first = parts[0].replace(/(<span[^>]*>)(every|all|most)\b/, (m, a, w) => a + w.charAt(0).toUpperCase() + w.slice(1));
+  return first + (parts[1] ? `, and ${parts[1]}` : '') + '.';
+}
+/** The findings the cause line did not use, as chips, each with its own sentence as the tip. */
+function rcxMoreFacts(res, kind) {
+  const F = rcxKindFacts(res, kind);
+  const used = new Set([F.change[0] || F.cls[0], F.change[0] && F.cls[0]].filter(Boolean));
+  const rest = F.change.concat(F.cls).filter(f => !used.has(f));
+  if (F.where && F.change[0] && F.cls[0]) rest.push({ text: rcxWhereText(F.where, kind, (res.counts || {})[kind]).replace(/<[^>]+>/g, ''), short: rcxWhereShort(F.where) });
+  if (!rest.length) return '';
+  return `<div class="rcx-fchips">${rest.slice(0, 3).map(f => `<span class="rcx-fchip" data-tip="${esc(f.text || '')}">${f.short || rcxFactShort(f)}</span>`).join('')}` +
+    `${rest.length > 3 ? `<span class="rcx-fchip more">and ${rest.length - 3} more</span>` : ''}</div>`;
+}
+/** The window the rows fall in, along the whole table's span of that column. */
+function rcxVizTime(w, n, color) {
+  const a = Date.parse(w.table_from), b = Date.parse(w.table_to), f = Date.parse(w.from), t = Date.parse(w.to);
+  if (!(a < b) || isNaN(f)) return '';
+  const W = 360, H = 104, P = 14, base = 66, x = v => P + Math.max(0, Math.min(1, (v - a) / (b - a))) * (W - 2 * P);
+  const x1 = x(f), x2 = Math.max(x(isNaN(t) ? f : t), x1 + 3), right = x1 > W / 2;
+  const days = rcxIsDay(w.table_from) && rcxIsDay(w.table_to);
+  const end = iso => esc(days ? rcxDay(iso) : rcxDay(new Date(Date.parse(iso)).toISOString().slice(0, 10) + 'T00:00:00Z'));
+  const lab = `all ${rcxN(n)}, ${w.from === w.to ? 'at one moment' : `within ${rcxSpan(w.span_seconds)}`}`;
+  return `<svg class="rcx-viz time" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(`${lab}, in a table spanning ${rcxSpan(w.table_span_seconds)}`)}">` +
+    `<rect x="${P}" y="${base - 3}" width="${W - 2 * P}" height="6" rx="3" fill="#1d2a4a"/>` +
+    `<rect x="${x1}" y="18" width="${x2 - x1}" height="${base - 15}" rx="1.5" fill="${color}" style="filter:drop-shadow(0 0 6px ${color})"/>` +
+    `<text x="${right ? x1 - 7 : x2 + 7}" y="28" text-anchor="${right ? 'end' : 'start'}" class="rcx-viz-lab">${esc(lab)}</text>` +
+    `<text x="${P}" y="${H - 10}" class="rcx-viz-ax">${end(w.table_from)}</text><text x="${W - P}" y="${H - 10}" text-anchor="end" class="rcx-viz-ax">${end(w.table_to)}</text>` +
+    `<text x="${W / 2}" y="${H - 10}" text-anchor="middle" class="rcx-viz-ax">${esc(w.column)}, across the table</text></svg>`;
+}
+/** What singles the rows out against the table: their share with the value, and the table's. */
+function rcxVizShare(f, color) {
+  if (f.base == null || f.share == null) return '';
+  const what = (f.columns || []).map((cn, i) => `${cn} = ${rcxQuote((f.values || [])[i])}`).join(' and ');
+  const bar = (lab, v, c) => `<div class="rcx-sh"><span>${lab}</span><i><b style="width:${Math.max(1.5, v * 100).toFixed(1)}%;background:${c}"></b></i><em>${esc(rcxShare(v))}</em></div>`;
+  return `<div class="rcx-viz share" role="img" aria-label="${esc(`${rcxShare(f.share)} of these rows have ${what}, against ${rcxShare(f.base)} of the table`)}">` +
+    `<div class="rcx-sh-t">${esc(what)}</div>${bar('these rows', f.share, color)}${bar('the table', f.base, '#5d6c90')}</div>`;
+}
+/** The changed values against each other: a point per row, on the line the change follows. */
+function rcxVizChange(res, fact) {
+  const s = (res.samples || {}).changed || [];
+  // A column whose values can be shown, before one whose values are personal data and masked.
+  const cs = (res.columns || []).filter(x => x.changed);
+  const col = (fact && fact.column) || ((cs.find(x => !x.pii) || cs[0]) || {}).left;
+  if (!col) return '';
+  const pairs = s.map(r => (r.columns || {})[col]).filter(Boolean);
+  const nums = pairs.filter(p => typeof p.left !== 'object' && typeof p.right !== 'object' && p.left !== '' && p.right !== ''
+    && Number.isFinite(Number(p.left)) && Number.isFinite(Number(p.right))).map(p => [Number(p.left), Number(p.right)]);
+  if (nums.length < 3) {
+    const ex = pairs.slice(0, 3);
+    return ex.length ? `<div class="rcx-viz pairs">${ex.map(p => `<div><span class="l">${rcxVal(p.left)}</span><span class="to">→</span><span class="r">${rcxVal(p.right)}</span></div>`).join('')}</div>` : '';
+  }
+  const xs = nums.map(p => p[0]), all = xs.concat(nums.map(p => p[1]));
+  const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...all), y1 = Math.max(...all);
+  const W = 360, H = 118, PL = 26, PB = 20, PT = 8, PR = 10;
+  const X = v => PL + (x1 > x0 ? (v - x0) / (x1 - x0) : .5) * (W - PL - PR), Y = v => PT + (1 - (y1 > y0 ? (v - y0) / (y1 - y0) : .5)) * (H - PT - PB);
+  // The "unchanged" line is labelled on the side the points are not, so the label never sits on them.
+  const up = nums.filter(([p, q]) => q > p).length >= nums.length / 2, lx = x0 + (x1 - x0) * .72;
+  let g = `<line x1="${X(x0)}" y1="${Y(x0)}" x2="${X(x1)}" y2="${Y(x1)}" stroke="#5d6c90" stroke-dasharray="3 4"/>` +
+    `<text x="${X(lx) + (up ? 4 : -4)}" y="${Y(lx) + (up ? 14 : -7)}" text-anchor="${up ? 'start' : 'end'}" class="rcx-viz-ax">unchanged</text>`;
+  if (fact && fact.kind === 'ratio') g += `<line x1="${X(x0)}" y1="${Y(x0 * fact.factor)}" x2="${X(x1)}" y2="${Y(x1 * fact.factor)}" stroke="var(--run)" stroke-opacity=".55" stroke-width="1.5"/>` +
+    `<text x="${(X(x0) + X(x1)) / 2}" y="${Y(((x0 + x1) / 2) * fact.factor) - 8}" class="rcx-viz-lab" fill="var(--run)">×${esc(rcxNumTxt(fact.factor))}</text>`;
+  if (fact && fact.kind === 'offset') g += `<line x1="${X(x0)}" y1="${Y(x0 + fact.offset)}" x2="${X(x1)}" y2="${Y(x1 + fact.offset)}" stroke="var(--run)" stroke-opacity=".55" stroke-width="1.5"/>`;
+  g += nums.slice(0, 80).map(([a, b]) => `<circle cx="${X(a).toFixed(1)}" cy="${Y(b).toFixed(1)}" r="3.2" fill="var(--run)" stroke="#0b1324" stroke-width="1"/>`).join('');
+  g += `<text x="${(PL + W - PR) / 2}" y="${H - 4}" text-anchor="middle" class="rcx-viz-ax">${esc(col)} on the left</text>` +
+    `<text x="10" y="${(H - PB) / 2}" text-anchor="middle" class="rcx-viz-ax" transform="rotate(-90 10 ${(H - PB) / 2})">on the right</text>`;
+  return `<svg class="rcx-viz scatter" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(`${nums.length} changed ${col} values, left against right`)}">${g}</svg>`;
+}
+function rcxFindsHtml(res) {
+  const c = res.counts || {}, s = res.samples || {}, L = res.left || {}, R = res.right || {};
+  const ln = L.name || 'the left', rn = R.name || 'the right';
+  const cards = RCX_KINDS.filter(([k]) => c[k]).map(([k, color, label, sub, btn]) => {
+    const F = rcxKindFacts(res, k), n = c[k];
+    let viz = '';
+    if (k === 'changed') viz = rcxVizChange(res, F.change.find(f => ['ratio', 'offset'].includes(f.kind)) || F.change[0]);
+    else viz = (F.where && rcxVizTime(F.where, n, color)) || (F.cls[0] && rcxVizShare(F.cls[0], color)) || '';
+    if (!viz && k === 'changed' && F.cls[0]) viz = rcxVizShare(F.cls[0], color);
+    const pulled = k === 'changed' ? (s.changed || []).length : (s[k] || []).length;
+    const foot = k === 'changed'
+      ? (() => { const cols = (res.columns || []).filter(x => x.changed).map(x => x.left); return cols.length === 1 ? `only ${cols[0]} differs` : cols.length ? `${cols.length} columns differ` : ''; })()
+      : F.where ? (F.where.from === F.where.to ? '' : `${F.where.column} ${rcxIsDay(F.where.from) ? rcxDay(F.where.from) : rcxWhen(F.where.from)} to ${rcxIsDay(F.where.to) ? rcxDay(F.where.to) : rcxWhen(F.where.to)}`) : sub(ln, rn);
+    return `<div class="rcx-find ${k}" style="--c:${color}">` +
+      `<div class="rcx-find-n"><b>${rcxN(n)}</b><span>${esc(label(ln, rn))}</span></div>` +
+      `<div class="rcx-find-why">${rcxCauseHtml(res, k)}</div>${rcxMoreFacts(res, k)}` +
+      (viz ? `<div class="rcx-find-viz">${viz}</div>` : '') +
+      `<div class="rcx-find-ft"><span>${esc(foot)}</span>${pulled ? `<button type="button" class="dsx-btn lngb" data-rcx="rows" data-kind="${k}"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg>${btn}</button>` : ''}</div></div>`;
+  });
+  return `<div class="rcx-finds" style="--n:${cards.length}">${cards.join('')}</div>`;
+}
+/** The columns in one row: those that agree in green, the one that does not saying by how much. */
+function rcxColsHtml(res) {
+  const cols = res.columns || [], um = res.unmapped || {};
+  const unmapped = [...(um.left || []).map(u => ({ ...u, side: 'left' })), ...(um.right || []).map(u => ({ ...u, side: 'right' }))];
+  if (!cols.length && !unmapped.length) return '';
+  const ok = cols.filter(x => !x.changed).length;
+  const chips = cols.map(col => {
+    const a = col.agree == null ? null : col.agree * 100, cls = !col.changed ? 'ok' : a >= 99 ? 'warn' : 'bad';
+    const name = esc(col.left) + (col.right && col.right !== col.left ? ` ↔ ${esc(col.right)}` : '');
+    return `<span class="rcx-col ${cls}" data-tip="${name}: ${col.changed ? `${rcxN(col.changed)} changed, ${rcxPct(a)} agree` : 'agrees on every row'}${col.pii ? ' · personal data, values never pulled' : ''}">` +
+      `<i></i><span class="rcx-col-n">${name}</span>${col.pii ? '<span class="rcx-pii">PII</span>' : ''}${col.changed ? `<b>${rcxN(col.changed)} differ</b>` : ''}</span>`;
+  }).join('') + unmapped.map(u => `<span class="rcx-col off" data-tip="${esc(u.reason || '')}"><i></i><span class="rcx-col-n">${esc(u.column)}</span><small>${u.side}, not compared</small></span>`).join('');
+  return `<div class="rcx-cols"><h4>Columns <small>${cols.length ? `${ok} of ${cols.length} agree on every row` : 'none compared'}</small></h4><div class="rcx-colchips">${chips}</div></div>`;
+}
+/** The pair over time: what differed on each run, by kind, and how the last compares. */
 function rcxHistoryHtml(hist, res) {
-  const runs = ((hist || {}).runs || []).filter(r => r && r.compared != null).slice(-30);
+  const runs = ((hist || {}).runs || []).filter(r => r && r.compared != null).slice(-12);
   if (runs.length < 2) return '';
-  const pts = runs.map(r => (r.compared ? (r.carried / r.compared) * 100 : 100));
-  const W = 320, H = 54, lo = Math.min(...pts, 99), hi = 100;
-  const x = i => 4 + (i / (pts.length - 1)) * (W - 8), y = v => H - 6 - ((v - lo) / (hi - lo || 1)) * (H - 12);
-  const line = pts.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
+  const tot = r => (r.missing || 0) + (r.changed || 0) + (r.extra || 0);
+  const mx = Math.max(1, ...runs.map(tot));
+  const bars = runs.map(r => {
+    const t = tot(r), seg = (v, cls) => v ? `<i class="${cls}" style="height:${Math.max(3, v / mx * 100).toFixed(1)}%"></i>` : '';
+    const when = r.finished_at ? rcxWhen(r.finished_at) : '';
+    return `<span class="rcx-hb${t ? '' : ' zero'}" data-tip="${esc(`${when}: ${t ? `${rcxN(r.missing || 0)} missing, ${rcxN(r.changed || 0)} changed, ${rcxN(r.extra || 0)} extra` : 'they agreed'}`)}">${seg(r.extra, 'extra')}${seg(r.changed, 'changed')}${seg(r.missing, 'missing')}</span>`;
+  }).join('');
   const last = runs[runs.length - 1], prev = runs[runs.length - 2];
-  const dl = (last.missing || 0) + (last.extra || 0) + (last.changed || 0), dp = (prev.missing || 0) + (prev.extra || 0) + (prev.changed || 0);
+  const dl = tot(last), dp = tot(prev);
   const trend = dl === dp ? 'the same as last time' : dl < dp ? `${rcxN(dp - dl)} fewer than last time` : `${rcxN(dl - dp)} more than last time`;
-  return `<h4>Over time <small>${runs.length} runs</small></h4><div class="rcx-hist-row"><svg viewBox="0 0 ${W} ${H}" class="rcx-spark" aria-hidden="true">` +
-    `<polyline points="${line}" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>` +
-    `<circle cx="${x(pts.length - 1).toFixed(1)}" cy="${y(pts[pts.length - 1]).toFixed(1)}" r="3.2" fill="currentColor"/></svg>` +
-    `<p>${rcxN(dl)} row${dl === 1 ? '' : 's'} differ, ${trend}. The line is the share of rows that agreed on each run.</p></div>`;
+  return `<h4>Over time <small>${runs.length} runs</small></h4><div class="rcx-hbars">${bars}</div>` +
+    `<p>${rcxN(dl)} row${dl === 1 ? '' : 's'} differ, ${trend}.</p>`;
 }
-/** What became of the rows, at two scales. One bar is the whole table: carried against what
- *  differs, which at 99.9% carried is a sliver, and honestly so. The second bar draws only the
- *  differing rows, at their own scale, so 212 missing rows are visible beside a quarter of a
- *  million carried. The tiles count each kind, and the ones with rows jump to them. */
-function rcxBalanceHtml(c, L, R) {
-  const max = Math.max(c.left_rows || 0, c.right_rows || 0, 1);
-  const diff = (c.changed || 0) + (c.missing || 0) + (c.extra || 0);
-  const pct = n => (n === c.carried ? rcxPct((n / max) * 100) : rcxShare(n / max));   // a share of the table, said as the engine says it
-  const w = n => (n > 0 ? Math.max(0.6, (n / max) * 100) : 0);          // a sliver is still shown
-  const dw = n => (diff && n > 0 ? Math.max(2, (n / diff) * 100) : 0);
-  const ln = esc(L.name || 'the left'), rn = esc(R.name || 'the right');
-  const tiles = [
-    ['carried', c.carried || 0, 'Carried', `identical in ${ln} and ${rn}`],
-    ['changed', c.changed || 0, 'Changed', 'the same row on both sides, a value differs'],
-    ['missing', c.missing || 0, 'Missing on the right', `in ${ln}, not in ${rn}`],
-    ['extra', c.extra || 0, 'Only on the right', `in ${rn}, not in ${ln}`],
-  ];
-  const aria = `${rcxN(c.carried)} rows carried, ${rcxN(c.changed)} changed, ${rcxN(c.missing)} missing on the right, ${rcxN(c.extra)} only on the right`;
-  const seg = (k, width) => (width ? `<i class="${k}" style="width:${width.toFixed(2)}%"></i>` : '');
-  return `<div class="rcx-flow rcx-balance">` +
-    `<div class="rcx-bar rcx-bar-all" role="img" aria-label="${aria}">${seg('carried', w(c.carried))}${seg('changed', w(c.changed))}${seg('missing', w(c.missing))}${seg('extra', w(c.extra))}</div>` +
-    `<p class="rcx-bar-cap">${rcxN(c.carried)} of ${rcxN(max)} rows carried unchanged (${pct(c.carried)}).` +
-      `${diff ? ` The ${rcxN(diff)} that differ (${rcxShare(diff / max)}) are drawn below at their own scale.` : ' Nothing differs.'}</p>` +
-    (diff ? `<div class="rcx-bar rcx-bar-diff" aria-hidden="true">${seg('changed', dw(c.changed))}${seg('missing', dw(c.missing))}${seg('extra', dw(c.extra))}</div>` : '') +
-    `<div class="rcx-tiles">${tiles.map(([k, n, label, sub]) => {
-      const inner = `<b>${rcxN(n)}</b><span>${label}</span><small>${n ? sub : 'none'}</small><i>${n ? pct(n) : ''}</i>`;
-      return k !== 'carried' && n
-        ? `<button type="button" class="rcx-tile ${k} lngb" data-rcx="jump" data-to="${k}" data-tip="See these rows">${inner}</button>`
-        : `<div class="rcx-tile ${k}${n ? '' : ' none'}">${inner}</div>`;
-    }).join('')}</div></div>`;
+
+// ---- The rows behind a card, in a window ----
+// The changed rows side by side, the value on the left against the value on the right; the missing
+// and extra keys as a grid to copy or download. A page at a time, so a long list never fills the tab.
+let rcxRowsAt = null;
+function rcxRowsList(kind) {
+  const s = (rcx.result || {}).samples || {};
+  if (kind !== 'changed') return (s[kind] || []).map(k => ({ key: k }));
+  const out = [];
+  (s.changed || []).forEach(r => Object.keys(r.columns || {}).forEach(col => {
+    const x = r.columns[col]; out.push({ key: r.key, col, rcol: x.right_column && x.right_column !== col ? x.right_column : '', left: x.left, right: x.right });
+  }));
+  return out;
+}
+function rcxRowsOpen(kind) {
+  let m = $('#rcxRows');
+  if (!m) {
+    m = document.createElement('div');
+    m.id = 'rcxRows'; m.className = 'modal-overlay';
+    m.setAttribute('role', 'dialog'); m.setAttribute('aria-modal', 'true'); m.setAttribute('aria-labelledby', 'rcxRowsTitle');
+    document.body.appendChild(m);
+    m.addEventListener('click', e => {
+      if (e.target === m) { rcxRowsClose(); return; }
+      const b = e.target.closest('[data-rr]'); if (!b || b.disabled) return;
+      const a = b.dataset.rr;
+      if (a === 'close') rcxRowsClose();
+      else if (a === 'prev' || a === 'next') { rcxRowsAt.page += a === 'next' ? 1 : -1; rcxRowsPaint(); const f = m.querySelector(`[data-rr="${a}"]`); if (f && !f.disabled) f.focus(); }
+      else if (a === 'csv') rcxRowsCsv();
+      else if (a === 'copy') {
+        const keys = rcxRowsList(rcxRowsAt.kind).map(r => r.key).join('\n');
+        (navigator.clipboard ? navigator.clipboard.writeText(keys) : Promise.reject()).then(() => { b.textContent = 'Copied'; }, () => { b.textContent = 'Could not copy'; });
+      }
+    });
+    m.addEventListener('keydown', e => {
+      if (e.key === 'Escape') { e.preventDefault(); rcxRowsClose(); return; }
+      if (e.key !== 'Tab') return;
+      const all = [...m.querySelectorAll('button:not([disabled])')]; if (!all.length) return;
+      if (e.shiftKey && document.activeElement === all[0]) { e.preventDefault(); all[all.length - 1].focus(); }
+      else if (!e.shiftKey && document.activeElement === all[all.length - 1]) { e.preventDefault(); all[0].focus(); }
+    });
+  }
+  rcxRowsAt = { kind, page: 0, from: document.activeElement };
+  rcxRowsPaint();
+  m.classList.add('open');
+  const x = m.querySelector('[data-rr="close"]'); if (x) x.focus();
+}
+function rcxRowsClose() {
+  const m = $('#rcxRows'); if (m) m.classList.remove('open');
+  const from = rcxRowsAt && rcxRowsAt.from; rcxRowsAt = null;
+  if (from && document.contains(from)) from.focus();
+}
+function rcxRowsPaint() {
+  const m = $('#rcxRows'), res = rcx.result; if (!m || !res || !rcxRowsAt) return;
+  const kind = rcxRowsAt.kind, c = res.counts || {}, L = res.left || {}, R = res.right || {};
+  const ln = L.name || 'the left', rn = R.name || 'the right';
+  const k = RCX_KINDS.find(x => x[0] === kind) || RCX_KINDS[0];
+  const list = rcxRowsList(kind), per = kind === 'changed' ? 10 : 60;
+  const pages = Math.max(1, Math.ceil(list.length / per));
+  rcxRowsAt.page = Math.max(0, Math.min(pages - 1, rcxRowsAt.page));
+  const from = rcxRowsAt.page * per, page = list.slice(from, from + per);
+  const pulled = kind === 'changed' ? ((res.samples || {}).changed || []).length : list.length, total = c[kind] || 0;
+  let body;
+  if (kind === 'changed') {
+    const ratio = r => {
+      if (typeof r.left === 'object' || typeof r.right === 'object') return '';
+      const a = Number(r.left), b = Number(r.right);
+      return Number.isFinite(a) && Number.isFinite(b) && a && r.left !== '' && r.right !== '' ? `×${(b / a).toFixed(2)}` : '';
+    };
+    body = `<div class="rcx-rr-h"><span>${esc(res.key && res.key.left ? res.key.left.join(' + ') : 'Key')}</span><span>Column</span><span>${esc(ln)}</span><span>${esc(rn)}</span><span></span></div>` +
+      page.map(r => `<div class="rcx-rr"><code>${esc(r.key)}</code><span class="c">${esc(r.col)}${r.rcol ? `<small> ↔ ${esc(r.rcol)}</small>` : ''}</span>` +
+        `<span class="l">${rcxVal(r.left)}</span><span class="r">${rcxVal(r.right)}</span><span class="x">${ratio(r)}</span></div>`).join('');
+  } else {
+    body = `<div class="rcx-rk-h"><span class="yes">in ${esc(kind === 'missing' ? ln : rn)}</span><span class="no">not in ${esc(kind === 'missing' ? rn : ln)}</span></div>` +
+      `<div class="rcx-rk">${page.map(r => `<code>${esc(r.key)}</code>`).join('')}</div>`;
+  }
+  const masked = (res.samples || {}).key_masked ? `<p class="hint">Keys are shown hashed: the key is personal data.</p>` : '';
+  const of = pulled < total ? ` of the ${rcxN(pulled)} pulled (${rcxN(total)} in all)` : ` of ${rcxN(list.length)}`;
+  m.innerHTML = `<div class="modal rcx-rows" style="--c:${k[1]}"><div class="rcx-rows-hd"><div><h3 id="rcxRowsTitle"><b>${rcxN(total)}</b> ${esc(k[2](ln, rn))}</h3>` +
+    `<p>${rcxCauseHtml(res, kind)}</p></div><button type="button" class="x-close" data-rr="close" aria-label="Close">&times;</button></div>` +
+    `<div class="rcx-rows-body">${body}${masked}</div>` +
+    `<div class="rcx-rows-ft"><span>${list.length ? `${rcxN(from + 1)} to ${rcxN(from + page.length)}${of}` : 'None were pulled.'}</span>` +
+    `<button type="button" class="dsx-btn lngb" data-rr="prev"${rcxRowsAt.page ? '' : ' disabled'}>Back</button><button type="button" class="dsx-btn lngb" data-rr="next"${rcxRowsAt.page < pages - 1 ? '' : ' disabled'}>Next</button>` +
+    (kind !== 'changed' ? `<button type="button" class="dsx-btn lngb" data-rr="copy">Copy the keys</button>` : '') +
+    `<button type="button" class="dsx-btn lngb" data-rr="csv">Download${pulled < total ? ` the ${rcxN(pulled)}` : ''}</button></div></div>`;
+}
+function rcxRowsCsv() {
+  const res = rcx.result || {}, kind = (rcxRowsAt || {}).kind; if (!kind) return;
+  const q = v => { const s = v && typeof v === 'object' ? (v.masked ? '(personal data)' : '') : String(v == null ? '' : v); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
+  const rows = rcxRowsList(kind);
+  const csv = kind === 'changed' ? ['key,column,left,right'].concat(rows.map(r => [r.key, r.col, r.left, r.right].map(q).join(','))).join('\n')
+    : ['key'].concat(rows.map(r => q(r.key))).join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+  a.download = `${[(res.left || {}).name, (res.right || {}).name, kind].filter(Boolean).join('-').replace(/[^\w.-]+/g, '_')}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
 }
 
 // ===================== Data Passport: AI readiness, and the evidence for it =====================
@@ -23905,7 +24119,7 @@ const GD_SHOTS = {
   "source-menu": [1600, 913, "23d4212bf0"],
   "source-picker": [1600, 772, "b10b223d5e"],
   "sourcewatch": [1600, 1112, "057706a378"],
-  "stages": [1600, 2150, "872ad20dd8"],
+  "stages": [1600, 1400, "7e8113a6f4"],
   "tag-edit-pa": [976, 1608, "8e3addbf3c"],
   "tag-edit-q": [976, 612, "9929794e2b"],
   "tagrun": [1600, 1378, "2630e79d1f"],
@@ -25000,16 +25214,17 @@ function buildGuides() {
           steps(`Open ${go('medallion', 'Reconcile')}. ${showme('stages')}`,
                 `Pick the left and the right dataset, or choose a ready-made pair: <b>Stage pairs</b> holds Bronze to Silver and Silver to Gold, built from the stage tags, and <b>Reconciled before</b> every pair compared so far; both open a list that searches as you type.`,
                 `Press ${ui('Reconcile')}. The comparison runs where the data lives, and the steps light up as it goes. A few million rows take a minute or two; most of that is a worker starting.`) +
-          shot('stages', `${n(1)} The pair, with the stage pairs ready-made. ${n(2)} The key both sides were matched on. ${n(3)} The balance: carried against what differs, then the differing rows at their own scale, and a count of each kind. ${n(4)} How far each column agrees. ${n(5)} What the differences have in common. ${n(6)} The watch on the pair, and Explain with AI.`) },
+          shot('stages', `${n(1)} The pair, with the stage pairs ready-made. ${n(2)} The key both sides were matched on. ${n(3)} A card for each kind of difference: how many, the cause in a line, and a picture that shows it. ${n(4)} The columns, and which one disagrees. ${n(5)} The changed values against each other. ${n(6)} The watch on the pair, and Explain with AI.`) },
       { h: 'Reading the result', body:
           list(
             `<b>Matched on</b> says which column identifies a row: the key you named, the primary key both catalogs declare, a unique column both sides share, or two unique columns whose values overlap.`,
             `<b>Name the key</b> when no column identifies a row on both sides: the tab asks for the column, or columns together, on each side, says which were unique on each, and compares again. ${ui('Match on a different key')} under a result does the same when the key it found is not the one you meant. A watch keeps the key you named.`,
-            `<b>The balance</b> is two bars. The first is the whole table, carried against what differs, which at 99.9% carried is a sliver, and honestly so. The second draws only the differing rows, at their own scale, so 212 missing rows are visible beside a quarter of a million carried. The four tiles count each kind; press one to jump to its rows.`,
-            `<b>The column strip</b> gives each compared column its share of rows that agree. A column with no counterpart of the same name, or a different type, is listed as not compared rather than guessed.`,
-            `<b>What the differences have in common</b>, which is usually the cause: when every missing row came from one source system that holds a tenth of the table, when two columns together single them out, when their amounts sit in a band of their own, when they were all loaded in the same quarter of an hour, or when every changed amount is exactly 1.2 times the left, it says so. Columns marked as personal data take no part.`,
-            `<b>The rows that changed</b>, with both values, and the keys that are missing or extra.`,
-            `<b>Over time</b>, once a pair has been reconciled twice: the share that agreed on each run.`) },
+            `<b>The verdict</b> is the share of rows that agree, and how many differ.`,
+            `<b>A card for each kind of difference</b>: missing from the right, changed, and only on the right. Each says how many, then the cause in a line, with a picture that shows it: where along the table the rows fall when they were all loaded together, how far one value singles them out against the table, or each changed value against the left one. Point at the underlined words for the full finding.`,
+            `<b>The columns</b> in one row: those that agree on every row in green, and the one that does not saying by how many rows. A column with no counterpart of the same name, or a different type, is shown as not compared rather than guessed.`,
+            `<b>The cause</b> on each card is what its rows have in common: when every missing row came from one source system that holds a tenth of the table, when two columns together single them out, when their amounts sit in a band of their own, when they were all loaded in the same quarter of an hour, or when every changed amount is exactly 1.2 times the left, it says so. Columns marked as personal data take no part.`,
+            `<b>The rows</b> wait behind each card. ${ui('See the rows')} shows the changed rows side by side, the left value against the right; ${ui('See the keys')} shows the missing or extra keys as a grid. Both go a page at a time, and download as a CSV.`,
+            `<b>Over time</b>, once a pair has been reconciled twice: what differed on each run, by kind.`) },
       { h: 'What leaves each source, and what never does', body:
           p(`Each side computes small fingerprints of its own rows, with its own SQL: counts, sums, and folded hashes of text, in a thousand buckets by key. Buckets that agree are never looked at again; the rest are split, then split again, and only the handful of rows that still differ have their keys pulled. The rows themselves are never copied.`) +
           note(`A column the compliance scan marked as personal data never has a value pulled, even when it changed: the result shows that it differs, and its length, and nothing else. When the key itself is personal data, the keys are shown hashed.`) },
