@@ -27171,6 +27171,8 @@ function startCommon() {
   setInterval(refreshBlockerBar, 60000);        // keep the always-visible bar current
   pisRefreshBadge();                            // and the PII sweep's badge, without opening its tab
   setInterval(pisRefreshBadge, 60000);
+  swRefreshBadge();                             // and Source monitoring's (its checks run hours apart)
+  setInterval(swRefreshBadge, 300000);
   // Hold the splash until the dashboard's FIRST load settles, so the user lands on a populated
   // screen rather than watching empty panels fill in. switchTab already started that load and
   // loadDashboard shares one in-flight promise, so this attaches to it rather than refetching.
@@ -28348,14 +28350,31 @@ async function loadSourceWatch() {
       && String(i.status || '').toUpperCase() === 'OPEN');
     swData = { raw: r, incs, built: r.built_at || null, quiet: r.not_pollable || {} };
     _swSplit();
-    const items = swData.items;
-    const bad = items.filter(i => i.health === 'critical' || i.health === 'warning').length;
-    const badge = $('#watchBadge');
-    if (badge) { badge.textContent = bad; badge.style.display = bad ? '' : 'none'; }
+    swSetBadge(_swBadCount(swData.items));
     renderSourceWatch();
   } catch (e) {
     el.innerHTML = `<p class="dash-muted">${esc(e.message)}</p>`;
   }
+}
+
+// The nav's badge: how many monitored sources are critical or warning.
+const _swBadCount = items => items.filter(i => !i.info.excluded && (i.health === 'critical' || i.health === 'warning')).length;
+function swSetBadge(n) {
+  const b = $('#watchBadge'); if (!b) return;
+  b.textContent = n; b.style.display = n ? '' : 'none';
+}
+/** The same count from the moment the page opens, without opening the tab: its two reads, none of its drawing. */
+async function swRefreshBadge() {
+  if (!APP_ID) return;
+  try {
+    const [r, inc] = await Promise.all([
+      postJSON(`${API_BASE}/data-quality/source-watch`, HEADERS, { app_id: APP_ID, action: 'status' }),
+      postJSON(`${API_BASE}/data-quality/incidents/list`, HEADERS, { app_id: APP_ID, status: 'open' }).catch(() => null),
+    ]);
+    const incs = ((inc && inc.incidents) || []).filter(i => String(i.rule || '').startsWith('SOURCE_')
+      && String(i.status || '').toUpperCase() === 'OPEN');
+    swSetBadge(_swBadCount(_swItems(r, incs)));
+  } catch (e) { /* best-effort: the tab counts again when it opens */ }
 }
 
 // An excluded source is off the list, the radar and the counts: it is in its own section below the
