@@ -1723,6 +1723,14 @@
   .dr-done { display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 600; color: var(--ok); }
   .dr-done .linkbtn { margin: 0; font-size: 12.5px; }
   .dr-cannot { margin: 0; font-size: 13px; }
+  /* a written rule that changes one already there: the rule as it is, and as it would be */
+  .dr-chg { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding: 8px 11px; border-radius: 10px; font-size: 12.5px;
+    border: 1px solid color-mix(in srgb, var(--run) 38%, var(--border)); background: color-mix(in srgb, var(--run) 7%, var(--card)); }
+  .dr-chg-l { margin-right: 2px; font-weight: 700; color: var(--run); }
+  .dr-chg .rx-chip.was { text-decoration: line-through; opacity: .7; }
+  .dr-chg-to { color: var(--muted); }
+  .dr-chg q { font-style: italic; }
+  .dr-foot .linkbtn { margin: 0; font-size: 12.5px; }
   /* Rules across columns, in the editor: what each checks, the rule as the engine reads it, its severity */
   .rx-cross { margin-top: 14px; padding: 14px 16px; border: 1px solid var(--border); border-radius: 12px; background: var(--card-2); }
   .rx-cross-h { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
@@ -13423,7 +13431,7 @@ function drWire(panel, prefix) {
   panel.querySelectorAll('[data-dr-eg]').forEach(b => b.addEventListener('click', () => { input.value = b.dataset.drEg; input.focus(); }));
   out.addEventListener('click', e => {
     const add = e.target.closest('[data-dr-add]');
-    if (add) { drAdd(out, +add.dataset.drAdd); return; }
+    if (add) { drAdd(out, +add.dataset.drAdd, add.dataset.drReplace || ''); return; }
     const see = e.target.closest('[data-dr-see]');
     if (see) drSee(out._dr && out._dr.rules[+see.dataset.drSee]);
   });
@@ -13468,17 +13476,54 @@ function drCardHtml(r, d, i) {
   }
   const on = (d.columns || []).map(c => `<code>${esc(c)}</code>`).join(' · ');
   const sev = cross ? (cross.severity || 'major') : (col && col.obj && col.obj.severity) || '';
-  const have = !d._added && drIsIn(($('#dsRulesBody') || {})._rx, d);
+  const rx = ($('#dsRulesBody') || {})._rx, have = !d._added && drIsIn(rx, d);
+  // What it changes in the rules already there, worked out before it is added (after, it is the rule).
+  if (!d._added) {
+    d._chg = cross || key || !col ? null : drChange(rx, col.col, col.obj);
+    d._twin = cross ? drTwin(rx, cross, d.columns) : null;
+  }
+  const chg = d._chg, twin = d._twin, chip = t => `<span class="rx-chip">${esc(t)}</span>`;
+  const sevL = v => (RX_SEV.find(x => x[0] === v) || [v, v])[1];
+  const chgHtml = chg && !have ? `<div class="dr-chg"><span class="dr-chg-l">Changes the rule ${esc(col.col)} has now</span>` +
+      (chg.was.length ? chg.was.map(t => `<span class="rx-chip was">${esc(t)}</span>`).join('') + `<span class="dr-chg-to" aria-label="becomes">→</span>` +
+        chg.now.map(chip).join('') : '') +
+      (chg.sev ? `<span class="dr-chg-to">${chg.was.length ? ' · ' : ''}severity ${esc(sevL(chg.sev[0]))} → ${esc(sevL(chg.sev[1]))}</span>` : '') + `</div>`
+    : twin && !have ? `<div class="dr-chg"><span class="dr-chg-l">Already a rule across these columns</span>` +
+      `<q>${esc(twin.description || twin.expr)}</q><span class="dr-chg-to">Replace it with this one, or add this one as well.</span></div>` : '';
+  const done = d._added === 'replaced' || (d._added && chg) ? 'Changed below, not saved yet' : 'Added below, not saved yet';
   const foot = d._added || have
-    ? `<span class="dr-done" role="status">✓ ${have ? "Already in this dataset's rules" : 'Added below, not saved yet'}` +
+    ? `<span class="dr-done" role="status">✓ ${have ? "Already in this dataset's rules" : done}` +
       `<button type="button" class="linkbtn lngb" data-dr-see="${i}">See it</button></span>`
-    : `<button type="button" class="dsx-btn primary lngb" data-dr-add="${i}">Add to the rules</button>`;
+    : twin ? `<button type="button" class="linkbtn lngb" data-dr-add="${i}">Add as well</button>` +
+        `<button type="button" class="dsx-btn primary lngb" data-dr-add="${i}" data-dr-replace="${esc(twin.id)}">Replace the rule</button>`
+    : `<button type="button" class="dsx-btn primary lngb" data-dr-add="${i}">${chg ? 'Change the rule' : 'Add to the rules'}</button>`;
   return `<div class="dr-card ai-rise${d._added ? ' added' : ''}" style="--i:${Math.min(i, 6)}" data-dr="${i}">` +
     `<div class="dr-head"><span class="tag">${kind}</span><span class="dr-title">${esc(d.title || '')}</span>` +
       (on ? `<span class="dr-on">on ${on}</span>` : '') + (sev ? `<span class="rx-sev ${esc(sev)}">${esc((RX_SEV.find(x => x[0] === sev) || [sev, sev])[1])}</span>` : '') + `</div>` +
     (d.rationale ? `<p class="dr-why">${esc(d.rationale)}</p>` : '') +
-    (what ? `<div class="dr-what">${what}</div>` : '') +
+    (what ? `<div class="dr-what">${what}</div>` : '') + chgHtml +
     `<div class="dr-foot"><p class="dr-imp">${imp || ''}</p>${foot}</div></div>`;
+}
+/** What a written rule on one column changes in that column's rules now: its chips as they are and as
+ *  they would be, and its severity if that moves; null when it only adds (or changes nothing). A rule
+ *  merges into the column, so "at least 1" over "2 to 200" leaves "1 to 200". */
+function drChange(rx, col, spec) {
+  if (!rx || !spec) return null;
+  const cur = rx.state.columns[col] || {}, next = Object.assign({}, cur, spec), fields = Object.keys(spec);
+  const touches = c => (c[3] || []).some(f => fields.includes(f));
+  const was = rxChips(cur, false).filter(touches).map(c => c[0]), now = rxChips(next, false).filter(touches).map(c => c[0]);
+  const sevWas = cur.severity || 'major', sevNow = next.severity || 'major';
+  const sev = sevWas !== sevNow ? [sevWas, sevNow] : null, same = JSON.stringify(was) === JSON.stringify(now);
+  if (!sev && (!was.length || same)) return null;
+  return same ? { was: [], now: [], sev } : { was, now, sev };          // only what moves
+}
+/** A rule across columns already there that reads the same columns as a written one, if any: the
+ *  written one may be meant to replace it. */
+function drTwin(rx, cr, cols) {
+  if (!rx || !cr) return null;
+  const names = Object.keys(rx.state.columns || {}), key = (cols || []).slice().sort().join('|');
+  const reads = e => { const ids = new Set(String(e || '').match(/[A-Za-z_][A-Za-z0-9_]*/g) || []); return names.filter(n => ids.has(n)).sort().join('|'); };
+  return (rx.state.consistencyRules || []).find(x => x.expr !== cr.expr && key && reads(x.expr) === key) || null;
 }
 /** Is a written rule already in the editor's rules, as it is written? Then there is nothing to add. */
 function drIsIn(rx, d) {
@@ -13489,8 +13534,10 @@ function drIsIn(rx, d) {
     (!keys || _rxSameKey(rx.state.primaryKey, keys)) &&
     cross.every(cr => (rx.state.consistencyRules || []).some(x => x.expr === cr.expr));
 }
-/** Add a written rule to the editor below, as a change not saved yet, and bring it into view there. */
-function drAdd(out, i) {
+/** Add a written rule to the editor below, as a change not saved yet, and bring it into view there.
+ *  On a column it merges into the rules there, so a range replaces the range; `replace` is a rule
+ *  across columns it takes the place of. */
+function drAdd(out, i, replace) {
   const r = out._dr, d = r && r.rules[i], body = $('#dsRulesBody'), rx = body && body._rx;
   if (!d) return;
   if (!rx) {
@@ -13504,14 +13551,14 @@ function drAdd(out, i) {
   }
   if (ac.keys && ac.keys.primary) rx.state.primaryKey = ac.keys.primary.slice();
   (ac.consistency_rules || []).forEach(cr => {
-    const list = rx.state.consistencyRules = rx.state.consistencyRules || [];
+    const list = rx.state.consistencyRules = (rx.state.consistencyRules || []).filter(x => !replace || x.id !== replace);
     const at = list.findIndex(x => x.id === cr.id);
     if (at >= 0) list[at] = _rxClone(cr); else list.push(_rxClone(cr));
   });
   rx.ui.filter = 'all';
   rxPaint(rx);
   rxTouched(rx);
-  d._added = true;
+  d._added = replace ? 'replaced' : true;
   const card = out.querySelector(`.dr-card[data-dr="${i}"]`);
   if (card) {
     const tmp = document.createElement('div');
@@ -25530,6 +25577,7 @@ function buildGuides() {
             `In the dataset's ${ui('Rules')} tab, type the rule as you would say it in ${ui('Describe a rule')}, such as “the ship date is never before the order date” or “every customer has an email address”, and press ${ui('Write the rule')}.`,
             `The AI writes it for this dataset's columns. A rule about one column becomes a rule on that column, saying what it would fail in today's data; one that compares columns becomes a <b>rule across columns</b>, shown as the engine will read it.`,
             `Press ${ui('Add to the rules')}. It goes into the rules below as a change not saved yet, and ${ui('See it')} takes you to it. Press ${ui('Save changes')} to queue it for the dataset's next run, as with any other change.`) +
+          p(`It can change a rule as well as add one. If the column already has a rule of that kind, such as a range of 2 to 200 when you ask for 1 to 100, the card shows the rule as it is and as it would be, and ${ui('Change the rule')} replaces it, leaving the column's other rules alone. A rule across columns that reads the same columns as one already there offers ${ui('Replace the rule')} or ${ui('Add as well')}. To remove a rule, press its ${ui('✕')} in the editor.`) +
           shot('rules-describe', `${n(1)} The rule, as you would say it. ${n(2)} The rule the AI wrote, as the engine will read it. ${n(3)} ${ui('Add to the rules')} puts it in the rules below, to save with the rest.`) +
           p(`If the sentence cannot be written for this dataset, such as a rule on a column it does not have, the answer says why instead. A rule the dataset already has says ${ui("Already in this dataset's rules")}.`) +
           note(`As with Review rules with AI, the AI sees column names, aggregate statistics and masked value shapes, and your sentence. It never sees your values.`) },
