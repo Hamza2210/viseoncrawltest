@@ -3464,6 +3464,7 @@
   .swx-state::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
   .swx-state.healthy { --k: var(--swx-ok); } .swx-state.warning { --k: var(--swx-warn); }
   .swx-state.critical { --k: var(--swx-crit); } .swx-state.off { --k: var(--muted); }
+  .swx-age { display: block; margin-top: 5px; font-size: 11px; color: var(--muted); white-space: nowrap; }
   .swx-src { display: flex; align-items: center; gap: 8px; }
   .swx-src-ico { flex: none; font-size: 15px; line-height: 1; }
   .swx-src-ico svg { width: 18px; height: 18px; }
@@ -6643,7 +6644,7 @@
         <h4>What raises an alert?</h4>
         <p>A finding here becomes a tracked incident, with the same email, Slack/Teams and acknowledge/snooze behaviour as a quality alert. Source findings and quality findings are kept separate: neither resolves the other.</p>
         <div class="swx-alert-grid">
-          <div class="swx-alert k-healthy"><span class="swx-alert-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.6v12.8a.8.8 0 0 0 1.2.7l10-6.4a.8.8 0 0 0 0-1.4l-10-6.4A.8.8 0 0 0 8 5.6z" fill="currentColor"/></svg></span><span><strong>Stopped loading</strong><span>The newest record is older than the dataset's declared freshness limit, or 48h if it declares none.</span></span></div>
+          <div class="swx-alert k-healthy"><span class="swx-alert-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.6v12.8a.8.8 0 0 0 1.2.7l10-6.4a.8.8 0 0 0 0-1.4l-10-6.4A.8.8 0 0 0 8 5.6z" fill="currentColor"/></svg></span><span><strong>Stopped loading</strong><span>The newest record is older than the freshness limit set for the dataset. With no limit set, the age is a note beside the state, not an alert.</span></span></div>
           <div class="swx-alert k-warning"><span class="swx-alert-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="6" rx="7" ry="2.6"/><path d="M5 6v6c0 1.4 3.1 2.6 7 2.6s7-1.2 7-2.6V6"/><path d="M5 12v6c0 1.4 3.1 2.6 7 2.6s7-1.2 7-2.6v-6"/></svg></span><span><strong>Lost rows</strong><span>The row count fell more than 20% since the previous check. A truncate-and-reload that failed part way looks like this.</span></span></div>
           <div class="swx-alert k-purple"><span class="swx-alert-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg></span><span><strong>Stalled</strong><span>The row count has not moved for 72h in a table that normally grows. A static reference table never triggers this.</span></span></div>
           <div class="swx-alert k-blue"><span class="swx-alert-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8.5 15.5l1-3.5 6-6 2.5 2.5-6 6z"/></svg></span><span><strong>Changed shape</strong><span>A column was added or removed at source, so a rule pinned to it can no longer be assessed.</span></span></div>
@@ -25422,7 +25423,7 @@ function buildGuides() {
       { h: 'What it does', body:
           p(`Between assessments, each source is checked for whether it is still loading. The check reads metadata only: the row count, the column list and the newest record's timestamp. No rows are read and no score is produced, so it is cheap enough to run hourly against a table you assess weekly.`) },
       { h: 'What raises an alert', body: table(['Signal', 'Raised when'], [
-          ['Stopped loading', 'The newest record is older than the dataset\'s declared freshness limit, or 48 hours if it declares none'],
+          ['Stopped loading', 'The newest record is older than the freshness limit set for the dataset. A dataset with no limit is never raised for an old newest record: its state stays Monitored, with the age noted beside it once the record is more than 48 hours old.'],
           ['Lost rows', 'The row count fell more than 20% since the previous check, such as a truncate-and-reload that failed part way'],
           ['Stalled', 'The row count has not moved for 72 hours in a table that normally grows. A static reference table never triggers this.'],
           ['Changed shape', 'A column was added or removed at source, so a rule pinned to it can no longer be assessed'],
@@ -29445,9 +29446,23 @@ function _watchBasisTip(o) {
     + 'loaded_at) in the Rules tab, or rely on the row count moving.')}"`;
 }
 
+// A newest record older than this, on a dataset with no freshness limit of its own, gets a note
+// beside its state. Only a note: without a limit an old record says nothing for certain about the
+// load (a test database, a table filled once, a monthly feed), so it is never raised as a finding.
+const SW_AGE_NOTE_H = 48;
+function _swAgeNote(o) {
+  if (!o.max_event_time || o.event_time_basis === 'business_date' || Number(o.expected_max_age_hours) > 0) return '';
+  const t = _swTime(o.max_event_time);
+  if (!isFinite(t) || Date.now() - t < SW_AGE_NOTE_H * 3600e3) return '';
+  return `Newest record ${_watchAgeText(o.max_event_time).replace(/ ago$/, '')} old`;
+}
+
 function _watchRow(it) {
   const o = it.o, key = it.key;
-  const state = `<span class="swx-state ${it.health}"${it.tip ? ` data-tip="${esc(it.tip)}"` : ''}>${esc(it.state)}</span>`;
+  const age = it.ageNote ? `<span class="swx-age" data-tip="${esc(`The newest record in ${it.name} is ${it.ageNote.replace(/^Newest record /, '')}`
+    + ` (${o.event_time_column || 'event time'}). No freshness limit is set for this dataset, so its age is a note and not an alert.`
+    + ' The source is reachable and still monitored for lost rows, shape changes and being unreachable.')}">${esc(it.ageNote)}</span>` : '';
+  const state = `<span class="swx-state ${it.health}"${it.tip ? ` data-tip="${esc(it.tip)}"` : ''}>${esc(it.state)}</span>${age}`;
   const src = `<span class="swx-src"><span class="swx-src-ico">${it.fmt ? srcIcon(it.fmt) : ''}</span><span class="swx-src-l">${esc(it.src)}</span></span>`;
   const name = `<span class="swx-ds"><span class="swx-dsico">${SW_ICO.db}</span><span class="swx-dsname" title="${esc(it.name)}">${esc(it.name)}</span></span>`;
   const btn = it.info.excluded
@@ -29509,7 +29524,9 @@ function _swItems(r, incs) {
       state = warn.length ? (SW_RULE[warn[0].rule] || 'Warning') : 'Unreachable';
       tip = warn.length ? warn.map(i => i.message).filter(Boolean).join(' ') : String(o.error);
     } else { health = 'healthy'; state = 'Monitored'; }
-    return { key, info, o, fmt, src: sourceLabel(fmt) || '-', why: why || '', health, state, tip, findings: crit.concat(warn),
+    // Beside a reachable source's state only: an unreachable one has no fresh reading to age.
+    const ageNote = (health === 'healthy' || (health === 'warning' && !o.error)) ? _swAgeNote(o) : '';
+    return { key, info, o, fmt, src: sourceLabel(fmt) || '-', why: why || '', health, state, tip, ageNote, findings: crit.concat(warn),
              name: String(o.dataset_name || (dd && dd.name) || key.split('/').pop()) };
   });
 }
