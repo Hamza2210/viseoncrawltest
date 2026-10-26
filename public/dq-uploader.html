@@ -1812,14 +1812,12 @@
   .rx-pl, .rx-hd { font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
   .rx-mw { position: relative; display: inline-flex; }
   .rx-pop { width: 280px; }
-  .rx-pop.rx-pkm { left: auto; right: 0; }
   button.rx-pick { display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 10px; box-sizing: border-box;
     border: 1px solid var(--border); border-radius: 9px; background: var(--card); box-shadow: none; color: var(--text);
     font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
   button.rx-pick .rx-ti { width: 22px; height: 22px; margin-left: -4px; border-radius: 6px; }
   button.rx-pick .rx-ti svg { width: 13px; height: 13px; }
   button.rx-pick:hover, button.rx-pick[aria-expanded="true"] { border-color: color-mix(in srgb, var(--accent) 60%, var(--border)); }
-  button.rx-pick.rx-pkb { height: 28px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12.5px; }
   .rx-caret { font-size: 10px; color: var(--muted); }
   .rx-seg { display: inline-flex; gap: 2px; padding: 2px; border-radius: 9px; border: 1px solid var(--border); background: var(--card); }
   button.rx-segb { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 11px; border: 0; border-radius: 7px;
@@ -8375,7 +8373,7 @@ function renderAssessment(r, bodyEl, opts) {
   const gatePass = st.gate ? st.gate.passed : (r.state === 'SUCCEEDED');
   const dsName = sum.dataset || st.dataset_name || '';
   const provTip = 'These rules were auto-inferred and have not been reviewed by a person yet. ' +
-    'Use “Review rules with AI” on the dataset\'s Rules tab to check, edit and pin them - this clears once you do.';
+    'Use “Suggest rules with AI” on the dataset\'s Rules tab to check, edit and pin them - this clears once you do.';
   // Three exclusive states, most-actioned first:
   //  1) rules pinned but not yet applied -> "queued" note (replaces Provisional)
   //  2) auto-inferred, unreviewed        -> Provisional
@@ -8806,9 +8804,9 @@ const _rxRuleCount = spec => rxChips(spec, false).filter(([t]) => !/^Weight /.te
 
 // ---- Where the rules came from ----
 // The pin records which rules the dataset's first run took from the AI, and which were accepted in
-// Review rules with AI (dq/runner.py SOURCES_KEY); each is marked ✦. A mark lasts while the rule
+// Suggest rules with AI (dq/runner.py SOURCES_KEY); each is marked ✦. A mark lasts while the rule
 // still says what was pinned: one changed here, even before it is saved, is the person's.
-const RX_FROM = { ai: "Suggested by AI on the dataset's first run", review: 'Suggested by AI and accepted in Review rules with AI' };
+const RX_FROM = { ai: "Suggested by AI on the dataset's first run", review: 'Suggested by AI and accepted in Suggest rules with AI' };
 const _rxSame = (a, b) => JSON.stringify(a === undefined ? null : a) === JSON.stringify(b === undefined ? null : b);
 const _rxSameKey = (a, b) => _rxSame((a || []).slice().sort(), (b || []).slice().sort());
 /** 'ai', 'review' or '': where the rule in these fields of a column came from. */
@@ -8837,10 +8835,10 @@ function rxAiLineHtml(rx) {
   const notKept = 'Rules saved before 20 October 2026 do not record whether they came from the AI.';
   let t;
   if (!src) {
-    t = ai.enriched ? `Enriched with AI on its first run. ${notKept}` : 'Its first run added no AI rules. Review rules with AI can suggest some.';
+    t = ai.enriched ? `Enriched with AI on its first run. ${notKept}` : 'Its first run added no AI rules. Suggest rules with AI can suggest some.';
   } else if (n.ai) {
     t = `Enriched with AI on its first run: ✦ marks the ${rules('ai')} it added` +
-      (n.review ? `, and the ${rules('review')} accepted from Review rules with AI.` : '.');
+      (n.review ? `, and the ${rules('review')} accepted from Suggest rules with AI.` : '.');
   } else {
     t = {
       applied: 'Enriched with AI on its first run, though those rules have since been changed or removed.',
@@ -8848,8 +8846,8 @@ function rxAiLineHtml(rx) {
       failed: 'The AI step failed on its first run, so its rules come from the data alone.',
       off: 'AI rule suggestions were switched off for its first run, so its rules come from the data alone.',
     }[ai.step] || 'None of its rules came from the AI on its first run.';
-    if (n.review) t += ` ✦ marks the ${rules('review')} accepted from Review rules with AI.`;
-    else if (ai.step === 'failed' || ai.step === 'off') t += ' Review rules with AI can suggest some.';
+    if (n.review) t += ` ✦ marks the ${rules('review')} accepted from Suggest rules with AI.`;
+    else if (ai.step === 'failed' || ai.step === 'off') t += ' Suggest rules with AI can suggest some.';
     if (src.complete === false) t += ' ' + notKept;
   }
   const on = src ? n.ai + n.review > 0 : !!ai.enriched;
@@ -9026,15 +9024,11 @@ function rxCrossHtml(rx) {
 function rxTopHtml(rx) {
   const s = rx.state, cols = Object.keys(s.columns), ch = rxChanges(rx);
   const rules = cols.reduce((a, c) => a + _rxRuleCount(s.columns[c] || {}), 0);
-  const pk = s.primaryKey || [];
   const blk = cols.filter(c => (s.columns[c] || {}).severity === 'blocker').length;
   const fb = (v, l, n) => `<button type="button" class="rx-fb lngb" data-rx="filter" data-v="${v}" aria-pressed="${rx.ui.filter === v}">${l}<span class="n">${n}</span></button>`;
-  const pkMenu = _rxMenu('Primary key', cols.map(c => ({ check: true, on: pk.includes(c), attr: `data-rxpk="${esc(c)}"`, label: esc(c) }))
-    .concat([{ attr: 'data-rxpk=""', ic: '∅', label: 'No primary key' }]), 'rx-pkm');
+  // The primary key is set on each column (its Primary key switch), and shows there as 🔑 Key.
   return `<div class="rx-top"><div class="rx-sum"><span><b>${cols.length}</b> column${cols.length === 1 ? '' : 's'}</span><span aria-hidden="true">·</span>` +
-      `<span><b>${rules}</b> rule${rules === 1 ? '' : 's'}</span><span aria-hidden="true">·</span><span>Primary key</span>` +
-      `<span class="rx-mw"><button type="button" class="rx-pick rx-pkb lngb" data-rx="menu" data-f="pk" aria-haspopup="menu" aria-expanded="false">` +
-      `<span>${pk.length ? pk.map(esc).join(' + ') : 'None'}</span><span class="rx-caret" aria-hidden="true">▾</span></button>${pkMenu}</span></div>` +
+      `<span><b>${rules}</b> rule${rules === 1 ? '' : 's'}</span></div>` +
     `<div class="rx-tools"><label class="rx-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">` +
       `<circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6"/></svg><input type="search" data-rx="q" placeholder="Find a column" aria-label="Find a column" value="${esc(rx.ui.q)}"></label>` +
       `<span class="rx-filt" role="group" aria-label="Show">${fb('all', 'All', cols.length)}${fb('blocker', 'Blockers', blk)}` +
@@ -9134,7 +9128,7 @@ function _rxAddTags(list, raw) {
   return list;
 }
 function rxOnClick(rx, e) {
-  const t = e.target.closest('[data-rx], [data-rxset], [data-rxadd], [data-rxpk]');
+  const t = e.target.closest('[data-rx], [data-rxset], [data-rxadd]');
   const flagRow = !t && e.target.closest('.rx-flag');
   if (flagRow) { const sw = flagRow.querySelector('.rx-sw'); if (sw) sw.click(); return; }
   if (!t || !rx.root.contains(t)) return;
@@ -9153,17 +9147,6 @@ function rxOnClick(rx, e) {
     rxRedraw(rx, col, `.rx-check[data-kind="${t.dataset.rxadd}"] input, .rx-check[data-kind="${t.dataset.rxadd}"] .rx-pick`);
     if (t.dataset.rxadd === 'format') { const p = _rxColEl(rx, col).querySelector('.rx-check[data-kind="format"] .rx-pick'); if (p) p.click(); }
     rxTouched(rx);
-    return;
-  }
-  if (t.hasAttribute('data-rxpk')) {
-    const c = t.dataset.rxpk, pk = rx.state.primaryKey = (rx.state.primaryKey || []).slice();
-    if (!c) rx.state.primaryKey = [];
-    else if (pk.includes(c)) pk.splice(pk.indexOf(c), 1); else pk.push(c);
-    const keep = rx.root.querySelector('.rx-pkb') === document.activeElement || !!t.closest('.rx-pkm');
-    dsxMenuHide(false);
-    rx.cols.forEach(cc => { if (_rxColEl(rx, cc)) rxRedraw(rx, cc); });
-    rxTouched(rx);
-    if (keep) { const b = rx.root.querySelector('.rx-pkb'); if (b) b.focus({ preventScroll: true }); }
     return;
   }
   switch (t.dataset.rx) {
@@ -13395,8 +13378,8 @@ async function loadDsScores(panel, prefix) {
 
 async function loadDsRules(panel, prefix) {
   panel.innerHTML =
-    `<div class="rx-assist">${aiBtn('Review rules with AI', 'id="dsReviewRules"')}` +
-    `<span class="hint">Claude reads these rules against the data they came from and suggests changes, which you can edit before pinning.</span></div>` +
+    `<div class="rx-assist">${aiBtn('Suggest rules with AI', 'id="dsReviewRules"')}` +
+    `<span class="hint">Claude reads the data's profile and the rules in force, and suggests rules to add or change. You pick and edit them before pinning; nothing changes until you do.</span></div>` +
     // The review opens in its own panel above the rules in effect, so both can be read together.
     `<div id="dsReviewOut" class="ai-out" hidden></div>` +
     drBoxHtml() + `<div id="dsDescribeOut" class="ai-out" hidden></div>` +
@@ -13411,7 +13394,7 @@ async function loadDsRules(panel, prefix) {
 // ---- Describe a rule ----
 // A rule in plain English ("the ship date is never before the order date"), written by the AI as rules
 // for this dataset: on one column where it is about one column, and across columns where it relates
-// them. The model sees what Review rules with AI sees (names, aggregates, masked shapes; never a value)
+// them. The model sees what Suggest rules with AI sees (names, aggregates, masked shapes; never a value)
 // and the sentence. Each rule comes back as a card saying what it checks and what it would fail today;
 // Add to the rules puts it in the editor below as a change not saved yet, so it is saved, or not, with
 // the rest, through the one Save.
@@ -16568,7 +16551,7 @@ function renderTrends(d) {
     `<div class="actions" style="margin-bottom:14px;">` +
       `<button class="btn-sm" id="dashBack">← All tables</button>` +
       `<button class="btn-sm" id="dashViewRun">View latest run details</button>` +
-      aiBtn('Review rules', 'id="dashReviewRules"') +
+      aiBtn('Suggest rules', 'id="dashReviewRules"') +
       `<button class="btn-sm" id="dashEditRules">📋 Edit active rules</button>` +
       `<span id="dashQueued" style="display:none;align-items:center;gap:8px;"></span>` +
     `</div>` +
@@ -18347,8 +18330,8 @@ function mergeAugments(frags) {
 async function reviewRuleset(prefix, outEl, regenerate, btn) {
   if (!outEl) return;
   const title = 'Suggested rule changes';
-  aiBusy(btn, true, 'Reviewing…');
-  aiThinking(outEl, 'Reading the inferred rules against the data they came from…', { title, anchor: btn });
+  aiBusy(btn, true, 'Suggesting…');
+  aiThinking(outEl, "Reading the data's profile and the rules in force…", { title, anchor: btn });
   try {
     const r = await postJSON(`${API_BASE}/data-quality/review-ruleset`, HEADERS,
       { result_prefix: prefix, regenerate: !!regenerate, actor: EMAIL || undefined });
@@ -24559,8 +24542,8 @@ const GD_SHOTS = {
   "profile": [1600, 526, "104f28f43a"],
   "quality-space": [1600, 812, "7bfbdb7881"],
   "records-policy": [1600, 567, "93eb0821f8"],
-  "rules-describe": [1600, 757, "2b2842b541"],
-  "rules-tab": [1600, 1568, "560d8460e4"],
+  "rules-describe": [1600, 757, "db51910467"],
+  "rules-tab": [1600, 1571, "0582dbedf7"],
   "run-result": [1600, 1381, "27d7222b2c"],
   "runs-on-agent": [1600, 1100, "8445708325"],
   "schedule-form-p": [1600, 1361, "8dcfe745da"],
@@ -24697,7 +24680,7 @@ const GD_SHOW = {
   'ds-actions': { tab: 'dashboard', prep: gdOpenFirstDataset('scores'), sel: '#dsActions', miss: GD_NO_DATASET,
     tip: 'Everything you can do to this dataset: run it, schedule it, see its lineage and incidents, export it, describe it.' },
   'ds-rules': { tab: 'dashboard', prep: gdOpenFirstDataset('rules'), sel: '#dsSubtabs [data-dstab="rules"]', miss: GD_NO_DATASET,
-    tip: 'The Rules tab of the open dataset: a row per column saying its rules, which opens to edit them, and <b>Review rules with AI</b>.' },
+    tip: 'The Rules tab of the open dataset: a row per column saying its rules, which opens to edit them, and <b>Suggest rules with AI</b>.' },
   'ds-failed': { tab: 'dashboard', prep: gdOpenFirstDataset('failed'), sel: '#dsSubtabs [data-dstab="failed"]', miss: GD_NO_DATASET,
     tip: 'The failing records of the open dataset, blockers first.' },
   'tag-edit': { tab: 'dashboard', sel: '#dashTableWrap .ds-tag-add', miss: 'There is no dataset in view to tag yet.',
@@ -25556,15 +25539,15 @@ function buildGuides() {
     sections: [
       { h: 'Where the rules come from', body:
           p(`On a dataset's first run, rules are inferred from the data itself: types, formats, which columns must be filled, ranges, allowed values and keys. Where possible they are enriched with AI, then <b>pinned</b>, so every later run is scored against the same rules. A drop in score then reflects the data, not moving goalposts.`) +
-          (Q || ADMIN ? note(`Runs on an on-premises agent are enriched with AI on the first run too: the agent sends us a summary of the columns, never a value, and we ask the AI for it. An agent whose service sets <code>DQ_AGENT_AI_RULES</code> to <code>off</code> pins its inferred rules without that step; add AI rules to its datasets with Review rules with AI.`) : '') },
+          (Q || ADMIN ? note(`Runs on an on-premises agent are enriched with AI on the first run too: the agent sends us a summary of the columns, never a value, and we ask the AI for it. An agent whose service sets <code>DQ_AGENT_AI_RULES</code> to <code>off</code> pins its inferred rules without that step; add AI rules to its datasets with Suggest rules with AI.`) : '') },
       { h: 'See the active rules', body:
           p(`Open the dataset and choose the ${ui('Rules')} tab. Each column has a row that says its rules in plain words, such as ${ui('Required')}, ${ui('Not in the future')} or ${ui('One of 5 values')}, with its severity. Open a row to change them. ${showme('ds-rules')}`) +
-          p(`The line above the columns says whether the rules were enriched with AI on the dataset's first run. ✦ marks each rule that came from the AI, and each one accepted from Review rules with AI; hover over a rule to see which. A rule you change is yours, and loses its mark.`) +
-          shot('rules-tab', `${n(1)} How many columns and rules, and the primary key. ${n(2)} Whether the rules were enriched with AI; ✦ marks each rule that came from it. ${n(3)} A column's rules, in words. ${n(4)} A column opened: its type, severity and weight, then each of its rules. ${n(5)} ${ui('＋ Add a rule')} adds one that suits the column.`) +
+          p(`The line above the columns says whether the rules were enriched with AI on the dataset's first run. ✦ marks each rule that came from the AI, and each one accepted from Suggest rules with AI; hover over a rule to see which. A rule you change is yours, and loses its mark.`) +
+          shot('rules-tab', `${n(1)} How many columns and rules. ${n(2)} Whether the rules were enriched with AI; ✦ marks each rule that came from it. ${n(3)} A column's rules, in words. ${n(4)} A column opened: its type, severity and weight, then each of its rules. ${n(5)} ${ui('＋ Add a rule')} adds one that suits the column.`) +
           tip(`${ui('Find a column')} searches by name, and ${ui('Blockers')} shows only the columns that can fail the quality gate.`) },
-      { h: 'Review rules with AI', body:
+      { h: 'Suggest rules with AI', body:
           steps(
-            `Press ${ui('Review rules with AI')}. Suggestions come from Claude Haiku 4.5 on Amazon Bedrock, and open in a panel above the rules in effect, so you can compare the two. Press the button again to fold the panel away.`,
+            `Press ${ui('Suggest rules with AI')}. Suggestions come from Claude Haiku 4.5 on Amazon Bedrock, which reads the data's profile and the rules in force, so it suggests rules to add or change rather than ones the dataset already has. They open in a panel above the rules in effect, so you can compare the two, and nothing changes until you pin them. Press the button again to fold the panel away.`,
             `Tick the suggestions you want, or press ${ui('Select all')}. Each one says which columns it covers, why, and what it would fail in today's data, and most can be edited before you accept them. An <b>advisory</b> one can be turned into an editable rule with ${ui('Make editable')}.`,
             `A suggestion marked ${ui('Would fail most rows')} does not fit the data as it is written today, such as a phone format the numbers are not stored in. ${ui('Select all')} leaves it out, and pinning it asks you first. Changing its values updates the line as you type.`,
             `Press ${ui('Pin selected to ruleset')}. The rules apply automatically on the dataset's next assessment, with no further AI call.`,
@@ -25580,13 +25563,13 @@ function buildGuides() {
           p(`It can change a rule as well as add one. If the column already has a rule of that kind, such as a range of 2 to 200 when you ask for 1 to 100, the card shows the rule as it is and as it would be, and ${ui('Change the rule')} replaces it, leaving the column's other rules alone. A rule across columns that reads the same columns as one already there offers ${ui('Replace the rule')} or ${ui('Add as well')}. To remove a rule, press its ${ui('✕')} in the editor.`) +
           shot('rules-describe', `${n(1)} The rule, as you would say it. ${n(2)} The rule the AI wrote, as the engine will read it. ${n(3)} ${ui('Add to the rules')} puts it in the rules below, to save with the rest.`) +
           p(`If the sentence cannot be written for this dataset, such as a rule on a column it does not have, the answer says why instead. A rule the dataset already has says ${ui("Already in this dataset's rules")}.`) +
-          note(`As with Review rules with AI, the AI sees column names, aggregate statistics and masked value shapes, and your sentence. It never sees your values.`) },
+          note(`As with Suggest rules with AI, the AI sees column names, aggregate statistics and masked value shapes, and your sentence. It never sees your values.`) },
       { h: 'Edit or remove rules', body:
           steps(
             `Open the column. Switch ${ui('Required')}, ${ui('Unique')} or ${ui('Not in the future')} on or off, choose its severity, or change a rule's values. Allowed values are tags: type one and press Enter to add it, or press its ${ui('✕')} to take it off.`,
             `${ui('＋ Add a rule')} adds one that suits the column's type, such as a range for a number or a format for text. ${ui('✕')} beside a rule removes it, and ${ui('Remove every rule')} clears the column.`,
             `Press ${ui('Save changes')} in the bar at the foot of the window. The changes are queued and replace the pinned ruleset on the dataset's next assessment. ${ui('Discard')} puts everything back instead.`) +
-          p(`The primary key can be one column or several: choose them from ${ui('Primary key')} at the top of the tab, or switch ${ui('Primary key')} on in a column.`) +
+          p(`A dataset has one primary key, set on its columns: switch ${ui('Primary key')} on in each column that is part of it, and its row shows ${ui('🔑 Key')}. Several columns together make one key, so each row must be unique on them taken together. A column that must be unique on its own wants ${ui('Unique')} instead.`) +
           p(`${ui('Rules across columns')}, under the columns, lists the rules that compare the columns of a row, with what each checks and the rule as the engine reads it. ${ui('✕')} removes one, saved like any other change.`) +
           note(`Changes you have not saved are kept if you leave the tab and come back. If changes are already queued for the next run, the tab says so: saving again replaces them.`) },
       { h: 'Why pinning matters', body:
