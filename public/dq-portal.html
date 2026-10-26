@@ -4814,6 +4814,7 @@
   .pis-star-name { font: 650 12.5px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; fill: var(--text); }
   .pis-star-sub { font-size: 11.5px; fill: var(--muted); }
   .pis-star.pis-dim, .pis-ray.pis-dim, .pis-dustcl.pis-dim { opacity: .4; filter: saturate(.35); }
+  .pis-star.pis-inert { cursor: default; pointer-events: none; }
   .pis-dustdot { fill: var(--muted); opacity: .55; }
   button.pis-dustbtn { position: absolute; left: 16px; top: 16px; z-index: 1; display: inline-flex; align-items: center; gap: 7px; height: 30px; padding: 0 12px;
     border-radius: 999px; border: 1px solid var(--border); background: rgba(10,14,26,.72); box-shadow: none; color: var(--muted); font: inherit; font-size: 12.5px;
@@ -25880,7 +25881,7 @@ ${HDRS}
       { h: 'Rules', body:
           p(`${ui('Rules')} lists, beside the sky, every rule the findings fall under (GDPR, CCPA, PCI DSS and others) and every kind of data found, each with how many findings it covers in how many columns. The sky stays unlit until you pick one.`) +
           shot('pii-rules', `${n(1)} The rules the findings fall under, and ${n(2)} the kinds of data found. Pick one.`) +
-          p(`Picking one lights the columns it touches, from the centre out, and the list makes way for it: its findings (each opening in its own pane), why it matters or what to do about it, and ${ui('See them in the list')}.`) +
+          p(`Picking one lights the columns it touches, from the centre out, and the rest stay dim: they cannot be pointed at or opened until you go back to ${ui('All rules and kinds of data')}. The list makes way for it: its findings (each opening in its own pane), why it matters or what to do about it, and ${ui('See them in the list')}.`) +
           shot('pii-rule', `${n(1)} Back to every rule and kind of data. ${n(2)} A column it touches, lit. ${n(3)} Its findings, and ${n(4)} the same as rows in the list.`) +
           sm('pii-rules') +
           p(`${ui('All rules and kinds of data')}, or Escape, goes back to the list.`) },
@@ -26929,6 +26930,9 @@ function pisSkySvg(res, L, o) {
   // Rules: the columns the rule picked touches are lit; until one is picked, none are.
   const lit = o.lens === 'rules' ? new Set(o.chip ? pisLive(res).filter(f => pisChipMatch(f, o.chip)).map(f => f.column) : []) : null;
   const dimmed = c => (o.col && o.col !== c.name) || (o.lens === 'identify' && ids.size > 0 && !ids.has(c.name)) || (lit && !lit.has(c.name));
+  // A rule picked: a column it does not touch is only a dim star. It cannot be pointed at, reached or opened, so what is lit
+  // is plainly what the rule is about.
+  const inert = c => !!(o.chip && lit && !lit.has(c.name));
   // A label goes where it fits, riskiest first: one that would overlap another (or the centre, or the scale) is left to the tip.
   const nameW = String(res.dataset || '').length * 7.4 + 8;   // the core, its name under it, and the scale above it
   const placed = [{ x1: cx - 31, x2: cx + 31, y1: cy - 31, y2: cy + 31 }, { x1: cx - nameW / 2, x2: cx + nameW / 2, y1: cy + 35, y2: cy + 53 },
@@ -26997,9 +27001,11 @@ function pisSkySvg(res, L, o) {
       g += `<g class="pis-star-lbl" aria-hidden="true"><text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="${anchor}" class="pis-star-name">${esc(nameT)}</text>` +
         `<text x="${lx.toFixed(1)}" y="${(ly + 16).toFixed(1)}" text-anchor="${anchor}" class="pis-star-sub">${esc(subT)}</text></g>`;
     }
-    const struck = strike && strike.has(c.name);
-    s += `<g class="pis-star${dimmed(c) ? ' pis-dim' : ''}${sel ? ' sel' : ''}${struck ? ' pis-link' : ''}${ignite(c) ? ' pis-lit' : ''}" role="button" tabindex="0" ` +
-      `data-pis="col" data-v="${esc(c.name)}" aria-label="${esc(aria)}" aria-pressed="${sel}" style="--i:${p.k};--dx:${(cx - p.x).toFixed(1)}px;--dy:${(cy - p.y).toFixed(1)}px` +
+    const struck = strike && strike.has(c.name), off = inert(c);
+    s += `<g class="pis-star${dimmed(c) ? ' pis-dim' : ''}${off ? ' pis-inert' : ''}${sel ? ' sel' : ''}${struck ? ' pis-link' : ''}${ignite(c) ? ' pis-lit' : ''}" ` +
+      (off ? `aria-hidden="true" data-v="${esc(c.name)}" `
+        : `role="button" tabindex="0" data-pis="col" data-v="${esc(c.name)}" aria-label="${esc(aria)}" aria-pressed="${sel}" `) +
+      `style="--i:${p.k};--dx:${(cx - p.x).toFixed(1)}px;--dy:${(cy - p.y).toFixed(1)}px` +
       `${struck ? `;--cd:${strike.get(c.name).toFixed(2)}s` : ''}${ignite(c) ? `;--ld:${ld(c)}s` : ''}">${g}</g>`;
   });
   if (D.length) {
@@ -27013,6 +27019,8 @@ function pisSkySvg(res, L, o) {
 /** Point at a star (or reach it with the keyboard): its ray brightens, the ring at its risk lights up, and a tip says what it is. */
 function pisSkyHover(name, kb) {
   const wrap = $('#pisSkyWrap'), L = pis.sky; if (!wrap) return;
+  // a star outside the rule picked has nothing to say: one pointed at just before the rule was picked loses its tip
+  if (name && wrap.querySelector(`.pis-star.pis-inert[data-v="${CSS.escape(name)}"]`)) name = '';
   wrap.querySelectorAll('.pis-hov, .pis-tipbox').forEach(e => e.remove());
   wrap.querySelectorAll('.pis-ray.hi, .pis-star.hov').forEach(e => e.classList.remove('hi', 'hov'));
   const p = name && L && L.P ? L.P.find(q => q.c.name === name) : null;
