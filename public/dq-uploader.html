@@ -1788,6 +1788,7 @@
   button.rx-q:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   .rx-cr.queued { border-style: dashed; background: none; }
   .rx-cr.queued .rx-cr-t { color: var(--muted); }
+  .rx-cr.going .rx-cr-t, .rx-cr.going .rx-cr-x { text-decoration: line-through; }
   /* What is queued for one rule: on the page itself (not inside the scrolling list, which would clip it) */
   .rx-qpop { position: fixed; z-index: 1200; width: min(360px, calc(100vw - 24px)); padding: 13px 15px; border-radius: 12px;
     border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--border)); background: var(--card); box-shadow: 0 18px 40px rgba(0,0,0,.45); }
@@ -9034,9 +9035,11 @@ function rxRefsHtml(rx) {
  *  with Describe a rule, above the editor, and removed here with its ✕. */
 function rxCrossHtml(rx) {
   const list = rx.state.consistencyRules || [], had = new Set((rx.base.consistencyRules || []).map(r => r.id));
-  // A queued rule not in force yet shows as its own row, unless it is one taken out here since it was saved.
+  // A rule in force that the queued change takes off is not in the list (the list is the rules as the next
+  // run will have them): it is shown below, dashed, marked, unless it was put back here.
   const q = rx.queued, held = new Set(list.map(r => r.id).concat((rx.base.consistencyRules || []).map(r => r.id)));
   const added = q ? q.added.filter(r => !held.has(r.id)) : [];
+  const going = q ? (rx.pinned.consistencyRules || []).filter(r => q.cross[r.id] && q.cross[r.id].removed && !held.has(r.id)) : [];
   const row = (r, i) => {
     const sev = r.severity || 'major', isNew = !had.has(r.id), what = r.description || r.expr;
     return `<div class="rx-cr${isNew ? ' new' : ''}" role="listitem" data-cr="${esc(r.id)}"><span class="rx-cr-b"><span class="rx-cr-t">${esc(what)}</span>` +
@@ -9046,17 +9049,21 @@ function rxCrossHtml(rx) {
       `<span class="rx-sev ${esc(sev)}">${esc((RX_SEV.find(x => x[0] === sev) || [sev, sev])[1])}</span>` +
       `<button type="button" class="rx-x lngb" data-rx="crdrop" data-i="${i}" aria-label="Remove the rule: ${esc(what)}" data-tip="Remove this rule">✕</button></div>`;
   };
-  // A rule the queued change adds is not in force yet: it is shown, marked, but cannot be edited here.
-  const later = r => { const sev = r.severity || 'major', what = r.description || r.expr;
-    return `<div class="rx-cr queued" role="listitem" data-cr-q="${esc(r.id)}"><span class="rx-cr-b"><span class="rx-cr-t">${esc(what)}</span>` +
-      `<code class="rx-cr-x">${esc(r.expr)}</code></span>${rxQBtn(`cr+:${r.id}`, what)}` +
+  // Shown, marked, but not editable here: a queued rule outside the list (one going, or one queued from
+  // elsewhere that this list does not hold).
+  const later = (r, key, gone) => { const sev = r.severity || 'major', what = r.description || r.expr;
+    return `<div class="rx-cr queued${gone ? ' going' : ''}" role="listitem" data-cr-q="${esc(r.id)}"><span class="rx-cr-b"><span class="rx-cr-t">${esc(what)}</span>` +
+      `<code class="rx-cr-x">${esc(r.expr)}</code></span>${rxQBtn(key, what)}` +
       `<span class="rx-sev ${esc(sev)}">${esc((RX_SEV.find(x => x[0] === sev) || [sev, sev])[1])}</span></div>`; };
-  const n = list.length ? `${list.length} set up` : 'None yet';
+  const n = [list.length ? `${list.length} set up` : '', added.length ? `${added.length} queued` : '', going.length ? `${going.length} going` : '']
+    .filter(Boolean).join(' · ') || 'None yet';
+  const any = list.length + added.length + going.length;
   return `<section class="rx-cross" aria-label="Rules across columns"><div class="rx-cross-h"><span class="rx-cross-t">Rules across columns</span>` +
-      `<span class="rx-cross-n${list.length || added.length ? ' on' : ''}">${list.length || !added.length ? n : ''}${added.length ? `${list.length ? ' · ' : ''}${added.length} queued` : ''}</span></div>` +
+      `<span class="rx-cross-n${any ? ' on' : ''}">${n}</span></div>` +
     `<p class="hint">Rules that compare the columns of a row, such as a ship date that is never before its order date. ` +
       `Write one in plain English with <b>Describe a rule</b> above.</p>` +
-    (list.length || added.length ? `<div class="rx-cr-list" role="list">${list.map(row).join('')}${added.map(later).join('')}</div>` : '') + `</section>`;
+    (any ? `<div class="rx-cr-list" role="list">${list.map(row).join('')}${added.map(r => later(r, `cr+:${r.id}`)).join('')}` +
+      `${going.map(r => later(r, `cr:${r.id}`, true)).join('')}</div>` : '') + `</section>`;
 }
 // ---- Queued for the next run ----
 // A save (or rules pinned from Suggest rules with AI) waits in the dataset's folder until its next run. The
@@ -9087,6 +9094,34 @@ function rxNextRules(pinned, pend) {
   const pk = (r.keys || {}).primary;
   return { columns: cols, primaryKey: pk ? pk.slice() : (pinned.primaryKey || []).slice(),
            consistencyRules: _rxClone(pinned.consistencyRules || []).concat(_rxClone(r.consistency_rules || [])) };
+}
+/** An accuracy reference's lookups, as the editor's rows: typed lists, then lists from a file's column. */
+function _rxLookups(acc) {
+  acc = acc || {};
+  return Object.entries(acc.lookups || {})
+    .map(([col, vals]) => ({ col, from: 'typed', values: Array.isArray(vals) ? vals.map(String) : [] }))
+    .concat((acc.lookup_files || []).map(f => ({ col: f.column || '', from: 'file', values: [],
+      file: { reference_uri: f.reference_uri || '', reference_connection: f.reference_connection || null, reference_column: f.reference_column || '' } })));
+}
+/** The editor's starting rules when a change is queued: the rules in force with it in them, every column
+ *  of the dataset kept (in its order, one the queue leaves with no rules as such), and for a queued
+ *  ruleset its reference checks too. Null when nothing is queued. */
+function rxNextState(inForce, pend) {
+  const next = rxNextRules(inForce, pend);
+  if (!next) return null;
+  const st = _rxClone(inForce), cols = {};
+  Object.keys(inForce.columns || {}).forEach(c => { cols[c] = next.columns[c] || {}; });
+  Object.keys(next.columns).forEach(c => { if (!(c in cols)) cols[c] = next.columns[c]; });
+  st.columns = cols;
+  st.primaryKey = next.primaryKey;
+  st.consistencyRules = next.consistencyRules;
+  if (pend.mode === 'replace') {
+    const r = pend.rules || {};
+    st.integrityRules = _rxClone(r.integrity_rules || []);
+    st.accuracy = _rxClone(r.accuracy || {});
+    st.accuracyLookups = _rxLookups(st.accuracy);
+  }
+  return st;
 }
 /** What the queued change does to one column: a line per rule it adds, removes or changes. */
 function rxQueuedCol(was, now, pkWas, pkNow) {
@@ -9211,7 +9246,7 @@ function rxNotesHtml(rx) {
   let h = '';
   if (rx.ui.restored) h += `<div class="rx-note">Your changes from earlier are still here, not saved yet.</div>`;
   if (rx.ui.dropped) h += `<div class="rx-note warn">The rules changed since you last edited them here, so your unsaved changes were set aside.</div>`;
-  if (rx.state.hasPending) h += `<div class="rx-note warn"><span>Changes are already queued for this dataset's next run, each marked ⏱ Queued on its rule. Saving here replaces them.</span>` +
+  if (rx.state.hasPending) h += `<div class="rx-note warn"><span>Changes are queued for this dataset's next run, and the rules below already include them, each marked ⏱ Queued. Saving keeps them, with whatever else you change.</span>` +
     `<button type="button" class="linkbtn lngb" data-rx="viewq">See them</button></div>`;
   return h;
 }
@@ -9622,24 +9657,24 @@ async function editActiveRules(prefix, outEl) {
     }
     norm[col] = clean;
   }
-  const state = {
+  // The rules in force (the pin)...
+  const inForce = {
     columns: norm, primaryKey: (data.primaryKey || []).slice(), hasPending: !!data.hasPending,
     integrityRules: _rxClone(data.integrityRules || []),
     consistencyRules: _rxClone(data.consistencyRules || []),
     accuracy: _rxClone(data.accuracy || {}),
-    // Lookups edited as ordered rows, folded back to an object on save.
-    accuracyLookups: Object.entries((data.accuracy || {}).lookups || {})
-      .map(([col, vals]) => ({ col, from: 'typed', values: Array.isArray(vals) ? vals.map(String) : [] }))
-      .concat(((data.accuracy || {}).lookup_files || []).map(f => ({ col: f.column || '', from: 'file', values: [],
-        file: { reference_uri: f.reference_uri || '', reference_connection: f.reference_connection || null, reference_column: f.reference_column || '' } }))),
+    accuracyLookups: _rxLookups(data.accuracy),
   };
+  // ...and what the editor starts from: those rules with what is queued for the next run already in them,
+  // so a save builds on the queued change rather than dropping it. Each rule the queue changes is marked.
+  const state = rxNextState(inForce, data.pending) || inForce;
   const loaded = _rxStateCanon(state);
   // Where the rules came from (rxFrom): sources is null for a pin from before that was recorded, and
   // the whole of it is null from an API that does not say, which shows no line rather than a wrong one.
   const ai = 'aiEnriched' in data ? { enriched: !!data.aiEnriched, step: data.aiStep || null, sources: data.ruleSources || null } : null;
   // `pinned` stays as loaded, while `base` moves on a save: a rule changed and saved is queued, not
   // pinned, and is the person's from then on.
-  let rx = { prefix, root: outEl, state, base: _rxClone(state), pinned: _rxClone(state), loaded, ai,
+  let rx = { prefix, root: outEl, state, base: _rxClone(state), pinned: _rxClone(inForce), loaded, ai,
              db: _rxDbSource(prefix), ui: { open: [], q: '', filter: 'all', refs: false } };
   // Changes not saved last time are put back, unless the rules moved underneath them meanwhile.
   const draft = rxDrafts[prefix];
@@ -25748,8 +25783,8 @@ function buildGuides() {
             `Press ${ui('Save changes')} in the bar at the foot of the window. The changes are queued and replace the pinned ruleset on the dataset's next assessment. ${ui('Discard')} puts everything back instead.`) +
           p(`A dataset has one primary key, set on its columns: switch ${ui('Primary key')} on in each column that is part of it, and its row shows ${ui('🔑 Key')}. Several columns together make one key, so each row must be unique on them taken together. A column that must be unique on its own wants ${ui('Unique')} instead.`) +
           p(`${ui('Rules across columns')}, under the columns, lists the rules that compare the columns of a row, with what each checks and the rule as the engine reads it. ${ui('✕')} removes one, saved like any other change.`) +
-          note(`Changes you have not saved are kept if you leave the tab and come back. If changes are already queued for the next run, the tab says so: saving again replaces them.`) +
-          p(`Until that run, the tab still shows the rules in force, and marks each rule a queued change touches with ${ui('Queued')}, on its column's row and on a rule across columns. Press it to see exactly what will change, such as a range of 2 to 200 becoming 1 to 100. A rule across columns that is queued to be added shows below the others, marked the same way. ${ui('See them')}, in the note above the rules, shows everything queued at once.`) },
+          note(`Changes you have not saved are kept if you leave the tab and come back. Changes you have saved are queued for the next run, and the tab shows the rules with them in, so saving again keeps them along with anything else you change.`) +
+          p(`Until that run, each rule a queued change touches is marked ${ui('Queued')}, on its column's row and on a rule across columns. Press it to see exactly what will change from the rules in force, such as a range of 2 to 200 becoming 1 to 100. A rule across columns that is queued to be taken off shows below the others, struck through and marked the same way. ${ui('See them')}, in the note above the rules, shows everything queued at once.`) },
       { h: 'Why pinning matters', body:
           p(`Incidents compare each run with the one before and with the dataset's learned baseline. If the rules shifted with the data, a column that started arriving empty would simply become optional. Pinned rules are what make a regression show up as one.`) },
     ],
