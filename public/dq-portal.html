@@ -1693,6 +1693,48 @@
   /* ---- The Rules tab: a row per column, which opens into its editor ---------------------- */
   .rx-assist { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 14px; margin: 0 0 16px; }
   .rx-assist .hint { margin: 0; max-width: 620px; }
+  /* Describe a rule: a sentence in plain English, written as rules for this dataset by the AI */
+  .rx-describe { display: grid; gap: 8px; margin: -4px 0 16px; padding: 13px 15px; border-radius: 12px; border: 1px solid var(--border);
+    background: var(--card-2); }
+  .rx-describe-l { font-size: 13.5px; font-weight: 700; }
+  .rx-describe-l small { margin-left: 8px; font-size: 12px; font-weight: 500; color: var(--muted); }
+  .rx-describe-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+  .rx-describe-row input { flex: 1 1 340px; min-width: 0; height: 36px; padding: 0 12px; box-sizing: border-box; border: 1px solid var(--border);
+    border-radius: 9px; background: var(--card); color: var(--text); font: inherit; font-size: 13.5px; }
+  .rx-describe-row input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
+  .rx-describe-eg { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+  button.rx-eg-b { padding: 2px 10px; border-radius: 999px; border: 1px dashed var(--border); background: none; box-shadow: none; color: var(--muted);
+    font: inherit; font-size: 12px; cursor: pointer; }
+  button.rx-eg-b:hover, button.rx-eg-b:focus-visible { color: var(--text); border-color: color-mix(in srgb, var(--accent) 55%, var(--border)); }
+  /* the rules it wrote, a card each, to add to the rules below */
+  .dr-list { display: grid; gap: 10px; }
+  .dr-asked { margin: 0 0 2px; font-size: 12.5px; color: var(--muted); }
+  .dr-asked q { color: var(--text); font-style: italic; }
+  .dr-card { display: grid; gap: 8px; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--border); background: var(--card-2); }
+  .dr-card.added { border-color: color-mix(in srgb, var(--ok) 55%, var(--border)); }
+  .dr-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+  .dr-title { font-size: 14px; font-weight: 700; }
+  .dr-on { font-size: 12px; color: var(--muted); } .dr-on code { font-size: 12px; }
+  .dr-why { margin: 0; font-size: 12.5px; color: var(--muted); }
+  .dr-what { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; }
+  .dr-what code.dr-expr { padding: 5px 9px; border-radius: 8px; background: var(--code-bg); color: var(--code-fg); font-size: 12px; overflow-wrap: anywhere; }
+  .dr-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+  .dr-foot .dr-imp { flex: 1 1 260px; margin: 0; font-size: 12.5px; color: var(--muted); }
+  .dr-foot .dr-imp .tag { margin-right: 6px; }
+  .dr-done { display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 600; color: var(--ok); }
+  .dr-done .linkbtn { margin: 0; font-size: 12.5px; }
+  .dr-cannot { margin: 0; font-size: 13px; }
+  /* Rules across columns, in the editor: what each checks, the rule as the engine reads it, its severity */
+  .rx-cross { margin-top: 14px; padding: 14px 16px; border: 1px solid var(--border); border-radius: 12px; background: var(--card-2); }
+  .rx-cross-h { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+  .rx-cross > .hint { margin: 4px 0 0; }
+  .rx-cr-list { display: grid; gap: 6px; margin-top: 10px; }
+  .rx-cr { display: flex; align-items: center; gap: 10px 12px; padding: 8px 8px 8px 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--card); }
+  .rx-cr.new { border-color: color-mix(in srgb, var(--accent2) 50%, var(--border)); }
+  .rx-cr-b { flex: 1 1 auto; min-width: 0; display: grid; gap: 3px; }
+  .rx-cr-t { font-size: 13px; font-weight: 600; }
+  .rx-cr-x { font-size: 11.5px; color: var(--muted); overflow-wrap: anywhere; }
+  .rx-cr .rx-sev, .rx-cr button.rx-x { margin-left: 0; }
   .rx-notes:empty { display: none; }
   .rx-note { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 12px; margin: 0 0 12px; padding: 9px 13px;
     border-radius: 10px; border: 1px solid var(--border); background: var(--card-2); font-size: 12.5px; }
@@ -1832,12 +1874,34 @@
   .rx-foot-acts .linkbtn { margin-left: 0; font-size: 12.5px; }
   .linkbtn.rx-danger { color: var(--err); }
   .rx-refs { margin-top: 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--card-2); }
+  /* Ask the guides: a question answered from the guides, with the sections it rests on */
+  .gd-ask { display: grid; gap: 4px; }
+  .gd-ask-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+  .gd-ask-l { font-size: 14px; font-weight: 700; }
+  .gd-ask-row input { flex: 1 1 360px; min-width: 0; height: 40px; padding: 0 14px; box-sizing: border-box; border: 1px solid var(--border);
+    border-radius: 11px; background: var(--card-2); color: var(--text); font: inherit; font-size: 14px; }
+  .gd-ask-row input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
+  .gd-ask-hint { margin: 0; font-size: 12px; color: var(--muted); }
+  .gd-ask-src { display: grid; gap: 6px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); }
+  .gd-ask-srcl { font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  button.gd-ask-s { display: flex; align-items: center; gap: 12px; width: 100%; padding: 9px 12px; border-radius: 10px; border: 1px solid var(--border);
+    background: var(--card-2); box-shadow: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+  button.gd-ask-s:hover, button.gd-ask-s:focus-visible { border-color: color-mix(in srgb, var(--accent) 55%, var(--border)); outline: none; }
+  .gd-ask-ic { flex: none; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 8px; color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 12%, transparent); }
+  .gd-ask-ic svg { width: 16px; height: 16px; }
+  .gd-ask-t { flex: 1; min-width: 0; display: grid; } .gd-ask-g { font-size: 11.5px; color: var(--muted); } .gd-ask-t b { font-size: 13px; }
+  .gd-ask-go { color: var(--accent); }
+  /* a section opened from an answer is marked for a moment, so the eye lands on it */
+  .gd-sec.gd-hit { animation: gdHit 2s ease; border-radius: 10px; }
+  @keyframes gdHit { 0%, 35% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 55%, transparent); } 100% { box-shadow: 0 0 0 3px transparent; } }
+  @media (prefers-reduced-motion: reduce) { .gd-sec.gd-hit { animation: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 45%, transparent); } }
   .rx-refs > summary { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 14px 16px; list-style: none; cursor: pointer; border-radius: 12px; }
   .rx-refs > summary::-webkit-details-marker { display: none; }
   .rx-refs > summary:hover { background: color-mix(in srgb, var(--accent) 5%, transparent); }
-  .rx-refs-t { font-size: 13.5px; font-weight: 700; }
-  .rx-refs-n { padding: 2px 9px; border-radius: 999px; background: var(--idle-bg); color: var(--muted); font-size: 11.5px; font-weight: 700; }
-  .rx-refs-n.on { background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); }
+  .rx-refs-t, .rx-cross-t { font-size: 13.5px; font-weight: 700; }
+  .rx-refs-n, .rx-cross-n { padding: 2px 9px; border-radius: 999px; background: var(--idle-bg); color: var(--muted); font-size: 11.5px; font-weight: 700; }
+  .rx-refs-n.on, .rx-cross-n.on { background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); }
   .rx-refs-d { font-size: 12.5px; color: var(--muted); }
   .rx-refs-body { display: grid; gap: 20px; padding: 2px 16px 18px 40px; }
   .rx-ref h4 { margin: 0 0 2px; font-size: 13px; }
@@ -6392,7 +6456,7 @@
     <div class="tab-intro">
       <span class="tab-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 6.4C10.2 5 7.6 4.3 3.2 4.5v13.9c4.4-.2 7 .5 8.8 1.9 1.8-1.4 4.4-2.1 8.8-1.9V4.5c-4.4-.2-7 .5-8.8 1.9z"/><path d="M12 6.4v13.9"/></svg></span>
       <h2>Guides</h2>
-      <p>How to do everything in Data Assurance, step by step. Search for what you need, or browse with the arrows, then open a guide to read it below.</p>
+      <p>How to do everything in Data Assurance, step by step. Search for what you need, or browse with the arrows, then open a guide to read it below. Or ask a question, and the AI answers from the guides.</p>
     </div>
     <div class="card gd-browser">
       <div class="gd-top">
@@ -6407,6 +6471,12 @@
         <button type="button" class="gd-nav" id="gdNext" aria-label="Next guides"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button>
       </div>
       <div class="gd-dots" id="gdDots"></div>
+    </div>
+    <div class="card gd-ask" id="gdAsk">
+      <div class="gd-ask-row"><label class="gd-ask-l" for="gdAskIn">Ask a question</label>
+        <input type="text" id="gdAskIn" maxlength="500" autocomplete="off" placeholder="e.g. How do I stop most people seeing a dataset?"><span id="gdAskSlot"></span></div>
+      <p class="gd-ask-hint">The AI answers from these guides only, and says which sections it used. None of your data is sent.</p>
+      <div id="gdAskOut" class="ai-out" hidden></div>
     </div>
     <div id="gdGuide" class="gd-guide"></div>
   </div>
@@ -8679,10 +8749,12 @@ function _rxDbSource(prefix) {
   const d = (dashDatasetsAll || []).find(x => x.key && p.indexOf('/' + x.key + '/') >= 0);
   return d ? _WAREHOUSE_SRC.has(String(d.sourceFormat || '').toLowerCase()) : true;
 }
+/** The rules across columns, as compared for a change: which, what each checks, how seriously. */
+const _rxCrossCanon = s => JSON.stringify((s.consistencyRules || []).map(r => [r.id, r.expr, r.severity || 'major', r.description || '']));
 function _rxStateCanon(s) {
   const cols = {};
   Object.keys(s.columns || {}).sort().forEach(c => { cols[c] = _rxCanon(s.columns[c]); });
-  return JSON.stringify([cols, (s.primaryKey || []).slice().sort(), _rxRefsCanon(s)]);
+  return JSON.stringify([cols, (s.primaryKey || []).slice().sort(), _rxRefsCanon(s), _rxCrossCanon(s)]);
 }
 const _rxPk = (s, col) => (s.primaryKey || []).includes(col);
 function rxColDirty(rx, col) {
@@ -8691,7 +8763,8 @@ function rxColDirty(rx, col) {
 function rxChanges(rx) {
   const cols = Object.keys(rx.state.columns).filter(c => rxColDirty(rx, c));
   const refs = _rxRefsCanon(rx.state) !== _rxRefsCanon(rx.base);
-  return { cols, refs, n: cols.length + (refs ? 1 : 0) };
+  const cross = _rxCrossCanon(rx.state) !== _rxCrossCanon(rx.base);
+  return { cols, refs, cross, n: cols.length + (refs ? 1 : 0) + (cross ? 1 : 0) };
 }
 function _rxIco(t) {
   return `<span class="rx-ti" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" ` +
@@ -8924,6 +8997,25 @@ function rxRefsHtml(rx) {
         `<div class="rx-ref-row rx-sor">${field('join_on', 'Join on', 'key column')}${field('compare_columns', 'Compare', 'columns')}</div>${refColsList('rxRefCols-sor', acc)}</div></section>` +
     `</div></details>`;
 }
+/** Rules that compare the columns of a row ("the ship date is never before the order date"): what each
+ *  checks, the rule as the engines read it, and how seriously it counts. One is written in plain English
+ *  with Describe a rule, above the editor, and removed here with its ✕. */
+function rxCrossHtml(rx) {
+  const list = rx.state.consistencyRules || [], had = new Set((rx.base.consistencyRules || []).map(r => r.id));
+  const row = (r, i) => {
+    const sev = r.severity || 'major', isNew = !had.has(r.id), what = r.description || r.expr;
+    return `<div class="rx-cr${isNew ? ' new' : ''}" role="listitem" data-cr="${esc(r.id)}"><span class="rx-cr-b"><span class="rx-cr-t">${esc(what)}</span>` +
+      `<code class="rx-cr-x">${esc(r.expr)}</code></span>` +
+      (isNew ? '<span class="rx-mark" data-tip="Added, and not saved yet">New</span>' : '') +
+      `<span class="rx-sev ${esc(sev)}">${esc((RX_SEV.find(x => x[0] === sev) || [sev, sev])[1])}</span>` +
+      `<button type="button" class="rx-x lngb" data-rx="crdrop" data-i="${i}" aria-label="Remove the rule: ${esc(what)}" data-tip="Remove this rule">✕</button></div>`;
+  };
+  return `<section class="rx-cross" aria-label="Rules across columns"><div class="rx-cross-h"><span class="rx-cross-t">Rules across columns</span>` +
+      `<span class="rx-cross-n${list.length ? ' on' : ''}">${list.length ? `${list.length} set up` : 'None yet'}</span></div>` +
+    `<p class="hint">Rules that compare the columns of a row, such as a ship date that is never before its order date. ` +
+      `Write one in plain English with <b>Describe a rule</b> above.</p>` +
+    (list.length ? `<div class="rx-cr-list" role="list">${list.map(row).join('')}</div>` : '') + `</section>`;
+}
 function rxTopHtml(rx) {
   const s = rx.state, cols = Object.keys(s.columns), ch = rxChanges(rx);
   const rules = cols.reduce((a, c) => a + _rxRuleCount(s.columns[c] || {}), 0);
@@ -8953,7 +9045,7 @@ function rxNotesHtml(rx) {
 }
 function rxBarHtml(rx) {
   const ch = rxChanges(rx);
-  const names = ch.cols.slice(0, 3).map(esc).concat(ch.refs ? ['reference checks'] : []);
+  const names = ch.cols.slice(0, 3).map(esc).concat(ch.refs ? ['reference checks'] : [], ch.cross ? ['rules across columns'] : []);
   const more = ch.cols.length > 3 ? ` and ${ch.cols.length - 3} more` : '';
   return `<span class="rx-bar-ico" aria-hidden="true"></span><span class="rx-bar-msg" role="status">` +
     `<b>${ch.n} change${ch.n === 1 ? '' : 's'}</b> not saved yet: ${names.join(', ')}${more}</span>` +
@@ -8969,7 +9061,7 @@ function rxPaint(rx) {
     `<p class="rx-intro">Open a column to change its rules. Nothing changes until you save, and saved rules apply on the dataset's next run.</p>` +
     (rx.cols.length ? `<div class="rx-list" role="list">${rows}</div><p class="rx-none rx-nomatch" hidden></p>`
       : `<p class="hint">No column rules are pinned for this dataset yet.</p>`) +
-    rxRefsHtml(rx) + `<div class="rx-bar" role="region" aria-label="Changes not saved yet" hidden></div></div>`;
+    rxCrossHtml(rx) + rxRefsHtml(rx) + `<div class="rx-bar" role="region" aria-label="Changes not saved yet" hidden></div></div>`;
   const list = rx.root.querySelector('.rx-list'); if (list) list.scrollTop = keep;
   rxFilter(rx);
   rxBar(rx);
@@ -9155,10 +9247,26 @@ function rxOnClick(rx, e) {
       break;
     }
     case 'aldrop': rx.state.accuracyLookups.splice(+t.dataset.i, 1); rxRefs(rx); rxTouched(rx); break;
+    case 'crdrop': {
+      (rx.state.consistencyRules || []).splice(+t.dataset.i, 1);
+      rxCross(rx); rxTouched(rx);
+      const left = rx.root.querySelectorAll('.rx-cross [data-rx="crdrop"]');
+      const f = left[Math.min(+t.dataset.i, left.length - 1)] || rx.root.querySelector('.rx-cross');
+      if (f) { if (!f.hasAttribute('tabindex') && f.tagName !== 'BUTTON') f.setAttribute('tabindex', '-1'); f.focus({ preventScroll: true }); }
+      break;
+    }
     case 'save': rxSave(rx); break;
     case 'discard': rxDiscard(rx); break;
     case 'viewq': rxViewQueued(rx); break;
   }
+}
+/** Redraw the rules across columns. */
+function rxCross(rx) {
+  const d = rx.root.querySelector('.rx-cross');
+  if (!d) return;
+  const tmp = document.createElement('div');
+  tmp.innerHTML = rxCrossHtml(rx);
+  d.replaceWith(tmp.firstElementChild);
 }
 /** Redraw the reference checks, focusing the last match of `want` (a row just added). */
 function rxRefs(rx, want) {
@@ -9273,7 +9381,9 @@ async function rxSave(rx) {
   const sv = rx.root.querySelector('.rx-bar [data-rx="save"]'); if (sv) sv.textContent = 'Saving…';
   try {
     await postJSON(`${API_BASE}/data-quality/save-ruleset`, HEADERS,
-      { result_prefix: rx.prefix, columns, primary_key, integrity_rules: integrity, accuracy, actor: EMAIL || undefined });
+      { result_prefix: rx.prefix, columns, primary_key, integrity_rules: integrity, accuracy,
+        consistency_rules: (s.consistencyRules || []).map(r => ({ id: r.id, expr: r.expr, description: r.description || '',
+          severity: r.severity || 'major', weight: r.weight == null ? 1 : r.weight })), actor: EMAIL || undefined });
   } catch (e) {
     rxBar(rx);
     const m = rx.root.querySelector('.rx-bar .rx-bar-msg');
@@ -9350,6 +9460,7 @@ async function editActiveRules(prefix, outEl) {
   const state = {
     columns: norm, primaryKey: (data.primaryKey || []).slice(), hasPending: !!data.hasPending,
     integrityRules: _rxClone(data.integrityRules || []),
+    consistencyRules: _rxClone(data.consistencyRules || []),
     accuracy: _rxClone(data.accuracy || {}),
     // Lookups edited as ordered rows, folded back to an object on save.
     accuracyLookups: Object.entries((data.accuracy || {}).lookups || {})
@@ -13281,11 +13392,154 @@ async function loadDsRules(panel, prefix) {
     `<span class="hint">Claude reads these rules against the data they came from and suggests changes, which you can edit before pinning.</span></div>` +
     // The review opens in its own panel above the rules in effect, so both can be read together.
     `<div id="dsReviewOut" class="ai-out" hidden></div>` +
+    drBoxHtml() + `<div id="dsDescribeOut" class="ai-out" hidden></div>` +
     `<div id="dsRulesBody">${dqSkeleton('Loading the active ruleset', 5)}</div>`;
   editActiveRules(prefix, $('#dsRulesBody'));
   const rev = $('#dsReviewRules');
   if (rev) rev.addEventListener('click', () => aiToggle(rev, $('#dsReviewOut'), () => reviewRuleset(prefix, $('#dsReviewOut'), false, rev)));
+  drWire(panel, prefix);
   refreshDatasetQueued(prefix);
+}
+
+// ---- Describe a rule ----
+// A rule in plain English ("the ship date is never before the order date"), written by the AI as rules
+// for this dataset: on one column where it is about one column, and across columns where it relates
+// them. The model sees what Review rules with AI sees (names, aggregates, masked shapes; never a value)
+// and the sentence. Each rule comes back as a card saying what it checks and what it would fail today;
+// Add to the rules puts it in the editor below as a change not saved yet, so it is saved, or not, with
+// the rest, through the one Save.
+const DR_EXAMPLES = ['The ship date is never before the order date', 'Every customer has an email address', 'Quantity is between 1 and 500'];
+function drBoxHtml() {
+  return `<div class="rx-describe"><label class="rx-describe-l" for="dsDescribeIn">Describe a rule<small>in plain English, and the AI writes it for this dataset</small></label>` +
+    `<div class="rx-describe-row"><input type="text" id="dsDescribeIn" maxlength="500" autocomplete="off" spellcheck="true" ` +
+      `placeholder="e.g. ${esc(DR_EXAMPLES[0])}">${aiBtn('Write the rule', 'id="dsDescribeBtn"')}</div>` +
+    `<div class="rx-describe-eg"><span>Try</span>${DR_EXAMPLES.map(t => `<button type="button" class="rx-eg-b lngb" data-dr-eg="${esc(t)}">${esc(t)}</button>`).join('')}</div></div>`;
+}
+function drWire(panel, prefix) {
+  const input = panel.querySelector('#dsDescribeIn'), btn = panel.querySelector('#dsDescribeBtn'), out = panel.querySelector('#dsDescribeOut');
+  if (!input || !btn || !out) return;
+  const go = () => describeRule(prefix, input, btn, out);
+  btn.addEventListener('click', go);
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); go(); } });
+  panel.querySelectorAll('[data-dr-eg]').forEach(b => b.addEventListener('click', () => { input.value = b.dataset.drEg; input.focus(); }));
+  out.addEventListener('click', e => {
+    const add = e.target.closest('[data-dr-add]');
+    if (add) { drAdd(out, +add.dataset.drAdd); return; }
+    const see = e.target.closest('[data-dr-see]');
+    if (see) drSee(out._dr && out._dr.rules[+see.dataset.drSee]);
+  });
+}
+async function describeRule(prefix, input, btn, out) {
+  const text = (input.value || '').replace(/\s+/g, ' ').trim();
+  if (!text) { input.focus(); return; }
+  if (btn.getAttribute('aria-busy') === 'true') return;
+  const title = 'The rule, written for this dataset';
+  btn.setAttribute('aria-expanded', 'true');
+  btn.classList.add('active');
+  out._aiOnClose = () => { btn.setAttribute('aria-expanded', 'false'); btn.classList.remove('active'); };
+  aiBusy(btn, true, 'Writing…');
+  aiThinking(out, `Reading “${text}” against this dataset's columns…`, { title, anchor: btn, close: true });
+  try {
+    const r = await postJSON(`${API_BASE}/data-quality/describe-rule`, HEADERS, { result_prefix: prefix, text, actor: EMAIL || undefined });
+    out._dr = r;
+    aiAnswer(out, drHtml(r), aiFoot(r), { title, anchor: btn, close: true });
+  } catch (e) { aiFail(out, e.message, { close: true }); }
+  aiBusy(btn, false);
+}
+function drHtml(r) {
+  const asked = `<p class="dr-asked">You asked for: <q>${esc(r.text || '')}</q></p>`;
+  if (!(r.rules || []).length) return asked + `<p class="dr-cannot">${esc(r.cannot || 'That could not be turned into a rule for this dataset.')}</p>`;
+  return asked + `<div class="dr-list">${r.rules.map((d, i) => drCardHtml(r, d, i)).join('')}</div>`;
+}
+function drCardHtml(r, d, i) {
+  const ac = d.augment || {}, cross = (ac.consistency_rules || [])[0], key = ac.keys && ac.keys.primary, col = _augCol(ac);
+  let kind, what, imp;
+  if (cross) {
+    kind = 'Rule across columns';
+    what = `<code class="dr-expr">${esc(cross.expr)}</code>`;
+    imp = 'How many rows it fails shows after the dataset\'s next run: the profile cannot tell today.';
+  } else if (key) {
+    kind = 'Primary key';
+    what = `<span class="rx-chip key">🔑 ${esc(key.join(' + '))}</span>`;
+    imp = '';
+  } else {
+    kind = 'Rule on one column';
+    what = rxChips((col && col.obj) || {}, false).map(([t, tip]) => `<span class="rx-chip"${tip ? ` data-tip="${esc(tip)}"` : ''}>${esc(t)}</span>`).join('');
+    imp = ruleImpactHtml(ruleImpact(ac, r.facts), r.facts, col && col.col, r.rowCount);
+  }
+  const on = (d.columns || []).map(c => `<code>${esc(c)}</code>`).join(' · ');
+  const sev = cross ? (cross.severity || 'major') : (col && col.obj && col.obj.severity) || '';
+  const have = !d._added && drIsIn(($('#dsRulesBody') || {})._rx, d);
+  const foot = d._added || have
+    ? `<span class="dr-done" role="status">✓ ${have ? "Already in this dataset's rules" : 'Added below, not saved yet'}` +
+      `<button type="button" class="linkbtn lngb" data-dr-see="${i}">See it</button></span>`
+    : `<button type="button" class="dsx-btn primary lngb" data-dr-add="${i}">Add to the rules</button>`;
+  return `<div class="dr-card ai-rise${d._added ? ' added' : ''}" style="--i:${Math.min(i, 6)}" data-dr="${i}">` +
+    `<div class="dr-head"><span class="tag">${kind}</span><span class="dr-title">${esc(d.title || '')}</span>` +
+      (on ? `<span class="dr-on">on ${on}</span>` : '') + (sev ? `<span class="rx-sev ${esc(sev)}">${esc((RX_SEV.find(x => x[0] === sev) || [sev, sev])[1])}</span>` : '') + `</div>` +
+    (d.rationale ? `<p class="dr-why">${esc(d.rationale)}</p>` : '') +
+    (what ? `<div class="dr-what">${what}</div>` : '') +
+    `<div class="dr-foot"><p class="dr-imp">${imp || ''}</p>${foot}</div></div>`;
+}
+/** Is a written rule already in the editor's rules, as it is written? Then there is nothing to add. */
+function drIsIn(rx, d) {
+  const ac = (d && d.augment) || {}, same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  const cols = Object.entries(ac.columns || {}), keys = (ac.keys || {}).primary, cross = ac.consistency_rules || [];
+  if (!rx || (!cols.length && !keys && !cross.length)) return false;
+  return cols.every(([c, spec]) => Object.entries(spec).every(([k, v]) => same((rx.state.columns[c] || {})[k], v))) &&
+    (!keys || _rxSameKey(rx.state.primaryKey, keys)) &&
+    cross.every(cr => (rx.state.consistencyRules || []).some(x => x.expr === cr.expr));
+}
+/** Add a written rule to the editor below, as a change not saved yet, and bring it into view there. */
+function drAdd(out, i) {
+  const r = out._dr, d = r && r.rules[i], body = $('#dsRulesBody'), rx = body && body._rx;
+  if (!d) return;
+  if (!rx) {
+    dqAlert('This dataset has no rules pinned yet, so there is nothing to add this to. Its next assessment pins them; then try again.');
+    return;
+  }
+  const ac = d.augment || {};
+  for (const [col, spec] of Object.entries(ac.columns || {})) {
+    rx.state.columns[col] = Object.assign(rx.state.columns[col] || {}, _rxClone(spec));
+    if (!rx.ui.open.includes(col)) rx.ui.open.push(col);
+  }
+  if (ac.keys && ac.keys.primary) rx.state.primaryKey = ac.keys.primary.slice();
+  (ac.consistency_rules || []).forEach(cr => {
+    const list = rx.state.consistencyRules = rx.state.consistencyRules || [];
+    const at = list.findIndex(x => x.id === cr.id);
+    if (at >= 0) list[at] = _rxClone(cr); else list.push(_rxClone(cr));
+  });
+  rx.ui.filter = 'all';
+  rxPaint(rx);
+  rxTouched(rx);
+  d._added = true;
+  const card = out.querySelector(`.dr-card[data-dr="${i}"]`);
+  if (card) {
+    const tmp = document.createElement('div');
+    tmp.innerHTML = drCardHtml(r, d, i);
+    const nu = tmp.firstElementChild;
+    nu.classList.remove('ai-rise');
+    card.replaceWith(nu);
+    const see = nu.querySelector('[data-dr-see]'); if (see) see.focus({ preventScroll: true });
+  }
+  drSee(d);
+}
+/** Bring a written rule into view in the editor: its column's row, or the rules across columns. */
+function drSee(d) {
+  const body = $('#dsRulesBody'), rx = body && body._rx;
+  if (!rx || !d) return;
+  const ac = d.augment || {}, cross = (ac.consistency_rules || [])[0];
+  const smooth = dqReduced() ? 'auto' : 'smooth';
+  if (cross) {
+    const el = rx.root.querySelector(`.rx-cr[data-cr="${CSS.escape(cross.id)}"]`) || rx.root.querySelector('.rx-cross');
+    if (el) el.scrollIntoView({ behavior: smooth, block: 'center' });
+    return;
+  }
+  const col = Object.keys(ac.columns || {})[0] || ((ac.keys || {}).primary || [])[0];
+  const el = col && _rxColEl(rx, col), list = rx.root.querySelector('.rx-list');
+  if (!el) return;
+  if (list) dqRevealIn(list, el, el);
+  el.scrollIntoView({ behavior: smooth, block: 'nearest' });
 }
 
 async function loadDsFailed(panel, prefix) {
@@ -24259,7 +24513,8 @@ const GD_SHOTS = {
   "profile": [1600, 526, "104f28f43a"],
   "quality-space": [1600, 812, "7bfbdb7881"],
   "records-policy": [1600, 567, "93eb0821f8"],
-  "rules-tab": [1600, 1344, "b4dfa30a3e"],
+  "rules-describe": [1600, 757, "2b2842b541"],
+  "rules-tab": [1600, 1568, "560d8460e4"],
   "run-result": [1600, 1381, "27d7222b2c"],
   "runs-on-agent": [1600, 1100, "8445708325"],
   "schedule-form-p": [1600, 1361, "8dcfe745da"],
@@ -25250,7 +25505,7 @@ function buildGuides() {
   G.push({
     id: 'rules', cat: 'Results', icon: 'sparkle', tint: '#c084fc',
     title: 'Rules and AI rule review', sub: 'Where rules come from, and how to add, edit or pin them',
-    keywords: 'rules ruleset pinned inferred ai review suggestions bedrock claude pin apply re-run edit active rules add rule remove rule queued changes provisional severity weight primary key allowed values format range save discard',
+    keywords: 'rules ruleset pinned inferred ai review suggestions bedrock claude pin apply re-run edit active rules add rule remove rule queued changes provisional severity weight primary key allowed values format range save discard describe plain english write the rule rules across columns consistency',
     open: { tab: 'dashboard', label: 'Open Overview' },
     sections: [
       { h: 'Where the rules come from', body:
@@ -25270,13 +25525,22 @@ function buildGuides() {
             `Or press ${ui('Apply & re-run now')}, which appears when the run can be launched again from here, such as ${Q ? 'an app table or ' : ''}an uploaded file that is still stored.`) +
           shot('ai-review', `${n(1)} Tick the suggestions you want, editing their values first if you like. ${n(2)} One that would fail most of today's data is marked, and says how much. ${n(3)} An advisory suggestion is guidance to apply yourself. ${n(4)} ${ui('Select all')} ticks every one that is not marked. ${n(5)} ${ui('Pin selected to ruleset')}. ${n(6)} ${ui('Regenerate')} asks for a fresh set.`) +
           note(`The AI only ever sees column names, aggregate statistics and masked value shapes (an email reads like <code>aaaa@aaa.aaa</code>). It never sees your values.`) +
-          tip(`To write a rule of your own, open its column in the Rules tab and press ${ui('＋ Add a rule')}.`) },
+          tip(`To write a rule of your own, open its column in the Rules tab and press ${ui('＋ Add a rule')}, or describe it in plain English.`) },
+      { h: 'Describe a rule in plain English', body:
+          steps(
+            `In the dataset's ${ui('Rules')} tab, type the rule as you would say it in ${ui('Describe a rule')}, such as “the ship date is never before the order date” or “every customer has an email address”, and press ${ui('Write the rule')}.`,
+            `The AI writes it for this dataset's columns. A rule about one column becomes a rule on that column, saying what it would fail in today's data; one that compares columns becomes a <b>rule across columns</b>, shown as the engine will read it.`,
+            `Press ${ui('Add to the rules')}. It goes into the rules below as a change not saved yet, and ${ui('See it')} takes you to it. Press ${ui('Save changes')} to queue it for the dataset's next run, as with any other change.`) +
+          shot('rules-describe', `${n(1)} The rule, as you would say it. ${n(2)} The rule the AI wrote, as the engine will read it. ${n(3)} ${ui('Add to the rules')} puts it in the rules below, to save with the rest.`) +
+          p(`If the sentence cannot be written for this dataset, such as a rule on a column it does not have, the answer says why instead. A rule the dataset already has says ${ui("Already in this dataset's rules")}.`) +
+          note(`As with Review rules with AI, the AI sees column names, aggregate statistics and masked value shapes, and your sentence. It never sees your values.`) },
       { h: 'Edit or remove rules', body:
           steps(
             `Open the column. Switch ${ui('Required')}, ${ui('Unique')} or ${ui('Not in the future')} on or off, choose its severity, or change a rule's values. Allowed values are tags: type one and press Enter to add it, or press its ${ui('✕')} to take it off.`,
             `${ui('＋ Add a rule')} adds one that suits the column's type, such as a range for a number or a format for text. ${ui('✕')} beside a rule removes it, and ${ui('Remove every rule')} clears the column.`,
             `Press ${ui('Save changes')} in the bar at the foot of the window. The changes are queued and replace the pinned ruleset on the dataset's next assessment. ${ui('Discard')} puts everything back instead.`) +
           p(`The primary key can be one column or several: choose them from ${ui('Primary key')} at the top of the tab, or switch ${ui('Primary key')} on in a column.`) +
+          p(`${ui('Rules across columns')}, under the columns, lists the rules that compare the columns of a row, with what each checks and the rule as the engine reads it. ${ui('✕')} removes one, saved like any other change.`) +
           note(`Changes you have not saved are kept if you leave the tab and come back. If changes are already queued for the next run, the tab says so: saving again replaces them.`) },
       { h: 'Why pinning matters', body:
           p(`Incidents compare each run with the one before and with the dataset's learned baseline. If the rules shifted with the data, a column that started arriving empty would simply become optional. Pinned rules are what make a regression show up as one.`) },
@@ -26541,10 +26805,79 @@ function gdPlaceholder() {
   return `<div class="gd-placeholder">${gdSvg('search')}<div><b>Pick a guide above to open it here.</b> ` +
     `New to Data Assurance? Start with <button type="button" class="gd-xref" data-gd-open="first-dataset">Onboard your first dataset</button>.</div></div>`;
 }
+// ---- Ask the guides ----
+// A question about the product, answered by the AI from the guides this reader is shown (the Qlik
+// extension, a portal member and an admin each have their own), with the sections it rests on, each
+// opening its guide there. The guides go with the question; nothing about the organisation's data does.
+const _gdAsked = new Map();            // question -> answer, for this visit: asking again costs nothing
+/** A guide's markup as the words a reader sees: no Show me buttons or zoom labels, and nothing fetched. */
+function _gdText(h) {
+  const html = String(h || '').replace(/<button type="button" class="gd-show"[^>]*>.*?<\/button>/g, ' ')
+    .replace(/<span class="gd-fig-zoom">.*?<\/span>/g, ' ');
+  return (new DOMParser().parseFromString(html, 'text/html').body.textContent || '').replace(/\s+/g, ' ').trim();
+}
+function gdAskSections() {
+  const out = [];
+  gdGuides().forEach(g => g.sections.forEach((sec, n) =>
+    out.push({ id: `${g.id}#${n}`, guide: g.title, title: _gdText(sec.h), text: _gdText(sec.body).slice(0, 8000) })));
+  return out;
+}
+async function gdAsk() {
+  const input = $('#gdAskIn'), btn = $('#gdAskBtn'), out = $('#gdAskOut');
+  if (!input || !btn || !out || btn.getAttribute('aria-busy') === 'true') return;
+  const q = input.value.replace(/\s+/g, ' ').trim();
+  if (!q) { input.focus(); return; }
+  const title = 'From the guides';
+  btn.setAttribute('aria-expanded', 'true');
+  btn.classList.add('active');
+  out._aiOnClose = () => { btn.setAttribute('aria-expanded', 'false'); btn.classList.remove('active'); };
+  const show = r => aiAnswer(out, `<p class="dr-asked">You asked: <q>${esc(q)}</q></p>` + aiMd(r.answer) + gdAskSourcesHtml(r.sources),
+    aiFoot(r), { title, anchor: btn, close: true });
+  if (_gdAsked.has(q)) { show(_gdAsked.get(q)); return; }
+  aiBusy(btn, true, 'Reading the guides…');
+  aiThinking(out, 'Reading the guides for an answer…', { title, anchor: btn, close: true });
+  try {
+    const r = await postJSON(`${API_BASE}/data-quality/ask-guides`, HEADERS, { question: q, sections: gdAskSections(), actor: EMAIL || undefined });
+    _gdAsked.set(q, r);
+    show(r);
+  } catch (e) { aiFail(out, e.message, { close: true }); }
+  aiBusy(btn, false);
+}
+function gdAskSourcesHtml(ids) {
+  const list = gdGuides();
+  const items = (ids || []).map(id => {
+    const k = String(id).lastIndexOf('#'), g = list.find(x => x.id === String(id).slice(0, k)), n = +String(id).slice(k + 1);
+    return g && g.sections[n] ? { g, n, h: _gdText(g.sections[n].h) } : null;
+  }).filter(Boolean);
+  if (!items.length) return '';
+  return `<div class="gd-ask-src ai-rise" style="--i:7"><span class="gd-ask-srcl">Read it in the guides</span>` + items.map(x =>
+    `<button type="button" class="gd-ask-s lngb" data-gd-sec="${esc(x.g.id)}" data-gd-n="${x.n}"><span class="gd-ask-ic">${gdSvg(x.g.icon)}</span>` +
+    `<span class="gd-ask-t"><span class="gd-ask-g">${esc(x.g.title)}</span><b>${esc(x.h)}</b></span><span class="gd-ask-go" aria-hidden="true">→</span></button>`).join('') + `</div>`;
+}
+/** Open a guide at one of its sections, whichever part, step or pick holds it, and mark it for a moment. */
+function gdOpenSection(id, n) {
+  openGuide(id, { noScroll: true });
+  const sec = document.getElementById(`gd-sec-${n}`); if (!sec) return;
+  const view = sec.closest('.gd-view');
+  if (view) { gdView(view.dataset.view); if (sec.dataset.pane != null) gdPane(view, +sec.dataset.pane); }
+  if (!sec.closest('.gd-view')) { gdSpyMark(n); _gdSpyHold = Date.now() + 1000; }
+  sec.scrollIntoView({ behavior: dqReduced() ? 'auto' : 'smooth', block: 'start' });
+  sec.classList.remove('gd-hit'); void sec.offsetWidth; sec.classList.add('gd-hit');
+  const h = sec.querySelector('h4');
+  if (h) { h.setAttribute('tabindex', '-1'); h.focus({ preventScroll: true }); }
+}
 function initGuidesTab() {
   const track = $('#gdTrack'); if (!track) return;
   if (!_gdWired) {
     _gdWired = true;
+    const slot = $('#gdAskSlot');
+    if (slot) slot.outerHTML = aiBtn('Ask the guides', 'id="gdAskBtn"');
+    $('#gdAskBtn').addEventListener('click', gdAsk);
+    $('#gdAskIn').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); gdAsk(); } });
+    $('#gdAskOut').addEventListener('click', e => {
+      const b = e.target.closest('[data-gd-sec]');
+      if (b) gdOpenSection(b.dataset.gdSec, +b.dataset.gdN);
+    });
     const input = $('#gdSearch');
     let t = null;
     input.addEventListener('input', () => { clearTimeout(t); t = setTimeout(renderGuideCards, 90); });
