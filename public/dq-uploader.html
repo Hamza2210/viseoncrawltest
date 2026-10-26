@@ -1689,6 +1689,9 @@
   .rule-flag { align-self: center; font-size: 11px; color: var(--muted);
     background: var(--idle-bg); padding: 2px 8px; border-radius: 10px; }
   .rule-edited { align-self: center; font-size: 11px; color: var(--accent2); }
+  /* a rule across columns in the failed records: its name, and what kind of check it is */
+  .fr-cname { display: block; font-weight: 600; overflow-wrap: anywhere; }
+  .fr-csub { display: block; font-size: 11px; color: var(--muted); }
   /* ---- The Rules tab: a row per column, which opens into its editor ---------------------- */
   .rx-assist { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 14px; margin: 0 0 16px; }
   .rx-assist .hint { margin: 0; max-width: 620px; }
@@ -8248,16 +8251,36 @@ const _GATE_WHOLE = { primary_key: 'Primary key', whole_record: 'Whole rows', no
 const _GATE_EXACT = new Set(['format', 'range', 'date_range', 'length', 'domain', 'type']);
 const GATE_SHOW = 6;                                     // rows on show before "Show N more"
 
+/** A check's id ("timeliness.no_future_dates::SIGNUP_DATE") in its parts: dimension, kind and what it is on. */
+function _checkParse(id) {
+  id = String(id || '');
+  const cut = id.indexOf('::'), head = cut < 0 ? id : id.slice(0, cut), target = cut < 0 ? '' : id.slice(cut + 2), dot = head.indexOf('.');
+  return { id, dim: dot < 0 ? head : head.slice(0, dot), kind: dot < 0 ? '' : head.slice(dot + 1), target };
+}
+// A kind of check in a word or two, where a heading names it (How to fix).
+const _CHECK_KIND = { populated: 'Required', unique: 'Unique', primary_key: 'Primary key', whole_record: 'Duplicate rows',
+  domain: 'Allowed values', range: 'Range', date_range: 'Date range', format: 'Format', type: 'Type', length: 'Length',
+  no_future_dates: 'No future dates', scale: 'Decimal places', outliers: 'Plausible range', fk: 'Reference match',
+  matches_reference: 'Matches reference', authoritative_lookup: 'Authoritative list', representation: 'One way of writing',
+  format_stability: 'Usual format', rule: 'Rule across columns', record: 'Mandatory values', freshness: 'Freshness',
+  extract_freshness: 'Freshness', record_recency: 'Recency', row_count_floor: 'Row count', row_count_ceiling: 'Row count',
+  no_empty_columns: 'Empty columns', record_exists_in_reference: 'In the reference data' };
+const _checkKind = k => _CHECK_KIND[k] || String(k || '').replace(/_/g, ' ').replace(/^./, c => c.toUpperCase());
+/** A check as people read it, rather than its id: what it is about (its column or columns, the primary key, or
+ *  a rule across columns by the name it was given) and what it requires, in the gate panel's words. `data` is
+ *  the failed records' response, or a result's (ruleNames), for a rule's name. */
+function checkLabel(cid, data) {
+  const p = _checkParse(cid), d = data || {};
+  if (p.kind === 'rule') {
+    const e = (d.expectations || {})[cid] || (d.check_summary || []).find(c => c.check_id === cid) || {};
+    return { what: e.description || (d.ruleNames || {})[cid] || p.target, req: 'Rule across columns' };
+  }
+  return { what: _gateTarget(p), req: _GATE_REQ[p.kind] || 'Must satisfy its rule' };
+}
 function _gateParse(reason) {
   const t = String(reason || '').trim();
   let m = /^(\w+) check '([^']+)' failed on ([\d,]+) record\(s\)$/.exec(t);
-  if (m) {
-    const id = m[2], cut = id.indexOf('::');
-    const head = cut < 0 ? id : id.slice(0, cut), target = cut < 0 ? '' : id.slice(cut + 2);
-    const dot = head.indexOf('.');
-    return { type: 'check', sev: m[1], id, dim: dot < 0 ? head : head.slice(0, dot), kind: dot < 0 ? '' : head.slice(dot + 1),
-             target, failed: Number(m[3].replace(/,/g, '')) || 0 };
-  }
+  if (m) return Object.assign({ type: 'check', sev: m[1], failed: Number(m[3].replace(/,/g, '')) || 0 }, _checkParse(m[2]));
   if ((m = /^overall score ([\d.]+) below threshold ([\d.]+)$/.exec(t))) return { type: 'score', score: Number(m[1]), threshold: Number(m[2]) };
   if (/^overall score could not be computed$/.test(t)) return { type: 'noscore' };
   if ((m = /^([\d,]+) check failure\(s\) exceed the limit of ([\d,]+)$/.exec(t))) {
@@ -8295,7 +8318,7 @@ function gatePanel(st, o) {
     const count = `<b>${p.failed.toLocaleString()}</b> record${p.failed === 1 ? '' : 's'}`;
     return `<li class="gate-row" data-check="${esc(p.id)}" title="${esc(p.id)}"${i >= GATE_SHOW ? ' hidden data-gatehidden' : ''}>` +
       `<div class="gate-what"><div class="gate-name"><span class="gate-dim">${esc(_GATE_DIM[p.dim] || p.dim)}</span>` +
-      `<span class="gate-col">${esc(_gateTarget(p))}</span></div>` +
+      `<span class="gate-col">${esc(((o && o.ruleNames) || {})[p.id] || _gateTarget(p))}</span></div>` +
       `<div class="gate-req" data-gatereq>${esc(_GATE_REQ[p.kind] || 'Must satisfy its rule')}</div></div>` +
       `<div class="gate-measure"><div class="gate-n"><span>${count}</span>${pct ? `<span class="gate-pct">${pct} of rows</span>` : ''}</div>` +
       (share == null ? '' : `<div class="gate-bar" aria-hidden="true"><i style="width:${Math.max(share, 0.8).toFixed(2)}%"></i></div>`) + `</div>` +
@@ -8449,7 +8472,7 @@ function renderAssessment(r, bodyEl, opts) {
   // A caller with its records elsewhere (the dataset detail's own tab) takes "See records" itself;
   // to the panel that is the same as a tabbed result, so its footer offers "See all" too.
   const onSee = opts && opts.onSee;
-  if (!gatePass) html += gatePanel(st, { tabbed: tabbed || !!onSee,
+  if (!gatePass) html += gatePanel(st, { tabbed: tabbed || !!onSee, ruleNames: r.ruleNames,
     canSee: (!(opts && opts.noRecords) && !!r.resultPrefix) || !!onSee });
   const rowsTxt = st.rows_assessed == null ? '' : st.sampled
     ? `Assessed a random sample of ${Number(st.rows_assessed).toLocaleString()} of ${Number(st.rows_in_source).toLocaleString()} rows.`
@@ -13938,7 +13961,7 @@ function renderExampleFixes(data) {
     // offered as the "fix to" value (it would tell the user to write '[redacted PII]' into the column).
     for (const r of recs) { const v = (r.record || {})[col]; if (v !== '' && v != null && v !== DQ_PII_REDACTED) { popEx = v; break; } }
     const meta = fixFor(exp, '', popEx);
-    const head = `<div class="fx-head"><span class="fx-dim">${esc((exp.kind || '').replace(/_/g, ' '))}</span><span class="fx-colname">${esc(col)}</span></div>
+    const head = `<div class="fx-head"><span class="fx-dim">${esc(_checkKind(exp.kind))}</span><span class="fx-colname">${esc(col)}</span></div>
         <div class="fx-req">${esc(meta.req)}</div>`;
     // Distributional checks (format stability, representation, …) have no single
     // corrected value - show the requirement only, never a blank/null "fix to".
@@ -14041,8 +14064,9 @@ function renderFailuresViz(data) {
   const sev = { blocker: 0, major: 0, minor: 0 }, byCol = new Map();
   cs.forEach(k => {
     const s = (k.severity || '').toLowerCase(); if (s in sev) sev[s] += (k.failed || 0);
-    const col = (k.check_id || '').split('::')[1];
-    if (col) byCol.set(col, (byCol.get(col) || 0) + (k.failed || 0));
+    // A rule across columns counts against the columns it reads, not a column called its id.
+    const cols = /^consistency\.rule::/.test(k.check_id || '') ? (k.columns || []) : [(k.check_id || '').split('::')[1]];
+    cols.forEach(col => { if (col) byCol.set(col, (byCol.get(col) || 0) + (k.failed || 0)); });
   });
   const tot = sev.blocker + sev.major + sev.minor;
   const seg = k => sev[k] ? `<span class="sev-seg ${k}" style="width:${100 * sev[k] / tot}%" data-tip="${sev[k]} ${k}-level"></span>` : '';
@@ -14134,7 +14158,9 @@ function renderFailedRecords(data) {
     const sev = (x.severity || '').toLowerCase();
     return `<tr class="fr-row ${sev === 'blocker' ? 'fr-blocker' : ''}" data-sev="${esc(sev)}" data-check="${esc(x.check_id || '')}">` +
       `<td class="dash-muted" style="font-variant-numeric:tabular-nums;">${esc(rowNo)}</td>` +
-      `<td>${esc(x.dimension)}</td><td>${esc(x.check_id)}</td>` +
+      `<td>${esc(_GATE_DIM[x.dimension] || x.dimension || '')}</td>` +
+      `<td title="${esc(x.check_id || '')}"><span class="fr-cname">${esc(checkLabel(x.check_id, data).what)}</span>` +
+        `<small class="fr-csub">${esc(checkLabel(x.check_id, data).req)}</small></td>` +
       `<td>${sevChip(x.severity)}</td>` +
       `<td class="dash-muted" style="font-family:ui-monospace,Consolas,monospace;font-size:11px;">${fields}</td></tr>`;
   }).join('');
@@ -14183,7 +14209,7 @@ function showFailedRecords(el, data) {
     if (ntc) {
       ntc.classList.toggle('fr-note-check', !!check);
       if (check) {
-        const name = _gateTarget(_gateParse(`blocker check '${check}' failed on 0 record(s)`));
+        const name = checkLabel(check, data).what;
         const of = f.failed > shown ? ` of the ${Number(f.failed).toLocaleString()} that fail it` : '';
         ntc.innerHTML = `Showing the ${shown} record${shown === 1 ? '' : 's'} kept for <b>${esc(name)}</b>${esc(of)}. ` +
           `<button type="button" class="linkbtn fr-clear" data-frclear>Show every check</button>`;
@@ -24730,7 +24756,7 @@ const GD_SHOTS = {
   "dataset-list-p": [1600, 1025, "c097d44c9e"],
   "dataset-list-pa": [1600, 979, "494e75200f"],
   "dataset-list-q": [1600, 979, "b072872e90"],
-  "failed-records": [1600, 1026, "2a98e4bd42"],
+  "failed-records": [1600, 1026, "915e3fb9cf"],
   "heatmap": [1124, 1282, "eaa67f551b"],
   "history-p": [1600, 1164, "cfca32980f"],
   "history-q": [1600, 979, "539a02e628"],
