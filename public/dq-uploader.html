@@ -4946,15 +4946,28 @@
   .pis-remember { display: flex; align-items: center; gap: 8px; margin-top: 12px; padding: 9px 12px; border-radius: 10px; font-size: 12.5px;
     background: color-mix(in srgb, var(--accent) 9%, transparent); border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--border)); }
   .pis-remember .pis-ico { width: 15px; height: 15px; color: var(--accent); } .pis-remember .linkbtn { margin: 0 0 0 4px; font-size: 12.5px; }
-  /* The list, narrowed to what was picked in the sky */
-  .pis-focus { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 4px 0 12px; border-radius: 999px; font-size: 13px; font-weight: 650;
-    border: 1px solid color-mix(in srgb, var(--accent) 60%, var(--border)); background: color-mix(in srgb, var(--accent) 14%, transparent); }
-  .pis-focus-t { max-width: 380px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .pis-focus code { font-size: 12px; }
-  button.pis-focus-x { display: inline-grid; place-items: center; width: 24px; height: 24px; padding: 0; border: 0; border-radius: 50%; background: none;
-    box-shadow: none; color: var(--muted); cursor: pointer; }
-  button.pis-focus-x:hover, button.pis-focus-x:focus-visible { background: color-mix(in srgb, var(--accent) 24%, transparent); color: var(--text); outline: none; }
-  button.pis-focus-x .pis-ico { width: 14px; height: 14px; }
+  /* The list, narrowed to what was picked in the sky: a band across it saying where from, what, in full, and the way back */
+  .pis-focus { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 12px; padding: 14px 16px; border-radius: 12px;
+    border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--border)); background: color-mix(in srgb, var(--accent) 8%, var(--card-2)); }
+  .pis-focus-ic { flex: none; display: grid; place-items: center; width: 36px; height: 36px; border-radius: 10px; color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 16%, transparent); }
+  .pis-focus-ic .pis-ico { width: 18px; height: 18px; }
+  .pis-focus-b { flex: 1; min-width: 0; display: grid; gap: 7px; }
+  .pis-focus-k { font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
+  .pis-focus-t { font-size: 15px; font-weight: 750; line-height: 1.35; }
+  .pis-focus-t small { margin-left: 4px; font-size: 12.5px; font-weight: 600; color: var(--muted); }
+  .pis-focus-t code { padding: 0 6px; border-radius: 5px; border: 1px solid var(--border); background: var(--card); font-size: 13px; }
+  .pis-focus-s { font-size: 12.5px; line-height: 1.5; color: var(--muted); }
+  .pis-focus-a { flex: none; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+  .pis-focus-a .dsx-btn { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; font-size: 12.5px; }
+  .pis-focus-a .pis-ico { width: 14px; height: 14px; }
+  #pisFindings { container: pis-list / inline-size; }
+  @container pis-list (max-width: 960px) { .pis-focus { flex-wrap: wrap; } .pis-focus-a { width: 100%; justify-content: flex-start; padding-left: 50px; } }
+  /* Kinds of data held together in a row: each whole, joined by a plus, wrapping rather than cut short */
+  .pis-kinds { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+  .pis-kind { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--border);
+    background: var(--card); font-size: 12.5px; font-weight: 650; white-space: nowrap; }
+  .pis-plus { font-style: normal; font-weight: 700; color: var(--muted); }
   /* Coming in: the two cards rise, the figures count up, and each star flies out along its ray, riskiest first */
   #pisStage.pis-enter > .card { animation: dqPop .5s var(--dq-ease) both; }
   #pisStage.pis-enter > .card:nth-child(2) { animation-delay: .08s; }
@@ -25917,7 +25930,7 @@ ${HDRS}
           p(`${ui('List')}, at the top right of the sky, shows every finding as a table: its severity, its risk, what it is, its column, and whether it hides in free text, riskiest first. Choosing it is remembered in this browser, so every dataset then opens as a list until you choose ${ui('Sky')} again.`) +
           shot('pii-findings', `${n(1)} The sky, or the list. ${n(2)} Search the findings. ${n(3)} Show only one severity, or only those hidden in free text. ${n(4)} Turn the order round. ${n(5)} A finding opened: why it matters and where it sits in each value. ${n(6)} Label its column${GOV ? ' or dismiss it' : ''}.`) +
           sm('pii-findings') +
-          p(`${ui('See them in the list')} in a view, and ${ui('See it in the list')} in a finding's pane, open the list narrowed to those findings without changing what opens next time; the ${ui('×')} on the chip above the table shows every finding again. A find inside free text is rated a level higher than the same kind held in its own column.`) },
+          p(`${ui('See them in the list')} in a view, and ${ui('See it in the list')} in a finding's pane, open the list narrowed to those findings without changing what opens next time. A band above the table says what it is narrowed to and where from, in full: from ${ui('Who it identifies')}, how many rows hold which kinds of data together. ${ui('Show every finding')} on it widens the list again, and ${ui('Back to Who it identifies')} (or ${ui('Back to Rules')}) returns to the sky as you left it. A find inside free text is rated a level higher than the same kind held in its own column.`) },
       { h: 'Act on it', body:
           p(`Under the sky, or the list, is the next step for this dataset, and ${ui('All steps')} shows the rest: restrict it with a tag, clean the free text, and deal with each kind of data at source. ${showme('pii-next')}`) +
           list(`${ui('Label the column as personal data')}, in a finding's pane, labels the column for every assessment.`,
@@ -27504,7 +27517,7 @@ function pisPaintSky(animate) {
     `<button type="button" class="lngb${pis.view === k ? ' on' : ''}" role="radio" aria-checked="${pis.view === k}" data-pis="view" data-v="${k}">${pisIco(ic)}${l}</button>`).join('') + `</div>`;
   if (pis.view === 'list') {
     pis.sky = null; pis.paintedLens = ''; pis.paintedChip = '';   // back in the sky, its view plays in again
-    card.innerHTML = `<div class="pis-skybar"><span class="pis-skybar-t">${pisIco('columns')}Every finding, riskiest first</span><span class="pis-grow"></span>${view}</div>` +
+    card.innerHTML = `<div class="pis-skybar"><span class="pis-skybar-t">${pisListTitle(res)}</span><span class="pis-grow"></span>${view}</div>` +
       `<div id="pisFindings">${pisFindingsHtml(res)}</div>` +
       (pis.listed ? `<div class="pis-remember">${pisIco('history')}<span>Every dataset now opens as a list for you, in this browser.</span>` +
         `<button type="button" class="linkbtn lngb" data-pis="view" data-v="sky">Back to the sky</button></div>` : '') + pisNextHtml(todo);
@@ -27616,11 +27629,45 @@ function pisFocusMatch(f) {
   return x.by === 'column' ? f.column === x.v : x.by === 'category' ? f.category === x.v
     : x.by === 'rule' ? (f.regulations || []).includes(x.v) : x.by === 'combo' ? x.v.split('|').includes(f.label) : true;
 }
-function pisFocusLabel(res) {
+/** The list's heading: every finding, or how many of them the list is narrowed to. */
+function pisListTitle(res) {
+  const live = pisLive(res), n = live.filter(pisFocusMatch).length;
+  return pisIco('columns') + (pis.focus ? `${pisN(n)} of ${pisPl(live.length, 'finding')}, riskiest first` : 'Every finding, riskiest first');
+}
+/** Kinds of data held together in a row, each whole: "Date of birth + Email address + ...". */
+function pisKindsHtml(labels) {
+  return `<span class="pis-kinds">${labels.map(l => `<span class="pis-kind">${esc(l)}</span>`).join('<i class="pis-plus" aria-hidden="true">+</i>')}</span>`;
+}
+/** Above the list, narrowed: where it was narrowed from, to what (in full), how many findings that leaves, and the way back. */
+function pisFocusBand(res, n) {
   const x = pis.focus, o = res.overall || {}; if (!x) return '';
-  const named = arr => ((arr || []).find(e => e.key === x.v) || {}).label || x.v;
-  return x.by === 'column' ? `Column <code>${esc(x.v)}</code>` : x.by === 'category' ? esc(named(o.categories))
-    : x.by === 'rule' ? esc(named(o.regulations)) : `Held together: ${esc(x.v.split('|').join(' + '))}`;
+  const named = (arr, l) => ((arr || []).find(e => e.key === x.v) || {}).label || l[x.v] || x.v;
+  const these = pisPl(n, 'finding');
+  let ic, from, title, more = '', say;
+  if (x.by === 'combo') {
+    const labels = x.v.split('|'), c = ((res.identity || {}).combinations || []).find(g => (g.labels || []).join('|') === x.v) || {};
+    const pct = c.rows && res.rows_scanned ? Math.round(1000 * c.rows / res.rows_scanned) / 10 : null;
+    const ex = (c.example_rows || []).slice(0, 3).map(r => esc(String(r))).join(', ');
+    ic = 'users'; from = 'Who it identifies';
+    title = c.rows ? `${pisPl(c.rows, 'row')} ${c.rows === 1 ? 'holds' : 'hold'} these together, enough to single a person out${pct != null ? `<small>${pct}% of the rows read</small>` : ''}`
+      : 'Held together in a row, these single a person out';
+    more = pisKindsHtml(labels);
+    say = `The list shows the ${these} where these kinds of data sit, in any column.${ex ? ` For example ${esc(res.row_key || 'row')} ${ex}.` : ''}`;
+  } else if (x.by === 'rule') {
+    ic = 'shield'; from = 'Rules'; title = esc(named(o.regulations, PIS_REG_L));
+    say = `The list shows the ${these} that ${n === 1 ? 'falls' : 'fall'} under this rule.`;
+  } else if (x.by === 'category') {
+    ic = 'doc'; from = 'Rules'; title = esc(named(o.categories, PIS_CAT_L));
+    say = `The list shows the ${these} of this kind of data.`;
+  } else {
+    ic = 'columns'; from = ''; title = `Column <code>${esc(x.v)}</code>`;
+    say = `The list shows the ${these} in this column.`;
+  }
+  return `<div class="pis-focus" role="note" aria-label="The list is narrowed"><span class="pis-focus-ic">${pisIco(ic)}</span>` +
+    `<div class="pis-focus-b">${from ? `<span class="pis-focus-k">From ${esc(from)}</span>` : ''}<span class="pis-focus-t">${title}</span>${more}` +
+      `<span class="pis-focus-s">${say}</span></div>` +
+    `<div class="pis-focus-a">${from ? `<button type="button" class="dsx-btn lngb" data-pis="unlist">${pisIco('chevron-l')}Back to ${esc(from)}</button>` : ''}` +
+      `<button type="button" class="dsx-btn lngb" data-pis="unfocus">${pisIco('cross')}Show every finding</button></div></div>`;
 }
 /** Open a finding in the list, among every finding, ready to read. */
 function pisShowFinding(id) {
@@ -27647,13 +27694,11 @@ function pisFindingsHtml(res) {
   const hidden = all.filter(f => f.embedded).length;
   const chip = (v, l, n) => `<button type="button" class="pis-fchip lngb ${v || 'all'}${pis.sev === v ? ' on' : ''}" data-pis="sev" data-v="${v}" aria-pressed="${pis.sev === v}">` +
     `${v ? '<span class="dot" aria-hidden="true"></span>' : ''}${l} <b>${pisN(n)}</b></button>`;
-  const focus = pis.focus ? `<span class="pis-focus"><span class="pis-focus-t">${pisFocusLabel(res)}</span>` +
-    `<button type="button" class="pis-focus-x lngb" data-pis="unfocus" aria-label="Show every finding" data-tip="Show every finding">${pisIco('cross')}</button></span>` : '';
-  const filter = `<div class="pis-filter" role="group" aria-label="Show findings">${focus}${chip('', 'All', all.length)}` +
+  const filter = `<div class="pis-filter" role="group" aria-label="Show findings">${chip('', 'All', all.length)}` +
     PIS_SEV.filter(count).map(s => chip(s, PIS_SEV_L[s], count(s))).join('') + (hidden ? chip('hidden', 'Hidden in free text', hidden) : '') + `</div>`;
   const find = `<label class="pis-find">${pisIco('search')}<input type="search" data-pis-find aria-label="Search the findings" ` +
     `placeholder="Search findings, columns or data types…" value="${esc(pis.fq || '')}"></label>`;
-  return `<div class="pis-findhead">${filter}${find}</div><div id="pisFindTable">${pisFindTableHtml(res)}</div>` + pisDismissedHtml(res);
+  return pisFocusBand(res, all.length) + `<div class="pis-findhead">${filter}${find}</div><div id="pisFindTable">${pisFindTableHtml(res)}</div>` + pisDismissedHtml(res);
 }
 /** The findings table: the severity chosen, the search typed, riskiest first (or least, when turned). */
 function pisFindTableHtml(res) {
@@ -27677,6 +27722,7 @@ function pisRepaintFindings(res, keep) {
   const top = keep ? ((box.querySelector('.pis-tbl-wrap') || {}).scrollTop || 0) : 0;
   box.innerHTML = pisFindingsHtml(res);
   const w = box.querySelector('.pis-tbl-wrap'); if (w) w.scrollTop = top;
+  const t = $('#pisSkyCard .pis-skybar-t'); if (t) t.innerHTML = pisListTitle(res);
 }
 function pisMenuClick(e) {
   const b = e.target.closest('button[data-pis]'); if (!b || b.disabled) return;
@@ -28063,6 +28109,9 @@ function pisScheduleRun(key) {
       } else if (a === 'unfocus') {
         pis.focus = null; if (res) pisRepaintFindings(res, false);
         const s = panel.querySelector('#pisFindings [data-pis="sev"]'); if (s) s.focus();
+      } else if (a === 'unlist') {
+        pis.focus = null; pis.sev = ''; pis.fq = ''; pis.view = 'sky'; pisPaintSky();
+        pisRefocus('.pis-seg [data-pis="lens"][aria-checked="true"]');
       } else if (a === 'show') {
         pisShowFinding(t.dataset.id);
       } else if (a === 'fmenu') {
