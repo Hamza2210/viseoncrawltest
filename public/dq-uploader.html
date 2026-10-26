@@ -4987,34 +4987,46 @@
   /* a way just picked: its figures light one after another */
   .pid-people.pid-in .pid-p.on { animation: pidOn .5s var(--dq-ease) both; animation-delay: calc(min(var(--j), 80) * 9ms); }
   @keyframes pidOn { from { background: color-mix(in srgb, var(--accent) 34%, transparent); transform: scale(.55); } 55% { transform: scale(1.3); } to { transform: none; } }
-  .pid-cap { margin: 8px 0 6px; font-size: 11.5px; color: var(--muted); }
-  .pid-leg { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 11.5px; color: var(--muted); }
+  /* over the figures, the share they light as a number, and what one figure is worth */
+  .pid-stat { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .pid-stat > b { font-size: 30px; font-weight: 800; line-height: 1; letter-spacing: -.02em; color: color-mix(in srgb, var(--accent) 55%, #fff);
+    text-shadow: 0 0 14px color-mix(in srgb, var(--accent) 70%, transparent); font-variant-numeric: tabular-nums; }
+  .pid-stat > span { display: grid; gap: 1px; font-size: 12.5px; font-weight: 650; }
+  .pid-stat small { font-size: 11.5px; font-weight: 500; color: var(--muted); }
+  .pid-key { flex: none; margin-left: auto; display: grid; grid-template-columns: auto auto; align-items: center; column-gap: 5px; font-style: normal;
+    font-size: 12px; font-weight: 700; text-align: right; }
+  .pid-key small { grid-column: 1 / -1; font-size: 11px; font-weight: 500; color: var(--muted); }
+  .pid-p.pid-keyfig { width: 13px; background: color-mix(in srgb, var(--accent) 55%, #fff); }
+  .pid-leg { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 8px; font-size: 11.5px; color: var(--muted); }
   .pid-leg span { display: inline-flex; align-items: center; gap: 5px; }
   .pid-leg i { width: 9px; height: 9px; border-radius: 3px; background: color-mix(in srgb, var(--text) 8%, transparent); }
-  .pid-leg i.on { background: color-mix(in srgb, var(--accent) 55%, #fff); } .pid-leg i.w { background: color-mix(in srgb, var(--accent) 34%, transparent); }
-  .pid-leg i.pii { background: color-mix(in srgb, var(--text) 22%, transparent); }
-  .pid-ways { display: flex; flex-wrap: wrap; gap: 6px; }
-  button.pid-way { display: grid; gap: 5px; justify-items: start; min-width: 64px; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--border);
-    background: var(--card); box-shadow: none; color: var(--text); font: inherit; cursor: pointer; transition: border-color .15s, background-color .15s; }
-  button.pid-way b { font-size: 15px; font-weight: 800; line-height: 1.1; font-variant-numeric: tabular-nums; }
-  button.pid-way:hover, button.pid-way.hv { border-color: color-mix(in srgb, var(--accent) 55%, var(--border)); }
-  button.pid-way.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 15%, var(--card)); }
-  button.pid-way:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-  .pid-way-i { display: flex; gap: 3px; }
-  .pid-way-i .pis-ico { width: 13px; height: 13px; color: var(--muted); } .pid-way-i .key .pis-ico { color: var(--accent); }
-  .pid-note { margin: 8px 0 0; font-size: 11.5px; color: var(--muted); }
-  .pid-pick { display: grid; gap: 8px; margin-top: 12px; padding: 12px 13px; border-radius: 12px;
-    border: 1px solid color-mix(in srgb, var(--accent) 55%, var(--border)); background: color-mix(in srgb, var(--accent) 7%, var(--card)); }
-  .pid-pick-h { display: flex; align-items: baseline; gap: 8px; } .pid-pick-h b { font-size: 16px; font-weight: 800; }
-  .pid-pick-h small { font-size: 12px; font-weight: 700; color: var(--accent); }
+  .pid-leg i.w { background: color-mix(in srgb, var(--accent) 34%, transparent); } .pid-leg i.pii { background: color-mix(in srgb, var(--text) 22%, transparent); }
+  /* Which rows: each way a row does it, a choice with a radio dot, said in words; the one picked opens out */
+  .pid-ways { display: grid; gap: 6px; }
+  .pid-way { border-radius: 12px; border: 1px solid var(--border); background: var(--card); transition: border-color .15s, background-color .15s; }
+  .pid-way:has(button.pid-way-pick:hover), .pid-way.hv { border-color: color-mix(in srgb, var(--accent) 55%, var(--border)); }
+  .pid-way.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 9%, var(--card)); }
+  .pid-way-pick { display: flex; align-items: flex-start; gap: 11px; width: 100%; padding: 11px 12px; border: 0; border-radius: 12px; background: none;
+    box-shadow: none; color: var(--text); font: inherit; text-align: left; }
+  button.pid-way-pick { cursor: pointer; }
+  button.pid-way-pick:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .pid-dot { flex: none; width: 16px; height: 16px; margin-top: 2px; border-radius: 50%; border: 2px solid var(--muted); transition: border-width .15s, border-color .15s; }
+  .pid-way.on .pid-dot { border: 5px solid var(--accent); background: #fff; }
+  .pid-way-b { flex: 1; min-width: 0; display: grid; gap: 4px; }
+  .pid-way-t { display: flex; align-items: baseline; gap: 8px; } .pid-way-t b { font-size: 15px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .pid-way-t small { font-size: 12px; font-weight: 700; color: var(--accent); }
+  .pid-way-w { font-size: 12.5px; line-height: 1.45; color: color-mix(in srgb, var(--text) 80%, var(--muted)); } .pid-way-w b { color: var(--text); }
+  .pid-way-det { display: grid; gap: 8px; margin: 0 12px 0 39px; padding: 9px 0 12px; border-top: 1px solid color-mix(in srgb, var(--accent) 30%, var(--border)); }
+  .pid-way-pick.solo + .pid-way-det { margin-left: 12px; }
   .pid-why { margin: 0; font-size: 12px; color: var(--muted); }
-  .pid-pick-f { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 10px; }
-  .pid-pick-f small { font-size: 11.5px; color: var(--muted); }
-  .pid-pick-f .linkbtn { display: inline-flex; align-items: center; gap: 4px; margin: 0 0 0 auto; font-size: 12.5px; font-weight: 650; }
-  .pid-pick-f .linkbtn .pis-ico { width: 13px; height: 13px; }
+  .pid-way-f { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 10px; }
+  .pid-way-f small { font-size: 11.5px; color: var(--muted); }
+  .pid-way-f .linkbtn { display: inline-flex; align-items: center; gap: 4px; margin: 0 0 0 auto; font-size: 12.5px; font-weight: 650; }
+  .pid-way-f .linkbtn .pis-ico { width: 13px; height: 13px; }
+  .pid-note { margin: 8px 0 0; font-size: 11.5px; color: var(--muted); }
   .pid-rule { display: flex; gap: 8px; margin: 14px 0 0; padding: 10px 12px; border-radius: 10px; background: color-mix(in srgb, var(--text) 4%, transparent);
     font-size: 11.5px; line-height: 1.5; color: var(--muted); }
-  .pid-rule .pis-ico { flex: none; width: 15px; height: 15px; margin-top: 1px; color: var(--accent); } .pid-rule b { color: var(--text); }
+  .pid-rule .pis-ico { flex: none; width: 15px; height: 15px; margin-top: 1px; color: var(--accent); }
   /* Coming in: the two cards rise, the figures count up, and each star flies out along its ray, riskiest first */
   #pisStage.pis-enter > .card { animation: dqPop .5s var(--dq-ease) both; }
   #pisStage.pis-enter > .card:nth-child(2) { animation-delay: .08s; }
@@ -5130,7 +5142,7 @@
     .pis-dpane, .pis-cons-in .pis-cons, .pis-cons-in .pis-star-core, .pis-cons-in .pis-star-hov, .pis-cons-in .pis-conslabel, .pis-cons-spark,
     .pis-light .pis-wave, .pis-light .pis-core-glow, .pis-light .pis-ray, .pis-light .pis-star, .pis-tl.tl-in *, .pis-tl .tl-spin,
     .pid-people.pid-in .pid-p.on { animation: none !important; }
-    .pid-p, button.pid-way { transition: none; }
+    .pid-p, .pid-way, .pid-dot { transition: none; }
     .pis-tl.tl-in .tl-line, .pis-tl.tl-in .tl-mvbar { stroke-dasharray: none; stroke-dashoffset: 0; }
     .pis-sky-in .pis-ray, .pis-cons-in .pis-cons, .pis-light .pis-ray { stroke-dasharray: none; stroke-dashoffset: 0; }
     .pis-cons-in .pis-cons { fill-opacity: 1; }
@@ -24238,7 +24250,7 @@ const GD_SHOTS = {
   "pii-column": [1600, 1399, "aac0753e6e"],
   "pii-findings": [1600, 1087, "775a59d084"],
   "pii-head": [1600, 324, "93cd0ec2bc"],
-  "pii-identify": [1600, 815, "33fcdd6817"],
+  "pii-identify": [1600, 815, "c54378ceee"],
   "pii-rule": [1600, 815, "9471d5817c"],
   "pii-rules": [1600, 815, "b7ab44eab0"],
   "pii-sky": [1600, 1018, "d9dcbc0ce4"],
@@ -25956,9 +25968,9 @@ ${HDRS}
           p(`On a wide window the finding's pane sits between the sky and the list; on a narrower one it opens underneath them, and the page moves down to it. The list stays put, to pick another. Escape closes the finding, then the column.`) +
           tip(`Drag the left edge of any list beside the sky to make it wider or narrower, or focus the edge and use the arrow keys. The width is kept in this browser for every list, and a double-click on the edge puts it back.`) },
       { h: 'Who it identifies', body:
-          p(`${ui('Who it identifies')}, the second view, is about the rows that hold enough together to single a person out: a name with a date of birth, say. Beside the sky, a figure stands for each row read (or each hundredth of them, when there are more), and below it are the ways a row does it, each with its number of rows and an icon for each kind of data it holds. The commonest way is picked to begin with.`) +
-          p(`Picking a way lights its share of the figures and joins its columns in the sky, the columns outside it stepping back; the caption under the constellation says how many rows it covers. Pointing at a way, or at a figure, lights its share without picking it. The card under the ways says why the way counts, with the kind of data that makes it count in bold, and gives example rows.`) +
-          shot('pii-identify', `${n(1)} The columns of the way picked, joined. ${n(2)} A figure for each row read, the way picked lit. ${n(3)} The ways a row singles someone out, to pick from. ${n(4)} Their findings, in the list.`) +
+          p(`${ui('Who it identifies')}, the second view, is about the rows that hold enough together to single a person out: a name with a date of birth, say. Beside the sky, each figure is 1% of the rows read (or one row, when a hundred or fewer were read), and the number over them says what share the bright ones are. Under them, ${ui('Which rows?')} lists the ways a row does it, each with its rows, its share, and what it holds in words: the first in full, the others by how they differ from it. The commonest is picked to begin with.`) +
+          p(`Picking a way lights its share of the figures and joins its columns in the sky, the columns outside it stepping back; the caption under the constellation says how many rows it covers. Pointing at a way, or at a figure, lights its share (and says it as a number) without picking it. The way picked opens out to say why its rows count and to give example rows.`) +
+          shot('pii-identify', `${n(1)} The columns of the way picked, joined. ${n(2)} Each figure is 1% of the rows read: the way picked lit, its share as a number. ${n(3)} Which rows: the ways a row singles someone out, to pick from. ${n(4)} Their findings, in the list.`) +
           sm('pii-identify') },
       { h: 'Changes', body:
           p(`${ui('Changes')} is a timeline of the dataset's sweeps (its last twelve), oldest on the left. The red dot on the button means there is something new.`) +
@@ -27276,14 +27288,31 @@ function pisDetailPane(res, id) {
       (pis.col !== f.column ? `<button type="button" class="linkbtn lngb" data-pis="col" data-v="${esc(f.column)}">Open ${esc(f.column)} ${pisIco('arrow')}</button>` : '') +
     `</div></section>`;
 }
-/** Who it identifies, beside the sky: how many rows single a person out, a figure for each row read lit by the way picked,
- *  the ways to pick from, and the one picked in full (why it counts, its kinds of data, example rows, its findings). */
+/** A share of the rows read as people say it: whole from 10%, to one place below, and "under 0.1%" rather than nothing. */
+function pisShare(v, N) {
+  if (!N || !v) return '0%';
+  const p = 100 * v / N, r = p >= 10 ? Math.round(p) : Math.round(p * 10) / 10;
+  return r ? `${r}%` : 'under 0.1%';
+}
+/** A way a row singles someone out, in words: the commonest one's kinds of data in full, and each other one by how it
+ *  differs from that, when that is the shorter way to say it ("Like the first, plus IP address"). */
+function pisWayWords(g, i) {
+  const l = (g[i] || {}).labels || [], first = (g[0] || {}).labels || [];
+  const list = a => a.length < 2 ? a.join('') : `${a.slice(0, -1).join(', ')} and ${a[a.length - 1]}`;
+  if (!i) return esc(list(l));
+  const plus = l.filter(x => !first.includes(x)), minus = first.filter(x => !l.includes(x));
+  if (plus.length + minus.length >= l.length) return `${esc(list(l))} only`;
+  return 'Like the first' + (minus.length ? `, without <b>${esc(list(minus))}</b>` : '') + (plus.length ? `, plus <b>${esc(list(plus))}</b>` : '');
+}
+/** Who it identifies, beside the sky: how many rows single a person out; a figure for each 1% of the rows read (or each row,
+ *  for a hundred or fewer), the way picked lit and its share said as a number over them; then Which rows, the ways a row
+ *  does it to pick from in words, the one picked opening out (why its rows count, example rows, its findings). */
 function pisIdentPanel(res) {
   const idn = res.identity || {}, o = res.overall || {}, g = idn.combinations || [], N = res.rows_scanned || 0;
   const head = `<div class="pis-side-h"><span class="pis-side-t">${pisIco('users')}Who it identifies</span></div>`;
   const withPii = `Personal data in ${pisPl(o.rows_with_pii || 0, 'row')} (${esc(String(o.rows_with_pii_pct || 0))}%).`;
   if (!idn.rows) return `<aside class="pis-side" data-key="lens:identify">${head}<p class="pis-side-s">${withPii} None holds enough together to single a person out.</p></aside>`;
-  const pct = v => N ? Math.round(1000 * v / N) / 10 : 0, k = pisWayIdx(res), c = g[k] || {}, key = pisWayKey(c), why = pisWhy(c.types || []);
+  const k = pisWayIdx(res), c = g[k] || {}, key = pisWayKey(c), why = pisWhy(c.types || []);
   // a way just picked (or the view just entered) lights its figures one after another
   const fresh = !dqReduced() && (pis.paintedLens !== 'identify' || pis.paintedWay !== key);
   const pp = pisPeople(res), seen = new Set(pp.own.map(String));
@@ -27291,36 +27320,48 @@ function pisIdentPanel(res) {
   const fig = pp.own.map(x => typeof x === 'number' && x >= 0
     ? `<i class="pid-p w${x === k ? ' on' : ''}" data-pis="way" data-v="${esc(pisWayKey(g[x]))}"${x === k ? ` style="--j:${j++}"` : ''}></i>`
     : `<i class="pid-p${x === -1 ? ' w' : x === 'pii' ? ' pii' : ''}"></i>`).join('');
-  const per = N <= 100 ? 'Each figure is a row read.' : `Each figure stands for ${N % 100 ? 'about ' : ''}${pisPl(Math.round(N / 100), 'row')} read.`;
-  const leg = `<span><i class="on"></i>The way picked</span>` + (g.length > 1 || seen.has('-1') ? `<span><i class="w"></i>Other ways</span>` : '') +
-    (seen.has('pii') ? `<span><i class="pii"></i>Personal data only</span>` : '') + (seen.has('none') ? `<span><i></i>None</span>` : '');
-  const way = (x, i) => { const on = i === k, ks = pisWhy(x.types || []).keys;
-    return `<button type="button" class="pid-way lngb${on ? ' on' : ''}" role="radio" aria-checked="${on}" data-pis="way" data-v="${esc(pisWayKey(x))}" ` +
-      `aria-label="${esc(`${pisPl(x.rows, 'row')}: ${(x.labels || []).join(', ')}`)}"><b>${pisN(x.rows)}</b><span class="pid-way-i">` +
-      (x.types || []).map(t => `<span${ks.includes(t) ? ' class="key"' : ''}>${pisIco(PIS_TYPE_ICO[t] || 'doc')}</span>`).join('') + `</span></button>`; };
-  const others = (idn.rows || 0) - g.reduce((a, x) => a + (x.rows || 0), 0);
+  // what one figure is worth, and what the number over the figures says of the bright ones
+  const unit = `<em class="pid-key"><i class="pid-p pid-keyfig"></i>${N <= 100 ? '= 1 row'
+    : `= 1%<small>${N % 100 ? 'about ' : ''}${pisPl(Math.round(N / 100), 'row')}</small>`}</em>`;
+  const say = x => `${pisPl(x.rows || 0, 'row')}, the bright figures`;
+  const leg = seen.has('pii') || seen.has('none') ? `<div class="pid-leg">${g.length > 1 || seen.has('-1') ? '<span><i class="w"></i>Other ways</span>' : ''}` +
+    (seen.has('pii') ? '<span><i class="pii"></i>Personal data, nobody singled out</span>' : '') + (seen.has('none') ? '<span><i></i>No personal data</span>' : '') + `</div>` : '';
   const ex = (c.example_rows || []).slice(0, 3).map(r => esc(String(r))).join(', ');
+  const det = `<div class="pid-way-det"><p class="pid-why">Why these count: ${esc(why.t.charAt(0).toLowerCase() + why.t.slice(1))}.</p>` +
+    `<div class="pid-way-f">${ex ? `<small>For example ${esc(res.row_key || 'row')} ${ex}</small>` : ''}` +
+    `<button type="button" class="linkbtn lngb" data-pis="in-list" data-by="combo" data-v="${esc((c.labels || []).join('|'))}">Their findings in the list ${pisIco('arrow')}</button></div></div>`;
+  const way = (x, i) => { const on = i === k;
+    const top = `<span class="pid-way-b"><span class="pid-way-t"><b>${pisPl(x.rows || 0, 'row')}</b><small>${pisShare(x.rows, N)}</small></span>` +
+      `<span class="pid-way-w">${pisWayWords(g, i)}</span></span>`;
+    return `<div class="pid-way${on ? ' on' : ''}">` + (g.length > 1
+      ? `<button type="button" class="pid-way-pick lngb" role="radio" aria-checked="${on}" data-pis="way" data-v="${esc(pisWayKey(x))}" ` +
+        `data-pct="${esc(pisShare(x.rows, N))}" data-say="${esc(say(x))}"><span class="pid-dot" aria-hidden="true"></span>${top}</button>`
+      : `<div class="pid-way-pick solo">${top}</div>`) + (on && c.rows ? det : '') + `</div>`; };
+  const others = (idn.rows || 0) - g.reduce((a, x) => a + (x.rows || 0), 0);
   return `<aside class="pis-side" data-key="lens:identify">${head}` +
-    `<div class="pid-sum"><b>${pisN(idn.rows)}</b><span>${idn.rows === 1 ? 'row singles' : 'rows single'} a person out<small>${pct(idn.rows)}% of the ${pisPl(N, 'row')} read</small></span></div>` +
-    `<div class="pid-people${fresh ? ' pid-in' : ''}" role="img" aria-label="${esc(`Of the ${pisPl(N, 'row')} read, ${pisN(idn.rows)} single a person out; ` +
-      `${pisN(c.rows || 0)} of them the way picked`)}"><div class="pid-figs">${fig}</div></div>` +
-    `<p class="pid-cap">${per}</p><div class="pid-leg">${leg}</div>` +
-    (g.length > 1 ? `<h6>${pisN(g.length)} ways a row does it</h6><div class="pid-ways" role="radiogroup" aria-label="Ways a row singles a person out">` +
-      g.map(way).join('') + `</div>` : '') +
-    (others > 0 ? `<p class="pid-note">The ${pisN(g.length)} commonest ways. ${pisPl(others, 'more row')} ${others === 1 ? 'holds' : 'hold'} another mix.</p>` : '') +
-    (c.rows ? `<div class="pid-pick"><div class="pid-pick-h"><b>${pisPl(c.rows, 'row')}</b><small>${pct(c.rows)}% of the rows read</small></div>` +
-      `<p class="pid-why">${esc(why.t)}</p>${pisKindsHtml(c.labels || [], c.types, why.keys, false)}` +
-      `<div class="pid-pick-f">${ex ? `<small>For example ${esc(res.row_key || 'row')} ${ex}</small>` : ''}` +
-      `<button type="button" class="linkbtn lngb" data-pis="in-list" data-by="combo" data-v="${esc((c.labels || []).join('|'))}">Their findings in the list ${pisIco('arrow')}</button></div></div>` : '') +
-    (idn.rule ? `<p class="pid-rule">${pisIco('info')}<span>A row singles someone out when it holds ${esc(idn.rule)}. ` +
-      `<b>Bold</b> marks what makes each way count.</span></p>` : '') + `</aside>`;
+    `<div class="pid-sum"><b>${pisN(idn.rows)}</b><span>${idn.rows === 1 ? 'row singles' : 'rows single'} a person out<small>${pisShare(idn.rows, N)} of the ${pisPl(N, 'row')} read</small></span></div>` +
+    `<div class="pid-people${fresh ? ' pid-in' : ''}" role="img" aria-label="${esc(`${pisShare(c.rows, N)} of the ${pisPl(N, 'row')} read: ${pisPl(c.rows || 0, 'row')}, ` +
+      `the way picked. Each figure is ${N <= 100 ? 'a row' : '1% of the rows'}.`)}">` +
+      `<div class="pid-stat"><b>${pisShare(c.rows, N)}</b><span>of the ${pisPl(N, 'row')} read<small>${say(c)}</small></span>${unit}</div>` +
+      `<div class="pid-figs">${fig}</div></div>${leg}` +
+    (g.length ? `<h6>${g.length > 1 ? 'Which rows? Pick one to light them up' : 'What these rows hold'}</h6>` +
+      `<div class="pid-ways"${g.length > 1 ? ' role="radiogroup" aria-label="Which rows single a person out"' : ''}>${g.map(way).join('')}</div>` : '') +
+    (others > 0 ? `<p class="pid-note">The ${g.length > 1 ? `${pisN(g.length)} commonest ways` : 'commonest way'}. ` +
+      `${pisPl(others, 'more row')} ${others === 1 ? 'holds' : 'hold'} another mix.</p>` : '') +
+    (idn.rule ? `<p class="pid-rule">${pisIco('info')}<span>A row singles someone out when it holds ${esc(idn.rule)}.</span></p>` : '') + `</aside>`;
 }
-/** A way pointed at (a figure, or one of the ways): its figures lit in its place, the way picked stepping back meanwhile. */
+/** A way pointed at (a figure, or one of the ways): its figures lit in its place and its share said over them, the way
+ *  picked stepping back meanwhile; nothing pointed at, the way picked again. */
 function pisWayHover(v) {
   const side = document.querySelector('#pisStage .pis-side'); if (!side) return;
   const box = side.querySelector('.pid-people'); if (box) box.classList.toggle('hovering', !!v);
   side.querySelectorAll('.pid-p.hv, .pid-way.hv').forEach(e => e.classList.remove('hv'));
-  if (v) side.querySelectorAll('[data-pis="way"]').forEach(e => { if (e.dataset.v === v) e.classList.add('hv'); });
+  let b = null;
+  if (v) side.querySelectorAll('[data-pis="way"]').forEach(e => { if (e.dataset.v !== v) return;
+    if (e.classList.contains('pid-way-pick')) { b = e; e.parentElement.classList.add('hv'); } else e.classList.add('hv'); });
+  b = b || side.querySelector('.pid-way-pick[aria-checked="true"]');
+  const st = side.querySelector('.pid-stat');
+  if (st && b) { st.querySelector('b').textContent = b.dataset.pct; st.querySelector('small').textContent = b.dataset.say; }
 }
 function pisChangesPanel(res) {
   const c = res.changes;
@@ -28259,7 +28300,7 @@ function pisScheduleRun(key) {
         pisInList(t.dataset.by, t.dataset.v);
       } else if (a === 'way') {
         pis.way = t.dataset.v; pisPaintSky();
-        pisRefocus(`.pis-side .pid-way[data-v="${CSS.escape(pis.way)}"]`);
+        pisRefocus(`.pis-side .pid-way-pick[data-v="${CSS.escape(pis.way)}"]`);
       } else if (a === 'unfocus') {
         pis.focus = null; if (res) pisRepaintFindings(res, false);
         const s = panel.querySelector('#pisFindings [data-pis="sev"]'); if (s) s.focus();
@@ -28314,11 +28355,11 @@ function pisScheduleRun(key) {
       const to = grip && { ArrowLeft: gw + by, ArrowRight: gw - by, Home: PIS_SIDE_MIN, End: Infinity }[e.key];
       if (to != null) { e.preventDefault(); pisPref('sidew', pisSideSet(grip.parentElement, to)); return; }
       // The ways a row singles someone out are one choice: the arrow keys pick the next or the one before.
-      const wayB = e.target.closest && e.target.closest('.pid-way');
+      const wayB = e.target.closest && e.target.closest('button.pid-way-pick');
       const wStep = wayB && { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
       if (wStep) {
         e.preventDefault();
-        const all = [...panel.querySelectorAll('.pid-way')], next = all[(all.indexOf(wayB) + wStep + all.length) % all.length];
+        const all = [...panel.querySelectorAll('button.pid-way-pick')], next = all[(all.indexOf(wayB) + wStep + all.length) % all.length];
         if (next) next.click();
         return;
       }
