@@ -4592,7 +4592,6 @@
   #pisFindings h5 { margin: 16px 0 6px; font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
   #pisFindings h5 small { margin-left: 6px; font-weight: 600; letter-spacing: 0; text-transform: none; }
   #pisFindings .pis-tbl td small { display: block; color: var(--muted); font-size: 11.5px; }
-  .pis-how { color: var(--accent); cursor: help; border-bottom: 1px dotted currentColor; }
   .pis-findhead { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 14px; margin-bottom: 10px; }
   .pis-findhead .pis-filter { margin: 0; }
   .pis-findhead > .pis-muted { color: var(--muted); font-size: 12.5px; }
@@ -4873,10 +4872,9 @@
   .pis-side-v { display: flex; align-items: center; gap: 12px; }
   .pis-side-risk b { font-size: 24px; } .pis-side-risk small { margin-left: 5px; color: var(--muted); font-size: 12px; }
   .pis-side-s { margin: 8px 0 10px; font-size: 12.5px; color: var(--muted); line-height: 1.5; }
-  .pis-side-big { margin: 2px 0 0; } .pis-side-big b { font-size: 30px; } .pis-side-big small { color: var(--muted); }
   .pis-side h6 { margin: 14px 0 7px; font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
   .pis-side h6 small { margin-left: 4px; letter-spacing: 0; }
-  .pis-fitems, .pis-combos { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+  .pis-fitems { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
   .pis-fitem { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 10px;
     background: var(--card); box-shadow: none; color: var(--text); font: inherit; text-align: left; }
   button.pis-fitem { cursor: pointer; } button.pis-fitem:hover { border-color: color-mix(in srgb, var(--accent) 50%, var(--border)); }
@@ -4928,9 +4926,6 @@
   .pis-dpane .pis-side-acts { align-items: center; margin-top: 18px; }
   .pis-dpane .pis-side-acts .linkbtn { display: inline-flex; align-items: center; gap: 5px; margin: 0; font-size: 13px; }
   .pis-dpane .pis-side-acts .linkbtn .pis-ico { width: 14px; height: 14px; }
-  .pis-combos li { display: grid; gap: 3px; padding: 9px 11px; border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: 10px;
-    background: var(--card); font-size: 12.5px; }
-  .pis-combos li small { color: var(--muted); }
   /* The next step, under the sky or the list */
   .pis-next { margin-top: 16px; padding: 12px 16px; border-radius: 12px; border: 1px solid var(--border); background: var(--card-2); }
   .pis-next-row { display: flex; align-items: center; gap: 14px; }
@@ -4965,9 +4960,61 @@
   @container pis-list (max-width: 960px) { .pis-focus { flex-wrap: wrap; } .pis-focus-a { width: 100%; justify-content: flex-start; padding-left: 50px; } }
   /* Kinds of data held together in a row: each whole, joined by a plus, wrapping rather than cut short */
   .pis-kinds { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
-  .pis-kind { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--border);
-    background: var(--card); font-size: 12.5px; font-weight: 650; white-space: nowrap; }
+  .pis-kind { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--border);
+    background: var(--card); font-size: 12.5px; font-weight: 600; white-space: nowrap; }
+  .pis-kind:has(.pis-ico) { padding-left: 8px; }
+  .pis-kind .pis-ico { width: 13px; height: 13px; color: var(--muted); }
+  /* the kind that makes a row single someone out (a name, say), drawn stronger than what it is held with */
+  .pis-kind.key { border-color: color-mix(in srgb, var(--accent) 65%, var(--border)); background: color-mix(in srgb, var(--accent) 16%, var(--card)); font-weight: 750; }
+  .pis-kind.key .pis-ico { color: var(--accent); }
   .pis-plus { font-style: normal; font-weight: 700; color: var(--muted); }
+  /* Who it identifies: a figure for each row read (or each hundredth of them), the ways a row singles someone out to pick
+     from, and the one picked lit among the figures, in the sky, and in a card */
+  .pid-sum { display: flex; align-items: center; gap: 12px; margin: 2px 0 12px; }
+  .pid-sum > b { font-size: 34px; font-weight: 800; letter-spacing: -.02em; line-height: 1; font-variant-numeric: tabular-nums; }
+  .pid-sum > span { display: grid; gap: 2px; font-size: 13.5px; font-weight: 650; }
+  .pid-sum small { font-size: 11.5px; font-weight: 500; color: var(--muted); }
+  .pid-people { --pid-fig: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='6.4' r='3.9'/%3E%3Cpath d='M4.8 22v-3.6c0-3.7 3.2-6.4 7.2-6.4s7.2 2.7 7.2 6.4V22z'/%3E%3C/svg%3E");
+    padding: 12px; border-radius: 12px; border: 1px solid var(--border); background: var(--bg); }
+  .pid-figs { display: grid; grid-template-columns: repeat(20, minmax(0, 1fr)); gap: 4px 3px; filter: drop-shadow(0 0 2.5px color-mix(in srgb, var(--accent) 85%, transparent)); }
+  .pid-p { display: block; aspect-ratio: 1 / 1.08; background: color-mix(in srgb, var(--text) 8%, transparent);
+    -webkit-mask: var(--pid-fig) center / contain no-repeat; mask: var(--pid-fig) center / contain no-repeat; transition: background-color .2s, transform .2s; }
+  .pid-p.pii { background: color-mix(in srgb, var(--text) 22%, transparent); }
+  .pid-p.w { background: color-mix(in srgb, var(--accent) 34%, transparent); }
+  .pid-p[data-pis] { cursor: pointer; }
+  .pid-p.on, .pid-p.hv { background: color-mix(in srgb, var(--accent) 55%, #fff); }
+  .pid-people.hovering .pid-p.on:not(.hv) { background: color-mix(in srgb, var(--accent) 34%, transparent); }
+  /* a way just picked: its figures light one after another */
+  .pid-people.pid-in .pid-p.on { animation: pidOn .5s var(--dq-ease) both; animation-delay: calc(min(var(--j), 80) * 9ms); }
+  @keyframes pidOn { from { background: color-mix(in srgb, var(--accent) 34%, transparent); transform: scale(.55); } 55% { transform: scale(1.3); } to { transform: none; } }
+  .pid-cap { margin: 8px 0 6px; font-size: 11.5px; color: var(--muted); }
+  .pid-leg { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 11.5px; color: var(--muted); }
+  .pid-leg span { display: inline-flex; align-items: center; gap: 5px; }
+  .pid-leg i { width: 9px; height: 9px; border-radius: 3px; background: color-mix(in srgb, var(--text) 8%, transparent); }
+  .pid-leg i.on { background: color-mix(in srgb, var(--accent) 55%, #fff); } .pid-leg i.w { background: color-mix(in srgb, var(--accent) 34%, transparent); }
+  .pid-leg i.pii { background: color-mix(in srgb, var(--text) 22%, transparent); }
+  .pid-ways { display: flex; flex-wrap: wrap; gap: 6px; }
+  button.pid-way { display: grid; gap: 5px; justify-items: start; min-width: 64px; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--border);
+    background: var(--card); box-shadow: none; color: var(--text); font: inherit; cursor: pointer; transition: border-color .15s, background-color .15s; }
+  button.pid-way b { font-size: 15px; font-weight: 800; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  button.pid-way:hover, button.pid-way.hv { border-color: color-mix(in srgb, var(--accent) 55%, var(--border)); }
+  button.pid-way.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 15%, var(--card)); }
+  button.pid-way:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .pid-way-i { display: flex; gap: 3px; }
+  .pid-way-i .pis-ico { width: 13px; height: 13px; color: var(--muted); } .pid-way-i .key .pis-ico { color: var(--accent); }
+  .pid-note { margin: 8px 0 0; font-size: 11.5px; color: var(--muted); }
+  .pid-pick { display: grid; gap: 8px; margin-top: 12px; padding: 12px 13px; border-radius: 12px;
+    border: 1px solid color-mix(in srgb, var(--accent) 55%, var(--border)); background: color-mix(in srgb, var(--accent) 7%, var(--card)); }
+  .pid-pick-h { display: flex; align-items: baseline; gap: 8px; } .pid-pick-h b { font-size: 16px; font-weight: 800; }
+  .pid-pick-h small { font-size: 12px; font-weight: 700; color: var(--accent); }
+  .pid-why { margin: 0; font-size: 12px; color: var(--muted); }
+  .pid-pick-f { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 10px; }
+  .pid-pick-f small { font-size: 11.5px; color: var(--muted); }
+  .pid-pick-f .linkbtn { display: inline-flex; align-items: center; gap: 4px; margin: 0 0 0 auto; font-size: 12.5px; font-weight: 650; }
+  .pid-pick-f .linkbtn .pis-ico { width: 13px; height: 13px; }
+  .pid-rule { display: flex; gap: 8px; margin: 14px 0 0; padding: 10px 12px; border-radius: 10px; background: color-mix(in srgb, var(--text) 4%, transparent);
+    font-size: 11.5px; line-height: 1.5; color: var(--muted); }
+  .pid-rule .pis-ico { flex: none; width: 15px; height: 15px; margin-top: 1px; color: var(--accent); } .pid-rule b { color: var(--text); }
   /* Coming in: the two cards rise, the figures count up, and each star flies out along its ray, riskiest first */
   #pisStage.pis-enter > .card { animation: dqPop .5s var(--dq-ease) both; }
   #pisStage.pis-enter > .card:nth-child(2) { animation-delay: .08s; }
@@ -5081,7 +5128,9 @@
   @media (prefers-reduced-motion: reduce) {
     #pisStage.pis-enter > .card, #pisStage.pis-enter .pis-meter-bar i, .pis-sky-in .pis-star, .pis-sky-in .pis-ray, .pis-sky-in .pis-star-lbl,
     .pis-dpane, .pis-cons-in .pis-cons, .pis-cons-in .pis-star-core, .pis-cons-in .pis-star-hov, .pis-cons-in .pis-conslabel, .pis-cons-spark,
-    .pis-light .pis-wave, .pis-light .pis-core-glow, .pis-light .pis-ray, .pis-light .pis-star, .pis-tl.tl-in *, .pis-tl .tl-spin { animation: none !important; }
+    .pis-light .pis-wave, .pis-light .pis-core-glow, .pis-light .pis-ray, .pis-light .pis-star, .pis-tl.tl-in *, .pis-tl .tl-spin,
+    .pid-people.pid-in .pid-p.on { animation: none !important; }
+    .pid-p, button.pid-way { transition: none; }
     .pis-tl.tl-in .tl-line, .pis-tl.tl-in .tl-mvbar { stroke-dasharray: none; stroke-dashoffset: 0; }
     .pis-sky-in .pis-ray, .pis-cons-in .pis-cons, .pis-light .pis-ray { stroke-dasharray: none; stroke-dashoffset: 0; }
     .pis-cons-in .pis-cons { fill-opacity: 1; }
@@ -24189,7 +24238,7 @@ const GD_SHOTS = {
   "pii-column": [1600, 1399, "aac0753e6e"],
   "pii-findings": [1600, 1087, "775a59d084"],
   "pii-head": [1600, 324, "93cd0ec2bc"],
-  "pii-identify": [1600, 815, "1dca4f4ace"],
+  "pii-identify": [1600, 815, "33fcdd6817"],
   "pii-rule": [1600, 815, "9471d5817c"],
   "pii-rules": [1600, 815, "b7ab44eab0"],
   "pii-sky": [1600, 1018, "d9dcbc0ce4"],
@@ -25907,8 +25956,9 @@ ${HDRS}
           p(`On a wide window the finding's pane sits between the sky and the list; on a narrower one it opens underneath them, and the page moves down to it. The list stays put, to pick another. Escape closes the finding, then the column.`) +
           tip(`Drag the left edge of any list beside the sky to make it wider or narrower, or focus the edge and use the arrow keys. The width is kept in this browser for every list, and a double-click on the edge puts it back.`) },
       { h: 'Who it identifies', body:
-          p(`${ui('Who it identifies')}, the second view, joins the columns that, together in one row, single a person out: a name with a date of birth, say. A caption under the constellation says how many rows they single out, and the columns outside it step back.`) +
-          shot('pii-identify', `${n(1)} The columns that single a person out, joined. ${n(2)} How many rows that is, which columns hold it together, and example rows. ${n(3)} The findings in those columns, in the list.`) +
+          p(`${ui('Who it identifies')}, the second view, is about the rows that hold enough together to single a person out: a name with a date of birth, say. Beside the sky, a figure stands for each row read (or each hundredth of them, when there are more), and below it are the ways a row does it, each with its number of rows and an icon for each kind of data it holds. The commonest way is picked to begin with.`) +
+          p(`Picking a way lights its share of the figures and joins its columns in the sky, the columns outside it stepping back; the caption under the constellation says how many rows it covers. Pointing at a way, or at a figure, lights its share without picking it. The card under the ways says why the way counts, with the kind of data that makes it count in bold, and gives example rows.`) +
+          shot('pii-identify', `${n(1)} The columns of the way picked, joined. ${n(2)} A figure for each row read, the way picked lit. ${n(3)} The ways a row singles someone out, to pick from. ${n(4)} Their findings, in the list.`) +
           sm('pii-identify') },
       { h: 'Changes', body:
           p(`${ui('Changes')} is a timeline of the dataset's sweeps (its last twelve), oldest on the left. The red dot on the button means there is something new.`) +
@@ -25930,7 +25980,7 @@ ${HDRS}
           p(`${ui('List')}, at the top right of the sky, shows every finding as a table: its severity, its risk, what it is, its column, and whether it hides in free text, riskiest first. Choosing it is remembered in this browser, so every dataset then opens as a list until you choose ${ui('Sky')} again.`) +
           shot('pii-findings', `${n(1)} The sky, or the list. ${n(2)} Search the findings. ${n(3)} Show only one severity, or only those hidden in free text. ${n(4)} Turn the order round. ${n(5)} A finding opened: why it matters and where it sits in each value. ${n(6)} Label its column${GOV ? ' or dismiss it' : ''}.`) +
           sm('pii-findings') +
-          p(`${ui('See them in the list')} in a view, and ${ui('See it in the list')} in a finding's pane, open the list narrowed to those findings without changing what opens next time. A band above the table says what it is narrowed to and where from, in full: from ${ui('Who it identifies')}, how many rows hold which kinds of data together. ${ui('Show every finding')} on it widens the list again, and ${ui('Back to Who it identifies')} (or ${ui('Back to Rules')}) returns to the sky as you left it. A find inside free text is rated a level higher than the same kind held in its own column.`) },
+          p(`${ui('Their findings in the list')} under a way a row singles someone out, ${ui('See them in the list')} under a rule, and ${ui('See it in the list')} in a finding's pane open the list narrowed to those findings without changing what opens next time. A band above the table says what it is narrowed to and where from, in full: from ${ui('Who it identifies')}, how many rows hold which kinds of data together. ${ui('Show every finding')} on it widens the list again, and ${ui('Back to Who it identifies')} (or ${ui('Back to Rules')}) returns to the sky as you left it. A find inside free text is rated a level higher than the same kind held in its own column.`) },
       { h: 'Act on it', body:
           p(`Under the sky, or the list, is the next step for this dataset, and ${ui('All steps')} shows the rest: restrict it with a tag, clean the free text, and deal with each kind of data at source. ${showme('pii-next')}`) +
           list(`${ui('Label the column as personal data')}, in a finding's pane, labels the column for every assessment.`,
@@ -26840,7 +26890,7 @@ async function pisOpen(key, sweepId) {
     st.innerHTML = dqSkeleton('Loading the sweep', 4);
     pis.fq = ''; pis.sev = ''; pis.riskAsc = false; pis.focus = null; pis.listed = false; pis.todoOpen = false;
     pis.lens = 'severity'; pis.col = ''; pis.chip = ''; pis.view = pisPref('view') === 'list' ? 'list' : 'sky';
-    pis.sideTop = {}; pis.sideKey = ''; pis.detail = ''; pis.detKey = ''; pis.paintedLens = ''; pis.paintedChip = '';
+    pis.sideTop = {}; pis.sideKey = ''; pis.detail = ''; pis.detKey = ''; pis.paintedLens = ''; pis.paintedChip = ''; pis.way = ''; pis.paintedWay = '';
   }
   try {
     const r = await pisApi({ action: 'result', dataset_key: key, ...(sweepId ? { sweep_id: sweepId } : {}) });
@@ -26899,7 +26949,20 @@ const PIS_ICONS = {
   'chevron-l': '<path d="m15 6-6 6 6 6"/>',
   more: '<circle cx="5.5" cy="12" r="1.3" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.3" fill="currentColor" stroke="none"/><circle cx="18.5" cy="12" r="1.3" fill="currentColor" stroke="none"/>',
   sort: '<path d="M8 4v16M4.5 7.5 8 4l3.5 3.5"/><path d="M16 20V4M12.5 16.5 16 20l3.5-3.5"/>',
+  info: '<circle cx="12" cy="12" r="8.6"/><path d="M12 11v5.2M12 7.8h.01"/>',
+  mail: '<rect x="3.5" y="5.5" width="17" height="13" rx="2"/><path d="m4.2 7 7.8 6 7.8-6"/>',
+  phone: '<path d="M6.6 3.5h2.6l1.4 4-2 1.4a11 11 0 0 0 6.5 6.5l1.4-2 4 1.4v2.6a2 2 0 0 1-2.2 2A16.5 16.5 0 0 1 4.6 5.7a2 2 0 0 1 2-2.2z"/>',
+  card: '<rect x="3" y="5.5" width="18" height="13" rx="2"/><path d="M3 10h18M7 15h3"/>',
+  pin: '<path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.4"/>',
+  globe: '<circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.5 2.6 3.5 5.4 3.5 8.5s-1 5.9-3.5 8.5M12 3.5C9.5 6.1 8.5 8.9 8.5 12s1 5.9 3.5 8.5"/>',
+  idcard: '<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="11" r="2"/><path d="M5.8 16c.5-1.5 1.5-2.2 2.7-2.2s2.2.7 2.7 2.2M14 10h4M14 13.5h4"/>',
+  bank: '<path d="M3.5 9.5 12 4l8.5 5.5"/><path d="M5.5 10v7M10 10v7M14 10v7M18.5 10v7M3.5 19.5h17"/>',
+  heart: '<path d="M12 20s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.2a4.3 4.3 0 0 1 7.5 2.6C19.5 15.4 12 20 12 20z"/>',
 };
+/** Each kind of data the sweep finds, as an icon. */
+const PIS_TYPE_ICO = { dob: 'calendar', person_name: 'user', email: 'mail', phone: 'phone', pan: 'card', cvv: 'card', iban: 'bank', bank_account: 'bank',
+  address: 'pin', postcode: 'pin', geo: 'pin', ip: 'globe', ssn: 'idcard', nino: 'idcard', passport: 'idcard', nhs: 'idcard', driving_licence: 'idcard',
+  health: 'heart', credential: 'key' };
 function pisIco(name) {
   return `<span class="pis-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">` +
     `${PIS_ICONS[name] || GD_ICONS[name] || GD_ICONS.doc}</svg></span>`;
@@ -26940,10 +27003,55 @@ function pisColumns(res) {
              isNew: finds.some(f => nw.has(f.id)) };
   });
 }
-/** The columns holding a kind of data that, together with others in the same row, singles a person out. */
-function pisIdentityCols(res) {
-  const labels = new Set(((res.identity || {}).combinations || []).flatMap(g => g.labels || []));
+/** The columns holding a kind of data that, together with others in the same row, singles a person out: for one way a row
+ *  does it (an index into the sweep's combinations), or for every way. */
+function pisIdentityCols(res, k) {
+  const g = (res.identity || {}).combinations || [];
+  const labels = new Set((k != null && g[k] ? [g[k]] : g).flatMap(c => c.labels || []));
   return new Set(pisLive(res).filter(f => labels.has(f.label)).map(f => f.column));
+}
+/** A way a row singles someone out, as a key that holds from one sweep to the next: the kinds of data it holds. */
+function pisWayKey(c) { return ((c || {}).types || []).join('|'); }
+/** The way picked in Who it identifies: the one asked for when this sweep has it, else the commonest. */
+function pisWayIdx(res) {
+  const i = ((res.identity || {}).combinations || []).findIndex(c => pisWayKey(c) === pis.way);
+  return i < 0 ? 0 : i;
+}
+/** What makes a way count, by the sweep's own rule (dq/pii_sweep.py, identifies) taken in its order: the kinds that do it, and
+ *  that in plain words. */
+const PIS_NATIONAL = ['ssn', 'nino', 'passport', 'nhs', 'driving_licence'], PIS_WHERE = ['address', 'postcode', 'geo'];
+function pisWhy(types) {
+  const has = k => types.includes(k), nat = types.filter(k => PIS_NATIONAL.includes(k)), where = types.filter(k => PIS_WHERE.includes(k));
+  if (has('person_name')) return { keys: ['person_name'], t: 'A name, with other personal data' };
+  if (nat.length) return { keys: nat, t: `${nat.length > 1 ? 'National identifiers' : 'A national identifier'}, with other personal data` };
+  if (has('dob') && where.length) return { keys: ['dob', ...where], t: 'A date of birth, with where someone lives' };
+  const c = types.filter(k => k === 'email' || k === 'phone'), o = types.filter(k => ['dob', 'pan', 'iban', 'bank_account'].includes(k) || PIS_WHERE.includes(k));
+  if (c.length && o.length) {
+    return { keys: [...c, ...o], t: `${c.length > 1 ? 'An email address and a phone number' : has('email') ? 'An email address' : 'A phone number'}, with ` +
+      (o.includes('dob') ? 'a date of birth' : where.length ? 'where someone lives' : 'bank or card details') };
+  }
+  return { keys: [], t: 'Held together, enough to single a person out' };
+}
+/** The figures standing for the rows read, a figure a row (or a hundred figures for more rows): whose way each figure that
+ *  singles someone out belongs to (-1: a mix outside the ways listed), then 'pii' for personal data that singles nobody out,
+ *  then 'none'. Shares are rounded so the figures add up; a way with any rows keeps a figure while another has one to spare. */
+function pisPeople(res) {
+  const idn = res.identity || {}, g = idn.combinations || [], N = res.rows_scanned || 0, F = Math.min(100, N);
+  if (!F) return { F: 0, own: [] };
+  const share = v => F * (v || 0) / N, sum = g.reduce((a, c) => a + (c.rows || 0), 0);
+  const total = Math.min(F, Math.max(idn.rows ? 1 : 0, Math.round(share(idn.rows))));
+  const W = Math.min(total, Math.max(sum ? 1 : 0, Math.round(share(sum))));
+  const raw = g.map(c => share(c.rows)), n = raw.map(Math.floor);
+  let left = W - n.reduce((a, b) => a + b, 0);
+  raw.map((v, i) => [v - Math.floor(v), i]).sort((a, b) => b[0] - a[0]).forEach(([, i]) => { if (left > 0) { n[i]++; left--; } });
+  g.forEach((c, i) => { const big = n.indexOf(Math.max(...n)); if (c.rows && !n[i] && n[big] > 1) { n[big]--; n[i]++; } });
+  const pii = Math.min(F - total, Math.round(share(Math.max(0, ((res.overall || {}).rows_with_pii || 0) - (idn.rows || 0)))));
+  const own = [];
+  n.forEach((v, i) => { for (let j = 0; j < v; j++) own.push(i); });
+  while (own.length < total) own.push(-1);
+  for (let j = 0; j < pii; j++) own.push('pii');
+  while (own.length < F) own.push('none');
+  return { F, own };
 }
 /** A chip of the Rules view: "rule:pci_dss" or "kind:financial". */
 function pisChipMatch(f, chip) {
@@ -26967,7 +27075,8 @@ function pisSkyLayout(res, W, H) {
 }
 function pisSkySvg(res, L, o) {
   const { W, H, cx, cy, R, base, frac, at, P, D } = L, sevv = s => PIS_SEV_VAR[s] || 'var(--muted)';
-  const ids = pisIdentityCols(res);
+  const ids = pisIdentityCols(res, o.lens === 'identify' ? o.way : null);
+  const idRows = o.lens === 'identify' && o.way != null ? (((res.identity || {}).combinations || [])[o.way] || {}).rows : (res.identity || {}).rows;
   // Rules: the columns the rule picked touches are lit; until one is picked, none are.
   const lit = o.lens === 'rules' ? new Set(o.chip ? pisLive(res).filter(f => pisChipMatch(f, o.chip)).map(f => f.column) : []) : null;
   const dimmed = c => (o.col && o.col !== c.name) || (o.lens === 'identify' && ids.size > 0 && !ids.has(c.name)) || (lit && !lit.has(c.name));
@@ -27014,7 +27123,9 @@ function pisSkySvg(res, L, o) {
     if (o.cons) { consDur = Math.min(2.8, Math.max(1.4, plen / 520)); strike = new Map(on.map((p, i) => [p.c.name, reach[i] / plen * consDur])); }
     s += `<path d="${d}" class="pis-cons" style="--plen:${plen.toFixed(1)}px" aria-hidden="true"/>` +
       (strike ? `<circle r="4" class="pis-cons-spark" filter="url(#pisSkyGlow)" aria-hidden="true"><animateMotion dur="${consDur.toFixed(2)}s" fill="freeze" path="${d}"/></circle>` : '') +
-      `<text x="${cx}" y="${H - 20}" text-anchor="middle" class="pis-conslabel">Joined, these ${on.length} columns single out a person in ${pisPl((res.identity || {}).rows, 'row')}</text>`;
+      `<text x="${cx}" y="${H - 20}" text-anchor="middle" class="pis-conslabel">Joined, these ${on.length} columns single out a person in ${pisPl(idRows, 'row')}</text>`;
+  } else if (o.lens === 'identify' && ids.size === 1) {
+    s += `<text x="${cx}" y="${H - 20}" text-anchor="middle" class="pis-conslabel">Alone, ${esc([...ids][0])} holds enough to single out a person in ${pisPl(idRows, 'row')}</text>`;
   }
   s += `<g aria-hidden="true"><circle cx="${cx}" cy="${cy}" r="58" fill="url(#pisSkyCore)" class="pis-core-glow"/><circle cx="${cx}" cy="${cy}" r="27" class="pis-core-in"/>` +
     `<text x="${cx}" y="${cy + 5}" text-anchor="middle" class="pis-core-n">${pisN((res.overall || {}).risk || 0)}</text>` +
@@ -27165,18 +27276,51 @@ function pisDetailPane(res, id) {
       (pis.col !== f.column ? `<button type="button" class="linkbtn lngb" data-pis="col" data-v="${esc(f.column)}">Open ${esc(f.column)} ${pisIco('arrow')}</button>` : '') +
     `</div></section>`;
 }
+/** Who it identifies, beside the sky: how many rows single a person out, a figure for each row read lit by the way picked,
+ *  the ways to pick from, and the one picked in full (why it counts, its kinds of data, example rows, its findings). */
 function pisIdentPanel(res) {
-  const idn = res.identity || {}, o = res.overall || {}, g = idn.combinations || [];
+  const idn = res.identity || {}, o = res.overall || {}, g = idn.combinations || [], N = res.rows_scanned || 0;
   const head = `<div class="pis-side-h"><span class="pis-side-t">${pisIco('users')}Who it identifies</span></div>`;
   const withPii = `Personal data in ${pisPl(o.rows_with_pii || 0, 'row')} (${esc(String(o.rows_with_pii_pct || 0))}%).`;
   if (!idn.rows) return `<aside class="pis-side" data-key="lens:identify">${head}<p class="pis-side-s">${withPii} None holds enough together to single a person out.</p></aside>`;
-  const ex = c => (c.example_rows || []).slice(0, 5).map(r => esc(String(r))).join(', ');
-  return `<aside class="pis-side" data-key="lens:identify">${head}<p class="pis-side-big"><b>${pisN(idn.rows)}</b> rows <small>(${esc(String(idn.pct))}%)</small></p>` +
-    `<p class="pis-side-s">hold enough together to single a person out <span class="pis-how" data-tip="${esc((idn.rule || '').replace(/^./, ch => ch.toUpperCase()))}.">how?</span> ${withPii}</p>` +
-    `<ul class="pis-combos">${g.map(c => `<li><b>${pisPl(c.rows, 'row')}</b><span>${esc((c.labels || []).join(' + '))}</span>` +
-      (ex(c) ? `<small>For example ${esc(res.row_key || 'row')} ${ex(c)}</small>` : '') +
-      `<button type="button" class="linkbtn lngb" data-pis="in-list" data-by="combo" data-v="${esc((c.labels || []).join('|'))}">See them in the list ${pisIco('arrow')}</button></li>`).join('')}</ul>` +
-    `</aside>`;
+  const pct = v => N ? Math.round(1000 * v / N) / 10 : 0, k = pisWayIdx(res), c = g[k] || {}, key = pisWayKey(c), why = pisWhy(c.types || []);
+  // a way just picked (or the view just entered) lights its figures one after another
+  const fresh = !dqReduced() && (pis.paintedLens !== 'identify' || pis.paintedWay !== key);
+  const pp = pisPeople(res), seen = new Set(pp.own.map(String));
+  let j = 0;
+  const fig = pp.own.map(x => typeof x === 'number' && x >= 0
+    ? `<i class="pid-p w${x === k ? ' on' : ''}" data-pis="way" data-v="${esc(pisWayKey(g[x]))}"${x === k ? ` style="--j:${j++}"` : ''}></i>`
+    : `<i class="pid-p${x === -1 ? ' w' : x === 'pii' ? ' pii' : ''}"></i>`).join('');
+  const per = N <= 100 ? 'Each figure is a row read.' : `Each figure stands for ${N % 100 ? 'about ' : ''}${pisPl(Math.round(N / 100), 'row')} read.`;
+  const leg = `<span><i class="on"></i>The way picked</span>` + (g.length > 1 || seen.has('-1') ? `<span><i class="w"></i>Other ways</span>` : '') +
+    (seen.has('pii') ? `<span><i class="pii"></i>Personal data only</span>` : '') + (seen.has('none') ? `<span><i></i>None</span>` : '');
+  const way = (x, i) => { const on = i === k, ks = pisWhy(x.types || []).keys;
+    return `<button type="button" class="pid-way lngb${on ? ' on' : ''}" role="radio" aria-checked="${on}" data-pis="way" data-v="${esc(pisWayKey(x))}" ` +
+      `aria-label="${esc(`${pisPl(x.rows, 'row')}: ${(x.labels || []).join(', ')}`)}"><b>${pisN(x.rows)}</b><span class="pid-way-i">` +
+      (x.types || []).map(t => `<span${ks.includes(t) ? ' class="key"' : ''}>${pisIco(PIS_TYPE_ICO[t] || 'doc')}</span>`).join('') + `</span></button>`; };
+  const others = (idn.rows || 0) - g.reduce((a, x) => a + (x.rows || 0), 0);
+  const ex = (c.example_rows || []).slice(0, 3).map(r => esc(String(r))).join(', ');
+  return `<aside class="pis-side" data-key="lens:identify">${head}` +
+    `<div class="pid-sum"><b>${pisN(idn.rows)}</b><span>${idn.rows === 1 ? 'row singles' : 'rows single'} a person out<small>${pct(idn.rows)}% of the ${pisPl(N, 'row')} read</small></span></div>` +
+    `<div class="pid-people${fresh ? ' pid-in' : ''}" role="img" aria-label="${esc(`Of the ${pisPl(N, 'row')} read, ${pisN(idn.rows)} single a person out; ` +
+      `${pisN(c.rows || 0)} of them the way picked`)}"><div class="pid-figs">${fig}</div></div>` +
+    `<p class="pid-cap">${per}</p><div class="pid-leg">${leg}</div>` +
+    (g.length > 1 ? `<h6>${pisN(g.length)} ways a row does it</h6><div class="pid-ways" role="radiogroup" aria-label="Ways a row singles a person out">` +
+      g.map(way).join('') + `</div>` : '') +
+    (others > 0 ? `<p class="pid-note">The ${pisN(g.length)} commonest ways. ${pisPl(others, 'more row')} ${others === 1 ? 'holds' : 'hold'} another mix.</p>` : '') +
+    (c.rows ? `<div class="pid-pick"><div class="pid-pick-h"><b>${pisPl(c.rows, 'row')}</b><small>${pct(c.rows)}% of the rows read</small></div>` +
+      `<p class="pid-why">${esc(why.t)}</p>${pisKindsHtml(c.labels || [], c.types, why.keys, false)}` +
+      `<div class="pid-pick-f">${ex ? `<small>For example ${esc(res.row_key || 'row')} ${ex}</small>` : ''}` +
+      `<button type="button" class="linkbtn lngb" data-pis="in-list" data-by="combo" data-v="${esc((c.labels || []).join('|'))}">Their findings in the list ${pisIco('arrow')}</button></div></div>` : '') +
+    (idn.rule ? `<p class="pid-rule">${pisIco('info')}<span>A row singles someone out when it holds ${esc(idn.rule)}. ` +
+      `<b>Bold</b> marks what makes each way count.</span></p>` : '') + `</aside>`;
+}
+/** A way pointed at (a figure, or one of the ways): its figures lit in its place, the way picked stepping back meanwhile. */
+function pisWayHover(v) {
+  const side = document.querySelector('#pisStage .pis-side'); if (!side) return;
+  const box = side.querySelector('.pid-people'); if (box) box.classList.toggle('hovering', !!v);
+  side.querySelectorAll('.pid-p.hv, .pid-way.hv').forEach(e => e.classList.remove('hv'));
+  if (v) side.querySelectorAll('[data-pis="way"]').forEach(e => { if (e.dataset.v === v) e.classList.add('hv'); });
 }
 function pisChangesPanel(res) {
   const c = res.changes;
@@ -27550,11 +27694,13 @@ function pisPaintSky(animate) {
   grid.style.setProperty('--pis-sky-h', H + 'px');   // the panel beside the sky is as tall as the sky
   const hint = side || pis.howto ? '' : pis.lens === 'rules' ? 'Pick a rule or a kind of data to light up its columns' : 'Pick a star to see what it holds';
   // What has just come into view plays in, once: the constellation on entering Who it identifies, a rule's columns lit on picking it.
+  // Picking another way a row singles someone out draws its constellation afresh.
   const motion = !dqReduced(), chipNow = pis.lens === 'rules' ? pis.chip : '';
-  const cons = motion && pis.lens === 'identify' && pis.paintedLens !== 'identify', light = motion && !!chipNow && chipNow !== pis.paintedChip;
+  const way = pis.lens === 'identify' ? pisWayIdx(res) : null, wayNow = way == null ? '' : pisWayKey(((res.identity || {}).combinations || [])[way]);
+  const cons = motion && pis.lens === 'identify' && (pis.paintedLens !== 'identify' || pis.paintedWay !== wayNow), light = motion && !!chipNow && chipNow !== pis.paintedChip;
   const tlIn = motion && tl && pis.paintedLens !== 'changes';            // the timeline plays in on entering Changes
-  pis.paintedLens = pis.lens; pis.paintedChip = chipNow;
-  wrap.innerHTML = (tl ? pisTimelineSvg(res, W, H, { anim: tlIn, col: pis.col }) : pisSkySvg(res, L, { lens: pis.lens, col: pis.col, chip: pis.chip, animate, detCol, cons, light })) +
+  pis.paintedLens = pis.lens; pis.paintedChip = chipNow; pis.paintedWay = wayNow;
+  wrap.innerHTML = (tl ? pisTimelineSvg(res, W, H, { anim: tlIn, col: pis.col }) : pisSkySvg(res, L, { lens: pis.lens, col: pis.col, chip: pis.chip, animate, detCol, cons, light, way })) +
     // Many clean columns are dust by the centre: this lists them, in a corner where it cannot sit on a star's label.
     (L.D.length ? `<button type="button" class="pis-dustbtn lngb${pis.col === '__clean' ? ' on' : ''}" data-pis="col" data-v="__clean" ` +
       `aria-pressed="${pis.col === '__clean'}">${pisIco('shield')}${pisPl(L.D.length, 'clean column')}</button>` : '') +
@@ -27591,6 +27737,7 @@ function pisPaintSky(animate) {
     if (pis.sideTop[pis.detKey] != null) detEl.scrollTop = pis.sideTop[pis.detKey];
   }
   if (pis.hover) pisSkyHover(pis.hover);
+  if (pis.wayHover) pisWayHover(pis.wayHover);
 }
 /** A dataset coming into view: its two cards rise one after the other, its figures count up, its risk bar fills. */
 function pisEnter(st) {
@@ -27634,9 +27781,13 @@ function pisListTitle(res) {
   const live = pisLive(res), n = live.filter(pisFocusMatch).length;
   return pisIco('columns') + (pis.focus ? `${pisN(n)} of ${pisPl(live.length, 'finding')}, riskiest first` : 'Every finding, riskiest first');
 }
-/** Kinds of data held together in a row, each whole: "Date of birth + Email address + ...". */
-function pisKindsHtml(labels) {
-  return `<span class="pis-kinds">${labels.map(l => `<span class="pis-kind">${esc(l)}</span>`).join('<i class="pis-plus" aria-hidden="true">+</i>')}</span>`;
+/** Kinds of data held together in a row, each whole and with its icon when its type is known; the ones that make the row
+ *  single someone out (keys) drawn stronger. "Date of birth + Email address + ...", or without the pluses. */
+function pisKindsHtml(labels, types, keys, plus = true) {
+  const ks = new Set(keys || []);
+  return `<span class="pis-kinds">${labels.map((l, i) => { const t = (types || [])[i];
+    return `<span class="pis-kind${t && ks.has(t) ? ' key' : ''}">${t ? pisIco(PIS_TYPE_ICO[t] || 'doc') : ''}${esc(l)}</span>`; })
+    .join(plus ? '<i class="pis-plus" aria-hidden="true">+</i>' : '')}</span>`;
 }
 /** Above the list, narrowed: where it was narrowed from, to what (in full), how many findings that leaves, and the way back. */
 function pisFocusBand(res, n) {
@@ -27651,7 +27802,7 @@ function pisFocusBand(res, n) {
     ic = 'users'; from = 'Who it identifies';
     title = c.rows ? `${pisPl(c.rows, 'row')} ${c.rows === 1 ? 'holds' : 'hold'} these together, enough to single a person out${pct != null ? `<small>${pct}% of the rows read</small>` : ''}`
       : 'Held together in a row, these single a person out';
-    more = pisKindsHtml(labels);
+    more = pisKindsHtml(labels, c.types, pisWhy(c.types || []).keys);
     say = `The list shows the ${these} where these kinds of data sit, in any column.${ex ? ` For example ${esc(res.row_key || 'row')} ${ex}.` : ''}`;
   } else if (x.by === 'rule') {
     ic = 'shield'; from = 'Rules'; title = esc(named(o.regulations, PIS_REG_L));
@@ -28106,6 +28257,9 @@ function pisScheduleRun(key) {
         if (n && res) { n.outerHTML = pisNextHtml(pisTodoItems(res, pisLive(res))); pisRefocus('.pis-next [data-pis="todo"]'); }
       } else if (a === 'in-list') {
         pisInList(t.dataset.by, t.dataset.v);
+      } else if (a === 'way') {
+        pis.way = t.dataset.v; pisPaintSky();
+        pisRefocus(`.pis-side .pid-way[data-v="${CSS.escape(pis.way)}"]`);
       } else if (a === 'unfocus') {
         pis.focus = null; if (res) pisRepaintFindings(res, false);
         const s = panel.querySelector('#pisFindings [data-pis="sev"]'); if (s) s.focus();
@@ -28159,6 +28313,15 @@ function pisScheduleRun(key) {
       const gw = grip && (parseFloat(grip.parentElement.style.getPropertyValue('--pis-side-w')) || PIS_SIDE_DEF), by = e.shiftKey ? 64 : 16;
       const to = grip && { ArrowLeft: gw + by, ArrowRight: gw - by, Home: PIS_SIDE_MIN, End: Infinity }[e.key];
       if (to != null) { e.preventDefault(); pisPref('sidew', pisSideSet(grip.parentElement, to)); return; }
+      // The ways a row singles someone out are one choice: the arrow keys pick the next or the one before.
+      const wayB = e.target.closest && e.target.closest('.pid-way');
+      const wStep = wayB && { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
+      if (wStep) {
+        e.preventDefault();
+        const all = [...panel.querySelectorAll('.pid-way')], next = all[(all.indexOf(wayB) + wStep + all.length) % all.length];
+        if (next) next.click();
+        return;
+      }
       // A star is a button: Enter or Space opens its column, and the arrow keys walk the stars in order of risk.
       const star = e.target.closest && e.target.closest('.pis-star');
       const press = e.target.closest && e.target.closest('.pis-star, #pisSkyWrap .tl-run, #pisSkyWrap .tl-mv');
@@ -28204,9 +28367,13 @@ function pisScheduleRun(key) {
       // a sweep on the timeline pointed at: its tip
       const run = (e.target.closest && e.target.closest('#pisSkyWrap .tl-run')) || null;
       if (run !== pis.tlHover) { pis.tlHover = run; pisRunTip(run); }
+      // a way pointed at, as a figure or as one of the ways: its figures light in its place
+      const wy = e.target.closest && e.target.closest('#pisStage .pis-side [data-pis="way"]'), wv = wy ? wy.dataset.v : '';
+      if (wv !== (pis.wayHover || '')) { pis.wayHover = wv; pisWayHover(wv); }
     });
     panel.addEventListener('mouseleave', () => {
       if (pis.hover) { pis.hover = ''; pisSkyHover(''); }
+      if (pis.wayHover) { pis.wayHover = ''; pisWayHover(''); }
       if (pis.tlHover) { pis.tlHover = null; pisRunTip(null); }
     });
     panel.addEventListener('focusin', e => {
