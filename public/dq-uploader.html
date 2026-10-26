@@ -1292,6 +1292,10 @@
   .src-run { padding: 9px 18px; border: none; border-radius: 8px; background: var(--accent); color: var(--accent-fg);
     font-size: 14px; font-weight: 600; cursor: pointer; }
   .src-run:hover { filter: brightness(1.06); }
+  .src-sweep { display: flex; align-items: center; gap: 8px; width: fit-content; margin: 4px 0 14px; cursor: pointer; font-size: 13px; }
+  .src-sweep input { flex: none; width: 16px; height: 16px; margin: 0; accent-color: var(--accent); cursor: pointer; }
+  .src-sweep-t { font-weight: 600; color: var(--text); }
+  .src-sweep-h { font-size: 12px; color: var(--muted); }
   .src-status { margin-top: 12px; font-size: 13px; line-height: 1.5; }
   .src-status.dev { padding: 10px 12px; border-left: 4px solid var(--run); background: var(--run-bg); border-radius: 4px; color: var(--text); }
   .src-status.err { color: var(--err); }
@@ -5679,6 +5683,7 @@
         <div id="weightsGrid"></div>
         <button type="button" class="linkbtn" id="weightsReset" style="margin-top: 8px;">Reset to defaults</button>
       </details>
+      <label class="src-sweep"><input type="checkbox" data-sweep="file" checked><span class="src-sweep-t">Sweep PII</span><span class="src-sweep-h">Check the dataset for personal data before it is assessed</span></label>
       <button id="go" disabled>Upload &amp; assess</button>
         </div>
       </div>
@@ -5730,6 +5735,7 @@
           <div class="src-field full"><label>…or Secrets Manager secret ARN</label><input data-f="secret_arn" placeholder="arn:aws:secretsmanager:eu-west-1:…:secret:…"></div>
           <div class="src-field"><label>Sample rows <span class="hint">(optional)</span></label><input data-f="sample_rows" type="number" min="1" placeholder="Empty = whole table"></div>
         </div>
+        <label class="src-sweep"><input type="checkbox" data-sweep="redshift" checked><span class="src-sweep-t">Sweep PII</span><span class="src-sweep-h">Check the dataset for personal data before it is assessed</span></label>
         <button type="button" class="src-run" data-runsource="redshift">Run assessment</button>
         <div class="src-status" data-status="redshift"></div>
       </div>
@@ -5751,6 +5757,7 @@
           <div class="src-field"><label>Secret access key <span class="hint">(optional)</span></label><input data-f="secret_key" type="password"></div>
           <div class="src-field"><label>Sample rows <span class="hint">(optional)</span></label><input data-f="sample_rows" type="number" min="1" placeholder="Empty = whole file"></div>
         </div>
+        <label class="src-sweep"><input type="checkbox" data-sweep="s3" checked><span class="src-sweep-t">Sweep PII</span><span class="src-sweep-h">Check the dataset for personal data before it is assessed</span></label>
         <button type="button" class="src-run" data-runsource="s3">Run assessment</button>
         <div class="src-status" data-status="s3"></div>
       </div>
@@ -5777,6 +5784,7 @@
           <div class="src-field"><label>Role ARN <span class="hint">(optional)</span></label><input data-f="role_arn" placeholder="arn:aws:iam::…:role/…"></div>
           <div class="src-field"><label>Sample rows <span class="hint">(optional)</span></label><input data-f="sample_rows" type="number" min="1" placeholder="Empty = whole table"></div>
         </div>
+        <label class="src-sweep"><input type="checkbox" data-sweep="athena" checked><span class="src-sweep-t">Sweep PII</span><span class="src-sweep-h">Check the dataset for personal data before it is assessed</span></label>
         <button type="button" class="src-run" data-runsource="athena">Run assessment</button>
         <div class="src-status" data-status="athena"></div>
       </div>
@@ -5800,6 +5808,7 @@
           <div class="src-field"><label>Table</label><input data-f="table" placeholder="ORDERS"></div>
           <div class="src-field"><label>Sample rows <span class="hint">(optional)</span></label><input data-f="sample_rows" type="number" min="1" placeholder="Empty = whole table"></div>
         </div>
+        <label class="src-sweep"><input type="checkbox" data-sweep="snowflake" checked><span class="src-sweep-t">Sweep PII</span><span class="src-sweep-h">Check the dataset for personal data before it is assessed</span></label>
         <button type="button" class="src-run" data-runsource="snowflake">Run assessment</button>
         <div class="src-status" data-status="snowflake"></div>
       </div>
@@ -5821,6 +5830,7 @@
           <div class="src-field"><label>Table</label><input data-f="table" placeholder="orders"></div>
           <div class="src-field"><label>Sample rows <span class="hint">(optional)</span></label><input data-f="sample_rows" type="number" min="1" placeholder="Empty = whole table"></div>
         </div>
+        <label class="src-sweep"><input type="checkbox" data-sweep="databricks" checked><span class="src-sweep-t">Sweep PII</span><span class="src-sweep-h">Check the dataset for personal data before it is assessed</span></label>
         <button type="button" class="src-run" data-runsource="databricks">Run assessment</button>
         <div class="src-status" data-status="databricks"></div>
       </div>
@@ -5853,6 +5863,7 @@
           <div class="src-field"><label>Table</label><input data-f="table" placeholder="EMPLOYEES"></div>
           <div class="src-field"><label>Sample rows <span class="hint">(optional)</span></label><input data-f="sample_rows" type="number" min="1" placeholder="Empty = whole table"></div>
         </div>
+        <label class="src-sweep"><input type="checkbox" data-sweep="oracle" checked><span class="src-sweep-t">Sweep PII</span><span class="src-sweep-h">Check the dataset for personal data before it is assessed</span></label>
         <button type="button" class="src-run" data-runsource="oracle">Run assessment</button>
         <div class="src-status" data-status="oracle"></div>
       </div>
@@ -5888,6 +5899,7 @@
           <div class="src-field"><label>Sample rows <span class="hint">(optional)</span></label>
             <input data-f="sample_rows" type="number" min="1" placeholder="Empty = whole file"></div>
         </div>
+        <label class="src-sweep"><input type="checkbox" data-sweep="agentfile" checked><span class="src-sweep-t">Sweep PII</span><span class="src-sweep-h">Check the dataset for personal data before it is assessed</span></label>
         <button type="button" class="src-run" data-runsource="agentfile">Run assessment</button>
         <div class="src-status" data-status="agentfile"></div>
       </div>
@@ -5914,6 +5926,7 @@
             <select data-f="sslmode"><option value="">default</option><option>require</option><option>verify-full</option><option>disable</option></select></div>
           <div class="src-field"><label>Sample rows <span class="hint">(optional)</span></label><input data-f="sample_rows" type="number" min="1" placeholder="Empty = whole table"></div>
         </div>
+        <label class="src-sweep"><input type="checkbox" data-sweep="postgres" checked><span class="src-sweep-t">Sweep PII</span><span class="src-sweep-h">Check the dataset for personal data before it is assessed</span></label>
         <button type="button" class="src-run" data-runsource="postgres">Run assessment</button>
         <div class="src-status" data-status="postgres"></div>
       </div>
@@ -5940,6 +5953,7 @@
             <select data-f="sslmode"><option value="">default</option><option>require</option><option>verify-full</option><option>disable</option></select></div>
           <div class="src-field"><label>Sample rows <span class="hint">(optional)</span></label><input data-f="sample_rows" type="number" min="1" placeholder="Empty = whole table"></div>
         </div>
+        <label class="src-sweep"><input type="checkbox" data-sweep="mysql" checked><span class="src-sweep-t">Sweep PII</span><span class="src-sweep-h">Check the dataset for personal data before it is assessed</span></label>
         <button type="button" class="src-run" data-runsource="mysql">Run assessment</button>
         <div class="src-status" data-status="mysql"></div>
       </div>
@@ -5965,6 +5979,7 @@
           <div class="src-field"><label>Table</label><input data-f="table" placeholder="orders"></div>
           <div class="src-field"><label>Sample rows <span class="hint">(optional)</span></label><input data-f="sample_rows" type="number" min="1" placeholder="Empty = whole table"></div>
         </div>
+        <label class="src-sweep"><input type="checkbox" data-sweep="sqlserver" checked><span class="src-sweep-t">Sweep PII</span><span class="src-sweep-h">Check the dataset for personal data before it is assessed</span></label>
         <button type="button" class="src-run" data-runsource="sqlserver">Run assessment</button>
         <div class="src-status" data-status="sqlserver"></div>
       </div>
@@ -5991,6 +6006,7 @@
           <div class="src-field"><label>ODBC driver <span class="hint">(optional)</span></label><input data-f="driver" placeholder="Newest OpenEdge driver installed"></div>
           <div class="src-field"><label>Sample rows <span class="hint">(optional)</span></label><input data-f="sample_rows" type="number" min="1" placeholder="Empty = whole table"></div>
         </div>
+        <label class="src-sweep"><input type="checkbox" data-sweep="progress" checked><span class="src-sweep-t">Sweep PII</span><span class="src-sweep-h">Check the dataset for personal data before it is assessed</span></label>
         <button type="button" class="src-run" data-runsource="progress">Run assessment</button>
         <div class="src-status" data-status="progress"></div>
       </div>
@@ -6016,6 +6032,7 @@
           <div class="src-field"><label>Table</label><input data-f="table" placeholder="orders"></div>
           <div class="src-field"><label>Sample rows <span class="hint">(optional)</span></label><input data-f="sample_rows" type="number" min="1" placeholder="Empty = whole table"></div>
         </div>
+        <label class="src-sweep"><input type="checkbox" data-sweep="fabric" checked><span class="src-sweep-t">Sweep PII</span><span class="src-sweep-h">Check the dataset for personal data before it is assessed</span></label>
         <button type="button" class="src-run" data-runsource="fabric">Run assessment</button>
         <div class="src-status" data-status="fabric"></div>
       </div>
@@ -6037,6 +6054,7 @@
           <div class="src-field"><label>Table</label><input data-f="table" placeholder="orders"></div>
           <div class="src-field"><label>Sample rows <span class="hint">(optional)</span></label><input data-f="sample_rows" type="number" min="1" placeholder="Empty = whole table"></div>
         </div>
+        <label class="src-sweep"><input type="checkbox" data-sweep="synapse" checked><span class="src-sweep-t">Sweep PII</span><span class="src-sweep-h">Check the dataset for personal data before it is assessed</span></label>
         <button type="button" class="src-run" data-runsource="synapse">Run assessment</button>
         <div class="src-status" data-status="synapse"></div>
       </div>
@@ -6058,6 +6076,7 @@
             <textarea data-f="credentials_json" rows="5" placeholder='{ "type": "service_account", "project_id": "…", "private_key": "…", "client_email": "…" }' style="font-family:ui-monospace,Menlo,monospace;font-size:12px;resize:vertical;"></textarea></div>
           <div class="src-field"><label>Sample rows <span class="hint">(optional)</span></label><input data-f="sample_rows" type="number" min="1" placeholder="Empty = whole table"></div>
         </div>
+        <label class="src-sweep"><input type="checkbox" data-sweep="bigquery" checked><span class="src-sweep-t">Sweep PII</span><span class="src-sweep-h">Check the dataset for personal data before it is assessed</span></label>
         <button type="button" class="src-run" data-runsource="bigquery">Run assessment</button>
         <div class="src-status" data-status="bigquery"></div>
       </div>
@@ -6078,6 +6097,7 @@
           <div class="src-field"><label>Display name <span class="hint">(optional)</span></label><input data-f="dataset" placeholder="Defaults to the file name"></div>
           <div class="src-field"><label>Sample rows <span class="hint">(optional)</span></label><input data-f="sample_rows" type="number" min="1" placeholder="Empty = whole file"></div>
         </div>
+        <label class="src-sweep"><input type="checkbox" data-sweep="sharepoint" checked><span class="src-sweep-t">Sweep PII</span><span class="src-sweep-h">Check the dataset for personal data before it is assessed</span></label>
         <button type="button" class="src-run" data-runsource="sharepoint">Run assessment</button>
         <div class="src-status" data-status="sharepoint"></div>
       </div>
@@ -6098,6 +6118,7 @@
           <div class="src-field"><label>Display name <span class="hint">(optional)</span></label><input data-f="dataset" placeholder="Defaults to the file name"></div>
           <div class="src-field"><label>Sample rows <span class="hint">(optional)</span></label><input data-f="sample_rows" type="number" min="1" placeholder="Empty = whole file"></div>
         </div>
+        <label class="src-sweep"><input type="checkbox" data-sweep="gcs" checked><span class="src-sweep-t">Sweep PII</span><span class="src-sweep-h">Check the dataset for personal data before it is assessed</span></label>
         <button type="button" class="src-run" data-runsource="gcs">Run assessment</button>
         <div class="src-status" data-status="gcs"></div>
       </div>
@@ -6117,6 +6138,7 @@
           <div class="src-field"><label>Display name <span class="hint">(optional)</span></label><input data-f="dataset" placeholder="Defaults to the file name"></div>
           <div class="src-field"><label>Sample rows <span class="hint">(optional)</span></label><input data-f="sample_rows" type="number" min="1" placeholder="Empty = whole file"></div>
         </div>
+        <label class="src-sweep"><input type="checkbox" data-sweep="azureblob" checked><span class="src-sweep-t">Sweep PII</span><span class="src-sweep-h">Check the dataset for personal data before it is assessed</span></label>
         <button type="button" class="src-run" data-runsource="azureblob">Run assessment</button>
         <div class="src-status" data-status="azureblob"></div>
       </div>
@@ -7772,13 +7794,14 @@ const CMP_SWEEP_TAG = { critical: ['red', 'Critical'], high: ['red', 'High'], me
  * and the sweep of its own run (`this_run`) is the Compliance section's personal data: its columns are the controls, as
  * rated on the PII sweep tab, so this only says so. A run that did not sweep judged personal data from a sample of
  * whole values, beside the newest sweep there is, from an earlier run, and says why when the run said
- * (`pii_sweep_skipped`, dq/pii_sweep.py for_assessment): switched off for the dataset, off for every dataset, or
- * failed. An agent older than that, or a run from before every assessment swept, says nothing of why.
+ * (`pii_sweep_skipped`, dq/pii_sweep.py for_assessment): started with Sweep PII unticked, switched off for the
+ * dataset, off for every dataset, or failed. An agent older than that, or a run from before every assessment swept, says nothing of why.
  */
 function cmpSweepHtml(comp, key) {
   const s = comp && comp.pii_sweep, skipped = (comp && comp.pii_sweep_skipped) || '';
   const open = (k, label) => k ? ` <button type="button" class="linkbtn lngb cmp-sweep-open" data-key="${esc(k)}">${label || 'Open the sweep'}</button>` : '';
-  const why = { switched_off: 'Sweeping is switched off for this dataset: this run did not sweep it',
+  const why = { not_asked: 'This run was started with Sweep PII unticked and did not sweep the dataset',
+                switched_off: 'Sweeping is switched off for this dataset: this run did not sweep it',
                 off_everywhere: 'Sweeping is switched off for every dataset: this run did not sweep it',
                 failed: 'This run\'s PII sweep failed (the PII sweep tab says why)' }[skipped] || 'This run did not sweep the dataset';
   if (!s) return key ? `<p class="hint cmp-sweep-none">${why}${skipped ? '' : ' for personal data'}, so these checks judged it from a sample of whole values.` +
@@ -9489,6 +9512,7 @@ function dqRunFill(f, o) {
   f._runId = '';
   f._t0 = Date.now();
   f._sweep = ''; f._assessSub = '';
+  f._noSweep = !!o.noSweep;                              // the form's Sweep PII box was unticked
   dqRunClock(f, o.clock !== false);
 }
 /** "12s", "4m 05s", "1h 02m". */
@@ -9586,7 +9610,7 @@ const DQ_SWEEP_STEP = 'PII sweep';
  * run (its folder's last part), so the PII sweep API answers for it: while it reads, its step is under way and the
  * line under the loader counts the rows read so far; once it is over, Assess takes over with the run's own words, and
  * a note says what it read and found (or that it failed, and the assessment went on without it). A dataset whose
- * sweeping is switched off skips the step. Never throws: a sweep that cannot be asked about leaves the steps as they are.
+ * sweeping is switched off skips the step, as does a run started with the form's Sweep PII box unticked. Never throws: a sweep that cannot be asked about leaves the steps as they are.
  */
 async function dqRunSweep(f, resultPrefix) {
   if (!f || f._sweep === 'over' || !APP_ID || typeof pisApi !== 'function') return;
@@ -9596,15 +9620,19 @@ async function dqRunSweep(f, resultPrefix) {
   const dk = m[1], runId = m[2];
   if (!f._sweep) {                                       // the first round: is the dataset swept at all?
     f._sweep = 'on';
-    try {
-      if (((await pisApi({ action: 'settings', dataset_key: dk })).settings || {}).off) {
-        f._sweep = 'over';
-        dqRunStep(f, i, 'skip');
-        const t = f.querySelectorAll('.dq-run-step')[i].lastElementChild; if (t) t.textContent = 'PII sweep off';
-        dqRunStep(f, i + 1, 'running');
-        return;
-      }
-    } catch (e) { /* cannot tell: follow it as one that sweeps */ }
+    let off = f._noSweep ? 'PII sweep skipped' : '';
+    if (!off) {
+      try {
+        if (((await pisApi({ action: 'settings', dataset_key: dk })).settings || {}).off) off = 'PII sweep off';
+      } catch (e) { /* cannot tell: follow it as one that sweeps */ }
+    }
+    if (off) {
+      f._sweep = 'over';
+      dqRunStep(f, i, 'skip');
+      const t = f.querySelectorAll('.dq-run-step')[i].lastElementChild; if (t) t.textContent = off;
+      dqRunStep(f, i + 1, 'running');
+      return;
+    }
   }
   let s = null;
   try { s = await pisApi({ action: 'status', dataset_key: dk, sweep_id: runId }); } catch (e) { return; }   // not under way yet
@@ -9664,8 +9692,8 @@ goBtn.addEventListener('click', async () => {
   if (!file) { banner('err', 'Choose a file.'); return; }
 
   // The form steps aside for the run face, which follows the upload as a percentage, then the run.
-  const card = fileSourceMode === 'excel' ? 'excel' : 'file';
-  const seq = srcRunBegin(card, { msg: `Uploading ${file.name}`, steps: SRC_FILE_STEPS, pct: 0,
+  const card = fileSourceMode === 'excel' ? 'excel' : 'file', sweep = srcSweepOn('file');
+  const seq = srcRunBegin(card, { msg: `Uploading ${file.name}`, steps: SRC_FILE_STEPS, pct: 0, noSweep: !sweep,
     sub: `${humanSize(file.size)}, sent straight to secure storage and assessed there.` });
   const face = srcFace('file', 'run');
   let trig;
@@ -9701,7 +9729,7 @@ goBtn.addEventListener('click', async () => {
     const augment = collectSourceRefsAugment();
     if (augment) trigBody.ruleset_augment = augment;
     log('POST /data-quality', trigBody);
-    trig = await postJSON(`${API_BASE}/data-quality`, HEADERS, trigBody);
+    trig = await postJSON(`${API_BASE}/data-quality`, srcSweepHeaders(sweep), trigBody);
     log('trigger response', trig);
   } catch (err) {
     // Back to the form, which still holds the file, with the reason above it.
@@ -14789,7 +14817,8 @@ function cmtMount(box, d, comp, cols, sec) {
   if (since.length) notes.push(`${_cmpPlural(since.length, 'column')} found by this run's own checks after the newest sweep: ${since.join(', ')}.`);
   if (unread.length) notes.push(`Not read by the PII sweep (not text), so judged from a sample: ${unread.join(', ')}.`);
   if (!sw.sweep_id) notes.push('Not swept for PII yet: these are from a sample of whole values.');
-  else if (!sw.this_run && comp.pii_sweep_skipped) notes.push({ switched_off: 'Sweeping is switched off for this dataset, so these are from its last sweep.',
+  else if (!sw.this_run && comp.pii_sweep_skipped) notes.push({ not_asked: 'This run was started with Sweep PII unticked, so these are from its last sweep.',
+    switched_off: 'Sweeping is switched off for this dataset, so these are from its last sweep.',
     off_everywhere: 'Sweeping is switched off for every dataset, so these are from its last sweep.', failed: "This run's PII sweep failed, so these are from the one before." }[comp.pii_sweep_skipped] || '');
   if (m.hidden) notes.push(`${_cmpPlural(m.hidden, 'other column')} with nothing found are left out of a table this wide.`);
   box.innerHTML = `<div class="cmt-vis" tabindex="-1"></div><div class="cmt-dock" role="region" aria-live="polite" hidden></div>
@@ -19812,7 +19841,7 @@ function srcRunBegin(key, o) {
   const statusEl = document.querySelector(`[data-status="${k}"]`);
   if (statusEl) { statusEl.className = 'src-status'; statusEl.textContent = ''; }
   const f = srcFace(k, 'run');
-  dqRunFill(f, { msg: o.msg, sub: o.sub, steps: o.steps || SRC_STEPS, at: o.at || 0, pct: o.pct });
+  dqRunFill(f, { msg: o.msg, sub: o.sub, steps: o.steps || SRC_STEPS, at: o.at || 0, pct: o.pct, noSweep: o.noSweep });
   dqShowFace(stage, f);
   document.querySelectorAll(`.source-card[data-source="${key}"]`).forEach(c => c.classList.add('running'));
   srcSyncFaces();
@@ -19893,12 +19922,12 @@ function srcRunDone(key, r, failure) {
  * connector runs the same way.
  */
 async function srcLaunch(key, statusEl, endpoint, body, words, extra) {
-  const target = _srcTarget(body);
+  const target = _srcTarget(body), sweep = srcSweepOn(key);
   const seq = srcRunBegin(key, { msg: target ? `Assessing ${target}` : 'Assessing the dataset',
-    sub: words.launch + '…', steps: words.steps });
+    sub: words.launch + '…', steps: words.steps, noSweep: !sweep });
   let res;
   try {
-    res = await postJSON(`${API_BASE}/data-quality/${endpoint}`, HEADERS, body);
+    res = await postJSON(`${API_BASE}/data-quality/${endpoint}`, srcSweepHeaders(sweep), body);
   } catch (e) {
     if (srcRunCurrent(key, seq)) srcRunFail(key, e.message);
     return;
@@ -19917,6 +19946,23 @@ async function srcLaunch(key, statusEl, endpoint, body, words, extra) {
   await pollInto(res.resultPrefix, bodyEl, Object.assign({ stage: key, stageSeq: seq, statusEl, tabbed: true,
     agentJob: agentJobOf(res) }, extra ? extra(res) : {}));
 }
+/**
+ * Every data source form, the upload included, has a "Sweep PII" box above its run button, ticked to start with.
+ * Ticked, the assessment sweeps its dataset for personal data first, as every assessment does. Unticked, this one run
+ * does not: the request says so in a header (the API adds the worker's --no-pii-sweep), so no form needs a field of its
+ * own. A schedule, a re-run from history and every other start still sweep.
+ */
+function srcSweepOn(key) {
+  const b = document.querySelector(`input[data-sweep="${_srcKey(key)}"]`);
+  return !b || b.checked;
+}
+const srcSweepHeaders = sweep => sweep ? HEADERS : Object.assign({}, HEADERS, { 'X-PII-Sweep': 'off' });
+/** Where a section goes to sit above a form's run button: above its Sweep PII box, which stays next to the button. */
+function srcAboveRun(btn) {
+  const prev = btn && btn.previousElementSibling;
+  return prev && prev.classList.contains('src-sweep') ? prev : btn;
+}
+
 /** What a run is of, for the loader: the table, or the file at the end of a path or URL. */
 function _srcTarget(b) {
   const t = b && (b.table || b.dataset);
@@ -20732,7 +20778,7 @@ function selectSource(key) {
   const refs = document.getElementById('srcRefs');
   if (refs) {
     // A file upload has the same section, above its Upload button.
-    const at = runBtn || (bodyKey === 'file' ? document.getElementById('go') : null);
+    const at = srcAboveRun(runBtn || (bodyKey === 'file' ? document.getElementById('go') : null));
     if (at) { at.parentNode.insertBefore(refs, at); refs.style.display = ''; srcRefsState.warehouse = _WAREHOUSE_SRC.has(key); renderSrcRefs(); }
     else refs.style.display = 'none';
   }
@@ -21525,7 +21571,7 @@ document.querySelectorAll('.source-card:not(.soon)').forEach(c => c.addEventList
 (function placeRefsOnUpload() {
   const refs = document.getElementById('srcRefs'), go = document.getElementById('go');
   if (!refs || !go || refs.closest('.source-body')) return;
-  go.parentNode.insertBefore(refs, go);
+  go.parentNode.insertBefore(refs, srcAboveRun(go));
   refs.style.display = '';
   srcRefsState.warehouse = false;
   renderSrcRefs();
@@ -24820,7 +24866,8 @@ function buildGuides() {
             `Open ${go('upload', 'From a data source')} in the menu on the left. ${showme('src-picker')}`,
             `Press the ${ui('Data source')} button at the top of the card and pick where the data lives: a cloud warehouse, a database, cloud storage, or ${ui('Local File')} for something on your computer (CSV, TSV, Excel, parquet, JSON or QVD). Type to find one by name.`,
             `Fill in the connection. Each field has an ${ui('ⓘ')} explaining what it expects. If this connection has been saved before, choose it under ${ui('Credential profile')} and press ${ui('Apply')}.`,
-            `Leave ${ui('Sample rows')} empty to assess every row. That is the default, and it is the point: counts are exact rather than estimated.`) +
+            `Leave ${ui('Sample rows')} empty to assess every row. That is the default, and it is the point: counts are exact rather than estimated.`,
+            `${ui('Sweep PII')}, above the run button, is ticked to start with: the assessment sweeps the dataset for personal data first. Untick it to assess without the sweep this time. Its Compliance then shows the dataset's last sweep, if it has one.`) +
           shot('source-menu', `Every source, grouped by kind. ${n(1)} Type to find one, or ${n(2)} pick it.`) +
           shot('source-picker', `${n(1)} The source you picked, which opens the menu again. For a file, ${n(2)} choose it, ${n(3)} leave the sample empty to assess every row, and ${n(4)} press ${ui('Upload & assess')}.`) },
       { h: 'Run it and read the result', body:
@@ -25772,7 +25819,7 @@ ${HDRS}
   G.push({
     id: 'pii-sweep', cat: 'Compliance', icon: 'shield', tint: '#fb7185',
     title: 'Sweep a dataset for personal data', sub: 'Every value read, every find located and rated, no value kept',
-    keywords: 'pii sweep personal data hidden free text notes description card number phone email passport nhs national insurance date of birth credential password key severity risk exposure restrict label dismiss schedule export locations gdpr ccpa pci sky star constellation who it identifies changes timeline rules list close run again assessment compliance rows each sweep reads switched off',
+    keywords: 'pii sweep personal data hidden free text notes description card number phone email passport nhs national insurance date of birth credential password key severity risk exposure restrict label dismiss schedule export locations gdpr ccpa pci sky star constellation who it identifies changes timeline rules list close run again assessment compliance rows each sweep reads switched off sweep pii checkbox untick skip',
     open: { tab: 'piisweep', label: 'Open PII sweep' },
     sections: [
       { h: 'What it is', body:
@@ -25780,7 +25827,7 @@ ${HDRS}
           p(`Each find says what it is, how serious it is, and where it is: the column, the row, and the characters it occupies. The value itself is never written down; it stays in your source.`) +
           p(`Every assessment sweeps its dataset first, in the same run, so the two never drift apart. The dataset's Compliance then shows what its newest sweep found, as this tab shows it: each column with personal data is a control there, rated as the sweep rated it, and special category data (health, ethnicity, religion and the like, known by a column's name or confirmed by its values) is flagged there for review. Its values are redacted from stored samples. A finding you dismiss here leaves the dataset's Compliance at once, and its grade with it. The Data Passport counts the sweep in its personal-data part.`) },
       { h: 'How a dataset is swept', body:
-          p(`${go('piisweep', 'PII sweep')} is in the menu on the left. There is nothing to start there: each assessment sweeps its dataset first, whoever or whatever started it (a person, ${go('schedules', 'a schedule')}, or source monitoring). The card at the top of the tab picks a dataset and says how its assessments sweep it; under it is every dataset swept so far.`) +
+          p(`${go('piisweep', 'PII sweep')} is in the menu on the left. There is nothing to start there: each assessment sweeps its dataset first, whoever or whatever started it (a person, ${go('schedules', 'a schedule')}, or source monitoring). The one exception is a person who unticks ${ui('Sweep PII')} on a data source form before running it: that one run is not swept. The card at the top of the tab picks a dataset and says how its assessments sweep it; under it is every dataset swept so far.`) +
           steps(`Press ${ui('Choose a dataset')} and pick one, or type to find it by name. Picking a dataset swept before opens its newest sweep.`,
                 `${ui('Rows each sweep reads')}: leave it empty to read every row, or type a number for each sweep of this dataset to read only that many (a very large table, say). ${ui('Sweep with each assessment')} switches its sweeping off and on.${ADMIN ? ' Both are saved as soon as you change them.' : ' Only an admin can change them.'}`,
                 `${ui('Run again')} assesses the dataset again now, through the saved connection its last assessment used (one on an on-premises agent runs on that agent). A card says what the sweep is doing and how many rows it has read, and ${ui('Cancel this run')} stops the sweep and its assessment. When the sweep finishes, its result opens in that card, while its assessment finishes in the background.`,
