@@ -1691,7 +1691,10 @@
     background: var(--idle-bg); padding: 2px 8px; border-radius: 10px; }
   .rule-edited { align-self: center; font-size: 11px; color: var(--accent2); }
   /* a rule across columns in the failed records: its name, and what kind of check it is */
-  .fr-cname { display: block; font-weight: 600; overflow-wrap: anywhere; }
+  /* The check keeps room to read whatever the record beside it needs (that column does not wrap): a narrow
+     panel scrolls the table sideways rather than breaking "Primary key" into "Primar / y key". */
+  .dash-table .fr-check { min-width: 190px; }
+  .fr-cname { display: block; font-weight: 600; overflow-wrap: break-word; }
   .fr-csub { display: block; font-size: 11px; color: var(--muted); }
   /* ---- The Rules tab: a row per column, which opens into its editor ---------------------- */
   .rx-assist { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 14px; margin: 0 0 16px; }
@@ -14160,7 +14163,7 @@ function renderFailedRecords(data) {
     return `<tr class="fr-row ${sev === 'blocker' ? 'fr-blocker' : ''}" data-sev="${esc(sev)}" data-check="${esc(x.check_id || '')}">` +
       `<td class="dash-muted" style="font-variant-numeric:tabular-nums;">${esc(rowNo)}</td>` +
       `<td>${esc(_GATE_DIM[x.dimension] || x.dimension || '')}</td>` +
-      `<td title="${esc(x.check_id || '')}"><span class="fr-cname">${esc(checkLabel(x.check_id, data).what)}</span>` +
+      `<td class="fr-check" title="${esc(x.check_id || '')}"><span class="fr-cname">${esc(checkLabel(x.check_id, data).what)}</span>` +
         `<small class="fr-csub">${esc(checkLabel(x.check_id, data).req)}</small></td>` +
       `<td>${sevChip(x.severity)}</td>` +
       `<td class="dash-muted" style="font-family:ui-monospace,Consolas,monospace;font-size:11px;">${fields}</td></tr>`;
@@ -14179,7 +14182,7 @@ function renderFailedRecords(data) {
   return head + renderFailuresViz(data) + frPolicyNote(pol) +
     `<p class="dash-muted fr-filter-note" style="margin:0 0 6px;"></p>` + rowNote +
     `<div class="fr-scroll"><table class="dash-table">` +
-    `<tr><th title="${esc(rowTip)}">${rowLabel}</th><th>Dimension</th><th>Check</th><th>Severity</th><th>Offending record</th></tr>${rows}</table></div>${note}` +
+    `<tr><th title="${esc(rowTip)}">${rowLabel}</th><th>Dimension</th><th class="fr-check">Check</th><th>Severity</th><th>Offending record</th></tr>${rows}</table></div>${note}` +
     renderExampleFixes(data);
 }
 // Render failed records into an element AND wire the clickable severity legend (filters the
