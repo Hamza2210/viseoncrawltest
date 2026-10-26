@@ -1085,24 +1085,30 @@
   .cmb-board { position: relative; padding: 12px 14px 12px; border: 1px solid var(--border); border-radius: 16px; background: var(--card); }
   .cmb-body { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; align-items: start; }
   .cmb.open .cmb-body { grid-template-columns: minmax(230px, 280px) minmax(0, 1fr); }
-  .cmb-scroll { overflow-x: auto; padding: 2px; }
-  .cmb.open .cmb-scroll { overflow: visible; position: sticky; top: 12px; max-height: calc(100vh - 24px); overflow-y: auto; }
+  /* However many datasets there are, the page does not grow with them: the rows scroll inside the board, under their
+     headings. With one open, the names are as tall as the dataset beside them (or a usable minimum), and no taller
+     than the window: `contain: size` keeps their number out of the row's height, and stretch gives them the rest. */
+  .cmb-scroll { overflow: auto; padding: 2px; max-height: max(420px, calc(100vh - 240px)); overscroll-behavior: contain; }
+  .cmb.open .cmb-scroll { position: sticky; top: 12px; align-self: stretch; contain: size;
+    min-height: min(440px, calc(100vh - 24px)); max-height: calc(100vh - 24px); overflow-x: hidden; overflow-y: auto; }
   .cmb-grid { position: relative; display: grid; gap: 6px 7px; align-items: center;
     grid-template-columns: minmax(190px, 250px) repeat(var(--cmb-n, 8), minmax(58px, 1fr)) minmax(72px, 96px) minmax(66px, 88px);
     min-width: calc(260px + var(--cmb-n, 8) * 65px + 150px); }
   .cmb.open .cmb-grid { grid-template-columns: minmax(0, 1fr); min-width: 0; row-gap: 4px; }
   .cmb.open .cmb-sq, .cmb.open .cmb-h:not(.cmb-hname) { display: none; }
-  .cmb-h { position: relative; padding: 2px 2px 8px; border: 0; border-radius: 10px; background: none; color: var(--muted);
-    font: inherit; font-size: 11.5px; font-weight: 650; text-align: center; cursor: pointer; }
+  .cmb-h { position: sticky; top: 0; z-index: 3; align-self: stretch; padding: 2px 2px 8px; border: 0; border-radius: 0; background: var(--card);
+    color: var(--muted); font: inherit; font-size: 11.5px; font-weight: 650; text-align: center; cursor: pointer; box-shadow: 0 0 0 4px var(--card); }
   .cmb-h svg { display: block; width: 18px; height: 18px; margin: 4px auto 5px; color: color-mix(in srgb, var(--accent) 65%, var(--muted)); }
   .cmb-h small { display: block; font-size: 10.5px; font-weight: 500; opacity: .75; }
   .cmb-h:hover, .cmb-h.hot { color: var(--text); }
-  .cmb-h.sorted { color: var(--text); background: color-mix(in srgb, var(--accent) 11%, transparent); }
+  .cmb-h.sorted { color: var(--text); }
+  .cmb-h.sorted::before { content: ''; position: absolute; inset: 0; z-index: -1; border-radius: 10px;
+    background: color-mix(in srgb, var(--accent) 11%, transparent); }
   .cmb-h.sorted::after { content: '▾'; position: absolute; top: 2px; right: 6px; font-size: 10px; color: var(--accent); }
   .cmb-h:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
   .cmb-hbar { display: flex; height: 3px; margin: 7px 14px 0; border-radius: 2px; overflow: hidden; background: color-mix(in srgb, var(--muted) 14%, transparent); }
   .cmb-hbar i { display: block; height: 100%; }
-  .cmb-hname { text-align: left; padding-left: 10px; align-self: end; cursor: default; }
+  .cmb-hname { display: flex; align-items: flex-end; text-align: left; padding-left: 10px; cursor: default; }
   .cmb-name { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 4px 10px; min-height: 46px; padding: 6px 8px;
     border: 1px solid transparent; border-radius: 11px; cursor: pointer; transition: background-color .12s var(--dq-ease); }
   .cmb-name b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
@@ -14401,16 +14407,36 @@ function renderComplianceEstate() {
           <div class="cmb-colhi" aria-hidden="true" hidden></div><div class="cmb-tip" id="cmbTip" role="tooltip" hidden></div>
         </section></div>`;
   }
+  const sc = wrap.querySelector('.cmb-scroll');
+  if (sc && !sc._tipOff) { sc._tipOff = true; sc.addEventListener('scroll', () => _cmpHideTip(sc.closest('.cmb-board')), { passive: true }); }
   const all = _cmpScoped();
   if (cmpSelKey && !all.some(d => d.key === cmpSelKey)) cmpSelKey = '';
   wrap.querySelector('.cmb').classList.toggle('open', !!cmpSelKey);
   _cmpPaintSummary();
   _cmpPaintBoard();
+  _cmpSelInView();
   const pane = $('#cmpDetailPane');
   if (!cmpSelKey) { pane.hidden = true; pane.dataset.key = ''; pane.dataset.prefix = ''; return; }
   // A refresh that finds a newer run for the open dataset reads it again; one that finds nothing new leaves it be.
   const d = all.find(x => x.key === cmpSelKey);
   if (pane.dataset.key !== d.key || pane.dataset.prefix !== (d.resultPrefix || '')) cmpOpen(d.key, { quiet: true });
+}
+/** A dataset just opened has its name in view in the list's own box. Once per dataset opened: a refresh leaves the list
+ *  where the reader scrolled it. */
+function _cmpSelInView() {
+  const sc = $('#cmpEstate .cmb-scroll');
+  if (!sc || sc._selShown === cmpSelKey) return;
+  sc._selShown = cmpSelKey;
+  if (cmpSelKey) _cmpNameInView(sc);
+}
+/** The open dataset's name brought into view inside the list's box, under its heading, moving only that box, never the page. */
+function _cmpNameInView(sc) {
+  const row = sc.querySelector('.cmb-name.sel'); if (!row) return;
+  const head = sc.querySelector('.cmb-hname'), hh = head ? head.getBoundingClientRect().height + 6 : 0;
+  // The box is about to take the height of the dataset just opened, which may be shorter than the last one's, so only
+  // what is inside its least height counts as in view, and a name outside it is put at the top, under the heading.
+  const r = row.getBoundingClientRect(), v = sc.getBoundingClientRect(), least = Math.min(v.bottom, v.top + 420);
+  if (r.top < v.top + hh || r.bottom > least) sc.scrollTop += r.top - (v.top + hh + 4);
 }
 function cmpRepaintIfOpen() {
   const tab = $('#complianceTab');
@@ -14466,7 +14492,9 @@ function _cmpShowTip(sq) {
   if (nm) nm.classList.add('hot');
   if (hi && h) {
     const hr = h.getBoundingClientRect(), gr = board.querySelector('#cmpGrid').getBoundingClientRect();
-    Object.assign(hi.style, { left: (hr.left - br.left - 3) + 'px', width: (hr.width + 6) + 'px', top: (gr.top - br.top - 4) + 'px', height: (gr.height + 8) + 'px' });
+    const sc = board.querySelector('.cmb-scroll'), vr = sc ? sc.getBoundingClientRect() : gr;
+    const top = Math.max(gr.top, vr.top) - 4, bottom = Math.min(gr.bottom, vr.bottom) + 4;
+    Object.assign(hi.style, { left: (hr.left - br.left - 3) + 'px', width: (hr.width + 6) + 'px', top: (top - br.top) + 'px', height: Math.max(0, bottom - top) + 'px' });
     hi.hidden = false;
   }
 }
@@ -14489,6 +14517,7 @@ function cmpOpen(key, opts) {
   if (cmb) { cmb.classList.add('open'); _cmpHideTip(cmb.querySelector('.cmb-board')); }
   _cmpPaintBoard();
   pane.hidden = false;
+  _cmpSelInView();
   if (!was || !(opts && opts.quiet)) dqIn(pane, 'dq-page');
   loadComplianceCardDetail(pane, d.resultPrefix, d.key, _cmpName(d));
   if (!(opts && opts.quiet)) {
