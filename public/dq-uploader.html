@@ -749,7 +749,7 @@
     padding: 8px 12px; border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--border)); border-radius: 9px;
     background: color-mix(in srgb, var(--accent) 10%, var(--card)); color: var(--text); }
   /* ---- AI actions: one look, and one way of answering, for everything that asks the model ---- //
-     A gradient edge and a sparkle mark a button that calls Claude on Bedrock. Pressed, a ripple
+     A gradient edge and a sparkle mark a button that calls Claude. Pressed, a ripple
      runs out from the press and the edge turns while the model works; the answer opens beneath on
      a shimmering draft, then rises in a section at a time. */
   @property --ai-a { syntax: '<angle>'; initial-value: 0deg; inherits: false; }
@@ -18191,7 +18191,7 @@ async function testAlertChannels() {
 { const b = $('#acGuide'); if (b) b.addEventListener('click', () => { switchTab('guides'); openGuide('alert-setup'); }); }
 
 // ---- AI actions ------------------------------------------------------------------------------ //
-// Everything that asks the model (Claude Haiku 4.5 on Amazon Bedrock) looks and moves the same way.
+// Everything that asks the model (Claude Haiku 5.5, through the Anthropic API) looks and moves the same way.
 // The button carries a sparkle and a gradient edge; pressed, a ripple runs out from the press and
 // the edge turns while the model works; the panel under it eases open on a shimmering draft; the
 // answer takes the draft's place and rises in a section at a time. Pressed again, the panel folds
@@ -18304,7 +18304,7 @@ function aiToggle(btn, out, ask) {
 }
 function _aiHead(o) {
   return `<div class="ai-hd">${aiIcon()}<span class="ai-title">${esc(o.title || 'AI')}</span>` +
-    `<span class="ai-model">Claude Haiku 4.5 · Bedrock</span>` +
+    `<span class="ai-model">Claude Haiku 5.5</span>` +
     (o.close ? `<button type="button" class="ai-x lngb" data-aiclose aria-label="Close">&times;</button>` : '') + `</div>`;
 }
 /** Open `out` on the model's working draft: what it is reading, over lines that shimmer. */
@@ -24783,7 +24783,7 @@ const GD_SHOTS = {
   "profile": [1600, 526, "104f28f43a"],
   "quality-space": [1600, 812, "7bfbdb7881"],
   "records-policy": [1600, 567, "93eb0821f8"],
-  "rules-describe": [1600, 757, "db51910467"],
+  "rules-describe": [1600, 757, "24a8b1adb6"],
   "rules-tab": [1600, 1571, "0582dbedf7"],
   "run-result": [1600, 1381, "27d7222b2c"],
   "runs-on-agent": [1600, 1100, "8445708325"],
@@ -25775,7 +25775,7 @@ function buildGuides() {
   G.push({
     id: 'rules', cat: 'Results', icon: 'sparkle', tint: '#c084fc',
     title: 'Rules and AI rule review', sub: 'Where rules come from, and how to add, edit or pin them',
-    keywords: 'rules ruleset pinned inferred ai review suggestions bedrock claude pin apply re-run edit active rules add rule remove rule queued changes provisional severity weight primary key allowed values format range save discard describe plain english write the rule rules across columns consistency',
+    keywords: 'rules ruleset pinned inferred ai review suggestions anthropic claude pin apply re-run edit active rules add rule remove rule queued changes provisional severity weight primary key allowed values format range save discard describe plain english write the rule rules across columns consistency',
     open: { tab: 'dashboard', label: 'Open Overview' },
     sections: [
       { h: 'Where the rules come from', body:
@@ -25788,7 +25788,7 @@ function buildGuides() {
           tip(`${ui('Find a column')} searches by name, and ${ui('Blockers')} shows only the columns that can fail the quality gate.`) },
       { h: 'Suggest rules with AI', body:
           steps(
-            `Press ${ui('Suggest rules with AI')}. Suggestions come from Claude Haiku 4.5 on Amazon Bedrock, which reads the data's profile and the rules in force, so it suggests rules to add or change rather than ones the dataset already has. They open in a panel above the rules in effect, so you can compare the two, and nothing changes until you pin them. Press the button again to fold the panel away.`,
+            `Press ${ui('Suggest rules with AI')}. Suggestions come from Claude Haiku 5.5, through the Anthropic API, which reads the data's profile and the rules in force, so it suggests rules to add or change rather than ones the dataset already has. They open in a panel above the rules in effect, so you can compare the two, and nothing changes until you pin them. Press the button again to fold the panel away.`,
             `Tick the suggestions you want, or press ${ui('Select all')}. Each one says which columns it covers, why, and what it would fail in today's data, and most can be edited before you accept them. An <b>advisory</b> one can be turned into an editable rule with ${ui('Make editable')}.`,
             `A suggestion marked ${ui('Would fail most rows')} does not fit the data as it is written today, such as a phone format the numbers are not stored in. ${ui('Select all')} leaves it out, and pinning it asks you first. Changing its values updates the line as you type.`,
             `Press ${ui('Pin selected to ruleset')}. The rules apply automatically on the dataset's next assessment, with no further AI call.`,
