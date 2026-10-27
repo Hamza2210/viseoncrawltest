@@ -2931,6 +2931,34 @@
     border-top: 1px solid #22304f; background: #111a2e; border-radius: 0 0 18px 18px; }
   .schm-foot #schSave { padding: 10px 20px; }
   .schm-foot #schCancelEdit { padding: 9px 16px; }
+
+  /* Infer ruleset: a new dataset's rules, reviewed before its first run (irOpen). Roomy like the
+     schedule form: the overlay scrolls, and the footer with Run stays in reach at the bottom. */
+  #irModal { align-items: flex-start; overflow-y: auto; padding: 0 20px; }
+  #irModal .irm { width: min(1180px, 100%); max-height: none; overflow: visible; margin: 4vh auto; padding: 0;
+    background: linear-gradient(180deg, #151e37, #111a2e 300px); border: 1px solid #2c3d68; border-radius: 18px;
+    box-shadow: 0 30px 80px rgba(0,0,0,.6); }
+  @media (prefers-reduced-motion: no-preference) { #irModal.open .irm { animation: schmIn .22s var(--dq-ease); } }
+  .irm-head { display: flex; align-items: flex-start; gap: 14px; padding: 24px 30px 0; }
+  .irm-head h3 { margin: 0; font-size: 20px; }
+  .irm-sub { font-size: 13px; color: var(--muted); margin-top: 3px; }
+  .irm-head .x-close { margin-left: auto; }
+  .irm-path { display: flex; align-items: center; gap: 8px; margin: 16px 30px 0; font-size: 12.5px; color: var(--muted); }
+  .irm-path span { display: inline-flex; align-items: center; gap: 6px; padding: 4px 11px; border-radius: 999px;
+    border: 1px solid #2c3d68; }
+  .irm-path span.done { color: #6ee7b7; border-color: rgba(110,231,183,.35); }
+  .irm-path span.now { color: #fff; border-color: #8fb0ff; background: #213159; }
+  .irm-path i { font-style: normal; opacity: .5; }
+  .irm-body { padding: 18px 30px 10px; min-height: 200px; }
+  .irm-foot { position: sticky; bottom: 0; z-index: 2; display: flex; align-items: center; gap: 12px; padding: 16px 30px 20px;
+    border-top: 1px solid #22304f; background: #111a2e; border-radius: 0 0 18px 18px; }
+  .irm-foot .src-sweep { margin: 0; }
+  .irm-note { flex: 1; min-width: 0; font-size: 12.5px; color: var(--muted); }
+  .irm-note.err { color: var(--err); }
+  .irm-foot #irRun { padding: 10px 20px; }
+  .irm-foot #irLater { padding: 9px 16px; }
+  .dash-row .rr-chip { display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px; border-radius: 999px; font-size: 11.5px;
+    font-weight: 600; color: #c7d7ff; border: 1px dashed #5b7cc9; white-space: nowrap; }
   #schClash { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: #6ee7b7; }
   #schClash i { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); flex: none; }
   #schClash.busy { color: var(--run); } #schClash.busy i { background: var(--run); }
@@ -7097,6 +7125,23 @@
 
   <!-- A schedule, made or changed. A modal with room: every field at once on the left, and on the
        right what the schedule will do, its next runs, and its week beside the other schedules'. -->
+  <div class="modal-overlay" id="irModal" role="dialog" aria-modal="true" aria-labelledby="irTitle">
+    <div class="modal irm">
+      <div class="irm-head">
+        <div><h3 id="irTitle">Review the rules</h3><div class="irm-sub" id="irSub"></div></div>
+        <button type="button" class="x-close" id="irClose" aria-label="Close, keeping the rules for later">&times;</button>
+      </div>
+      <div class="irm-path" aria-hidden="true"><span class="done">&#10003; Rules inferred</span><i>&rarr;</i>
+        <span class="now">Review and edit them</span><i>&rarr;</i><span>Run the assessment</span></div>
+      <div class="irm-body"><div id="irRules"></div></div>
+      <div class="irm-foot">
+        <label class="src-sweep"><input type="checkbox" id="irSweep" checked><span class="src-sweep-t">Sweep PII</span></label>
+        <span class="irm-note" id="irNote">Nothing has been assessed yet. Your rules are saved even if you close this.</span>
+        <button type="button" class="btn-sm" id="irLater">Keep for later</button>
+        <button type="button" id="irRun">Run assessment with these rules</button>
+      </div>
+    </div>
+  </div>
   <div class="modal-overlay" id="schModal" role="dialog" aria-modal="true" aria-labelledby="schFormTitle">
     <div class="modal schm">
       <div class="schm-head">
@@ -7678,6 +7723,7 @@ function _applyFileMode(isExcel) {
   refreshFile();
 }
 function refreshFile() {
+  srcKnownCheck('file');                                 // Upload & infer ruleset for a file never seen before
   const f = fileInput.files[0];
   const sheetWrap = $('#excelSheetWrap');
   const wantSheet = fileSourceMode === 'excel' || (f && _isExcelName(f.name));   // Excel view, or an Excel file
@@ -10074,7 +10120,7 @@ async function dqRunSweep(f, resultPrefix) {
   }
 }
 
-async function pollResults(resultPrefix) {
+async function pollResults(resultPrefix, onRulesReady) {
   const NUDGE_MS = 10 * 60 * 1000, start = Date.now();
   const body = $('#assessBody');
   // The upload arrives here with its run face up already. Anything that starts here instead (a
@@ -10092,6 +10138,7 @@ async function pollResults(resultPrefix) {
     try { r = await postJSON(`${API_BASE}/data-quality/result`, HEADERS, { result_prefix: resultPrefix }); }
     catch (e) { /* transient poll error - keep waiting quietly */ }
     if (!srcRunCurrent('file', seq)) return;             // a newer upload has the stage now
+    if (r && r.state === 'RULES_READY' && onRulesReady) { onRulesReady(r); return; }   // Infer ruleset: its rules open
     if (r && TERMINAL.includes(r.state)) {
       renderAssessment(r, body, { tabbed: true });
       srcRunDone('file', r);
@@ -10114,11 +10161,15 @@ goBtn.addEventListener('click', async () => {
   if (!file) { banner('err', 'Choose a file.'); return; }
 
   // The form steps aside for the run face, which follows the upload as a percentage, then the run.
+  // A file with no record yet is a new dataset: its rules are settled and opened for review first (irOpen).
   const card = fileSourceMode === 'excel' ? 'excel' : 'file', sweep = srcSweepOn('file');
-  const seq = srcRunBegin(card, { msg: `Uploading ${file.name}`, steps: SRC_FILE_STEPS, pct: 0, noSweep: !sweep,
-    sub: `${humanSize(file.size)}, sent straight to secure storage and assessed there.` });
+  const begun = await srcRunBeginSettled(card, infer => ({ msg: `Uploading ${file.name}`,
+    steps: infer ? SRC_FILE_INFER_STEPS : SRC_FILE_STEPS, pct: 0, noSweep: infer || !sweep,
+    sub: `${humanSize(file.size)}, sent straight to secure storage and ${infer ? 'its rules worked out there' : 'assessed there'}.` }));
+  if (!begun) return;
+  const { seq, infer } = begun;
   const face = srcFace('file', 'run');
-  let trig;
+  let trig, trigBody;
   try {
     // Master files for integrity and accuracy are chosen in the shared section (refPickHtml) and
     // are already in the reference library, so only the dataset itself is sent here.
@@ -10135,11 +10186,12 @@ goBtn.addEventListener('click', async () => {
     log(`Storage accepted the upload (HTTP ${code})`);
     dqRunStep(face, 1, 'running');
     dqRunBar(face, null);
-    dqRunSay(face, `Assessing ${file.name}`, 'Starting the assessment…');
+    dqRunSay(face, infer ? `Inferring the rules for ${file.name}` : `Assessing ${file.name}`,
+      infer ? 'Working out its rules, with AI…' : 'Starting the assessment…');
 
     const sampleRaw = $('#sampleRows').value.trim();
     const sample = sampleRaw ? parseInt(sampleRaw, 10) : NaN;
-    const trigBody = { input_uri: sub.inputUri, run_id: sub.runId };
+    trigBody = { input_uri: sub.inputUri, run_id: sub.runId };
     if (EMAIL) trigBody.notify_email = EMAIL;                                   // else no alert email (submitter-only)
     if (Number.isFinite(sample) && sample > 0) trigBody.sample_rows = sample;   // else whole file
     if (_isExcelName(file.name)) {                                             // Excel: pass the chosen worksheet
@@ -10151,7 +10203,7 @@ goBtn.addEventListener('click', async () => {
     const augment = collectSourceRefsAugment();
     if (augment) trigBody.ruleset_augment = augment;
     log('POST /data-quality', trigBody);
-    trig = await postJSON(`${API_BASE}/data-quality`, srcSweepHeaders(sweep), trigBody);
+    trig = await postJSON(`${API_BASE}/data-quality`, srcRunHeaders(sweep, infer), trigBody);
     log('trigger response', trig);
   } catch (err) {
     // Back to the form, which still holds the file, with the reason above it.
@@ -10161,13 +10213,33 @@ goBtn.addEventListener('click', async () => {
     return;
   }
   if (!srcRunCurrent('file', seq)) return;
-  srcRunLaunched(card, trig.runId, 'Scoring against the 9 DAMA quality dimensions - waiting for the run to finish.');
-  if (trig.resultPrefix) await pollResults(trig.resultPrefix);
+  srcRunLaunched(card, trig.runId, infer ? 'Working out its rules, with AI. They open here for you to review.'
+    : 'Scoring against the 9 DAMA quality dimensions - waiting for the run to finish.');
+  // Its Run assesses the same file, already uploaded and kept for it, in the same run folder.
+  if (trig.resultPrefix) await pollResults(trig.resultPrefix, infer ? r => srcRulesReady('file', r, () => fileRunReviewed(card, file.name, trigBody)) : null);
   else {
     srcRunFail(card, '');
     banner('info', 'The assessment started, but its result cannot be followed here. It will appear in Assessment history when it finishes.');
   }
 });
+
+/** An uploaded file's first assessment, after its rules were reviewed: the same file, the same run folder. */
+async function fileRunReviewed(card, name, trigBody) {
+  const sweep = srcSweepOn('file');
+  const seq = srcRunBegin(card, { msg: `Assessing ${name}`, at: 1, steps: SRC_FILE_STEPS, noSweep: !sweep,
+    sub: 'Scoring against the 9 DAMA quality dimensions with the rules you reviewed.' });
+  let trig;
+  try {
+    trig = await postJSON(`${API_BASE}/data-quality`, srcSweepHeaders(sweep), trigBody);
+  } catch (err) {
+    if (srcRunCurrent('file', seq)) srcRunFail(card, '');
+    banner('err', err.message);
+    return;
+  }
+  if (!srcRunCurrent('file', seq)) return;
+  srcRunLaunched(card, trig.runId, 'Scoring against the 9 DAMA quality dimensions - waiting for the run to finish.');
+  if (trig.resultPrefix) await pollResults(trig.resultPrefix);
+}
 
 // Back to the form for the next file. The result stays a click away on the Connection / Result
 // switch, and in History.
@@ -11066,6 +11138,7 @@ function multiLine(series, opts) {
 
 let dashDatasets = [];
 let dashDatasetsAll = [];
+let dashRulesReady = [];                  // new datasets, rules settled, not assessed yet (irOpenDataset)
 let dashServerTiles = {};
 let dashWindowDays = 30;
 let dashScope = PORTAL ? 'source' : 'app';                          // 'app' (Qlik tables) | 'source' (Data-from-Source)
@@ -11514,6 +11587,12 @@ function updateDetailTrust(key) {
 }
 
 // The list, narrowed by search (name + tags) + source + stage + a clicked custom-tag.
+/** The new datasets whose rules wait to be reviewed, in the scope on show and matching the search. */
+function rulesReadyFiltered() {
+  const q = dashSearch.trim().toLowerCase();
+  return (dashRulesReady || []).filter(d => (dashScope === 'source' ? isSourceDataset(d) : !isSourceDataset(d))
+    && (!q || (d.name || '').toLowerCase().includes(q)));
+}
 function datasetsFiltered() {
   const q = dashSearch.trim().toLowerCase();
   return dashDatasets.filter(d => {
@@ -11537,8 +11616,8 @@ function refreshDatasetsTable() {
   if (dashSelected) updateDetailTrust(dashSelected.key);
 }
 function _refreshDatasetsList() {
-  const rows = datasetsFiltered();
-  if (!rows.length) {
+  const rows = datasetsFiltered(), rr = rulesReadyFiltered();
+  if (!rows.length && !rr.length) {
     // Two different nothings: a workspace with no data at all, and filters that exclude all of
     // it. Telling them apart is the difference between "get started" and "you hid it".
     const anyData = (dashDatasetsAll || []).length > 0;
@@ -11558,7 +11637,7 @@ function _refreshDatasetsList() {
       }));
     return;
   }
-  renderHealthTable(rows);
+  renderHealthTable(rows, rr);
 }
 
 // The dataset filters: a compact bar (Filters button + whatever is ACTIVE) plus a modal holding
@@ -12637,7 +12716,10 @@ async function _loadDashboardImpl() {
   try {
     const d = await postJSON(`${API_BASE}/data-quality/dashboard`, HEADERS,
       { window_days: 30, app_id: APP_ID });
-    dashDatasetsAll = d.datasets || [];
+    // New datasets whose rules wait to be reviewed have no assessment yet: they are listed on their own (rules
+    // ready, Run opens them for review), and no other view, the galaxy, the heatmap or another tab, is given them.
+    dashDatasetsAll = (d.datasets || []).filter(x => !x.rulesReady);
+    dashRulesReady = (d.datasets || []).filter(x => x.rulesReady);
     dashServerTiles = d.tiles || {};
     dashWindowDays = d.windowDays || 30;
     await loadDashEntries();                    // medallion stages + custom tags for this app
@@ -12677,14 +12759,16 @@ function applyDashScope() {
   renderTiles(computeScopeTiles(dashDatasets));
   wireDashControls();
   renderDashFilters();
-  if (!dashDatasets.length) {
+  if (!dashDatasets.length && !rulesReadyFiltered().length) {
     $('#dashTableWrap').innerHTML = `<p class="dash-muted">No ${noun} data for this ${SCOPE_NOUN} yet.</p>`;
     $('#dashHeat').innerHTML = '';
     $('#dashTrends').innerHTML = '';
   } else {
     refreshDatasetsTable();
-    renderHeatmap(dashDatasets);
-    renderAppOverview(dashDatasets);
+    if (dashDatasets.length) {
+      renderHeatmap(dashDatasets);
+      renderAppOverview(dashDatasets);
+    }
   }
   // AFTER the default view, not during the table render: renderAppOverview clears the selection,
   // so a deep link applied earlier was drawn and then immediately undone. Outside the if/else
@@ -12716,8 +12800,8 @@ function renderTiles(t) {
   $('#dashTiles').querySelectorAll('.n').forEach(n => countUp(n));
 }
 
-function renderHealthTable(datasets) {
-  if (!datasets.length) {
+function renderHealthTable(datasets, rr = []) {
+  if (!datasets.length && !rr.length) {
     $('#dashTableWrap').innerHTML =
       `<p class="dash-muted" style="margin:0 0 12px;">${PORTAL ? 'No assessments yet.' : 'No assessments yet for this app.'}</p>` +
       `<button id="dashAssessCta">${PORTAL ? 'Assess a data source →' : "Assess this app's data →"}</button>` +
@@ -12748,12 +12832,39 @@ function renderHealthTable(datasets) {
           <button class="btn-sm dash-del" data-delkey="${esc(d.key)}" data-delname="${esc(d.name)}" data-delruns="${esc(String(d.runsWindow == null ? '' : d.runsWindow))}" data-tip="Delete this dataset and all of its history">✕</button></td>
       </tr>`;
   }).join('');
+  // New datasets whose rules wait to be reviewed come first: each is waiting on someone. No score, no trend
+  // and no trust yet; opening one (or its button) puts its rules in front of the reader, with Run.
+  const rrRows = rr.map(d => {
+    const age = d.ageDays == null ? '-' : (d.ageDays < 1 ? 'today' : `${Math.round(d.ageDays)}d ago`);
+    return `<tr class="dash-row rr-row" data-key="${esc(d.key)}" data-name="${esc(d.name)}" data-rr="1">
+        <td class="ds-cell"><div class="ds-name-line">${esc(d.name)}</div><div class="ds-meta">${isSourceDataset(d) ? sourceChip(d.sourceFormat) : ''}</div></td>
+        <td><span class="rr-chip" data-tip="Its rules are worked out and saved. It has not been assessed yet">Rules ready</span></td>
+        <td></td>
+        <td>-</td>
+        <td class="dash-muted">${esc(age)}</td>
+        <td class="dash-muted">Not assessed yet</td>
+        <td></td>
+        <td style="white-space:nowrap;"><button class="btn-sm" data-rrrun="${esc(d.key)}" data-tip="Review its rules, then run its first assessment">&#9654; Review &amp; run</button>
+          <button class="btn-sm dash-del" data-delkey="${esc(d.key)}" data-delname="${esc(d.name)}" data-delruns="0" data-tip="Delete this dataset and its rules">✕</button></td>
+      </tr>`;
+  }).join('');
   $('#dashTableWrap').innerHTML =
     `<table class="dash-table"><tr><th>Dataset</th><th>Score</th><th>Gate</th>` +
     `<th>Rows</th><th>Last run</th><th>Trend (${dashWindowDays}d)</th><th data-tip="${IS_PORTAL_ADMIN ? 'Certification: endorse, caution or deprecate this dataset for consumers' : 'Certification set by your admins - read-only'}">Trust</th>` +
-    `<th></th></tr>${rows}</table>`;
+    `<th></th></tr>${rrRows}${rows}</table>`;
+  $('#dashTableWrap').querySelectorAll('button[data-rrrun]').forEach(b =>
+    b.addEventListener('click', e => {
+      e.stopPropagation();
+      const ds = dashRulesReady.find(x => x.key === b.dataset.rrrun);
+      if (ds) irOpenDataset(ds);
+    }));
   $('#dashTableWrap').querySelectorAll('.dash-row').forEach(tr =>
     tr.addEventListener('click', () => {
+      if (tr.dataset.rr) {
+        const ds = dashRulesReady.find(x => x.key === tr.dataset.key);
+        if (ds) irOpenDataset(ds);
+        return;
+      }
       $('#dashTableWrap').querySelectorAll('.dash-row').forEach(x => x.classList.remove('sel'));
       tr.classList.add('sel');
       selectDataset(tr.getAttribute('data-key'), tr.getAttribute('data-name'));
@@ -13464,6 +13575,8 @@ function dsxNotes(key, open) {
 }
 
 async function selectDataset(key, name, initialTab) {
+  const waiting = (dashRulesReady || []).find(x => x.key === key);
+  if (waiting) { irOpenDataset(waiting); return; }      // no assessment yet: its rules, with Run
   const ds = dashDatasets.find(x => x.key === key);
   dashSelected = { key, name, prefix: ds && ds.resultPrefix };
   if (GALAXY.orbs && GALAXY.orbs.length) GALAXY.selected = GALAXY.orbs.find(o => o.key === key) || null;
@@ -13616,18 +13729,43 @@ async function loadDsScores(panel, prefix) {
 }
 
 async function loadDsRules(panel, prefix) {
-  panel.innerHTML =
-    `<div class="rx-assist">${aiBtn('Suggest rules with AI', 'id="dsReviewRules"')}` +
+  rulesViewMount(panel, prefix, 'ds');
+  refreshDatasetQueued(prefix);
+}
+// The ids of the two places the rules view is shown: the dataset's Rules tab, and the review of a new
+// dataset's rules (irOpen). Each has its own, so both can be on the page at once.
+const RULES_VIEW_IDS = {
+  ds: { review: 'dsReviewRules', reviewOut: 'dsReviewOut', in: 'dsDescribeIn', btn: 'dsDescribeBtn', out: 'dsDescribeOut', body: 'dsRulesBody' },
+  ir: { review: 'irReviewRules', reviewOut: 'irReviewOut', in: 'irDescribeIn', btn: 'irDescribeBtn', out: 'irDescribeOut', body: 'irRulesBody' },
+};
+/**
+ * The Rules tab's view of a dataset's rules, into `host`: Suggest rules with AI, Describe a rule and the rules
+ * editor. The review of a new dataset's rules shows the same view under its own ids (RULES_VIEW_IDS[p]); what
+ * either part adds goes to the editor in its own view (_rulesBody). `noRerun` leaves out the suggestions'
+ * "re-run now", where the view has a Run of its own.
+ */
+function rulesViewMount(host, prefix, p, opts = {}) {
+  const id = RULES_VIEW_IDS[p];
+  host.dataset.rulesHost = '1';
+  if (opts.noRerun) host.dataset.noRerun = '1'; else delete host.dataset.noRerun;
+  host.innerHTML =
+    `<div class="rx-assist">${aiBtn('Suggest rules with AI', `id="${id.review}"`)}` +
     `<span class="hint">Claude reads the data's profile and the rules in force, and suggests rules to add or change. You pick and edit them before pinning; nothing changes until you do.</span></div>` +
     // The review opens in its own panel above the rules in effect, so both can be read together.
-    `<div id="dsReviewOut" class="ai-out" hidden></div>` +
-    drBoxHtml() + `<div id="dsDescribeOut" class="ai-out" hidden></div>` +
-    `<div id="dsRulesBody">${dqSkeleton('Loading the active ruleset', 5)}</div>`;
-  editActiveRules(prefix, $('#dsRulesBody'));
-  const rev = $('#dsReviewRules');
-  if (rev) rev.addEventListener('click', () => aiToggle(rev, $('#dsReviewOut'), () => reviewRuleset(prefix, $('#dsReviewOut'), false, rev)));
-  drWire(panel, prefix);
-  refreshDatasetQueued(prefix);
+    `<div id="${id.reviewOut}" class="ai-out" hidden></div>` +
+    drBoxHtml(p) + `<div id="${id.out}" class="ai-out" hidden></div>` +
+    `<div id="${id.body}" data-rules-body>${dqSkeleton('Loading the active ruleset', 5)}</div>`;
+  const body = host.querySelector('[data-rules-body]');
+  editActiveRules(prefix, body);
+  const rev = host.querySelector('#' + id.review), out = host.querySelector('#' + id.reviewOut);
+  if (rev) rev.addEventListener('click', () => aiToggle(rev, out, () => reviewRuleset(prefix, out, false, rev)));
+  drWire(host, prefix, p);
+  return body;
+}
+/** The rules editor's element in the same view as `el` (the Rules tab's, or the review's). */
+function _rulesBody(el) {
+  const host = el && el.closest && el.closest('[data-rules-host]');
+  return host ? host.querySelector('[data-rules-body]') : $('#dsRulesBody');
 }
 
 // ---- Describe a rule ----
@@ -13638,14 +13776,15 @@ async function loadDsRules(panel, prefix) {
 // Add to the rules puts it in the editor below as a change not saved yet, so it is saved, or not, with
 // the rest, through the one Save.
 const DR_EXAMPLES = ['The ship date is never before the order date', 'Every customer has an email address', 'Quantity is between 1 and 500'];
-function drBoxHtml() {
-  return `<div class="rx-describe"><label class="rx-describe-l" for="dsDescribeIn">Describe a rule<small>in plain English, and the AI writes it for this dataset</small></label>` +
-    `<div class="rx-describe-row"><input type="text" id="dsDescribeIn" maxlength="500" autocomplete="off" spellcheck="true" ` +
-      `placeholder="e.g. ${esc(DR_EXAMPLES[0])}">${aiBtn('Write the rule', 'id="dsDescribeBtn"')}</div>` +
+function drBoxHtml(p = 'ds') {
+  const id = RULES_VIEW_IDS[p];
+  return `<div class="rx-describe"><label class="rx-describe-l" for="${id.in}">Describe a rule<small>in plain English, and the AI writes it for this dataset</small></label>` +
+    `<div class="rx-describe-row"><input type="text" id="${id.in}" maxlength="500" autocomplete="off" spellcheck="true" ` +
+      `placeholder="e.g. ${esc(DR_EXAMPLES[0])}">${aiBtn('Write the rule', `id="${id.btn}"`)}</div>` +
     `<div class="rx-describe-eg"><span>Try</span>${DR_EXAMPLES.map(t => `<button type="button" class="rx-eg-b lngb" data-dr-eg="${esc(t)}">${esc(t)}</button>`).join('')}</div></div>`;
 }
-function drWire(panel, prefix) {
-  const input = panel.querySelector('#dsDescribeIn'), btn = panel.querySelector('#dsDescribeBtn'), out = panel.querySelector('#dsDescribeOut');
+function drWire(panel, prefix, p = 'ds') {
+  const id = RULES_VIEW_IDS[p], input = panel.querySelector('#' + id.in), btn = panel.querySelector('#' + id.btn), out = panel.querySelector('#' + id.out);
   if (!input || !btn || !out) return;
   const go = () => describeRule(prefix, input, btn, out);
   btn.addEventListener('click', go);
@@ -13655,7 +13794,7 @@ function drWire(panel, prefix) {
     const add = e.target.closest('[data-dr-add]');
     if (add) { drAdd(out, +add.dataset.drAdd, add.dataset.drReplace || ''); return; }
     const see = e.target.closest('[data-dr-see]');
-    if (see) drSee(out._dr && out._dr.rules[+see.dataset.drSee]);
+    if (see) drSee(out._dr && out._dr.rules[+see.dataset.drSee], out);
   });
 }
 async function describeRule(prefix, input, btn, out) {
@@ -13671,16 +13810,16 @@ async function describeRule(prefix, input, btn, out) {
   try {
     const r = await postJSON(`${API_BASE}/data-quality/describe-rule`, HEADERS, { result_prefix: prefix, text, actor: EMAIL || undefined });
     out._dr = r;
-    aiAnswer(out, drHtml(r), aiFoot(r), { title, anchor: btn, close: true });
+    aiAnswer(out, drHtml(r, out), aiFoot(r), { title, anchor: btn, close: true });
   } catch (e) { aiFail(out, e.message, { close: true }); }
   aiBusy(btn, false);
 }
-function drHtml(r) {
+function drHtml(r, out) {
   const asked = `<p class="dr-asked">You asked for: <q>${esc(r.text || '')}</q></p>`;
   if (!(r.rules || []).length) return asked + `<p class="dr-cannot">${esc(r.cannot || 'That could not be turned into a rule for this dataset.')}</p>`;
-  return asked + `<div class="dr-list">${r.rules.map((d, i) => drCardHtml(r, d, i)).join('')}</div>`;
+  return asked + `<div class="dr-list">${r.rules.map((d, i) => drCardHtml(r, d, i, out)).join('')}</div>`;
 }
-function drCardHtml(r, d, i) {
+function drCardHtml(r, d, i, out) {
   const ac = d.augment || {}, cross = (ac.consistency_rules || [])[0], key = ac.keys && ac.keys.primary, col = _augCol(ac);
   let kind, what, imp;
   if (cross) {
@@ -13698,7 +13837,7 @@ function drCardHtml(r, d, i) {
   }
   const on = (d.columns || []).map(c => `<code>${esc(c)}</code>`).join(' · ');
   const sev = cross ? (cross.severity || 'major') : (col && col.obj && col.obj.severity) || '';
-  const rx = ($('#dsRulesBody') || {})._rx, have = !d._added && drIsIn(rx, d);
+  const rx = (_rulesBody(out) || {})._rx, have = !d._added && drIsIn(rx, d);
   // What it changes in the rules already there, worked out before it is added (after, it is the rule).
   if (!d._added) {
     d._chg = cross || key || !col ? null : drChange(rx, col.col, col.obj);
@@ -13760,7 +13899,7 @@ function drIsIn(rx, d) {
  *  On a column it merges into the rules there, so a range replaces the range; `replace` is a rule
  *  across columns it takes the place of. */
 function drAdd(out, i, replace) {
-  const r = out._dr, d = r && r.rules[i], body = $('#dsRulesBody'), rx = body && body._rx;
+  const r = out._dr, d = r && r.rules[i], body = _rulesBody(out), rx = body && body._rx;
   if (!d) return;
   if (!rx) {
     dqAlert('This dataset has no rules pinned yet, so there is nothing to add this to. Its next assessment pins them; then try again.');
@@ -13784,17 +13923,17 @@ function drAdd(out, i, replace) {
   const card = out.querySelector(`.dr-card[data-dr="${i}"]`);
   if (card) {
     const tmp = document.createElement('div');
-    tmp.innerHTML = drCardHtml(r, d, i);
+    tmp.innerHTML = drCardHtml(r, d, i, out);
     const nu = tmp.firstElementChild;
     nu.classList.remove('ai-rise');
     card.replaceWith(nu);
     const see = nu.querySelector('[data-dr-see]'); if (see) see.focus({ preventScroll: true });
   }
-  drSee(d);
+  drSee(d, out);
 }
 /** Bring a written rule into view in the editor: its column's row, or the rules across columns. */
-function drSee(d) {
-  const body = $('#dsRulesBody'), rx = body && body._rx;
+function drSee(d, out) {
+  const body = _rulesBody(out), rx = body && body._rx;
   if (!rx || !d) return;
   const ac = d.augment || {}, cross = (ac.consistency_rules || [])[0];
   const smooth = dqReduced() ? 'auto' : 'smooth';
@@ -18590,7 +18729,7 @@ async function reviewRuleset(prefix, outEl, regenerate, btn) {
 function renderRuleReview(r, outEl, prefix, regen) {
   const sug = r.suggestions || [];
   r.suggestions = sug;                                   // keep the ref so add/promote persist
-  const rerun0 = r.rerun || {};
+  const rerun0 = (outEl.closest && outEl.closest('[data-no-rerun]')) ? {} : (r.rerun || {});
   const canRerun = (rerun0.path === 'app' ? !!rerun0.table : !!rerun0.inputUri);
   const who = (r.generatedBy && r.generatedBy !== 'unknown') ? ` by ${esc(r.generatedBy)}` : '';
   const whenTxt = r.generatedAt ? ` on ${esc(fmtWhen(r.generatedAt))}` : '';
@@ -18766,6 +18905,9 @@ async function pinSelectedRules(prefix, augment, btn, note) {
     if (btn) { btn.textContent = 'Pinned ✓'; btn.dataset.done = '1'; }
     if (note) { note.textContent = 'Pinned - your next assessment of this dataset will use these rules.'; note.dataset.sticky = '1'; }
     refreshDatasetQueued(prefix);
+    // The editor beside them shows them now, unless it holds changes of its own not saved yet.
+    const body = btn && btn.closest('[data-rules-host]') && _rulesBody(btn), rx = body && body._rx;
+    if (body && (!rx || !rxChanges(rx).n)) editActiveRules(prefix, body);
   } catch (e) {
     if (btn) { btn.disabled = false; btn.textContent = old; }
     if (note) { note.textContent = e.message; note.dataset.sticky = '1'; }
@@ -20552,18 +20694,28 @@ function srcRunDone(key, r, failure) {
  * connector runs the same way.
  */
 async function srcLaunch(key, statusEl, endpoint, body, words, extra) {
+  // A new dataset's run settles its rules and stops, for them to be reviewed (Infer ruleset, irOpen).
   const target = _srcTarget(body), sweep = srcSweepOn(key);
-  const seq = srcRunBegin(key, { msg: target ? `Assessing ${target}` : 'Assessing the dataset',
-    sub: words.launch + '…', steps: words.steps, noSweep: !sweep });
+  // A run bound to an agent (words.queued) waits for that machine's next poll, and says so either way.
+  const begun = await srcRunBeginSettled(key, infer => infer
+    ? { msg: target ? `Inferring the rules for ${target}` : 'Inferring the rules', noSweep: true,
+        steps: words.queued ? SRC_AGENT_INFER_STEPS : SRC_INFER_STEPS,
+        sub: words.queued ? 'Queuing it for the agent, which reads the data and works out its rules, with AI. Nothing is assessed yet.'
+          : 'Reading the data and working out its rules, with AI. Nothing is assessed yet.' }
+    : { msg: target ? `Assessing ${target}` : 'Assessing the dataset', sub: words.launch + '…', steps: words.steps, noSweep: !sweep });
+  if (!begun) return;
+  const { seq, infer } = begun;
   let res;
   try {
-    res = await postJSON(`${API_BASE}/data-quality/${endpoint}`, srcSweepHeaders(sweep), body);
+    res = await postJSON(`${API_BASE}/data-quality/${endpoint}`, srcRunHeaders(sweep, infer), body);
   } catch (e) {
     if (srcRunCurrent(key, seq)) srcRunFail(key, e.message);
     return;
   }
   if (!srcRunCurrent(key, seq)) return;
-  srcRunLaunched(key, res.runId, words.started);
+  srcRunLaunched(key, res.runId, !infer ? words.started
+    : words.queued ? 'Queued for the agent. It starts on that machine\'s next poll, usually within 15 seconds, then works out the rules. They open here for you to review.'
+    : 'Working out its rules, with AI. They open here for you to review.');
   const bodyEl = document.getElementById(key + 'ResultBody');
   if (!res.resultPrefix || !bodyEl) {
     srcRunFail(key, 'The run started, but its result cannot be followed here. It will appear in Assessment history when it finishes.');
@@ -20574,7 +20726,201 @@ async function srcLaunch(key, statusEl, endpoint, body, words, extra) {
   // on our own worker, where even a failure writes a result; an agent can decline a job outright,
   // and a declined job writes nothing, so the prefix alone would leave the wait running for ever.
   await pollInto(res.resultPrefix, bodyEl, Object.assign({ stage: key, stageSeq: seq, statusEl, tabbed: true,
-    agentJob: agentJobOf(res) }, extra ? extra(res) : {}));
+    agentJob: agentJobOf(res), onRulesReady: r => srcRulesReady(key, r, () => runSource(key)) }, extra ? extra(res) : {}));
+}
+
+// --------------------------------------------------------------------------- //
+// Infer ruleset: a new dataset's rules, reviewed before its first run
+// --------------------------------------------------------------------------- //
+// A data source form names a dataset. One with no record at all (never run, no rules, nothing waiting to be
+// reviewed) is new, and its run button is Infer ruleset: the run settles the dataset's rules (inference and the
+// AI step) and stops, RULES_READY, and they open in the Rules editor (irOpen) to be changed before anything is
+// assessed; Run then assesses it with them. A dataset with any record keeps Run assessment and runs as it always
+// did. The API decides, naming the dataset exactly as the run would (/data-quality/dataset-known).
+const srcKnown = {};                                      // connector -> { sig, known }
+const _srcKnownT = {};
+const SRC_INFER_STEPS = ['Launch', 'Infer the rules', 'Review'];
+const SRC_AGENT_INFER_STEPS = ['Queue', 'Infer the rules on the agent', 'Review'];
+const SRC_FILE_INFER_STEPS = ['Upload', 'Infer the rules', 'Review'];
+const srcRunHeaders = (sweep, infer) => infer ? Object.assign({}, srcSweepHeaders(sweep), { 'X-DQ-Infer': 'on' }) : srcSweepHeaders(sweep);
+/** What a form tells /data-quality/dataset-known: the fields that could name its dataset, never a secret. */
+function _srcKnownAsk(key) {
+  const k = _srcKey(key);
+  if (k === 'file') {
+    const f = fileInput && fileInput.files[0];
+    return f ? { source: 'file', app_id: APP_ID || undefined, filename: f.name } : null;
+  }
+  const secret = new Set(SRC_SECRET_FIELDS[k] || []), config = {};
+  Object.entries(collectSourceFields(k)).forEach(([f, v]) => { if (!secret.has(f)) config[f] = v; });
+  return { source: k, app_id: APP_ID || undefined, config };
+}
+/** Is the form's dataset new? Until the API has said otherwise, it is. */
+function srcInferMode(key) {
+  const s = srcKnown[_srcKey(key)];
+  return !(s && s.known);
+}
+/** A form's run starts at once, as what its button says it is, and then settles which it is (srcInferNow): if the
+ *  answer differs, the run face starts again as that, before anything is sent. `face(infer)` is what srcRunBegin
+ *  shows for each. Returns { seq, infer }, or null when a newer run has taken over meanwhile. */
+async function srcRunBeginSettled(key, face) {
+  let infer = srcInferMode(key), seq = srcRunBegin(key, face(infer));
+  const now = await srcInferNow(key);
+  if (!srcRunCurrent(key, seq)) return null;
+  if (now !== infer) { infer = now; seq = srcRunBegin(key, face(infer)); }
+  return { seq, infer };
+}
+/** Which a run starting now is: the answer for the form as it stands, asked now if the last answer is for other
+ *  fields or has not come yet, so a click straight after a saved connection is applied is not taken for a new dataset. */
+async function srcInferNow(key) {
+  const k = _srcKey(key), ask = _srcKnownAsk(k), sig = JSON.stringify(ask);
+  if (ask && !(srcKnown[k] && srcKnown[k].sig === sig)) {
+    clearTimeout(_srcKnownT[k]);
+    let known = (srcKnown[k] || {}).known || false;
+    try { known = !!(await postJSON(`${API_BASE}/data-quality/dataset-known`, HEADERS, ask)).known; } catch (e) { /* kept */ }
+    srcKnown[k] = { sig, known };
+    srcRunLabel(k);
+  }
+  return srcInferMode(k);
+}
+/** The run button says which: Infer ruleset for a new dataset, Run assessment for any other. */
+function srcRunLabel(key) {
+  const k = _srcKey(key), infer = srcInferMode(k);
+  const b = k === 'file' ? $('#go') : document.querySelector(`[data-runsource="${k}"]`);
+  if (!b) return;
+  const t = k === 'file' ? (infer ? 'Upload & infer ruleset' : 'Upload & assess') : (infer ? 'Infer ruleset' : 'Run assessment');
+  if (b.classList.contains('src-busy')) b.dataset.idle = t; else b.textContent = t;
+  b.classList.toggle('src-infer', infer);
+}
+/** Asked a moment after the fields that name the dataset stop changing: a table typed, a saved connection applied.
+ *  Deferred from the start, because a form refreshes itself while the page is still loading, before the state
+ *  this section declares exists. */
+function srcKnownCheck(key) {
+  setTimeout(() => _srcKnownSoon(_srcKey(key)), 0);
+}
+function _srcKnownSoon(k) {
+  clearTimeout(_srcKnownT[k]);
+  _srcKnownT[k] = setTimeout(async () => {
+    const ask = _srcKnownAsk(k), sig = JSON.stringify(ask);
+    if (!ask) { srcKnown[k] = { sig, known: false }; srcRunLabel(k); return; }
+    if (srcKnown[k] && srcKnown[k].sig === sig) { srcRunLabel(k); return; }
+    let known = (srcKnown[k] || {}).known || false;      // an answer that does not come keeps the last one
+    try { known = !!(await postJSON(`${API_BASE}/data-quality/dataset-known`, HEADERS, ask)).known; } catch (e) { /* kept */ }
+    if (JSON.stringify(_srcKnownAsk(k)) !== sig) return;  // the form moved on meanwhile; its own check follows
+    srcKnown[k] = { sig, known };
+    srcRunLabel(k);
+  }, 350);
+}
+/**
+ * A form's run came back RULES_READY: the run face gives way to the form, whose dataset now has a record (so
+ * its button is Run assessment), and the rules open for review. `run` assesses the dataset, as reviewed.
+ */
+function srcRulesReady(key, r, run) {
+  const k = _srcKey(key), st = srcRunState[k], prefix = (r && r.resultPrefix) || (st && st.pollPrefix) || '';
+  dqRunStop(srcFace(k, 'run'));
+  _srcUnmark(st);
+  if (st) st.running = false;
+  if (st && !st.done) delete srcRunState[k];
+  srcKnown[k] = { sig: JSON.stringify(_srcKnownAsk(k)), known: true };
+  srcRunBtn(k, false);
+  srcRunLabel(k);
+  dqShowFace(srcStage(k), srcFace(k, 'form'));
+  srcSyncFaces();
+  const statusEl = document.querySelector(`[data-status="${k}"]`);
+  if (statusEl) { statusEl.className = 'src-status'; statusEl.textContent = 'Its rules are ready to review. Nothing has been assessed yet.'; }
+  irOpen({ prefix, name: (r && r.status && r.status.dataset) || '', sweep: srcSweepOn(k), run,
+           onSweep: on => { const b = document.querySelector(`input[data-sweep="${k}"]`); if (b) b.checked = on; } });
+}
+
+let irNow = null;                                         // under review: { prefix, name, run, onSweep }
+let _irFrom = null;
+/** The rules of a dataset not yet assessed, in the Rules editor, with Run to assess it with them. */
+function irOpen(o) {
+  const m = $('#irModal');
+  if (!m || !o || !o.prefix) return;
+  if (m.parentNode !== document.body) document.body.appendChild(m);
+  irNow = o;
+  _irFrom = document.activeElement;
+  $('#irTitle').textContent = o.name ? `Review the rules for ${o.name}` : 'Review the rules';
+  $('#irSub').textContent = 'Worked out from the data, with AI. Change any rule, describe one in plain English, or add a rule across columns.';
+  $('#irSweep').checked = o.sweep !== false;
+  const note = $('#irNote');
+  note.className = 'irm-note';
+  note.textContent = 'Nothing has been assessed yet. Your rules are saved even if you close this.';
+  const run = $('#irRun');
+  run.disabled = false;
+  run.textContent = 'Run assessment with these rules';
+  m.classList.add('open');
+  m.scrollTop = 0;
+  rulesViewMount($('#irRules'), o.prefix, 'ir', { noRerun: true });
+  setTimeout(() => { try { run.focus({ preventScroll: true }); } catch (e) { /* not focusable yet */ } }, 30);
+}
+/** Closed (Keep for later, the cross or Escape): the rules stay saved, and the dataset waits on the Overview. */
+async function irClose() {
+  const m = $('#irModal');
+  if (!m || !m.classList.contains('open')) return;
+  const rx = ($('#irRulesBody') || {})._rx;
+  if (rx && rxChanges(rx).n && !await dqConfirm('Close without saving your changes? The rules as last saved stay ready for later.',
+    { title: 'Unsaved changes', okLabel: 'Close without saving' })) return;
+  m.classList.remove('open');
+  irNow = null;
+  if (_irFrom && document.contains(_irFrom) && _irFrom.offsetParent) _irFrom.focus();
+  _irFrom = null;
+}
+/** Run: changes not yet saved are saved first (Run means "with these rules"), then the dataset is assessed. */
+async function irRun() {
+  const o = irNow, rx = ($('#irRulesBody') || {})._rx, btn = $('#irRun'), note = $('#irNote');
+  if (!o) return;
+  if (rx && rxChanges(rx).n) {
+    btn.disabled = true;
+    btn.textContent = 'Saving your changes…';
+    await rxSave(rx);
+    if (rxChanges(rx).n) {                               // not saved: say so, and run nothing
+      btn.disabled = false;
+      btn.textContent = 'Run assessment with these rules';
+      note.className = 'irm-note err';
+      note.textContent = 'Your changes could not be saved, so nothing was run. The reason is above.';
+      return;
+    }
+  }
+  const sweep = $('#irSweep').checked;
+  if (o.onSweep) o.onSweep(sweep);
+  $('#irModal').classList.remove('open');
+  irNow = null;
+  _irFrom = null;
+  o.run(sweep);
+}
+$('#irClose').addEventListener('click', () => irClose());
+$('#irLater').addEventListener('click', () => irClose());
+$('#irRun').addEventListener('click', () => irRun());
+$('#irModal').addEventListener('keydown', e => {
+  if (e.key === 'Escape' && !e.defaultPrevented) { e.preventDefault(); irClose(); }
+});
+/** A dataset the Overview lists as rules ready: its rules open for review, and Run gives it its first assessment. */
+function irOpenDataset(ds) {
+  irOpen({ prefix: ds.resultPrefix, name: ds.name, sweep: true, run: sweep => irRunDataset(ds, sweep) });
+}
+async function irRunDataset(ds, sweep) {
+  if (ds.isUpload && ds.inputUri) {
+    // An upload's file is kept until its first assessment, which reads it where it lies, in its own run folder.
+    const runId = String(ds.resultPrefix || '').replace(/\/+$/, '').split('/').pop();
+    switchTab('upload');
+    if (typeof selectSource === 'function') selectSource('file');
+    const seq = srcRunBegin('file', { msg: `Assessing ${ds.name}`, at: 1, steps: SRC_FILE_STEPS, noSweep: !sweep,
+      sub: 'Scoring against the 9 DAMA quality dimensions with the rules you reviewed.' });
+    let trig;
+    try {
+      trig = await postJSON(`${API_BASE}/data-quality`, srcSweepHeaders(sweep),
+        { input_uri: ds.inputUri, run_id: runId, notify_email: EMAIL || undefined });
+    } catch (e) {
+      if (srcRunCurrent('file', seq)) srcRunFail('file', '');
+      banner('err', e.message);
+      return;
+    }
+    srcRunLaunched('file', trig.runId, 'Scoring against the 9 DAMA quality dimensions - waiting for the run to finish.');
+    if (trig.resultPrefix) await pollResults(trig.resultPrefix);
+    return;
+  }
+  await reRunTable(ds.name, ds.sourceFormat, ds.resultPrefix, srcSweepHeaders(sweep));
 }
 /**
  * Every data source form, the upload included, has a "Sweep PII" box above its run button, ticked to start with.
@@ -21707,6 +22053,7 @@ function updateSourceRunState(key) {
     btn.classList.remove('run-off');
     delete btn.dataset.tip;
   }
+  srcKnownCheck(key);                                    // Infer ruleset for a new dataset, Run assessment otherwise
 }
 // A database runs on an agent through its SAVED connection, never through the form alone: the server
 // sends the job to the agent named by the credential pointer that connection holds, and there is no
@@ -21925,7 +22272,7 @@ function dbLaunchWords(cfg, name, where, started) {
   return cfg.agent
     ? { launch: `Queuing the ${name} assessment for the agent`,
         started: `Queued for the agent. It starts on that machine's next poll, usually within 15 seconds, then scores the whole table in ${where}.`,
-        steps: ['Queue', DQ_SWEEP_STEP, 'Assess on the agent', 'Results'] }
+        steps: ['Queue', DQ_SWEEP_STEP, 'Assess on the agent', 'Results'], queued: true }
     : { launch: `Launching ${name} assessment`, started };
 }
 
@@ -21996,7 +22343,7 @@ async function runAgentFile(cfg, statusEl) {
   return srcLaunch('agentfile', statusEl, 'agent-file-assessment', body, {
     launch: 'Queueing the file for the agent',
     started: 'Queued for the agent. It starts on that machine\'s next poll, usually within fifteen seconds.',
-    steps: ['Queue', DQ_SWEEP_STEP, 'Assess on the agent', 'Results'] });
+    steps: ['Queue', DQ_SWEEP_STEP, 'Assess on the agent', 'Results'], queued: true });
 }
 
 // Launch a full-table PostgreSQL assessment, then poll + render its result.
@@ -25483,7 +25830,7 @@ function buildGuides() {
     title: 'Onboard your first dataset',
     sub: pk('Score a table or a file for the first time, from inside this app',
             'Score a table or a file for the first time in your workspace'),
-    keywords: 'start begin first run onboarding new upload connect getting started score',
+    keywords: 'start begin first run onboarding new upload connect getting started score infer ruleset rules ready review & run keep for later',
     open: { tab: 'upload', label: 'Open From a data source' },
     sections: [
       { h: 'Before you start', body: pk(
@@ -25503,7 +25850,8 @@ function buildGuides() {
           shot('source-picker', `${n(1)} The source you picked, which opens the menu again. For a file, ${n(2)} choose it, ${n(3)} leave the sample empty to assess every row, and ${n(4)} press ${ui('Upload & assess')}.`) },
       { h: 'Run it and read the result', body:
           steps(
-            `Press ${ui('Run assessment')}, or ${ui('Upload & assess')} for a file. The form steps aside while it runs, and the card shows each stage as it goes and how long it has been running. The button stays greyed out until the run is over.`,
+            `For a dataset never assessed before, the button is ${ui('Infer ruleset')} (${ui('Upload & infer ruleset')} for a file). Its rules are worked out first, with AI, and open for you to review before anything is assessed: change any rule, describe one in plain English, or add a rule across columns, then press ${ui('Run assessment with these rules')}. ${ui('Keep for later')} keeps them, and the dataset waits on the Overview as ${ui('Rules ready')} until you press ${ui('Review & run')} there.`,
+            `For a dataset assessed before, the button is ${ui('Run assessment')} (${ui('Upload & assess')} for a file), and it runs straight away with its saved rules. The form steps aside while it runs, and the card shows each stage as it goes and how long it has been running. The button stays greyed out until the run is over.`,
             `For a warehouse or database table the checks run as SQL inside your own engine, so even a large table costs you a query rather than a copy.`,
             `When it is done the result takes the form's place: the overall score, whether the quality gate passed, and the nine quality dimensions. The failing records, compliance, metadata and the run's files have a tab each.`,
             `If the quality gate failed, the result opens with why: each blocking check, what its column must be, and how many records break it. ${ui('See records')} goes straight to just those records.`,
@@ -29544,7 +29892,7 @@ function srcFollowRerun(card, r, msg, sub) {
   if (ws) ws.scrollIntoView({ behavior: dqReduced() ? 'auto' : 'smooth', block: 'nearest' });
 }
 
-async function reRunTable(tableName, sourceFormat, resultPrefix) {
+async function reRunTable(tableName, sourceFormat, resultPrefix, hdrs) {
   const fmt = (sourceFormat || '').toLowerCase();
   // An UPLOADED file has nothing to re-run from: no saved connection, and the file itself is
   // discarded once assessed. Its format is the FILE format (csv/parquet/...), so the connector
@@ -29556,7 +29904,7 @@ async function reRunTable(tableName, sourceFormat, resultPrefix) {
     const card = _SRC_CARD_BY_FMT[fmt] || 's3';           // file formats (parquet/csv/…) -> S3 datasource
     if (resultPrefix) {
       try {
-        const r = await postJSON(`${API_BASE}/data-quality/rerun-source`, HEADERS,
+        const r = await postJSON(`${API_BASE}/data-quality/rerun-source`, hdrs || HEADERS,
           { result_prefix: resultPrefix, notify_email: EMAIL || undefined });
         if (r && r.rerun) {
           srcFollowRerun(card, r, `Re-assessing ${tableName || 'the dataset'}`, 'Reconnecting with the saved credentials for this connection…');
@@ -29782,6 +30130,8 @@ async function pollInto(resultPrefix, bodyEl, opts) {
     try { r = await postJSON(`${API_BASE}/data-quality/result`, HEADERS, { result_prefix: resultPrefix }); }
     catch (e) { /* transient poll error - keep waiting */ }
     if (stage && !srcRunCurrent(stage, seq)) return;     // a newer run has this connector's stage now
+    // A new dataset's Infer ruleset: its rules are settled and nothing was assessed. Its form opens them.
+    if (r && r.state === 'RULES_READY' && opts && opts.onRulesReady) { opts.onRulesReady(r); return; }
     if (r && TERMINAL.includes(r.state)) {
       renderAssessment(r, bodyEl, opts);
       if (stage) srcRunDone(stage, r);
