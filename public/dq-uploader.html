@@ -2885,6 +2885,44 @@
   #schPreview span { display: block; font-size: 12.5px; color: #aab6cf; margin-top: 3px; }
   .schf-lab { font-size: 11px; letter-spacing: .07em; text-transform: uppercase; color: #7f8db0; font-weight: 700; margin-bottom: 9px; }
   #schNextRuns { display: grid; gap: 6px; }
+  /* A source schedule's dataset: one already assessed, picked from a list of cards. */
+  #schModal .schd-hint { margin: 2px 0 12px; }
+  .schd { display: grid; gap: 8px; margin-bottom: 16px; }
+  .schd-count { font-size: 12px; color: #8f9cb8; }
+  .schd-q { width: 100%; box-sizing: border-box; height: 36px; padding: 0 12px; border-radius: 9px; border: 1px solid #263659;
+    background: #0e1628; color: var(--text); font: inherit; font-size: 13px; }
+  .schd-q:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
+  .schd-list { display: grid; gap: 7px; max-height: 318px; overflow-y: auto; padding: 2px; }
+  .schd-row { display: grid; grid-template-columns: 36px minmax(0, 1fr) auto 20px; align-items: center; gap: 12px; width: 100%;
+    padding: 10px 12px; border-radius: 12px; border: 1px solid #263659; background: #111a2e; color: var(--text);
+    font: inherit; text-align: left; cursor: pointer; transition: border-color .15s var(--dq-ease), background .15s var(--dq-ease); }
+  .schd-row:hover { border-color: #5b7cc9; }
+  .schd-row:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .schd-row.on { border-color: #8fb0ff; background: linear-gradient(135deg, rgba(91,140,255,.16), rgba(167,139,250,.10)); }
+  .schd-row[aria-disabled="true"] { cursor: default; background: transparent; border-style: dashed; }
+  .schd-row[aria-disabled="true"]:hover { border-color: #263659; }
+  .schd-row[aria-disabled="true"] .schd-ic, .schd-row[aria-disabled="true"] b { opacity: .6; }
+  .schd-ic { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; font-size: 18px;
+    background: #0e1628; border: 1px solid #22304f; }
+  .schd-ic svg { width: 21px; height: 21px; }
+  .schd-main { display: grid; gap: 2px; min-width: 0; }
+  .schd-main b { font-size: 13.5px; font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .schd-main code { font-size: 11.5px; color: #9fb0d4; background: none; padding: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .schd-main small { font-size: 11.5px; color: #8f9cb8; }
+  .schd-main small.why { color: var(--run); }
+  .schd-score { font-size: 12.5px; font-weight: 700; font-variant-numeric: tabular-nums; padding: 3px 9px; border-radius: 999px;
+    background: var(--idle-bg); color: var(--idle); }
+  .schd-score.green { background: var(--ok-bg); color: var(--ok); }
+  .schd-score.amber { background: var(--run-bg); color: var(--run); }
+  .schd-score.red { background: var(--err-bg); color: var(--err); }
+  .schd-tick { width: 18px; height: 18px; border-radius: 50%; border: 2px solid #3a4a72; box-sizing: border-box; }
+  .schd-row.on .schd-tick { border-color: #8fb0ff; background: radial-gradient(circle, #8fb0ff 0 4px, transparent 5px); }
+  .schd-row[aria-disabled="true"] .schd-tick { visibility: hidden; }
+  .schd-empty { display: grid; gap: 8px; justify-items: start; padding: 16px 18px; border-radius: 12px; border: 1px dashed #3a5190;
+    background: rgba(91,140,255,.05); font-size: 13px; color: #aab6cf; margin: 0; }
+  .schd-empty b { color: var(--text); font-size: 14px; }
+  .schd-empty.err { color: var(--err); border-color: var(--err); background: var(--err-bg); }
+  .schd-gone { margin: 0; font-size: 12.5px; color: var(--run); }
   #schNextRuns span { padding: 7px 11px; border-radius: 9px; font-size: 12.5px; color: #c9d6f5; border: 1px dashed #3a5190;
     background: rgba(91,140,255,.06); }
   #schNextRuns .sp-empty { border: 0; background: none; padding: 0; color: var(--muted); }
@@ -7237,9 +7275,19 @@
             </div>
 
             <div id="schSourceWrap" style="display:none;">
-              <p class="hint" style="margin:12px 0 8px;">The connection details are stored with the schedule so it can run unattended. Prefer a role or Secrets Manager ARN over raw passwords or keys where the source allows it.</p>
-              <div id="schedCredsNote" style="margin:0 0 10px;"></div>
-              <div class="src-form" id="schedSourceFields"></div>
+              <!-- A dataset already assessed, run with the connection it was assessed with (schDsLoad). -->
+              <div id="schDsWrap">
+                <p class="hint schd-hint">Choose a dataset that has been assessed. It runs with the connection it was assessed with, so there is nothing to enter here.</p>
+                <div id="schDsList" class="schd"></div>
+                <label for="schDsSample">Sample size <span class="hint" style="font-weight:400;">(optional)</span></label>
+                <input type="number" id="schDsSample" min="1" placeholder="Leave empty to assess the whole dataset" />
+              </div>
+              <!-- SharePoint and on-premises files: where the file is, and the saved connection to read it with. -->
+              <div id="schManualWrap">
+                <p class="hint" style="margin:12px 0 8px;">The connection details are stored with the schedule so it can run unattended. Prefer a role or Secrets Manager ARN over raw passwords or keys where the source allows it.</p>
+                <div id="schedCredsNote" style="margin:0 0 10px;"></div>
+                <div class="src-form" id="schedSourceFields"></div>
+              </div>
             </div>
 
             <div id="schTagWrap" style="display:none;">
@@ -13257,29 +13305,18 @@ function dsxMi(act, ic, label, o) {
     `<span class="dsx-mi-t">${label}${o.sub ? `<small>${esc(o.sub)}</small>` : ''}</span>` +
     `${o.side ? `<span class="dsx-mi-r${o.hot ? ' hot' : ''}">${esc(o.side)}</span>` : ''}</button>`;
 }
-/** What scheduling this dataset means: the Schedules form's kind, and the fields its name can fill.
- *  The saved connection a run used is not recorded on it, so that is left for the reader to pick. */
+/** What scheduling this dataset means: the Schedules form's kind, with this dataset chosen in it. A connector's runs
+ *  record its own name; a file's record its type, so which store it is in (kind '') is asked when it is scheduled. */
 function dsxSchedPlan(d) {
   if (dsxIsUpload(d)) return { why: 'An uploaded file has no source to assess on a timer' };
   if (!isSourceDataset(d)) return PORTAL ? { why: 'App tables are scheduled from the Qlik extension' } : { kind: 'qlik' };
   const fmt = String(d.sourceFormat || '').toLowerCase();
-  // Read as Re-run reads it: a connector records its own name, and a file on S3 records its type.
-  const kind = (fmt === 'athena' || fmt === 'iceberg') ? 'athena' : (_SRC_CARD_BY_FMT[fmt] || 's3');
-  const opt = document.querySelector(`#schSourceKind option[value="${kind}"]`);
-  if (!opt || opt.hidden) return { why: `${sourceLabel(fmt) || 'This source'} cannot be scheduled from here` };
-  const has = f => (SCHED_SOURCE_FIELDS[kind] || []).some(x => x.f === f);
-  const fields = {};
-  if (has('table')) {
-    const parts = String(d.name || '').split('.');
-    fields.table = parts[parts.length - 1];
-    if (parts.length > 1) fields[kind === 'bigquery' ? 'dataset' : 'schema'] = parts[parts.length - 2];
-    if (parts.length > 2) fields[kind === 'bigquery' ? 'project' : kind === 'databricks' ? 'catalog' : 'database'] = parts[parts.length - 3];
-    return { kind, fields };
+  const kind = (fmt === 'athena' || fmt === 'iceberg') ? 'athena' : (_SRC_CARD_BY_FMT[fmt] || '');
+  if (kind) {
+    const opt = document.querySelector(`#schSourceKind option[value="${kind}"]`);
+    if (!opt || opt.hidden) return { why: `${sourceLabel(fmt) || 'This source'} cannot be scheduled from here` };
   }
-  // A file: its type, where the form asks for one, and its name; where it is has to be typed in.
-  if (has('format') && fmt !== kind) fields.format = fmt;
-  if (has('dataset')) fields.dataset = d.name;
-  return { kind, fields, where: true };
+  return { kind, key: d.key };
 }
 function dsxLineagePlan(d) {
   if (!isSourceDataset(d)) return PORTAL ? { why: 'Not available for app tables here' } : { scope: 'app', side: 'whole app' };
@@ -13378,30 +13415,34 @@ function dsxFlash(text) {
 
 // ---- Where the menu goes ----
 // Each lands on its tab with this dataset already chosen there, rather than on the tab's front page.
-function dsxSchedule(d) {
+async function dsxSchedule(d) {
   const plan = dsxSchedPlan(d);
   if (plan.why) return;
+  let kind = plan.kind;
+  if (!kind) {                                     // a file: the API says which store it came from
+    let r = null;
+    try { r = await postJSON(`${API_BASE}/data-quality/schedules/datasets`, HEADERS, { app_id: APP_ID, dataset_key: plan.key }); }
+    catch (e) { /* said below */ }
+    kind = (r && r.kind) || '';
+    const opt = kind && document.querySelector(`#schSourceKind option[value="${kind}"]`);
+    if (!opt || opt.hidden) {
+      dqAlert('This file cannot be run again from what its last run recorded, so it cannot be scheduled from here.',
+        { title: 'It cannot be scheduled' });
+      return;
+    }
+  }
   switchTab('schedules');                          // which resets the form, so fill it in after
   const sel = $('#schSourceKind');
-  if (sel && sel.value !== plan.kind) { sel.value = plan.kind; schSourceUI(); }
+  const manual = SCH_MANUAL_KINDS.has(kind);
+  if (sel) { sel.value = kind; schSourceUI(kind === 'qlik' || manual ? undefined : plan.key); }
   const lab = $('#schLabel'); if (lab) lab.value = d.name || '';
-  if (plan.kind === 'qlik') { schSelected = [d.name]; updateTablesSummary(); }
-  const wrap = $('#schedSourceFields');
-  if (wrap && plan.fields) Object.keys(plan.fields).forEach(f => {
-    const el = wrap.querySelector(`[data-f="${f}"]`);
-    if (!el || !plan.fields[f]) return;
-    // A list keeps its own value unless it offers this one (a file type the form does not list).
-    if (el.tagName === 'SELECT' && ![...el.options].some(o => o.value === plan.fields[f])) return;
-    el.value = plan.fields[f];
-  });
+  if (kind === 'qlik') { schSelected = [d.name]; updateTablesSummary(); }
   schForm(true);
-  if (plan.kind !== 'qlik') schFormGo('assess');
+  if (kind !== 'qlik') schFormGo('assess');
   renderSchedulePreview();
-  schBanner('info', plan.kind === 'qlik'
-    ? `Scheduling ${d.name}: choose when it runs, then save.`
-    : plan.where
-      ? `Scheduling ${d.name}: enter where the file is, choose the saved connection it uses, then choose when it runs.`
-      : `Scheduling ${d.name}: choose the saved connection it uses, check the details, then choose when it runs.`);
+  schBanner('info', manual
+    ? `Scheduling ${d.name}: enter where the file is, choose the saved connection it uses, then choose when it runs.`
+    : `Scheduling ${d.name}: choose when it runs, then save.`);
 }
 function dsxMonitor(d) {
   Object.assign(swView, { want: d.key, q: '', src: '', health: '' });
@@ -26094,7 +26135,7 @@ function buildGuides() {
       { h: 'Everything you can do to it', body:
           p(`${ui('Re-run')} assesses it again now. Everything else is under ${ui('Actions')}, which lands on the right tab with this dataset already chosen there. ${showme('ds-actions')}`) +
           table(['Group', 'What is in it'], [
-            ['Run', `${ui('Re-run now')}, ${ui('Schedule…')} (fills in the Schedules form for it: you choose the saved connection and when it runs) and ${ui('Monitor at source')}.`],
+            ['Run', `${ui('Re-run now')}, ${ui('Schedule…')} (opens the Schedules form with this dataset chosen: you choose when it runs) and ${ui('Monitor at source')}.`],
             ['Explore', `Its ${ui('Lineage')}, its ${ui('Incidents')}, and its latest run in ${ui('History')}.`],
             ['Share', `${ui('Export summary (parquet)')} downloads its scores run by run, ready to load into Qlik or any BI tool.${P ? ` ${ui('Copy a link to this dataset')} for anyone in your workspace.` : ''}`],
             ['Describe', `Edit its description, or add a note.${P && !ADMIN ? ` ${ui('Submit for approval')} puts your latest run forward to an admin.` : ''}`],
@@ -26493,12 +26534,12 @@ function buildGuides() {
   G.push({
     id: 'schedules', cat: 'Automate', icon: 'calendar', tint: '#818cf8',
     title: 'Schedule assessments', sub: 'Run checks automatically, see how every run went, and pause, edit or delete them',
-    keywords: 'schedule schedules recurring daily weekly monthly hourly cron rate timezone pause resume edit delete next runs river lane clash busy hour tag source monitoring agent automate',
+    keywords: 'schedule schedules recurring daily weekly monthly hourly cron rate timezone pause resume edit delete next runs river lane clash busy hour tag source monitoring agent automate dataset assessed connection',
     open: { tab: 'schedules', label: 'Open Schedules' },
     sections: [
       { h: 'What you can schedule', body: list(
           Q ? `<b>This app's tables</b>, all of them or a chosen few` : null,
-          `<b>Any source connection</b>: a warehouse, database, cloud storage or on-premises source`,
+          `<b>Any source dataset already assessed</b>: a warehouse, database, cloud storage or on-premises source, run with the connection it was assessed with`,
           `<b>Every dataset with a tag</b>, in one task`,
           `<b>Source monitoring only</b>, which checks sources are still loading without assessing them`) },
       { h: 'Read the river', body:
@@ -26519,7 +26560,7 @@ function buildGuides() {
                 `Under ${ui('When')}, choose ${ui('Every day')}, ${ui('Some days')} and which, ${ui('Monthly')} on a date, ${ui('Every few hours')}, or ${ui('Custom')} for a 6-field EventBridge cron or a rate.`,
                 `Set the time and its timezone. It runs at that time in that zone; the river shows it in your own time.`,
                 `Under ${ui('Assess')}, pick what to run.${Q ? ` For app tables, ${ui('Choose tables…')} or leave it on all tables, and optionally set a sample size.` : ''}`,
-                `For a source, choose a saved ${ui('Credential profile')} and press ${ui('Apply')}, or fill in the connection by hand. Prefer a role or a Secrets Manager ARN to a raw password where the source allows it.`,
+                `For a source, choose its type, then the dataset: every one of that type assessed here is listed. It runs with the connection it was assessed with, so there is nothing to type. A dataset that is not there yet is assessed once under ${go('upload', 'From a data source')} first, with a saved connection. SharePoint and on-premises files are the exception: for those, choose a saved ${ui('Credential profile')}, press ${ui('Apply')} and say where the file is.`,
                 `Name it, or keep the name it offers.`,
                 `Check the summary on the right, its next runs, and its week beside the other schedules: an amber edge marks an hour in which three or more would start. Then press ${ui('Save schedule')}.`) +
           shot('schedule-form', `${n(1)} When it runs, ${n(2)} what it assesses and ${n(3)} its name. ${n(4)} What it will do, its next runs, and its week beside the others. ${n(5)} ${ui('Save schedule')}, with whether it starts in a busy hour beside it.`) },
@@ -30295,6 +30336,7 @@ function resetScheduleForm() {
   // A new schedule starts in the reader's own zone: "06:00" means what they think it means.
   setSchTz((typeof _localTz === 'function' && _localTz()) || 'UTC');
   if ($('#schSourceKind') && !PORTAL) $('#schSourceKind').value = 'qlik';
+  if ($('#schDsSample')) $('#schDsSample').value = '';
   if (typeof schSourceUI === 'function') schSourceUI();
   schSelected = [];
   updateTablesSummary();
@@ -30648,16 +30690,133 @@ function collectSchedSource() {
   return cfg;
 }
 
-function schSourceUI() {
+// ---- A source schedule names a dataset already assessed ----
+// It runs that dataset with the connection it was assessed with (the API rebuilds it, as Re-run does), so the form
+// asks for no connection: a dataset is assessed by hand once, from Data source, and can be scheduled from then on.
+// SharePoint and on-premises files are the exception: what a run records of them cannot be run again, so their
+// schedules still say where the file is and which saved connection reads it.
+const SCH_MANUAL_KINDS = new Set(['sharepoint', 'agentfile']);
+const schDs = { kind: '', list: null, err: '', picked: '', missing: '', q: '', seq: 0 };
+let _schDsAgents = {};                                   // agent id -> its name, for "Runs on"
+/** The kind's datasets, with `want` chosen (an edited schedule's dataset). A new schedule ('') has the only one there is
+ *  chosen for it; an edited one whose dataset is not known (null) has nothing chosen, as it may have run another. */
+async function schDsLoad(kind, want) {
+  const seq = ++schDs.seq;
+  Object.assign(schDs, { kind, list: null, err: '', picked: want || '', missing: '', q: '' });
+  schDsPaint();
+  let r;
+  try {
+    [r] = await Promise.all([
+      postJSON(`${API_BASE}/data-quality/schedules/datasets`, HEADERS, { app_id: APP_ID, source_kind: kind }),
+      loadAgentsForSources().then(a => { _schDsAgents = Object.fromEntries((a || []).map(x => [x.id, x.name])); })]);
+  } catch (e) {
+    if (seq === schDs.seq) { schDs.list = []; schDs.err = e.message; schDsPaint(); }
+    return;
+  }
+  if (seq !== schDs.seq) return;                         // another kind was chosen meanwhile
+  schDs.list = r.datasets || [];
+  if (schDs.picked && !schDs.list.some(d => d.key === schDs.picked)) { schDs.missing = schDs.picked; schDs.picked = ''; }
+  if (want === '' && !schDs.picked) {
+    const ok = schDs.list.filter(d => d.schedulable);
+    if (ok.length === 1) schDs.picked = ok[0].key;
+  }
+  schDsPaint();
+  renderSchedulePreview();
+}
+function _schDsRow(d) {
+  const on = d.key === schDs.picked;
+  const also = (schx.list || []).filter(o => o.name !== schEditingName && o.datasetKey === d.key).map(o => o.label);
+  const day = d.lastRun ? dsxDay(d.lastRun).day : '';
+  const meta = [day && `Assessed ${/^[A-Z][a-z]+$/.test(day) ? day.toLowerCase() : day}`,
+    d.agent && `Runs on ${_schDsAgents[d.agent] || 'an agent'}`,
+    also.length && `Already scheduled by ${also.join(', ')}`].filter(Boolean).join(' · ');
+  const score = typeof d.score === 'number' ? `<span class="schd-score ${tagClass(d.status || '')}">${d.score.toFixed(1)}</span>` : '<span></span>';
+  return `<button type="button" class="schd-row${on ? ' on' : ''}" role="radio" aria-checked="${on}" data-schd="${esc(d.key)}"` +
+    `${d.schedulable ? '' : ' aria-disabled="true"'}><span class="schd-ic" aria-hidden="true">${srcIcon(schDs.kind)}</span>` +
+    `<span class="schd-main"><b>${esc(d.name)}</b>${d.location ? `<code>${esc(d.location)}</code>` : ''}` +
+    (d.schedulable ? (meta ? `<small>${esc(meta)}</small>` : '') : `<small class="why">${esc(d.reason || 'It cannot be scheduled.')}</small>`) +
+    `</span>${score}<span class="schd-tick" aria-hidden="true"></span></button>`;
+}
+function schDsPaintList() {
+  const list = $('#schDsList') && $('#schDsList').querySelector('.schd-list');
+  if (!list) return;
+  const q = schDs.q.trim().toLowerCase();
+  const rows = (schDs.list || []).filter(d => !q || `${d.name} ${d.location}`.toLowerCase().includes(q));
+  list.innerHTML = rows.length ? rows.map(_schDsRow).join('') : `<p class="schd-count">Nothing matches “${esc(schDs.q.trim())}”.</p>`;
+}
+function schDsPaint() {
+  const host = $('#schDsList'); if (!host) return;
+  const label = SOURCE_LABEL[schDs.kind] || schDs.kind;
+  if (schDs.list === null) { host.innerHTML = dqSkeleton(`Finding the ${label} datasets`, 3); return; }
+  if (schDs.err) { host.innerHTML = `<p class="schd-empty err">${esc(schDs.err)}</p>`; return; }
+  const gone = schDs.missing ? `<p class="schd-gone">The dataset this schedule ran is not here any more. Choose the one it runs now.</p>` : '';
+  if (!schDs.list.length) {
+    host.innerHTML = gone + `<div class="schd-empty"><b>No ${esc(label)} datasets yet</b>` +
+      `<span>A dataset is scheduled once it has been assessed. Assess it first under <b>From a data source</b>, with a saved connection, and it appears here.</span>` +
+      `<button type="button" class="btn-sm" data-schd-go>Open From a data source</button></div>`;
+    return;
+  }
+  const ok = schDs.list.filter(d => d.schedulable).length, n = schDs.list.length;
+  host.innerHTML = gone + `<span class="schd-count">${n} ${esc(label)} dataset${n === 1 ? '' : 's'}` +
+    `${ok < n ? `, ${ok} of them can be scheduled` : ''}</span>` +
+    (n > 6 ? `<input type="search" class="schd-q" placeholder="Find a dataset" aria-label="Find a dataset" value="${esc(schDs.q)}">` : '') +
+    `<div class="schd-list" role="radiogroup" aria-label="${esc(label)} datasets"></div>`;
+  schDsPaintList();
+}
+if ($('#schDsList')) {
+  const host = $('#schDsList');
+  host.addEventListener('click', e => {
+    if (e.target.closest('[data-schd-go]')) {
+      const k = schDs.kind;
+      schForm(false);
+      switchTab('upload');
+      if (typeof selectSource === 'function') selectSource(k);
+      return;
+    }
+    const b = e.target.closest('[data-schd]');
+    if (!b || b.getAttribute('aria-disabled') === 'true') return;
+    schDs.picked = b.dataset.schd;
+    schDs.missing = '';
+    // Marked in place rather than drawn again, so the card pressed keeps its focus (and a mouse shows no ring).
+    host.querySelectorAll('.schd-row').forEach(r => {
+      const on = r === b;
+      r.classList.toggle('on', on);
+      r.setAttribute('aria-checked', String(on));
+    });
+    const gone = host.querySelector('.schd-gone'); if (gone) gone.remove();
+    renderSchedulePreview();
+  });
+  host.addEventListener('input', e => {
+    if (!e.target.classList.contains('schd-q')) return;
+    schDs.q = e.target.value;
+    schDsPaintList();
+  });
+  // Up and down move along the list, as in any list of choices.
+  host.addEventListener('keydown', e => {
+    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+    const rows = [...host.querySelectorAll('.schd-row')], i = rows.indexOf(document.activeElement);
+    if (i < 0) return;
+    e.preventDefault();
+    const next = rows[Math.max(0, Math.min(rows.length - 1, i + (e.key === 'ArrowDown' ? 1 : -1)))];
+    if (next) next.focus();
+  });
+}
+
+/** The form for the kind chosen. `want`: the dataset an edited (or Schedule-this) source schedule starts on. */
+function schSourceUI(want) {
   const kind = ($('#schSourceKind') && $('#schSourceKind').value) || 'qlik';
   const qlik = kind === 'qlik';
   const tag = kind === 'tag';
   const watch = kind === 'source-watch';        // metadata monitoring: no connector form at all
+  const pick = !(qlik || tag || watch) && !SCH_MANUAL_KINDS.has(kind);
   if ($('#schQlikFields')) $('#schQlikFields').style.display = qlik ? '' : 'none';
   if ($('#schSourceWrap')) $('#schSourceWrap').style.display = (qlik || tag || watch) ? 'none' : 'block';
+  if ($('#schDsWrap')) $('#schDsWrap').style.display = pick ? '' : 'none';
+  if ($('#schManualWrap')) $('#schManualWrap').style.display = pick ? 'none' : '';
   if ($('#schTagWrap')) $('#schTagWrap').style.display = tag ? 'block' : 'none';
   if ($('#schWatchWrap')) $('#schWatchWrap').style.display = watch ? 'block' : 'none';
   if (tag) populateSchTags();
+  else if (pick) schDsLoad(kind, typeof want === 'string' || want === null ? want : '');
   else if (!qlik && !watch) renderSchedSourceFields(kind);
 }
 if ($('#schSourceKind')) $('#schSourceKind').addEventListener('change', schSourceUI);
@@ -31506,6 +31665,17 @@ async function saveSchedule() {
   } else if (kind === 'source-watch') {
     // Nothing to collect: the server builds the target list from every dataset in this
     // workspace that has a saved credential profile.
+  } else if (!SCH_MANUAL_KINDS.has(kind)) {
+    // A dataset already assessed, run with the connection it was assessed with: only which one is sent.
+    if (!schDs.picked) {
+      schBanner('err', (schDs.list || []).some(d => d.schedulable) ? 'Choose the dataset it runs.'
+        : `There is no ${SOURCE_LABEL[kind] || kind} dataset to schedule yet. Assess one first under From a data source, with a saved connection.`);
+      schFormGo('assess');
+      return;
+    }
+    body.dataset_key = schDs.picked;
+    const sample = parseInt(($('#schDsSample').value || '').trim(), 10);
+    if (Number.isFinite(sample) && sample > 0) body.sample_rows = sample;
   } else {
     const cfg = collectSchedSource();
     // When saved credentials are applied, the blank secret is injected server-side.
@@ -32140,6 +32310,10 @@ function _schScopeOk(s, r) {
     return rest === r.slug || rest.slice(rest.indexOf('/') + 1) === r.slug;
   });
   if (k === 'qlik') return fmt === 'qlik' && (!(s.tables || []).length || s.tables.includes(r.dataset));
+  if (s.datasetKey && SOURCE_LABEL[k]) {                 // a source schedule's own dataset, and only that
+    const rest = s.datasetKey.slice(s.datasetKey.indexOf('/') + 1);
+    return rest === r.slug || rest.slice(rest.indexOf('/') + 1) === r.slug;
+  }
   if (fmt === k) return true;
   return ['s3', 'gcs', 'azureblob', 'sharepoint', 'agentfile'].includes(k) && SCH_FILE_FMTS.has(fmt);
 }
@@ -32624,7 +32798,11 @@ function _schFormSched() {
     const t = (typeof tagRunTags === 'function' ? tagRunTags() : []).find(x => x.tag === s.tag);
     if (t) s.members = new Array(t.total).fill('');
   }
-  if (kind !== 'qlik' && kind !== 'tag' && kind !== 'source-watch') {
+  if (kind !== 'qlik' && kind !== 'tag' && kind !== 'source-watch' && !SCH_MANUAL_KINDS.has(kind)) {
+    const d = (schDs.list || []).find(x => x.key === schDs.picked);
+    s.sourceSummary = d ? d.name : '';
+    s.datasetKey = schDs.picked || null;
+  } else if (kind !== 'qlik' && kind !== 'tag' && kind !== 'source-watch') {
     const cfg = typeof collectSchedSource === 'function' ? collectSchedSource() : {};
     s.sourceSummary = cfg.table ? [cfg.database, cfg.schema, cfg.table].filter(Boolean).join('.') : (cfg.path || cfg.key || cfg.url || '');
   }
@@ -32796,7 +32974,9 @@ function editSchedule(s) {
   }
   const kind = (s.sourceKind && s.sourceKind !== 'qlik') ? s.sourceKind : 'qlik';
   if ($('#schSourceKind')) $('#schSourceKind').value = kind;
-  schSourceUI();
+  const manual = SCH_MANUAL_KINDS.has(kind), source = !(kind === 'qlik' || kind === 'tag' || kind === 'source-watch');
+  schSourceUI(source && !manual ? (s.datasetKey || null) : undefined);
+  if (source && !manual && $('#schDsSample')) $('#schDsSample').value = s.sampleRows || '';
   if (kind === 'qlik') {
     schSelected = (s.tables || []).slice();   // preserve the schedule's table selection
     updateTablesSummary();
@@ -32815,10 +32995,12 @@ function editSchedule(s) {
   }
   schFreqUI();
   schForm(true);
-  if (!(kind === 'qlik' || kind === 'tag' || kind === 'source-watch'))
+  if (manual)
     schBanner('info', 'Re-enter this source’s connection details - credentials aren’t stored back into the form.');
-  // A source's details have to be typed in again, so that is where it starts.
-  if (!(kind === 'qlik' || kind === 'tag' || kind === 'source-watch')) schFormGo('assess');
+  else if (source && !s.datasetKey)
+    schBanner('info', 'Choose the dataset this schedule runs. It runs with the connection that dataset was assessed with.');
+  // A source's details have to be typed in again, or its dataset chosen, so that is where it starts.
+  if (manual || (source && !s.datasetKey)) schFormGo('assess');
   renderSchedulePreview();
 }
 
