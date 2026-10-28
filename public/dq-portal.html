@@ -447,11 +447,15 @@
   .scope-btn { border: none; background: transparent; color: var(--muted); font-size: 12px; font-weight: 600;
     padding: 4px 12px; border-radius: 6px; cursor: pointer; }
   .scope-btn.active { background: var(--card); color: var(--accent); box-shadow: 0 1px 2px rgba(0,0,0,.08); }
-  .dash-cols { display: grid; grid-template-columns: 3fr 2fr; gap: 16px; align-items: stretch; }
+  /* The list takes what is left and scrolls sideways inside its own box when its columns need more;
+     Estate health keeps at least 380px, about 30% on a wide screen. With both tracks sized to their
+     content, as before, the list's table and the old dimension grid together pushed the whole page
+     sideways at 1600px and below, and a chart sized from its box has no width of its own to hold. */
+  .dash-cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(380px, 30%); gap: 16px; align-items: stretch; }
   /* Both cards already cap their own scroll region, so an equal-height row cannot grow unbounded;
      without this each card is only as tall as its content and the pair looks ragged. */
   .dash-cols > .card { display: flex; flex-direction: column; }
-  .dash-cols > .card > #dashTableWrap, .dash-cols > .card > .heat-wrap { flex: 1 1 auto; }
+  .dash-cols > .card > #dashTableWrap { flex: 1 1 auto; }
   .trend-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
   @media (max-width: 1000px) { .dash-cols { grid-template-columns: 1fr; } }
   @media (max-width: 820px)  { .trend-cols { grid-template-columns: 1fr; } }
@@ -487,13 +491,24 @@
   .sm { border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; }
   .sm .h { font-size: 11px; color: var(--muted); display: flex; justify-content: space-between; align-items: baseline; }
   .sm .v { font-size: 15px; font-weight: 700; }
-  .heat-wrap { overflow: auto; max-height: 520px; }
-  .heat { border-collapse: separate; border-spacing: 2px; font-size: 11px; }
-  .heat th { color: var(--muted); font-weight: 600; padding: 3px 4px; text-align: center; white-space: nowrap;
-    position: sticky; top: 0; background: var(--card); z-index: 1; }
-  .heat td.hname { text-align: left; white-space: nowrap; color: var(--text); padding: 3px 8px 3px 2px; max-width: 180px;
-    overflow: hidden; text-overflow: ellipsis; }
-  .heat td.cell { width: 34px; height: 26px; text-align: center; border-radius: 4px; font-size: 10px; font-weight: 600; }
+  /* Estate health (Overview): a big "healthy now" figure, the day-by-day stack of healthy, warning
+     and failing, and under it a readout that shows the latest changes, or the day being pointed at. */
+  .eh-hero { display: flex; align-items: flex-end; gap: 16px; margin: 12px 0 14px; }
+  .eh-big { font-size: 46px; font-weight: 800; line-height: .9; letter-spacing: -1px; color: var(--text); }
+  .eh-big small { font-size: 18px; font-weight: 600; color: var(--muted); letter-spacing: 0; }
+  .eh-heroT { font-size: 13px; color: var(--muted); line-height: 1.5; padding-bottom: 2px; }
+  .eh-heroT b { color: var(--text); font-weight: 600; }
+  .eh-plot { position: relative; outline: none; border-radius: 8px; }
+  .eh-plot:focus-visible { box-shadow: 0 0 0 2px var(--accent); }
+  .eh-plot svg { display: block; overflow: visible; }
+  .eh-read { margin-top: 12px; display: grid; gap: 7px; align-content: start; min-height: 118px; }
+  .eh-readT { font-size: 12.5px; font-weight: 700; color: var(--text); }
+  .eh-readT .eh-dot { margin-left: 8px; }
+  .eh-note { display: grid; grid-template-columns: 52px 16px 1fr; align-items: baseline; gap: 6px; font-size: 12.5px; color: var(--muted); }
+  .eh-note b, .eh-readN b { color: var(--text); font-weight: 600; }
+  .eh-readN { font-size: 12.5px; color: var(--muted); line-height: 1.5; }
+  .eh-ds { color: var(--text); font-weight: 600; text-decoration: none; }
+  .eh-ds:hover, .eh-ds:focus-visible { text-decoration: underline; }
   .dash-muted { color: var(--muted); font-size: 12px; }
   .legend { display: flex; gap: 10px; flex-wrap: wrap; font-size: 11px; color: var(--muted); align-items: center; margin-bottom: 8px; }
   .legend .sw { width: 14px; height: 12px; border-radius: 3px; display: inline-block; vertical-align: middle; margin-right: 4px; }
@@ -7018,14 +7033,12 @@
         <div id="dashTableWrap"><p class="dash-muted">Loading…</p></div>
       </div>
 
-      <div class="card">
-        <h2>Dimension scores by dataset</h2>
-        <div class="legend" id="heatLegend"></div>
-        <div class="heat-wrap" id="dashHeat"></div>
-        <details style="margin-top:12px;">
-          <summary class="hint" style="cursor:pointer;">What each dimension means</summary>
-          <div id="dimGlossary" style="margin-top:8px;"></div>
-        </details>
+      <!-- Estate health: how many datasets were healthy, warning or failing on each day of the
+           window, and when each changed. Drawn by renderEstateHealth. -->
+      <div class="card" id="estateCard">
+        <h2>Estate health</h2>
+        <p class="dash-muted" id="ehSub" style="margin:0;"></p>
+        <div id="estateHealth"></div>
       </div>
     </div>
 
@@ -7813,9 +7826,6 @@ const WEIGHT_DIMS = [
     desc: 'Numbers recorded to the required number of decimal places.' },
 ];
 const WEIGHT_MAX = 5;             // sensible cap so weights stay in proportion
-// Dimension glossary (dashboard) - reuse the same descriptions as the weights panel.
-$('#dimGlossary').innerHTML = WEIGHT_DIMS.map(d =>
-  `<div style="margin:4px 0;"><strong>${d.label}</strong> <span class="dash-muted">- ${d.desc}</span></div>`).join('');
 $('#weightsGrid').innerHTML = WEIGHT_DIMS.map(d =>
   `<div class="wrow"><div class="wlabel"><label for="w_${d.key}">${d.label}</label>` +
   `<div class="wdesc">${d.desc}</div></div>` +
@@ -11010,20 +11020,6 @@ function gateChip(gate) {
   if (gate === false) return `<span class="chip crit"${t}><span class="dot"></span>Fail</span>`;
   return `<span class="chip na"${t}><span class="dot"></span>-</span>`;
 }
-function heatCell(score) {
-  if (typeof score !== 'number' || !isFinite(score))
-    return { bg: 'var(--idle-bg)', fg: 'var(--muted)', txt: '-' };
-  // RAG: green = good, amber = warning, red = poor (deepens as the score falls).
-  // Thresholds match the platform's dimension status (green_at=95, amber_at=85) so a cell's
-  // colour agrees with the RED/AMBER/GREEN badge shown in the assessment result.
-  // The number is shown in every cell, so colour is never the only signal.
-  let rgb, a;
-  if (score >= 95) { rgb = '22,163,74'; a = 0.14 + ((score - 95) / 5) * 0.14; }         // green
-  else if (score >= 85) { rgb = '217,119,6'; a = 0.16 + ((95 - score) / 10) * 0.14; }   // amber
-  else { rgb = '220,38,38'; a = 0.26 + ((85 - score) / 85) * 0.58; }                    // red
-  a = Math.min(0.88, a);
-  return { bg: `rgba(${rgb},${a.toFixed(2)})`, fg: a > 0.5 ? '#fff' : 'var(--text)', txt: Math.round(score) };
-}
 // tiny inline sparkline (auto-scaled to show shape)
 function svgSpark(scores, w = 104, h = 26) {
   const v = scores.filter(s => typeof s === 'number' && isFinite(s));
@@ -12754,14 +12750,15 @@ async function _loadDashboardImpl() {
   if (!APP_ID) {
     $('#dashCtx').textContent = '';
     $('#dashTiles').innerHTML = '';
-    $('#dashHeat').innerHTML = '';
+    renderEstateHealth([]);
     $('#dashTableWrap').innerHTML =
       '<p class="dash-muted">Open this from inside a Qlik app to see that app\'s data quality dashboard.</p>';
     return;
   }
   $('#dashCtx').textContent = 'Loading…';
   $('#dashTableWrap').innerHTML = '<p class="dash-muted">Loading…</p>';
-  $('#dashHeat').innerHTML = '';
+  // Estate health keeps its last drawing until the new one replaces it, as the galaxy does, so a
+  // reload on every visit to the tab does not blank it.
   try {
     const d = await postJSON(`${API_BASE}/data-quality/dashboard`, HEADERS,
       { window_days: 30, app_id: APP_ID });
@@ -12810,15 +12807,14 @@ function applyDashScope() {
   renderDashFilters();
   if (!dashDatasets.length && !rulesReadyFiltered().length) {
     $('#dashTableWrap').innerHTML = `<p class="dash-muted">No ${noun} data for this ${SCOPE_NOUN} yet.</p>`;
-    $('#dashHeat').innerHTML = '';
     $('#dashTrends').innerHTML = '';
   } else {
     refreshDatasetsTable();
-    if (dashDatasets.length) {
-      renderHeatmap(dashDatasets);
-      renderAppOverview(dashDatasets);
-    }
+    if (dashDatasets.length) renderAppOverview(dashDatasets);
   }
+  // Outside the if/else: a scope holding only datasets whose rules await review has nothing to
+  // draw, and must not keep the other scope's drawing.
+  renderEstateHealth(dashDatasets);
   // AFTER the default view, not during the table render: renderAppOverview clears the selection,
   // so a deep link applied earlier was drawn and then immediately undone. Outside the if/else
   // too, because the scope that is ACTIVE may be the empty one while the linked dataset sits in
@@ -12951,26 +12947,237 @@ function renderHealthTable(datasets, rr = []) {
     el.addEventListener('click', e => { e.stopPropagation(); dashApplyFilter('data-tagf', el.dataset.tagfilter); }));
 }
 
-function renderHeatmap(datasets) {
-  if (!datasets.length) { $('#dashHeat').innerHTML = ''; $('#heatLegend').innerHTML = ''; return; }
-  $('#heatLegend').innerHTML =
-    `<span><span class="sw" style="background:rgba(22,163,74,0.26)"></span>good (higher)</span>` +
-    `<span><span class="sw" style="background:rgba(217,119,6,0.28)"></span>warning</span>` +
-    `<span><span class="sw" style="background:rgba(220,38,38,0.7)"></span>poor (lower)</span>` +
-    `<span><span class="sw" style="background:var(--idle-bg)"></span>not assessed</span>`;
-  const head = `<tr><th class="hname"></th>${DAMA_DIMS.map(d => `<th title="${esc(d[1])}">${esc(d[2])}</th>`).join('')}</tr>`;
-  const body = datasets.map(d => {
-    const cells = DAMA_DIMS.map(dim => {
-      const c = heatCell(d.dims ? d.dims[dim[0]] : undefined);
-      return `<td class="cell" style="background:${c.bg};color:${c.fg}" ` +
-        `data-tip="${esc(d.name)} · ${esc(dim[1])}: ${c.txt}">${c.txt}</td>`;
-    }).join('');
-    const srcChip = sourceChip(d.sourceFormat);
-    return `<tr><td class="hname" title="${esc(d.name)}">${esc(d.name)}` +
-      `${srcChip ? `<div style="margin-top:2px;">${srcChip}</div>` : ''}</td>${cells}</tr>`;
-  }).join('');
-  $('#dashHeat').innerHTML = `<table class="heat">${head}${body}</table>`;
+// ---- Estate health: how many datasets were healthy, warning or failing on each day of the window,
+// and when each changed. The question no other view on the Overview answers: the tiles say how
+// things are today and the galaxy and the list where each dataset stands, but not whether that is
+// better or worse than it was. Each day counts the status each run RECORDED (spark[].status, and
+// statusBefore for how a dataset stood when the window opened), because a ruleset can set its own
+// thresholds and the score alone cannot say which side of them it fell.
+const EH_DAY = 86400000;
+const EH_ORDER = ['red', 'amber', 'green', 'none'];   // stacked from the baseline up: failing reads exactly
+const EH_WORD = { green: 'healthy', amber: 'warning', red: 'failing', none: 'not assessed yet' };
+const EH_RANK = { red: 0, amber: 1, green: 2 };
+let EH = null;                                          // the model last drawn: redraws and the readout use it
+
+function ehStatus(s, score) {
+  const v = String(s || '').toLowerCase();
+  if (v === 'green' || v === 'amber' || v === 'red') return v;
+  // A response from before each point carried its status: the platform's default lines.
+  return typeof score === 'number' && isFinite(score) ? (score >= 95 ? 'green' : (score >= 85 ? 'amber' : 'red')) : null;
 }
+const ehDate = t => new Date(t).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+
+function ehModel(datasets, windowDays) {
+  // One column per calendar day, each read at its END (today's at now), so "13 Sept" shows how
+  // things stood once 13 Sept was over, a run that afternoon included.
+  const end = Date.now(), first = new Date(end);
+  first.setHours(0, 0, 0, 0);
+  first.setDate(first.getDate() - windowDays);
+  const start = first.getTime(), days = [], dayOf = [];
+  for (let i = 0; i <= windowDays; i++) {
+    const d0 = new Date(start); d0.setDate(d0.getDate() + i);
+    const d1 = new Date(d0); d1.setDate(d1.getDate() + 1);
+    dayOf.push(d0.getTime());
+    days.push(i === windowDays ? end : d1.getTime() - 1);
+  }
+  const rows = datasets.map(d => {
+    const pts = (d.spark || []).map(p => ({ t: Date.parse(p.t), st: ehStatus(p.status, p.score), score: p.score }))
+      .filter(p => isFinite(p.t) && p.st).sort((a, b) => a.t - b.t);
+    // How it stood when the window opened. A response without statusBefore still knows one case:
+    // a dataset last run before the window stood all through it as it stands now.
+    let before = ehStatus(d.statusBefore);
+    if (!before && !pts.length && d.ageDays != null && d.ageDays >= windowDays) before = ehStatus(d.status, d.score);
+    return { d, pts, before, now: ehStatus(d.status, d.score) };
+  });
+  const at = (r, T) => { let s = r.before; for (const p of r.pts) { if (p.t <= T) s = p.st; else break; } return s; };
+  // Today is what the tiles and the list say, which in the portal is the latest APPROVED run.
+  const statusOn = (r, i) => (i === days.length - 1 && r.now) ? r.now : at(r, days[i]);
+  const counts = days.map((T, i) => {
+    const c = { green: 0, amber: 0, red: 0, none: 0 };
+    rows.forEach(r => { c[statusOn(r, i) || 'none']++; });
+    return c;
+  });
+  // A change is a run whose status differs from the one before it; a first assessment is not one.
+  const events = [];
+  rows.forEach(r => {
+    let prev = r.before;
+    r.pts.forEach(p => {
+      if (prev && p.st !== prev) events.push({ t: p.t, key: r.d.key, name: r.d.name, from: prev, to: p.st, score: p.score });
+      prev = p.st;
+    });
+  });
+  events.sort((a, b) => a.t - b.t);
+  // The day each change belongs to, which is where its step is drawn.
+  events.forEach(ev => { const i = days.findIndex(T => T >= ev.t); ev.day = i < 0 ? days.length - 1 : i; });
+  return { rows, days, dayOf, counts, events, start, end, n: datasets.length, statusOn };
+}
+
+function renderEstateHealth(datasets) {
+  const box = $('#estateHealth'); if (!box) return;
+  const sub = $('#ehSub');
+  if (sub) sub.textContent = `How many datasets were healthy, warning or failing on each day of the last ${dashWindowDays} days.`;
+  if (!datasets || !datasets.length) {
+    EH = null;
+    box.innerHTML = configOK && APP_ID ? '<p class="dash-muted" style="margin-top:12px;">Nothing in this view has been assessed yet.</p>' : '';
+    return;
+  }
+  EH = ehModel(datasets, dashWindowDays || 30);
+  ehPaint();
+}
+
+function ehPaint() {
+  const box = $('#estateHealth'); if (!box || !EH) return;
+  const W = box.clientWidth;
+  // Hidden (another tab, or before layout): drawn when it gets a width, by the observer below.
+  if (W < 160) { box._ehW = 0; return; }
+  box._ehW = W;
+  const m = EH, N = m.n, last = m.counts[m.counts.length - 1], first = m.counts[0], D = m.days.length - 1;
+  const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+  const COL = { green: css('--ok'), amber: css('--run'), red: css('--err'), none: css('--idle') };
+  const MUTED = css('--muted'), TEXT = css('--text'), LINE = css('--border');
+  const dOk = last.green - first.green, nCh = m.events.length;
+
+  const H = 270, L = 30, R = 108, T = 8, B = 58, cw = W - L - R, ch = H - T - B;
+  const x = i => L + (i / D) * cw, y = v => T + ch - (v / N) * ch;
+  const step = [1, 2, 5, 10, 20, 25, 50, 100, 200, 250, 500, 1000].find(s => N / s <= 5) || Math.ceil(N / 5);
+  let svg = `<svg width="${W}" height="${H}" aria-hidden="true">`;
+  for (let v = 0; v <= N; v += step) {
+    svg += `<line x1="${L}" x2="${L + cw}" y1="${y(v)}" y2="${y(v)}" stroke="${LINE}" stroke-opacity=".7"/>` +
+      `<text x="${L - 7}" y="${y(v) + 4}" text-anchor="end" font-size="10.5" fill="${MUTED}">${v}</text>`;
+  }
+  // The bands, as steps: a status holds from one day to the next.
+  const below = m.days.map(() => 0), mid = {};
+  svg += `<g class="eh-bands">`;
+  EH_ORDER.forEach(k => {
+    const lo = below.slice(), hi = below.map((b, i) => b + m.counts[i][k]);
+    mid[k] = (lo[D] + hi[D]) / 2;
+    if (!hi.some((v, i) => v > lo[i])) return;
+    let top = `M${x(0)},${y(hi[0])}`;
+    for (let i = 1; i <= D; i++) top += ` L${x(i)},${y(hi[i - 1])} L${x(i)},${y(hi[i])}`;
+    let bot = ` L${x(D)},${y(lo[D])}`;
+    for (let i = D; i >= 1; i--) bot += ` L${x(i)},${y(lo[i - 1])} L${x(i - 1)},${y(lo[i - 1])}`;
+    svg += `<path class="eh-band" data-k="${k}" d="${top}${bot} Z" fill="${COL[k]}" fill-opacity="${k === 'red' ? .42 : (k === 'none' ? .16 : .3)}"/>` +
+      `<path d="${top}" fill="none" stroke="${COL[k]}" stroke-opacity="${k === 'none' ? .5 : 1}" stroke-width="2" stroke-linejoin="round"/>`;
+    for (let i = 0; i <= D; i++) below[i] = hi[i];
+  });
+  svg += `</g><line x1="${L}" x2="${L + cw}" y1="${T + ch}" y2="${T + ch}" stroke="${LINE}"/>`;
+  // Today's counts, labelled at the right edge in place of a legend, nudged apart when bands are thin.
+  const labs = EH_ORDER.filter(k => last[k] > 0).map(k => ({ k, y: y(mid[k]) + 4 }));
+  for (let i = 1; i < labs.length; i++) if (labs[i - 1].y - labs[i].y < 17) labs[i].y = labs[i - 1].y - 17;
+  labs.forEach(l => {
+    svg += `<circle cx="${L + cw + 13}" cy="${l.y - 4}" r="4" fill="${COL[l.k]}"/>` +
+      `<text x="${L + cw + 22}" y="${l.y}" font-size="12" fill="${TEXT}"><tspan font-weight="700">${numInt(last[l.k])}</tspan> ${EH_WORD[l.k]}</text>`;
+  });
+  // A mark per day with changes, under the axis: pointing up for better, down for worse, coloured by
+  // what it became (the best of a day's rises, the worst of its falls). Marks too close to share a
+  // row move down a row.
+  const marks = [];
+  const byDay = new Map();
+  m.events.forEach(ev => { const a = byDay.get(ev.day) || { up: [], down: [] }; (EH_RANK[ev.to] > EH_RANK[ev.from] ? a.up : a.down).push(ev); byDay.set(ev.day, a); });
+  [...byDay.keys()].sort((a, b) => a - b).forEach(i => {
+    const a = byDay.get(i);
+    if (a.down.length) marks.push({ i, up: false, to: a.down.some(e => e.to === 'red') ? 'red' : 'amber' });
+    if (a.up.length) marks.push({ i, up: true, to: a.up.some(e => e.to === 'green') ? 'green' : 'amber' });
+  });
+  const placed = [];
+  svg += `<g class="eh-marks">`;
+  marks.forEach(mk => {
+    const cx = x(mk.i);
+    let row = 0; while (row < 1 && placed.some(p => p.row === row && Math.abs(p.x - cx) < 12)) row++;
+    placed.push({ row, x: cx });
+    const cy = T + ch + 14 + row * 13;
+    svg += mk.up ? `<path d="M${cx - 5},${cy + 4} L${cx + 5},${cy + 4} L${cx},${cy - 5} Z" fill="${COL[mk.to]}"/>`
+                 : `<path d="M${cx - 5},${cy - 4} L${cx + 5},${cy - 4} L${cx},${cy + 5} Z" fill="${COL[mk.to]}"/>`;
+  });
+  svg += `</g>`;
+  const ticks = [0, Math.round(D / 3), Math.round(2 * D / 3), D];
+  ticks.forEach((i, j) => svg += `<text x="${x(i)}" y="${H - 6}" text-anchor="${j === 0 ? 'start' : (j === 3 ? 'end' : 'middle')}" font-size="10.5" fill="${MUTED}">${j === 3 ? 'Today' : ehDate(m.dayOf[i])}</text>`);
+  svg += `<line class="eh-cross" x1="0" x2="0" y1="${T}" y2="${T + ch}" stroke="${TEXT}" stroke-opacity=".55" stroke-dasharray="3 3" style="display:none"/>`;
+  svg += `<rect class="eh-hit" x="${L}" y="${T}" width="${cw}" height="${ch + 36}" fill="transparent"/></svg>`;
+
+  box.innerHTML =
+    `<div class="eh-hero"><div class="eh-big">${numInt(last.green)}<small> of ${numInt(N)}</small></div>` +
+      `<div class="eh-heroT">healthy now<br><b>${dOk === 0 ? 'Same as' : (dOk > 0 ? `${numInt(dOk)} more than` : `${numInt(-dOk)} fewer than`)} ${ehDate(m.start)}</b>` +
+      ` · ${nCh ? `${numInt(nCh)} status change${nCh === 1 ? '' : 's'} in between` : 'no status changes in between'}</div></div>` +
+    `<div class="eh-plot" tabindex="0" role="group" aria-label="Estate health, day by day. Use the left and right arrow keys to read a day.">${svg}</div>` +
+    `<div class="eh-read" aria-live="polite"></div>`;
+  box._ehX = x; box._ehL = L; box._ehCw = cw;
+  ehRead(null);
+}
+
+/** The readout under the chart: the latest changes, or the day `i` being pointed at. */
+function ehRead(i) {
+  const box = $('#estateHealth'), m = EH; if (!box || !m) return;
+  const out = box.querySelector('.eh-read'), cross = box.querySelector('.eh-cross'); if (!out) return;
+  const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+  const COL = { green: css('--ok'), amber: css('--run'), red: css('--err'), none: css('--idle') };
+  const note = (ev, link) => {
+    const up = EH_RANK[ev.to] > EH_RANK[ev.from];
+    const nm = link ? `<a href="#" class="eh-ds" data-ehkey="${esc(ev.key)}">${esc(ev.name)}</a>` : `<b>${esc(ev.name)}</b>`;
+    return `<div class="eh-note"><span>${ehDate(ev.t)}</span><span style="color:${COL[ev.to]}" aria-hidden="true">${up ? '▲' : '▼'}</span>` +
+      `<span>${nm} ${up ? 'recovered to' : 'fell to'} ${EH_WORD[ev.to]}${typeof ev.score === 'number' ? ` (${num1(ev.score)})` : ''}</span></div>`;
+  };
+  if (i == null) {
+    if (cross) cross.style.display = 'none';
+    out.innerHTML = m.events.length
+      ? `<div class="eh-readT">Latest changes</div>` + m.events.slice(-3).reverse().map(ev => note(ev, true)).join('')
+      : `<div class="eh-readN">No dataset changed status in the last ${m.days.length - 1} days.</div>`;
+    return;
+  }
+  const c = m.counts[i], X = box._ehX(i);
+  if (cross) { cross.setAttribute('x1', X); cross.setAttribute('x2', X); cross.style.display = ''; }
+  const dot = k => `<span class="eh-dot" style="color:${COL[k]}" aria-hidden="true">●</span>`;
+  const bad = m.rows.map(r => ({ r, s: m.statusOn(r, i) })).filter(o => o.s === 'red' || o.s === 'amber')
+    .map(o => ({ name: o.r.d.name, s: o.s, v: i === m.days.length - 1 && o.r.now ? o.r.d.score : (o.r.pts.filter(p => p.t <= m.days[i]).pop() || {}).score }))
+    .sort((a, b) => EH_RANK[a.s] - EH_RANK[b.s] || (typeof a.v === 'number' ? a.v : 0) - (typeof b.v === 'number' ? b.v : 0));
+  const evs = m.events.filter(ev => ev.day === i);
+  out.innerHTML =
+    `<div class="eh-readT">${i === m.days.length - 1 ? 'Today' : ehDate(m.days[i])}` +
+      ['green', 'amber', 'red', 'none'].filter(k => k !== 'none' || c.none).map(k => `${dot(k)} ${numInt(c[k])} ${EH_WORD[k]}`).join('') + `</div>` +
+    evs.slice(0, 4).map(ev => note(ev, false)).join('') +
+    (evs.length > 4 ? `<div class="eh-readN">and ${evs.length - 4} more changes that day</div>` : '') +
+    (bad.length ? `<div class="eh-readN">Not healthy that day: ${bad.slice(0, 5).map(o => `<b>${esc(o.name)}</b>${typeof o.v === 'number' ? ' ' + num1(o.v) : ''}`).join(', ')}` +
+      `${bad.length > 5 ? ` and ${bad.length - 5} more` : ''}</div>` : `<div class="eh-readN">Every dataset was healthy that day.</div>`);
+}
+
+// Wired once: the chart is redrawn into the same box, so its pointer and keys are handled here.
+(() => {
+  const box = $('#estateHealth'); if (!box) return;
+  const dayAt = e => {
+    const r = box.querySelector('.eh-plot svg').getBoundingClientRect(), D = EH.days.length - 1;
+    return Math.max(0, Math.min(D, Math.round(((e.clientX - r.left - box._ehL) / box._ehCw) * D)));
+  };
+  box.addEventListener('pointermove', e => { if (EH && e.target.closest('.eh-hit')) ehRead(dayAt(e)); });
+  box.addEventListener('pointerout', e => { if (EH && e.target.closest('.eh-hit') && !(e.relatedTarget && e.relatedTarget.closest && e.relatedTarget.closest('.eh-hit'))) ehRead(null); });
+  box.addEventListener('keydown', e => {
+    if (!EH || !e.target.classList.contains('eh-plot')) return;
+    const D = EH.days.length - 1, cur = box._ehDay == null ? D : box._ehDay;
+    const next = e.key === 'ArrowLeft' ? cur - 1 : e.key === 'ArrowRight' ? cur + 1 : e.key === 'Home' ? 0 : e.key === 'End' ? D : null;
+    if (next == null) return;
+    e.preventDefault();
+    box._ehDay = Math.max(0, Math.min(D, next));
+    ehRead(box._ehDay);
+  });
+  box.addEventListener('focusin', e => {
+    if (EH && e.target.classList && e.target.classList.contains('eh-plot')) { box._ehDay = EH.days.length - 1; ehRead(box._ehDay); }
+  });
+  box.addEventListener('focusout', e => { if (e.target.classList && e.target.classList.contains('eh-plot')) { box._ehDay = null; ehRead(null); } });
+  box.addEventListener('click', e => {
+    const a = e.target.closest('.eh-ds'); if (!a) return;
+    e.preventDefault();
+    const d = dashDatasets.find(x => x.key === a.dataset.ehkey);
+    if (d) selectGalaxyDataset(d.key, d.name);
+  });
+  // The card's width changes with the window and the one-column layout; redraw to fit, a frame
+  // later so the redraw is not itself inside the observer's notification.
+  if (window.ResizeObserver) {
+    let raf = 0;
+    new ResizeObserver(() => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => { if (EH && Math.abs(box.clientWidth - (box._ehW || 0)) > 2) ehPaint(); });
+    }).observe(box);
+  }
+})();
 
 // Default detail view: overlay every table's score + volume trend in one chart each.
 // Shrink the trends charts away (out), then grow the new ones in - a quick
@@ -25154,11 +25361,11 @@ const GD_SHOTS = {
   "dataset-header-p": [1600, 630, "8cb3b42c65"],
   "dataset-header-pa": [1600, 630, "eb25204a59"],
   "dataset-header-q": [1600, 630, "87541c8ea4"],
-  "dataset-list-p": [1600, 1025, "c097d44c9e"],
-  "dataset-list-pa": [1600, 979, "494e75200f"],
-  "dataset-list-q": [1600, 979, "b072872e90"],
+  "dataset-list-p": [1600, 1025, "ab4137c1cd"],
+  "dataset-list-pa": [1600, 979, "a2f1192bb5"],
+  "dataset-list-q": [1600, 979, "03a6d9ec54"],
+  "estate-health": [774, 1138, "80b00fc9d1"],
   "failed-records": [1600, 1026, "915e3fb9cf"],
-  "heatmap": [1124, 1282, "eaa67f551b"],
   "history-p": [1600, 1164, "cfca32980f"],
   "history-q": [1600, 979, "539a02e628"],
   "incidents-p": [1600, 1163, "d257df8b88"],
@@ -25313,7 +25520,8 @@ const GD_SHOW = {
   'quality-space': { tab: 'dashboard', sel: '.galaxy-card',
     tip: 'One orb for every dataset. Drag to orbit, scroll to zoom, and click an orb to open it.' },
   'dataset-list': { tab: 'dashboard', sel: '#dashTableWrap', tip: 'Every dataset, lowest score first. Click one to open it.' },
-  'heatmap': { tab: 'dashboard', sel: '#dashHeat', tip: 'Every dataset against the nine dimensions. A dash means not assessed.' },
+  'estate-health': { tab: 'dashboard', sel: '#estateCard',
+    tip: 'How many datasets were healthy, warning or failing each day. Point at a day to read it, or press a name to open that dataset.' },
   'ds-header': { tab: 'dashboard', prep: gdOpenFirstDataset('scores'), sel: '#dsxHead', miss: GD_NO_DATASET,
     tip: 'The open dataset: how it is doing, what is known about it, and <b>Actions</b> for everything you can do to it.' },
   'ds-actions': { tab: 'dashboard', prep: gdOpenFirstDataset('scores'), sel: '#dsActions', miss: GD_NO_DATASET,
@@ -26094,10 +26302,14 @@ function buildGuides() {
             ? `${n(1)} Search by name or tag, ${n(2)} add or change tags, ${n(3)} the 30-day trend, ${n(4)} trust, and ${n(5)} ${ui('↻ Re-run')}.`
             : `${n(1)} Search by name or tag, ${n(2)} the 30-day trend, and ${n(3)} ${ui('↻ Re-run')}.`) +
           sm('dataset-list') },
-      { h: 'Dimension scores by dataset', body:
-          p(`A grid of every dataset against the nine dimensions. A dash means not assessed. ${showme('heatmap')}`) +
-          shot('heatmap', `Every dataset against every dimension, worst first. ${n(1)} ${ui('What each dimension means')} opens the definitions.`, { narrow: true }) +
-          p(`${ui('What each dimension means')} explains them, and so does this table:`) +
+      { h: 'Estate health', body:
+          p(`How many datasets were healthy, warning or failing on each day of the last 30 days: whether the estate is getting better or worse, not only how it stands today. ${showme('estate-health')}`) +
+          shot('estate-health', `${n(1)} How many are healthy now, against 30 days ago. ${n(2)} Each day's count. ${n(3)} A mark for each day a dataset changed status: pointing up for better, down for worse, coloured by what it became. ${n(4)} The latest changes, or the day you point at.`, { narrow: true }) +
+          list(`A dataset counts by the status its run recorded, so one with thresholds of its own counts by them.`,
+               `Press a name in the latest changes to open that dataset.`,
+               `From the keyboard, move to the chart and use the left and right arrow keys to read one day at a time.`) },
+      { h: 'The nine dimensions', body:
+          p(`Every score is built from up to nine dimensions. An open dataset's ${ui('Scores')} tab shows how it does on each.`) +
           table(['Dimension', 'The question it answers'], [
             ['Completeness', 'Are the values that should be there actually there?'],
             ['Uniqueness', 'Is anything recorded more than once, by its business key?'],
