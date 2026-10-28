@@ -2044,6 +2044,9 @@
   .refp { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
   .refp-body { display: contents; }
   .refp-seg { display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 2px; border-radius: 9px; border: 1px solid var(--border); background: var(--card); }
+  /* "Values are matched exactly": on a line of its own under a list's hint, where it is read first. */
+  .ref-case { display: block; margin-top: 4px; color: var(--text); }
+  .ref-case b { font-weight: 600; }
   button.refp-m { height: 26px; padding: 0 10px; border: 0; border-radius: 7px; background: none; box-shadow: none; color: var(--muted);
     font: inherit; font-size: 12.5px; font-weight: 600; white-space: nowrap; cursor: pointer; }
   button.refp-m:hover { color: var(--text); }
@@ -9172,7 +9175,7 @@ function rxRefsHtml(rx) {
       `<section class="rx-ref"><h4>Must exist in a master list</h4><p class="hint">A column's values must be found in a master list: ` +
         `${db ? 'a table in the same database, ' : ''}a file in your reference library, or a file in your own S3.</p>` +
         `${ir || none('None yet.')}<button type="button" class="rx-add lngb" data-rx="iradd">＋ Add a check</button></section>` +
-      `<section class="rx-ref"><h4>Lists of correct values</h4><p class="hint">A column and its full set of correct values, typed here or taken from a column of a file. Anything outside the list counts as inaccurate.</p>` +
+      `<section class="rx-ref"><h4>Lists of correct values</h4><p class="hint">A column and its full set of correct values, typed here or taken from a column of a file. Anything outside the list counts as inaccurate. <span class="ref-case">Values are matched exactly as typed, letter case included: <b>Delivered</b> is not <b>delivered</b>. (MySQL and SQL Server ignore case when they compare text, so there the two count as the same.)</span></p>` +
         `${lk || none('None yet.')}<button type="button" class="rx-add lngb" data-rx="aladd">＋ Add a list</button></section>` +
       `<section class="rx-ref"><h4>A system of record</h4><p class="hint">Join each row to a trusted ${db ? 'table or ' : ''}file on its key, and check that it is there and that the compared columns agree.</p>` +
         `<div class="rx-ref-rule">${refPickHtml(acc, 'sor', db, 'Where the system of record is')}` +
@@ -22208,15 +22211,16 @@ function applyCredProfile(key) {
   });
   activeProfile[key] = pid;
   updateSourceRunState(key);
-  // Its saved integrity and accuracy rules replace the form's. A profile saved without any (or
-  // before profiles kept them) leaves whatever the form has.
-  const n = p.refs ? srcRefsLoad(p.refs) : 0;
+  // Its saved integrity and accuracy rules replace the form's, and a profile with none clears them:
+  // rules left over from the profile applied before would otherwise run against this one's table.
+  const n = srcRefsLoad(p.refs || {});
   setCredMsg(key, `Applied “${p.name}”${n ? `, with its ${n} integrity and accuracy rule${n === 1 ? '' : 's'}` : ''}. ` +
     'Secrets are supplied securely at run time - edit any field before running.');
 }
 
-/** Put saved rules (the ruleset augment collectSourceRefsAugment builds) back into the form's
- *  integrity and accuracy section, open it so they show, and say how many there were. */
+/** Put saved rules (the ruleset augment collectSourceRefsAugment builds) into the form's integrity
+ *  and accuracy section in place of what it had ({} empties it), open it when there are some, and
+ *  say how many there were. */
 function srcRefsLoad(aug) {
   const s = srcRefsState, acc = (aug && aug.accuracy) || {};
   s.integrity = (aug.integrity_rules || []).map((r, i) => ({
@@ -22308,7 +22312,7 @@ function renderSrcRefs(focusSel) {
     `<p class="hint" style="margin:0 0 8px;">A column's values must exist in a master list: ${wh ? 'a table in this database, ' : ''}a file in your reference library, or a file in your own S3.</p>` +
     `<div>${irows}</div><div class="ar-add"><button type="button" class="btn-sm sr-ir-add">＋ Add integrity rule</button></div>` +
     `<div class="ar-con-label" style="margin-top:16px;">Accuracy - lists of correct values</div>` +
-    `<p class="hint" style="margin:0 0 8px;">A column and its full list of correct values, typed here or taken from a column of a file. Anything outside the list counts as inaccurate.</p>` +
+    `<p class="hint" style="margin:0 0 8px;">A column and its full list of correct values, typed here or taken from a column of a file. Anything outside the list counts as inaccurate. <span class="ref-case">Values are matched exactly as typed, letter case included: <b>Delivered</b> is not <b>delivered</b>. (MySQL and SQL Server ignore case when they compare text, so there the two count as the same.)</span></p>` +
     `<div>${lrows}</div><div class="ar-add"><button type="button" class="btn-sm sr-lk-add">＋ Add list</button></div>` +
     `<div class="ar-con-label" style="margin-top:16px;">Accuracy - system of record</div>` +
     `<p class="hint" style="margin:0 0 8px;">Join each row to a trusted ${wh ? 'table or ' : ''}file on its key, and check that it is there and that the compared columns agree.</p>` +
