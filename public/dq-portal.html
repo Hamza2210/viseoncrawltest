@@ -24953,8 +24953,16 @@ function renderGalaxyLegend() {
 
 async function renderGalaxy(datasets) {
   const wrap = $('#galaxyWrap'), msg = $('#galaxyMsg'); if (!wrap) return;
+  if (!datasets || !datasets.length) {
+    // Empty the space as well as saying so. The message is see-through, so the orbs drawn last
+    // stayed on screen behind it: deleting the only dataset in a scope left its orb there, and
+    // switching to an empty scope showed the other scope's.
+    if (GALAXY.group) _gxRender([]);
+    renderGalaxyLegend();
+    if (msg) { msg.textContent = 'No datasets to plot yet - run an assessment first.'; msg.style.display = ''; }
+    return;
+  }
   renderGalaxyLegend();
-  if (!datasets || !datasets.length) { if (msg) { msg.textContent = 'No datasets to plot yet - run an assessment first.'; msg.style.display = ''; } return; }
   if (msg) { msg.textContent = 'Loading 3D view…'; msg.style.display = ''; }
   try { await loadThree(); }
   catch (e) { if (msg) { msg.textContent = e.message + ' The dataset list below still works.'; msg.style.display = ''; } return; }
