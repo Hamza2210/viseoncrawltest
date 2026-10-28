@@ -584,6 +584,18 @@
   tr.fr-blocker td { background: color-mix(in srgb, var(--err) 12%, var(--card)); }
   tr.fr-blocker td:first-child { box-shadow: inset 3px 0 0 var(--err); }
   .fr-count { font-weight: 800; color: var(--err); margin: 2px 0 8px; }
+  .fr-dl { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 4px 0 10px; }
+  .fr-dl .hint { flex: 1 1 260px; }
+  .fr-dl-none { margin: 4px 0 10px; }
+  /* Failed records by dimension: one button per dimension that failed, with its count. */
+  .fr-dims { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin: 2px 0 10px; }
+  .fr-dims-l { font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); margin-right: 4px; }
+  .fr-dim { display: inline-flex; align-items: center; gap: 7px; padding: 4px 11px; border-radius: 999px; font: inherit; font-size: 12px;
+            background: var(--card-2); color: var(--text); border: 1px solid var(--border); cursor: pointer; }
+  .fr-dim:hover { border-color: var(--accent); }
+  .fr-dim[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); }
+  .fr-dim-n { font-size: 11px; font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .fr-dim[aria-pressed="true"] .fr-dim-n { color: var(--text); }
   /* Failed-records table lives in a fixed-height scroller so the "how to fix" block below stays reachable */
   .fr-scroll { max-height: 380px; overflow: auto; border: 1px solid var(--border); border-radius: 8px; }
   .fr-scroll th { position: sticky; top: 0; z-index: 1; background: var(--card); }
@@ -8384,6 +8396,11 @@ function checkLabel(cid, data) {
     const e = (d.expectations || {})[cid] || (d.check_summary || []).find(c => c.check_id === cid) || {};
     return { what: e.description || (d.ruleNames || {})[cid] || p.target, req: 'Rule across columns' };
   }
+  if (p.kind === 'fk') {
+    // An integrity rule's id names the rule (fk_1), which nobody typed: the key it checks says what it is.
+    const e = (d.check_summary || []).find(c => c.check_id === cid) || (d.expectations || {})[cid] || {};
+    return { what: (e.columns || []).join(' + ') || p.target, req: _GATE_REQ.fk };
+  }
   return { what: _gateTarget(p), req: _GATE_REQ[p.kind] || 'Must satisfy its rule' };
 }
 function _gateParse(reason) {
@@ -14315,6 +14332,15 @@ function fixFor(exp, badVal, populatedExample) {
     case 'unique':
     case 'primary_key':
       return { valueFix: true, req: 'Must be unique - remove the duplicate or make it distinct.', after: '(a value no other row uses)' };
+    // ---- Against a reference: the right value is whatever the reference holds, so there is no ----
+    // ---- worked example, only where to look.                                                   ----
+    case 'fk':
+      return { valueFix: false, after: null,
+        req: `Must match a ${(exp.columns || [exp.column]).filter(Boolean).join(' + ') || 'key'} in ${d.reference || 'the reference'}. ` +
+          'These rows name one it does not have: correct the value, or add the missing record to the reference.' };
+    case 'authoritative_lookup':
+      return { valueFix: false, after: null,
+        req: 'Must be one of the correct values on its list. These rows hold a value the list does not have: correct it, or add it to the list if it is right.' };
     // ---- Distributional checks: no single "correct" value exists, so we show a ----
     // ---- requirement to normalise toward, never a fabricated per-row "fix to". ----
     case 'format_stability': {
@@ -14456,8 +14482,9 @@ function renderFailuresViz(data) {
   const sev = { blocker: 0, major: 0, minor: 0 }, byCol = new Map();
   cs.forEach(k => {
     const s = (k.severity || '').toLowerCase(); if (s in sev) sev[s] += (k.failed || 0);
-    // A rule across columns counts against the columns it reads, not a column called its id.
-    const cols = /^consistency\.rule::/.test(k.check_id || '') ? (k.columns || []) : [(k.check_id || '').split('::')[1]];
+    // A rule across columns, or an integrity rule (fk_1), counts against the columns it reads, not a
+    // column called its id.
+    const cols = /^(consistency\.rule|integrity\.fk)::/.test(k.check_id || '') ? (k.columns || []) : [(k.check_id || '').split('::')[1]];
     cols.forEach(col => { if (col) byCol.set(col, (byCol.get(col) || 0) + (k.failed || 0)); });
   });
   const tot = sev.blocker + sev.major + sev.minor;
@@ -14548,7 +14575,7 @@ function renderFailedRecords(data) {
       .map(([k, v]) => `${esc(k)}=${esc(v)}`).join('  ·  ')
       + (x.withheld ? `<span class="dash-muted">  ·  +${esc(x.withheld)} withheld</span>` : '');
     const sev = (x.severity || '').toLowerCase();
-    return `<tr class="fr-row ${sev === 'blocker' ? 'fr-blocker' : ''}" data-sev="${esc(sev)}" data-check="${esc(x.check_id || '')}">` +
+    return `<tr class="fr-row ${sev === 'blocker' ? 'fr-blocker' : ''}" data-sev="${esc(sev)}" data-check="${esc(x.check_id || '')}" data-dim="${esc(x.dimension || '')}">` +
       `<td class="dash-muted" style="font-variant-numeric:tabular-nums;">${esc(rowNo)}</td>` +
       `<td>${esc(_GATE_DIM[x.dimension] || x.dimension || '')}</td>` +
       `<td class="fr-check" title="${esc(x.check_id || '')}"><span class="fr-cname">${esc(checkLabel(x.check_id, data).what)}</span>` +
@@ -14564,14 +14591,34 @@ function renderFailedRecords(data) {
   const rowNote = hasSrc
     ? `<p class="dash-muted" style="margin:0 0 6px;">“Row” is the record’s line number in the uploaded file.</p>`
     : `<p class="dash-muted" style="margin:0 0 6px;">“#” is each record’s position in this list. A warehouse table has no fixed row order, so pinpoint a specific row by the column values shown (duplicate copies appear on consecutive lines).</p>`;
+  const all = data.all || {};
   const note = data.truncated
-    ? `<p class="dash-muted fr-total">Showing ${recs.length} of ${data.total} failed records (download the file for all).</p>`
+    ? `<p class="dash-muted fr-total">Showing ${recs.length} of the ${data.total} failed records kept for this page${all.available ? ': download them all for every one' : ''}.</p>`
     : `<p class="dash-muted fr-total">${data.total} failed record(s).</p>`;
-  return head + renderFailuresViz(data) + frPolicyNote(pol) +
+  // Every failed record, not the sample: one line per row and check, with the dimension and why.
+  const dl = all.available && data.resultPrefix
+    ? `<div class="fr-dl"><button type="button" class="btn-sm" data-frdl="${esc(data.resultPrefix)}">⬇ Download all ${numInt(all.rows)} failed record${all.rows === 1 ? '' : 's'} (CSV)</button>` +
+      `<span class="hint">Every failing row, each with the dimension it failed and why. Personal data stays redacted.` +
+      `${all.complete === false ? ` This run had more than ${numInt(all.rowsMax)}, so each check is cut back to its share.` : ''}</span></div>`
+    : (data.resultPrefix ? `<p class="hint fr-dl-none">This run kept only the records shown here. Run the dataset again to download every failed record.</p>` : '');
+  return head + renderFailuresViz(data) + frPolicyNote(pol) + dl + frDimFilter(data) +
     `<p class="dash-muted fr-filter-note" style="margin:0 0 6px;"></p>` + rowNote +
     `<div class="fr-scroll"><table class="dash-table">` +
     `<tr><th title="${esc(rowTip)}">${rowLabel}</th><th>Dimension</th><th class="fr-check">Check</th><th>Severity</th><th>Offending record</th></tr>${rows}</table></div>${note}` +
     renderExampleFixes(data);
+}
+/** A button for each dimension that was measured and is not 100 (it has a failing check), with how
+ *  many records fail it: press one to see only that dimension's records, again to see them all.
+ *  The counts are every failure (check_summary), not just the ones kept for this page. */
+function frDimFilter(data) {
+  const n = new Map();
+  (data.check_summary || []).forEach(c => { if (c.dimension && c.failed > 0) n.set(c.dimension, (n.get(c.dimension) || 0) + c.failed); });
+  if (n.size < 2) return '';                                      // one dimension: nothing to choose between
+  const order = Object.keys(_GATE_DIM);
+  const dims = [...n.keys()].sort((a, b) => ((order.indexOf(a) + 1) || 99) - ((order.indexOf(b) + 1) || 99));
+  return `<div class="fr-dims" role="group" aria-label="Show the failed records of one dimension"><span class="fr-dims-l">Dimension</span>` +
+    dims.map(d => `<button type="button" class="fr-dim" data-frdim="${esc(d)}" aria-pressed="false">${esc(_GATE_DIM[d] || d)}` +
+      `<span class="fr-dim-n">${numInt(n.get(d))}</span></button>`).join('') + `</div>`;
 }
 // Render failed records into an element AND wire the clickable severity legend (filters the
 // records table + the "how to fix" cards to the chosen severity; click again to clear).
@@ -14579,24 +14626,30 @@ const _FR_FILTER_CAP = 200;
 function showFailedRecords(el, data) {
   if (!el) return;
   el.innerHTML = renderFailedRecords(data);
-  // Filtered by severity (the legend) or by one check (See records, from the gate). `reveal` brings
-  // the table into view, for a filter asked for from somewhere else on the page.
+  // Filtered by severity (the legend), by dimension (the buttons above the table), both at once, or
+  // by one check (See records, from the gate). `reveal` brings the table into view, for a filter
+  // asked for from somewhere else on the page.
+  const dimOf = new Map((data.check_summary || []).map(c => [c.check_id, c.dimension]));
   const apply = (f, reveal) => {
-    const sev = (f && f.sev) || '', check = (f && f.check) || '';
+    const sev = (f && f.sev) || '', check = (f && f.check) || '', dim = (f && f.dim) || '';
     el.dataset.frSev = sev;
     el.dataset.frCheck = check;
+    el.dataset.frDim = dim;
     let shown = 0;
     el.querySelectorAll('.fr-row').forEach(r => {
-      const vis = (!sev || r.dataset.sev === sev) && (!check || r.dataset.check === check) && shown < _FR_FILTER_CAP;
+      const vis = (!sev || r.dataset.sev === sev) && (!check || r.dataset.check === check)
+        && (!dim || r.dataset.dim === dim) && shown < _FR_FILTER_CAP;
       r.style.display = vis ? '' : 'none';
       if (vis) shown++;
     });
     el.querySelectorAll('.fx-card').forEach(c => {
-      c.style.display = ((!sev || c.dataset.sev === sev) && (!check || c.dataset.check === check)) ? '' : 'none';
+      c.style.display = ((!sev || c.dataset.sev === sev) && (!check || c.dataset.check === check)
+        && (!dim || dimOf.get(c.dataset.check) === dim)) ? '' : 'none';
     });
     el.querySelectorAll('.sev-key[data-sevfilter]').forEach(l => l.classList.toggle('active', !!sev && l.dataset.sevfilter === sev));
-    // The overall count would contradict a list cut down to one check, so it steps back meanwhile.
-    el.querySelectorAll('.fr-total').forEach(p => { p.hidden = !!check; });
+    el.querySelectorAll('.fr-dim[data-frdim]').forEach(b => b.setAttribute('aria-pressed', String(!!dim && b.dataset.frdim === dim)));
+    // The overall count would contradict a list cut down to one check or dimension, so it steps back meanwhile.
+    el.querySelectorAll('.fr-total').forEach(p => { p.hidden = !!(check || dim); });
     const ntc = el.querySelector('.fr-filter-note');
     if (ntc) {
       ntc.classList.toggle('fr-note-check', !!check);
@@ -14605,6 +14658,14 @@ function showFailedRecords(el, data) {
         const of = f.failed > shown ? ` of the ${Number(f.failed).toLocaleString()} that fail it` : '';
         ntc.innerHTML = `Showing the ${shown} record${shown === 1 ? '' : 's'} kept for <b>${esc(name)}</b>${esc(of)}. ` +
           `<button type="button" class="linkbtn fr-clear" data-frclear>Show every check</button>`;
+      } else if (dim) {
+        // Every failure of the dimension is counted on its button; this page keeps a sample of them.
+        const dn = _GATE_DIM[dim] || dim;
+        const all = (data.check_summary || []).filter(c => c.dimension === dim).reduce((t, c) => t + (c.failed || 0), 0);
+        ntc.innerHTML = `Showing ${shown}${sev ? ` ${esc(sev)}` : ''} record${shown === 1 ? '' : 's'} that fail <b>${esc(dn)}</b>` +
+          `${all > shown ? ` (${numInt(all)} fail it in all)` : ''}. ` +
+          (shown ? '' : 'Its checks keep no record here: they are about the dataset as a whole, not one row. ') +
+          `<button type="button" class="linkbtn fr-clear" data-frclear>Show every dimension</button>`;
       } else {
         ntc.textContent = sev
           ? `Showing ${shown}${shown >= _FR_FILTER_CAP ? '+' : ''} ${sev} record${shown === 1 ? '' : 's'} - click ${sev} again to show all.` : '';
@@ -14617,10 +14678,46 @@ function showFailedRecords(el, data) {
   };
   el._frApply = apply;
   el.querySelectorAll('.sev-key[data-sevfilter]').forEach(l =>
-    l.addEventListener('click', () => apply({ sev: el.dataset.frSev === l.dataset.sevfilter ? '' : l.dataset.sevfilter })));
+    l.addEventListener('click', () => apply({ sev: el.dataset.frSev === l.dataset.sevfilter ? '' : l.dataset.sevfilter,
+                                              dim: el.dataset.frDim || '' })));
+  el.querySelectorAll('.fr-dim[data-frdim]').forEach(b =>
+    b.addEventListener('click', () => apply({ dim: el.dataset.frDim === b.dataset.frdim ? '' : b.dataset.frdim,
+                                              sev: el.dataset.frSev || '' })));
   const clear = el.querySelector('.fr-filter-note');
   if (clear) clear.addEventListener('click', e => { if (e.target.closest('[data-frclear]')) { el._frWant = null; apply({}); } });
 }
+
+// Every failed record of a run, as the CSV the worker wrote beside the sample. Small files come
+// back in the response and save from a blob, which works inside the Qlik extension's iframe; a
+// large one is a short-lived link, opened in a new tab (a top-level context escapes the iframe).
+async function downloadAllFailed(prefix, btn) {
+  const orig = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = 'Preparing the file…'; }
+  try {
+    const r = await postJSON(`${API_BASE}/data-quality/failed-records`, HEADERS,
+      { result_prefix: prefix, app_id: APP_ID || null, download: true });
+    if (r && typeof r.csv === 'string') {
+      const url = URL.createObjectURL(new Blob([r.csv], { type: 'text/csv;charset=utf-8' }));
+      const a = document.createElement('a'); a.href = url; a.download = r.filename || 'failed-records.csv';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 4000);
+    } else if (r && r.url) {
+      const a = document.createElement('a'); a.href = r.url; a.target = '_blank'; a.rel = 'noopener';
+      document.body.appendChild(a); a.click(); a.remove();
+    } else {
+      dqAlert((r && r.reason) || 'There is nothing to download for this run.', { title: 'Failed records' });
+    }
+  } catch (e) {
+    dqAlert(`Could not download the failed records: ${e.message}`, { title: 'Download failed' });
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = orig; }
+  }
+}
+// One handler for every Failed records panel, wherever it is drawn: the button carries its run.
+document.addEventListener('click', e => {
+  const b = e.target.closest && e.target.closest('[data-frdl]');
+  if (b && !b.disabled) downloadAllFailed(b.dataset.frdl, b);
+});
 
 // Pull the selected dataset's latest run inline: full scores + criteria + failed records.
 async function viewLatestRun() {
@@ -22111,7 +22208,32 @@ function applyCredProfile(key) {
   });
   activeProfile[key] = pid;
   updateSourceRunState(key);
-  setCredMsg(key, `Applied “${p.name}”. Secrets are supplied securely at run time - edit any field before running.`);
+  // Its saved integrity and accuracy rules replace the form's. A profile saved without any (or
+  // before profiles kept them) leaves whatever the form has.
+  const n = p.refs ? srcRefsLoad(p.refs) : 0;
+  setCredMsg(key, `Applied “${p.name}”${n ? `, with its ${n} integrity and accuracy rule${n === 1 ? '' : 's'}` : ''}. ` +
+    'Secrets are supplied securely at run time - edit any field before running.');
+}
+
+/** Put saved rules (the ruleset augment collectSourceRefsAugment builds) back into the form's
+ *  integrity and accuracy section, open it so they show, and say how many there were. */
+function srcRefsLoad(aug) {
+  const s = srcRefsState, acc = (aug && aug.accuracy) || {};
+  s.integrity = (aug.integrity_rules || []).map((r, i) => ({
+    id: r.id || `fk_${i + 1}`, columns: r.columns || [], reference_uri: r.reference_uri || '',
+    reference_connection: r.reference_connection || null,
+    // Saved as the key's own names when left empty: show it empty again, "the same name".
+    reference_columns: (r.reference_columns || []).join(',') === (r.columns || []).join(',') ? [] : (r.reference_columns || []) }));
+  s.lookups = Object.entries(acc.lookups || {}).map(([col, values]) => ({ col, values: values || [], from: 'typed' }))
+    .concat((acc.lookup_files || []).map(f => ({ col: f.column, values: [], from: 'file',
+      file: { reference_uri: f.reference_uri || '', reference_connection: f.reference_connection || null, reference_column: f.reference_column || '' } })));
+  s.accuracy = acc.reference_uri ? { reference_uri: acc.reference_uri, reference_connection: acc.reference_connection || null,
+    join_on: acc.join_on || [], compare_columns: acc.compare_columns || [] } : {};
+  renderSrcRefs();
+  const n = s.integrity.length + s.lookups.length + (s.accuracy.reference_uri ? 1 : 0);
+  const det = document.getElementById('srcRefsBody') && document.getElementById('srcRefsBody').closest('details');
+  if (n && det) det.open = true;
+  return n;
 }
 
 async function saveCredProfileAs(key) {
@@ -22119,9 +22241,12 @@ async function saveCredProfileAs(key) {
   const name = (await dqPrompt('Name this credential profile (e.g. “Prod Redshift – orders”):', cur ? cur.name : '', { title: 'Save credential profile' }) || '').trim();
   if (!name) return;
   const cfg = collectSourceFields(key);
+  // The integrity and accuracy rules in the form go with it, so applying it brings them back. {}
+  // when there are none, which clears any the profile had: what is saved is what the form shows.
+  const refs = collectSourceRefsAugment() || {};
   try {
     const r = await postJSON(`${API_BASE}/data-quality/credential-profiles`, HEADERS,
-      { app_id: APP_ID, source: key, action: 'save', name, config: cfg });
+      { app_id: APP_ID, source: key, action: 'save', name, config: cfg, refs });
     activeProfile[key] = r.id;
     await renderCredProfiles(key);
     // Saved to run on an agent, the one thing left to do is on that machine, so say exactly what.
@@ -25749,12 +25874,15 @@ function apxCalls() {
       fields: [folder(`The run's folder.`),
                { name: 'limit', type: 'integer', req: false, def: '20', min: 1, max: 2000, ph: '300',
                  desc: 'How many failing rows, at most: 1 to 2000. 300 when left out.' },
-               app(false, `The run's ${SC}, so a records policy set on its dataset applies.`)],
+               app(false, `The run's ${SC}, so a records policy set on its dataset applies.`),
+               { name: 'download', type: 'boolean', req: false, def: false, label: 'Every failed record, as a CSV',
+                 desc: 'Instead of the sample, every failed record of the run: one line per row and check, starting with the dimension it failed and why. Comes back as <code>csv</code>, or as a <code>url</code> to fetch it from when it is large. Leave it out for the sample.' }],
       answer: [['records', 'The failing rows, as far as your failing-record policy allows.'],
                ['total', 'How many failing rows the run recorded.'],
                ['truncated', '<code>true</code> when there were more than <code>limit</code>.'],
                ['check_summary', 'Every failing check with exact counts, whatever the policy.'],
-               ['records_policy', 'The policy applied, and whether any columns were withheld.']],
+               ['records_policy', 'The policy applied, and whether any columns were withheld.'],
+               ['all', 'Whether the run kept every failed record for download, and how many (<code>rows</code>, <code>complete</code>).']],
       errors: [['400', 'Not a run folder.'], ['404', 'No such dataset, or not one you can see.']] },
   ];
 }
@@ -26377,6 +26505,7 @@ function buildGuides() {
       { h: 'Reading failed records', body:
           p(`The top line says how many blocker records stand between the dataset and a passing gate. Each offending record shows its row or key, the dimension, the check that failed and its severity. ${showme('ds-failed')}`) +
           shot('failed-records', `${n(1)} How many blocker records stand in the gate's way, ${n(2)} failing checks by severity, ${n(3)} the most affected columns, and ${n(4)} the records themselves.`) +
+          p(`The page shows a sample of each failing check, at most 50 records each, taken from every check that failed. ${ui('⬇ Download all failed records (CSV)')} saves every one of them: a line per record and check, starting with the dimension it failed and why (for example "CURRENCY is not on its list of correct values"), then the record. Personal data stays redacted and the same columns are kept as on the page. A run keeps up to a million, shared between the checks. A run from before 29 October 2026 kept only its sample: run it again to download the lot.`) +
           note(`Only the columns a check flagged are kept, plus the key that locates the row. The rest of the row reads as withheld, for example ${ui('+12 withheld')}. Personal data is always redacted: a column whose values look personal, whose name says it is about a person (such as <code>first_name</code> or <code>date_of_birth</code>), or that somebody marked ${ui('Confirm PII')} in the Metadata tab. ${ui('Not PII')} there shows a column's values from the next run, unless the values themselves look like personal data.`) },
       { h: 'Provisional rules', body:
           p(`${ui('⚠ Provisional')} beside Rules at the top of a dataset (${ui('⚠ Provisional - rules not yet reviewed')} on a run's report) means the rules were inferred automatically and nobody has reviewed them yet. The score is real, but look at the Rules tab before you rely on it. ${see('rules', 'Rules and AI review')}`) },
