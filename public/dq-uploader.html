@@ -1284,10 +1284,9 @@
   .cmp-card-attest { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: var(--muted); }
   .cmp-fwchip { display: inline-flex; align-items: center; gap: 3px; font-size: 10.5px; font-weight: 700; border-radius: 5px; padding: 1px 6px;
     background: color-mix(in srgb, var(--accent2) 14%, transparent); color: var(--accent2); }
-  /* A dataset's four cards (Findings / Policy / PIMS / Attestations), here and on its dashboard
+  /* A dataset's five cards (Findings / Policy / Governing body / PIMS / Attestations), here and on its dashboard
      Compliance tab; picking one opens its section below, picking it again closes it. */
-  .cmp-choose { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin: 4px 0 20px; }
-  @media (max-width: 1080px) { .cmp-choose { grid-template-columns: repeat(2, 1fr); } }
+  .cmp-choose { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; margin: 4px 0 20px; }
   @media (max-width: 560px) { .cmp-choose { grid-template-columns: 1fr; } }
   .cmp-choose-card { --ci: var(--accent); display: flex; flex-direction: column; align-items: stretch; gap: 6px; min-width: 0;
     text-align: left; padding: 14px 15px 12px; border: 1px solid var(--border); border-radius: 14px; background: var(--card-2);
@@ -1296,6 +1295,29 @@
   .cmp-choose-card[data-cmpsec="policy"] { --ci: var(--cat-3); }
   .cmp-choose-card[data-cmpsec="pims"] { --ci: var(--cat-5); }
   .cmp-choose-card[data-cmpsec="attest"] { --ci: var(--cat-4); }
+  .cmp-choose-card[data-cmpsec="body"] { --ci: var(--cat-1); }
+  /* Governing body: the regulator the dataset's PII sweeps are checked against, and its newest sweep's checks */
+  .cmp-gov { --pii-crit: #fb7185; --pii-high: #fb923c; --pii-med: #fbbf24; --pii-low: #7aa2ff;   /* as #piiSweepPanel's */
+    display: flex; flex-direction: column; gap: 10px; max-width: 900px; }
+  .cmp-gov-pick { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; font-size: 13px; font-weight: 650; }
+  .cmp-gov-pick select { height: 36px; min-width: 220px; padding: 0 10px; border: 1px solid var(--border); border-radius: 9px;
+    background: var(--card); color: var(--text); font: inherit; font-size: 13px; font-weight: 500; cursor: pointer; }
+  .cmp-gov-pick select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .cmp-gov-s { margin: 0; font-size: 12.5px; color: var(--muted); line-height: 1.5; }
+  .cmp-gov-note { margin: 0; font-size: 12.5px; line-height: 1.5; }
+  .cmp-gov-note:empty { display: none; }
+  .cmp-gov-note.ok { color: var(--ok); } .cmp-gov-note.err { color: var(--err); }
+  .cmp-gov-note.warn { padding: 8px 11px; border-radius: 9px; border: 1px solid color-mix(in srgb, var(--pii-med) 40%, var(--border));
+    background: color-mix(in srgb, var(--pii-med) 9%, transparent); color: var(--text); }
+  .cmp-gov h6 { margin: 8px 0 4px; font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
+  .cmp-gov h6 small { margin-left: 4px; letter-spacing: 0; }
+  /* The PII sweep tab: the body its next assessment is checked against, when chosen since its newest sweep */
+  .pis-nextbody { flex: none; font-size: 11.5px; font-weight: 650; color: var(--pii-med); white-space: nowrap; }
+  .pis-bodytag .pis-next-body { color: var(--pii-med); }
+  /* The Schedules form: the body its datasets' sweeps are checked against */
+  #schPiiBodyWrap { margin-top: 14px; }
+  #schPiiBodyWrap select { margin-top: 4px; }
+  #schPiiBodyHint { margin: 6px 0 0; }
   .cmp-choose-card:hover { border-color: color-mix(in srgb, var(--accent) 70%, var(--border));
     box-shadow: 0 6px 20px -10px color-mix(in srgb, var(--accent) 55%, transparent); }
   .cmp-choose-card.sel { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 11%, var(--card-2));
@@ -7374,6 +7396,12 @@
               <p class="hint" style="margin:8px 0;">Assesses every <strong>source</strong> dataset carrying this tag in <strong>one task</strong>. Membership is captured when you save (re-save to refresh it). Datasets need a saved credential profile.</p>
             </div>
 
+            <div id="schPiiBodyWrap">
+              <label for="schPiiBody">PII sweep checked against</label>
+              <select id="schPiiBody"><option value="">Keep each dataset's own</option><option value="general">No governing body</option><option value="ico">ICO: UK GDPR</option><option value="ofwat">Ofwat: water</option><option value="fca">FCA: financial services</option></select>
+              <p class="hint" id="schPiiBodyHint"></p>
+            </div>
+
             <div id="schWatchWrap" style="display:none;">
               <p class="hint" style="margin:12px 0 0;">Checks your sources are still <strong>loading</strong>, without assessing anything: the row count, the column list and the newest event time, from catalog metadata only. No rows are read and no score is produced, so it is cheap enough to run hourly. A source that stops loading, loses rows, changes columns or becomes unreachable opens an incident.</p>
             </div>
@@ -8025,6 +8053,7 @@ const CMP_ICO = {
   policy: _cmpIco('<path d="M4 7h9"/><path d="M17 7h3"/><circle cx="15" cy="7" r="2"/><path d="M4 17h3"/><path d="M11 17h9"/><circle cx="9" cy="17" r="2"/>', 1.9),
   pims: _cmpIco('<path d="M12 3l7 3v5.2c0 4.4-2.9 8.1-7 9.8-4.1-1.7-7-5.4-7-9.8V6z"/><path d="M8.8 12.1l2.2 2.2 4.3-4.6"/>', 1.9),
   attest: _cmpIco('<path d="M12 4v15.5"/><path d="M8 20h8"/><path d="M5 7.5h14"/><path d="M5 7.5 2.5 13a2.6 2.6 0 0 0 5 0z"/><path d="M19 7.5 16.5 13a2.6 2.6 0 0 0 5 0z"/>', 1.8),
+  body: _cmpIco('<path d="M3 21h18"/><path d="M4 10h16"/><path d="M12 3 4 7.5h16z"/><path d="M6 10v8M10 10v8M14 10v8M18 10v8"/>', 1.8),
 };
 function datasetKeyFromPrefix(p) {
   const s = (p || '').replace(/^s3:\/\/[^/]+\//, '').replace(/\/+$/, '');
@@ -8214,6 +8243,9 @@ document.addEventListener('click', e => {
     const col = b.dataset.col;
     if (col && pis.res && pisColumns(pis.res).some(c => c.name === col)) {
       Object.assign(pis, { view: 'sky', lens: 'severity', col, detail: '', listed: false });
+      pisPaintSky();
+    } else if (b.dataset.lens === 'body' && pis.res) {
+      Object.assign(pis, { view: 'sky', lens: 'body', col: '', chip: '', detail: '', listed: false });
       pisPaintSky();
     }
     const s = $('#pisStage'); if (s && s.style.display !== 'none') s.scrollIntoView({ behavior: dqReduced() ? 'auto' : 'smooth', block: 'start' });
@@ -16320,9 +16352,18 @@ function complianceDetailBody(comp, prefix, key, opts) {
   const attCls = attAns === attItems.length ? 'green' : (attGaps ? 'red' : (attAns ? 'amber' : 'muted'));
   const attBadge = `<span class="tag ${attCls}">${attAns}/${attItems.length} attested${attGaps ? ` · ${attGaps} gap${attGaps === 1 ? '' : 's'}` : ''}</span>`;
 
+  // The governing body its PII sweeps are checked against, and what its newest sweep's checks ask (cmpGovHtml).
+  const gov = (comp && comp.governing) || {}, gb = gov.sweep, gch = gov.chosen || (gb && gb.id) || 'general';
+  let govBadge;
+  if (gb && gb.id !== 'general' && (gb.checks || []).length && gb.id === gch) {
+    const n = gb.counts || {};
+    govBadge = `<span class="tag ${n.act ? 'red' : n.confirm ? 'amber' : 'green'}">${esc(gb.short)} · ${n.act ? `${n.act} to act on` : n.confirm ? `${n.confirm} to confirm` : 'all met'}</span>`;
+  } else govBadge = `<span class="tag muted">${gch === 'general' ? 'None chosen' : `${esc(PIS_BODY_SHORT[gch] || gch)} · from its next run`}</span>`;
+
   const cards = [
     { sec: 'findings', ico: CMP_ICO.findings, title: 'Exposure &amp; findings', sub: 'Sensitive-data exposure, prohibited storage &amp; data-quality accuracy', badge: findBadge },
     { sec: 'policy', ico: CMP_ICO.policy, title: 'Compliance policy', sub: 'Retention, consent, erasure &amp; audit-column rules', badge: polBadge },
+    { sec: 'body', ico: CMP_ICO.body, title: 'Governing body', sub: 'The regulator its PII sweeps are checked against, and what it asks', badge: govBadge },
     { sec: 'pims', ico: CMP_ICO.pims, title: 'PIMS readiness', sub: 'ISO/IEC 27701 Annex A control mapping', badge: pimsBadge },
     { sec: 'attest', ico: CMP_ICO.attest, title: 'Governance attestations', sub: 'Self-declared privacy &amp; governance controls', badge: attBadge },
   ];
@@ -16338,6 +16379,7 @@ function complianceDetailBody(comp, prefix, key, opts) {
   const secs =
     `<div class="cmp-sec-detail" data-sec="findings"${shown('findings')}>${panel}${domain}</div>` +
     `<div class="cmp-sec-detail" data-sec="policy"${shown('policy')}>${settings}</div>` +
+    `<div class="cmp-sec-detail" data-sec="body"${shown('body')}>${cmpGovHtml(comp, key)}</div>` +
     `<div class="cmp-sec-detail" data-sec="pims"${shown('pims')}>${pims || `<p class="dash-muted">${comp
       ? 'No PIMS posture - this dataset is out of scope for compliance.'
       : 'No PIMS posture yet - this run has no compliance assessment. Re-run the dataset to generate it.'}</p>`}</div>` +
@@ -16365,6 +16407,70 @@ function wireComplianceDetail(container, comp, prefix, key, opts) {
   if (opts && opts.open === 'attest') openAttest();
   wireComplianceSettings(container, key, prefix);
   wireComplianceAttest(container, key, comp);
+  wireComplianceGov(container, key, comp);
+}
+/**
+ * Compliance's Governing body: the regulator whose rules the dataset's PII sweeps are checked against
+ * (dq/compliance/bodies.py), and its newest sweep's checks against the body it was checked against, as the PII sweep
+ * tab's Regulator shows them. It is ONE choice per dataset (its _pii/body.json): the same as beside Sweep PII on a data
+ * source form, on the Schedules form and on the PII sweep tab, and changed here it is saved at once.
+ */
+function cmpGovHtml(comp, key) {
+  const g = (comp && comp.governing) || {}, b = g.sweep, chosen = g.chosen || (b && b.id) || 'general';
+  const pick = `<label class="cmp-gov-pick"><span>PII sweeps checked against</span><select data-cmpbody>` +
+    PIS_BODY_OPTS.map(([v, l]) => `<option value="${v}"${v === chosen ? ' selected' : ''}>${l}</option>`).join('') + `</select></label>`;
+  const intro = `<p class="cmp-gov-s">One choice for the dataset: the same beside ${'Sweep PII'} when it is assessed, on its schedules and on the PII sweep tab. ` +
+    `Changed here, it is saved at once, and its next assessment is checked against it.</p>`;
+  let body;
+  if (!b || b.id === 'general' || !(b.checks || []).length) {
+    body = `<p class="cmp-gov-s">${chosen === 'general' ? "No governing body is chosen, so its sweeps are not checked against a regulator's rules."
+      : `It has not been swept against ${esc(SRC_BODY_L[chosen] || chosen)} yet: its next assessment is.`}</p>`;
+  } else {
+    body = (chosen !== b.id
+      ? `<p class="cmp-gov-note warn">These checks are from its last sweep, against ${esc(b.against || b.short)}. Its next assessment is checked against ${esc(SRC_BODY_L[chosen] || chosen)}.</p>`
+      : `<p class="cmp-gov-s">From its newest sweep${g.swept_at ? `, ${esc(rcxWhen(g.swept_at))}` : ''}, checked against ${esc(b.against || b.short)}: ${esc(b.regime || '')}.</p>`) +
+      bodyChecksHtml(b);
+  }
+  return `<div class="cmp-gov">${pick}${intro}<p class="cmp-gov-note" data-cmpbody-note role="status"></p>${body}` +
+    `<p class="cmp-gov-s"><button type="button" class="linkbtn lngb cmp-sweep-open" data-key="${esc(key || '')}" data-lens="body">See it on the PII sweep tab</button> ` +
+    `A guide to what the body expects, from its published guidance. It is not legal advice.</p></div>`;
+}
+/** A governing body's checks, those to act on first: each its rule, what it found, the columns it is about, and links. */
+function bodyChecksHtml(b) {
+  const src = b.sources || {}, n = b.counts || {}, st = c => PIS_BODY_ST[c.status] ? c.status : 'na';
+  const item = c => {
+    const cols = c.about ? [...new Set((c.findings || []).map(id => String(id).split('::')[0]))] : [];
+    return `<li class="pis-bcheck ${st(c)}"><div class="pis-fitem"><i aria-hidden="true"></i><span class="pis-fitem-t"><b>${esc(c.title)}</b>` +
+      `<small>${esc(c.rule || '')}</small></span></div><p class="pis-bdetail">${esc(c.detail || '')}</p>` +
+      (cols.length ? `<p class="pis-bcols">In ${cols.map(x => `<code>${esc(x)}</code>`).join('')}</p>` : '') +
+      ((c.sources || []).some(k => src[k]) ? `<p class="pis-bsrc">${c.sources.filter(k => src[k]).map(k =>
+        `<a href="${esc(src[k].url)}" target="_blank" rel="noopener noreferrer">${esc(src[k].title)}</a>`).join('')}</p>` : '') + `</li>`;
+  };
+  return `<div class="pis-bsum">${['act', 'confirm', 'met', 'na'].filter(k => n[k]).map(k =>
+      `<span class="pis-bst ${k}"><i></i>${pisN(n[k])} ${PIS_BODY_ST[k][0].toLowerCase()}</span>`).join('')}</div>` +
+    ['act', 'confirm', 'met', 'na'].map(k => { const cs = (b.checks || []).filter(c => st(c) === k);
+      return cs.length ? `<h6>${PIS_BODY_ST[k][0]} <small>${pisN(cs.length)}</small></h6><ul class="pis-fitems pis-bchecks">${cs.map(item).join('')}</ul>` : ''; }).join('');
+}
+/** The Governing body's choice, saved for the dataset as soon as it is changed (the PII sweep API's set-body). */
+function wireComplianceGov(container, key, comp) {
+  const sel = container.querySelector('[data-cmpbody]'), note = container.querySelector('[data-cmpbody-note]');
+  if (!sel || !key) return;
+  sel.addEventListener('change', async () => {
+    const v = sel.value, was = ((comp && comp.governing) || {}).chosen || 'general';
+    sel.disabled = true;
+    try {
+      await postJSON(`${API_BASE}/data-quality/pii-sweep`, HEADERS, { app_id: APP_ID, action: 'set-body', dataset_key: key, governing_body: v });
+      if (comp) comp.governing = Object.assign({}, comp.governing || {}, { chosen: v });
+      const d = pisDs(key); if (d) d.body = v;
+      note.className = 'cmp-gov-note ok';
+      note.textContent = v === 'general' ? 'Saved: its sweeps are no longer checked against a governing body.'
+        : `Saved: its next assessment is checked against ${SRC_BODY_L[v]}. Run it again to see the checks now.`;
+    } catch (e) {
+      sel.value = was;
+      note.className = 'cmp-gov-note err';
+      note.textContent = rcxErrText(e);
+    } finally { sel.disabled = false; }
+  });
 }
 
 async function loadDsCompliance(panel, prefix) {
@@ -26308,7 +26414,7 @@ function buildGuides() {
             `Press the ${ui('Data source')} button at the top of the card and pick where the data lives: a cloud warehouse, a database, cloud storage, or ${ui('Local File')} for something on your computer (CSV, TSV, Excel, parquet, JSON or QVD). Type to find one by name.`,
             `Fill in the connection. Each field has an ${ui('ⓘ')} explaining what it expects. If this connection has been saved before, choose it under ${ui('Credential profile')} and press ${ui('Apply')}.`,
             `Leave ${ui('Sample rows')} empty to assess every row. That is the default, and it is the point: counts are exact rather than estimated.`,
-            `${ui('Sweep PII')}, above the run button, is ticked to start with: the assessment sweeps the dataset for personal data first. Untick it to assess without the sweep this time. Its Compliance then shows the dataset's last sweep, if it has one. Beside it, ${ui('Checked against')} picks the regulator whose rules the sweep checks the dataset against: the ICO, Ofwat or the FCA, or none. The dataset keeps the one chosen, so its schedules are checked against it too, and the box shows it once the form names a dataset assessed before.`) +
+            `${ui('Sweep PII')}, above the run button, is ticked to start with: the assessment sweeps the dataset for personal data first. Untick it to assess without the sweep this time. Its Compliance then shows the dataset's last sweep, if it has one. Beside it, ${ui('Checked against')} picks the regulator whose rules the sweep checks the dataset against: the ICO, Ofwat or the FCA, or none. It is one choice per dataset, the same on its schedules, on the PII sweep tab and under ${ui('Governing body')} in its Compliance: the box shows it once the form names a dataset assessed before, and the one you run with is what its results are checked against and what it keeps.`) +
           shot('source-menu', `Every source, grouped by kind. ${n(1)} Type to find one, or ${n(2)} pick it.`) +
           shot('source-picker', `${n(1)} The source you picked, which opens the menu again. For a file, ${n(2)} choose it, ${n(3)} leave the sample empty to assess every row, and ${n(4)} press ${ui('Upload & assess')}.`) },
       { h: 'Run it and read the result', body:
@@ -26989,6 +27095,7 @@ function buildGuides() {
                 `Set the time and its timezone. It runs at that time in that zone; the river shows it in your own time.`,
                 `Under ${ui('Assess')}, pick what to run.${Q ? ` For app tables, ${ui('Choose tables…')} or leave it on all tables, and optionally set a sample size.` : ''}`,
                 `For a source, choose its type, then the dataset: every one of that type assessed here is listed. It runs with the connection it was assessed with, so there is nothing to type. A dataset that is not there yet is assessed once under ${go('upload', 'From a data source')} first, with a saved connection. SharePoint and on-premises files are the exception: for those, choose a saved ${ui('Credential profile')}, press ${ui('Apply')} and say where the file is.`,
+                `${ui('PII sweep checked against')} picks the regulator whose rules its datasets' sweeps are checked against, or keeps each dataset's own. For a dataset or a tag, saving sets it for each dataset, wherever it is assessed; an app's tables are checked against it each time it runs.`,
                 `Name it, or keep the name it offers.`,
                 `Check the summary on the right, its next runs, and its week beside the other schedules: an amber edge marks an hour in which three or more would start. Then press ${ui('Save schedule')}.`) +
           shot('schedule-form', `${n(1)} When it runs, ${n(2)} what it assesses and ${n(3)} its name. ${n(4)} What it will do, its next runs, and its week beside the others. ${n(5)} ${ui('Save schedule')}, with whether it starts in a busy hour beside it.`) },
@@ -27245,10 +27352,11 @@ ${HDRS}
           shot('compliance-dataset', `${n(1)} The dataset open beside the names. ${n(2)} A tile per principle. ${n(3)} A column, ${n(4)} its card kept open, and ${n(5)} a rule it touches.`) +
           note(`Where the personal data is, and how serious, is the dataset's newest ${go('piisweep', 'PII sweep')} as that tab shows it now, so the two always agree. A finding from the sweep is dismissed on the PII sweep tab, and leaves here with it; ${ui('Not a compliance issue')} sets aside one of the assessment's own.`) },
       { h: 'On the dashboard', body:
-          p(`A dataset's own ${ui('Compliance')} tab in the dashboard is four cards:`) +
+          p(`A dataset's own ${ui('Compliance')} tab in the dashboard is five cards:`) +
           table(['Card', 'What it covers'], [
             ['Exposure & findings', `Sensitive data in clear text, prohibited storage such as a stored card security code, and data quality as it affects personal data. Where the personal data is, and how serious, is the dataset's newest ${go('piisweep', 'PII sweep')} as that tab shows it now, so the two always agree. Each control is a row citing its clause, such as ISO/IEC 29100 §5.6 or GDPR Art. 5(1)(d); open it, or ${ui('Expand all')}, for the evidence and what it assesses. ${ui('Explain (AI)')} explains a finding; ${ui('Not a compliance issue')} marks a false positive. A finding from the PII sweep is dismissed on the PII sweep tab instead, and leaves here with it.`],
             ['Compliance policy', 'The rules you declare for this dataset (below). Controls run only for the fields you set.'],
+            ['Governing body', 'The regulator its PII sweeps are checked against (the ICO, Ofwat or the FCA), and its newest sweep\'s checks against it. One choice per dataset, the same as beside Sweep PII, on its schedules and on the PII sweep tab; changed here, it is saved at once.'],
             ['PIMS readiness', 'Everything already assessed, projected onto the ISO/IEC 27701 Annex A controls, marked as machine-evidenced or self-attested, with gaps listed.'],
             ['Governance attestations', 'Controls only people can confirm, such as a DPIA, a record of processing or a privacy notice, answered with notes and evidence links.'],
           ]) +
@@ -27288,7 +27396,7 @@ ${HDRS}
           p(`${go('piisweep', 'PII sweep')} is in the menu on the left. There is nothing to start there: each assessment sweeps its dataset first, whoever or whatever started it (a person, ${go('schedules', 'a schedule')}, or source monitoring). The one exception is a person who unticks ${ui('Sweep PII')} on a data source form before running it: that one run is not swept. The card at the top of the tab picks a dataset and says how its assessments sweep it; under it is every dataset swept so far.`) +
           steps(`Press ${ui('Choose a dataset')} and pick one, or type to find it by name. Picking a dataset swept before opens its newest sweep.`,
                 `${ui('Rows each sweep reads')}: leave it empty to read every row, or type a number for each sweep of this dataset to read only that many (a very large table, say). ${ui('Sweep with each assessment')} switches its sweeping off and on.${ADMIN ? ' Both are saved as soon as you change them.' : ' Only an admin can change them.'}`,
-                `${ui('Checked against')} is the regulator whose rules its sweeps check it against: the ICO, Ofwat or the FCA, or none. ${ui('Run again')} checks it against the one chosen there, and the dataset keeps it from then on.`,
+                `${ui('Checked against')} is the regulator whose rules its sweeps check it against: the ICO, Ofwat or the FCA, or none. It is saved for the dataset as soon as you change it (the same choice as on its forms, schedules and Compliance), and ${ui('Run again')} checks it against it now.`,
                 `${ui('Run again')} assesses the dataset again now, through the saved connection its last assessment used (one on an on-premises agent runs on that agent). A card says what the sweep is doing and how many rows it has read, and ${ui('Cancel this run')} stops the sweep and its assessment. When the sweep finishes, its result opens in that card, while its assessment finishes in the background.`,
                 `A new file is swept as it is assessed: ${ui('Assess a new file')} goes to the Upload tab. An uploaded file is not kept once assessed, so ${ui('Upload it again')} sweeps it again.`) +
           shot('pii-start', `${n(1)} Choose the dataset, ${n(2)} how many rows each of its sweeps reads (empty: every row), ${n(3)} whether its assessments sweep it at all, and ${n(4)} Run again. ${n(5)} Assess a new file. Underneath, ${n(6)} Open shows a swept dataset's newest sweep.`) +
@@ -27349,7 +27457,7 @@ ${HDRS}
                `${ui('To confirm')}: the data holds something the body attaches a duty to, such as special category data or identity documents, which only you can confirm you meet.`,
                `${ui('Met')} and ${ui('Not applicable')}: checked and fine, or nothing in this dataset that the check is about.`) +
           p(`Each check names the body's rule, says what it found and where, and links to where the body says so. Picking one lights the columns it is about; Escape lets it go. A body also counts what its checks need while the sweep reads, never a value: the ages in a column of dates of birth and columns of MD5 or SHA-1 hashes (the ICO), columns named for customers' needs and circumstances (Ofwat and the FCA), and when each record was last contacted or checked (all three; Ofwat's minimum is actual contact with 35% of priority services households every two years, and attempted contact with 90%).`) +
-          p(`The pill beside the dataset's name says the body and what to act on, and opens this view. Dismissing a finding updates the checks that rest on it at once. The checks are a guide to what each body expects, from its published guidance, not legal advice.`) },
+          p(`The pill beside the dataset's name says the body and what to act on, and opens this view. When a different body has been chosen since the sweep on show, ${ui('Next assessment')} beside it names the one its next run uses. Dismissing a finding updates the checks that rest on it at once. The same checks are under ${ui('Governing body')} in the dataset's Compliance. They are a guide to what each body expects, from its published guidance, not legal advice.`) },
       { h: 'The list instead', body:
           p(`${ui('List')}, at the top right of the sky, shows every finding as a table: its severity, its risk, what it is, its column, and whether it hides in free text, riskiest first. Choosing it is remembered in this browser, so every dataset then opens as a list until you choose ${ui('Sky')} again.`) +
           shot('pii-findings', `${n(1)} The sky, or the list. ${n(2)} Search the findings. ${n(3)} Show only one severity, or only those hidden in free text. ${n(4)} Turn the order round. ${n(5)} A finding opened: why it matters and where it sits in each value. ${n(6)} Label its column${GOV ? ' or dismiss it' : ''}.`) +
@@ -28102,6 +28210,7 @@ const PIS_FIX = {
 // A governing body's checks (dq/compliance/bodies.py): how each stands, its colour, and the bodies to choose from.
 const PIS_BODY_ST = { act: ['To act on', 'var(--pii-high)'], confirm: ['To confirm', 'var(--pii-med)'], met: ['Met', 'var(--ok)'], na: ['Not applicable', 'var(--muted)'] };
 const PIS_BODY_OPTS = [['general', 'No governing body'], ['ico', 'ICO: UK GDPR'], ['ofwat', 'Ofwat: water'], ['fca', 'FCA: financial services']];
+const PIS_BODY_SHORT = { general: 'None', ico: 'ICO', ofwat: 'Ofwat', fca: 'FCA' };
 const PIS_PHASE = { queued: 'Waiting for a worker', reading: 'Connecting to the data', scanning: 'Reading every value' };
 
 const pisN = n => (n == null ? '-' : Number(n).toLocaleString());
@@ -28190,7 +28299,7 @@ function pisPaintPick() {
   const d = pisDs(pis.sel), set = (d && d.settings) || {}, can = !!d && !!pis.canDismiss, up = !!d && d.how === 'upload';
   const ready = !!d && !pis.busy && !set.off && (d.how === 'source' || d.how === 'qlik' || up);
   const rows = pis.rowsRaw != null ? pis.rowsRaw : (set.maxRows ? String(set.maxRows) : '');
-  const bodyNow = pis.body || (((d && d.latest) || {}).body || {}).id || 'general';
+  const bodyNow = (d && d.body) || (((d && d.latest) || {}).body || {}).id || 'general';
   const lock = d && !pis.canDismiss ? ' data-tip="Only an admin can change how a dataset is swept"' : '';
   row.innerHTML = `<div class="pis-field"><span class="pis-field-l">Dataset</span><div class="rcx-pick${pis.open ? ' open' : ''}">` +
     `<button type="button" class="rcx-pick-btn lngb${d ? '' : ' empty'}" data-pis="open" aria-haspopup="listbox" aria-expanded="${pis.open}">` +
@@ -28202,7 +28311,7 @@ function pisPaintPick() {
     `<input class="pis-rows" data-pis-rows type="number" min="1" step="1" inputmode="numeric" placeholder="Empty = every row" value="${esc(rows)}"${can ? '' : ' disabled'}></label>` +
     `<label class="pis-auto"${lock}><input type="checkbox" data-pis-auto${set.off ? '' : ' checked'}${can ? '' : ' disabled'}><span>Sweep with each assessment</span></label>` +
     `<label class="pis-field" data-tip="${esc(up ? 'An upload is checked against the body chosen beside Sweep PII when it is uploaded again'
-      : 'The regulator whose rules its sweeps check it against. Run again to check it against another: the dataset keeps the one chosen.')}">` +
+      : 'The regulator whose rules its sweeps check it against: saved for the dataset as soon as it is changed, the same choice as on its forms, schedules and Compliance.')}">` +
       `<span class="pis-field-l">Checked against</span><select class="pis-body" data-pis-body${d && !up ? '' : ' disabled'}>` +
       PIS_BODY_OPTS.map(([v, l]) => `<option value="${v}"${v === bodyNow ? ' selected' : ''}>${l}</option>`).join('') + `</select></label>` +
     `<div class="pis-go-wrap"><button type="button" class="dsx-btn primary pis-go" data-pis="go"${ready ? '' : ' disabled'} ` +
@@ -28296,12 +28405,12 @@ function pisStageFail(title, msg) {
 async function pisStart() {
   const d = pisDs(pis.sel); if (!d || pis.busy) return;
   if (d.how === 'upload') { reUploadPrompt(d.name); return; }
-  if (d.how === 'qlik') { reRunTable(d.name, 'qlik', d.resultPrefix || '', srcSweepHeaders(true, pis.body)); return; }
+  if (d.how === 'qlik') { reRunTable(d.name, 'qlik', d.resultPrefix || '', srcSweepHeaders(true, d.body || null)); return; }
   if ((d.settings || {}).off) { pisHint(`${d.name} is not swept with its assessments. Tick Sweep with each assessment first.`, 'err'); return; }
   pis.busy = true; pis.res = null; pisPaintPick(); pisHint('');
   pisStageLoader('queued', 'Asking for a worker');
   try {
-    const r = await pisApi({ action: 'start', dataset_key: d.key }, pis.body ? { 'X-PII-Body': pis.body } : null);
+    const r = await pisApi({ action: 'start', dataset_key: d.key }, d.body ? { 'X-PII-Body': d.body } : null);
     pisFollow({ key: r.datasetKey || d.key, sweepId: r.sweepId, job: agentJobOf(r), startedAt: Date.now() });
     return true;
   } catch (e) { pis.busy = false; pisPaintPick(); pisStageFail('Could not run it again', rcxErrText(e)); }
@@ -28694,6 +28803,13 @@ function pisBodyPanel(res) {
     `<div class="pis-bsum">${['act', 'confirm', 'met', 'na'].filter(k => n[k]).map(k => `<span class="pis-bst ${k}"><i></i>${pisN(n[k])} ${PIS_BODY_ST[k][0].toLowerCase()}</span>`).join('')}</div>` +
     groups + `<p class="pis-side-s pis-bnote">A guide to what ${esc(b.against || b.short)} expects, from its published guidance. It is not legal advice.</p></aside>`;
 }
+/** Beside the pill: the body the dataset's next assessment is checked against, when it is not the one this sweep was. */
+function pisNextBody(res) {
+  const next = res.governing_body, was = ((res.body || {}).id) || 'general';
+  if (!next || next === was) return '';
+  return `<span class="pis-nextbody" data-tip="${esc(`Chosen since this sweep. Run again to check it against ${SRC_BODY_L[next] || next} now.`)}">` +
+    `Next assessment: ${esc(next === 'general' ? 'no governing body' : SRC_BODY_L[next] || next)}</span>`;
+}
 /** Beside the figures: the governing body's verdict, which opens its checks. Nothing for a sweep from before bodies. */
 function pisBodyPill(res) {
   const b = res.body;
@@ -28936,7 +29052,7 @@ function pisPaintResult() {
   const head = `<div class="pis-head"><div class="pis-head-l"><span class="pis-dsi" aria-hidden="true">${srcIcon(d.sourceFormat || (res.source || {}).format)}</span>` +
       `<div style="min-width:0"><div class="pis-title"><h3>${esc(res.dataset || d.name || '')}</h3>` +
       (who ? `<span class="pis-who ${esc(x.audience || '')}" data-tip="${esc(pisWho(x))} can open this dataset">${esc(who)}</span>` : '') +
-      pisBodyPill(res) + `</div>` +
+      pisBodyPill(res) + pisNextBody(res) + `</div>` +
       `<p class="pis-sub">Swept <b>${esc(rcxWhen(res.generated_at_utc))}</b>${res.assessment_run ? ' with its assessment' : ''} • ${rowsTxt} • ${pisPl(nCols, 'column')}</p></div></div>` +
     `<div class="pis-acts">` +
       (d.how === 'source' || d.how === 'qlik' ? btn('again', 'refresh', 'Run again', '', 'Assess it again: the assessment sweeps it first, in the same run')
@@ -29583,9 +29699,13 @@ function pisTodoHtml(items) {
 
 // ---- The list of datasets swept ----
 /** A row of Swept datasets: the body its newest sweep was checked against, and the first thing that asks of it. */
-function pisBodyCell(l) {
+function pisBodyCell(l, next) {
   if (!l) return '';
-  const b = l.body;
+  const b = l.body, was = (b && b.id) || 'general';
+  const nx = next && next !== was ? `<small class="pis-next-body" data-tip="Chosen since its newest sweep: its next assessment is checked against it">` +
+    ` next: ${esc(PIS_BODY_SHORT[next] || next)}</small>` : '';
+  if (nx && (!b || !b.id || b.id === 'general')) return `<span class="pis-bodytag"><span class="dash-muted">${b && b.id ? 'None' : '-'}</span>${nx}</span>`;
+  if (nx) return pisBodyCell(l, null).replace(/<\/span>$/, nx + '</span>');
   if (!b || !b.id) return `<span class="dash-muted" data-tip="Swept before a governing body could be chosen">-</span>`;
   if (b.id === 'general') return `<span class="dash-muted" data-tip="Not checked against a governing body">None</span>`;
   const n = b.counts || {}, v = PIS_BODY_ST[b.verdict] ? b.verdict : 'na';
@@ -29615,7 +29735,7 @@ function pisPaintList() {
       `<td>${l ? pisSevHtml(l.severity) : ''}${nNew ? `<span class="pis-new" data-tip="Serious findings that are new since the sweep before">+${nNew} new</span>` : ''}</td>` +
       `<td>${l ? pisRiskHtml(l.risk) : ''}</td><td class="pis-num">${l ? pisN(l.findings) : ''}</td>` +
       `<td class="pis-num">${l ? pisN(l.hidden) : ''}</td><td class="pis-num">${l ? pisN(l.identity_rows) : ''}</td>` +
-      `<td>${pisBodyCell(l)}</td><td>${esc(pisWho(d.exposure))}</td>` +
+      `<td>${pisBodyCell(l, d.body)}</td><td>${esc(pisWho(d.exposure))}</td>` +
       `<td>${l ? esc(rcxWhen(l.generated_at_utc)) : ''}${run ? (l ? '<br>' : '') + run : ''}` +
         `${(d.settings || {}).off ? `<br><span class="dash-muted">Not swept with its assessments</span>` : ''}</td>` +
       `<td><button type="button" class="pis-rowbtn lngb" data-pis="open-ds" data-key="${esc(d.key)}"${l ? '' : ' disabled'}>Open</button></td></tr>`;
@@ -29729,7 +29849,7 @@ function pisScheduleRun(key) {
         pis.open = !pis.open; pis.q = ''; pisPaintPick();
         if (pis.open) { const s = panel.querySelector('.rcx-search'); if (s) s.focus(); }
       } else if (a === 'pick') {
-        pis.sel = t.dataset.key; pis.open = false; pis.q = ''; pis.rowsRaw = null; pis.body = null; pisPaintPick();
+        pis.sel = t.dataset.key; pis.open = false; pis.q = ''; pis.rowsRaw = null; pisPaintPick();
         const d = pisDs(pis.sel);
         pisHint(!d ? '' : (d.settings || {}).off ? `${d.name} is not swept with its assessments. Tick Sweep with each assessment to switch it back on.`
           : d.latest || d.current ? ''
@@ -29981,10 +30101,18 @@ function pisScheduleRun(key) {
     panel.addEventListener('change', e => {
       if (e.target.matches('[data-pis-auto]')) { pisSaveSettings({ off: !e.target.checked }); return; }
       if (e.target.matches('[data-pis-body]')) {
-        // Not saved: the body is chosen as the dataset is swept, so it is Run again that checks it against this one.
-        const d = pisDs(pis.sel), was = (((d && d.latest) || {}).body || {}).id || 'general';
-        pis.body = e.target.value;
-        pisHint(d && pis.body !== was ? `Run again to check ${d.name} against ${SRC_BODY_L[pis.body] || pis.body}. It keeps that from then on.` : '');
+        // Saved for the dataset at once (one choice, wherever it is shown); Run again checks it against it now.
+        const d = pisDs(pis.sel), sel = e.target, v = sel.value;
+        if (!d) return;
+        const was = d.body || ((d.latest || {}).body || {}).id || 'general';
+        sel.disabled = true;
+        pisApi({ action: 'set-body', dataset_key: d.key, governing_body: v }).then(() => {
+          d.body = v;
+          pisHint(v === 'general' ? `Saved: ${d.name}'s sweeps are no longer checked against a governing body.`
+            : `Saved: ${d.name} is checked against ${SRC_BODY_L[v]} from its next assessment. Press Run again to do that now.`);
+          if (pis.res && pis.res.dataset_key === d.key) { pis.res.governing_body = v; pisPaintResult(); }
+          pisPaintList();
+        }).catch(err => { sel.value = was; pisHint(rcxErrText(err), 'err'); }).finally(() => { sel.disabled = false; });
         return;
       }
       if (!e.target.matches('[data-pis-rows]')) return;
@@ -30844,6 +30972,7 @@ function updateTablesSummary() {
 
 function resetScheduleForm() {
   schEditingName = null;
+  if ($('#schPiiBody')) $('#schPiiBody').value = '';
   $('#schFormTitle').textContent = 'New schedule';
   $('#schLabel').value = ''; $('#schSample').value = '';
   $('#schFreq').value = 'daily'; $('#schTime').value = '06:00';
@@ -31238,6 +31367,7 @@ async function schDsLoad(kind, want) {
     if (ok.length === 1) schDs.picked = ok[0].key;
   }
   schDsPaint();
+  schBodyUI();                                            // "Keep its own" names the dataset's body
   renderSchedulePreview();
 }
 function _schDsRow(d) {
@@ -31301,6 +31431,7 @@ if ($('#schDsList')) {
       r.setAttribute('aria-checked', String(on));
     });
     const gone = host.querySelector('.schd-gone'); if (gone) gone.remove();
+    schBodyUI();
     renderSchedulePreview();
   });
   host.addEventListener('input', e => {
@@ -31320,8 +31451,21 @@ if ($('#schDsList')) {
 }
 
 /** The form for the kind chosen. `want`: the dataset an edited (or Schedule-this) source schedule starts on. */
+/** The Schedules form's "PII sweep checked against": what keeping each dataset's own means here, and what choosing one does. */
+function schBodyUI() {
+  const wrap = $('#schPiiBodyWrap'), sel = $('#schPiiBody'), hint = $('#schPiiBodyHint'); if (!wrap || !sel) return;
+  const kind = ($('#schSourceKind') && $('#schSourceKind').value) || 'qlik';
+  wrap.style.display = kind === 'source-watch' ? 'none' : '';
+  const one = kind !== 'qlik' && kind !== 'tag' && !SCH_MANUAL_KINDS.has(kind);
+  const d = one ? (schDs.list || []).find(x => x.key === schDs.picked) : null;
+  sel.options[0].textContent = d ? `Keep its own (${d.body && d.body !== 'general' ? SRC_BODY_L[d.body] : 'no governing body'})` : "Keep each dataset's own";
+  hint.textContent = kind === 'tag' ? 'Choosing one sets it for every dataset this tag assesses, wherever each is assessed.'
+    : kind === 'qlik' ? "Choosing one checks every table this schedule assesses against it, each time it runs."
+    : 'Choosing one sets it for the dataset, wherever it is assessed: the same choice as beside Sweep PII and in Compliance.';
+}
 function schSourceUI(want) {
   const kind = ($('#schSourceKind') && $('#schSourceKind').value) || 'qlik';
+  setTimeout(schBodyUI, 0);
   const qlik = kind === 'qlik';
   const tag = kind === 'tag';
   const watch = kind === 'source-watch';        // metadata monitoring: no connector form at all
@@ -32168,6 +32312,9 @@ async function saveSchedule() {
     timezone: ($('#schTz').value || 'UTC').trim(), enabled: true, source_kind: kind,
   };
   if (schEditingName) body.name = schEditingName;
+  // The governing body its datasets' PII sweeps are checked against: left alone, each dataset keeps its own.
+  const pb = ($('#schPiiBody') && $('#schPiiBody').value) || '';
+  if (pb && kind !== 'source-watch') body.pii_body = pb;
 
   if (kind === 'qlik') {
     if (!BEARER) { schBanner('err', 'No Qlik API key configured - set it in the extension settings.'); return; }
@@ -32218,7 +32365,10 @@ async function saveSchedule() {
     if (BEARER) hdr['X-Qlik-Bearer'] = BEARER;
     const r = await postJSON(`${API_BASE}/data-quality/schedules`, hdr, body);
     schForm(false);
-    schBanner(r.action === 'updated' ? 'info' : 'ok', `Schedule ${r.action}.`);
+    schBanner(r.action === 'updated' ? 'info' : 'ok', `Schedule ${r.action}.` + (r.piiBody && r.bodySetFor
+      ? ` ${r.bodySetFor === 1 ? 'Its dataset is' : `Its ${r.bodySetFor} datasets are`} checked against ${SRC_BODY_L[r.piiBody]} from now on, wherever ${r.bodySetFor === 1 ? 'it is' : 'they are'} assessed.`
+      : r.piiBody && kind === 'qlik' ? ` Its tables are checked against ${SRC_BODY_L[r.piiBody]} each time it runs.` : ''));
+    pisDropCache();
     loadSchedules();
   } catch (e) {
     schBanner('err', e.message);
@@ -32227,6 +32377,9 @@ async function saveSchedule() {
   }
 }
 $('#schSave').addEventListener('click', saveSchedule);
+if ($('#schPiiBody')) $('#schPiiBody').addEventListener('change', () => renderSchedulePreview());
+/** The PII sweep tab's list of datasets is read again when next shown: a schedule may have set their bodies. */
+function pisDropCache() { if (typeof pis !== 'undefined' && pis) pis.list = null; }
 
 async function loadSchedules() {
   if (!APP_ID) { schx.list = []; $('#schList').innerHTML = '<p class="dash-muted">No app context.</p>'; schPaintTop(); return; }
@@ -33340,7 +33493,9 @@ function renderSchedulePreview() {
   // What it covers, for the Assess row and the summary.
   const what = k === 'qlik' ? "This app's tables" : k === 'tag' ? (s.tag ? `Datasets tagged ${s.tag}` : 'Datasets with a tag')
     : k === 'source-watch' ? 'Source monitoring' : (SOURCE_LABEL[k] || k);
-  const tell = k === 'source-watch' ? 'an incident when a source stops loading' : "owners told if one fails";
+  const pb = k === 'source-watch' ? '' : (($('#schPiiBody') && $('#schPiiBody').value) || '');
+  const tell = (k === 'source-watch' ? 'an incident when a source stops loading' : "owners told if one fails") +
+    (pb ? ` · PII checked against ${pb === 'general' ? 'no governing body' : SRC_BODY_L[pb]}` : '');
   const subj = k === 'tag' && s.tag ? (Array.isArray(s.members) ? (s.members.length === 1 ? `The one dataset tagged ${s.tag}` : `The ${s.members.length} datasets tagged ${s.tag}`) : `The datasets tagged ${s.tag}`)
     : k === 'qlik' ? (schSelected.length ? `${schSelected.length} of this app's tables` : "All of this app's tables")
     : k === 'source-watch' ? 'Every monitored source' : `${what}${s.sourceSummary ? ' ' + s.sourceSummary : ''}`;
@@ -33491,6 +33646,8 @@ function editSchedule(s) {
   }
   const kind = (s.sourceKind && s.sourceKind !== 'qlik') ? s.sourceKind : 'qlik';
   if ($('#schSourceKind')) $('#schSourceKind').value = kind;
+  // A Qlik app schedule carries its body; a dataset or tag schedule keeps its datasets' own.
+  if ($('#schPiiBody')) $('#schPiiBody').value = s.piiBody || '';
   const manual = SCH_MANUAL_KINDS.has(kind), source = !(kind === 'qlik' || kind === 'tag' || kind === 'source-watch');
   schSourceUI(source && !manual ? (s.datasetKey || null) : undefined);
   if (source && !manual && $('#schDsSample')) $('#schDsSample').value = s.sampleRows || '';
