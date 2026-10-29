@@ -1325,8 +1325,16 @@
   .src-run { padding: 9px 18px; border: none; border-radius: 8px; background: var(--accent); color: var(--accent-fg);
     font-size: 14px; font-weight: 600; cursor: pointer; }
   .src-run:hover { filter: brightness(1.06); }
-  .src-sweep { display: flex; align-items: center; gap: 8px; width: fit-content; margin: 4px 0 14px; cursor: pointer; font-size: 13px; }
+  .src-sweep { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; width: fit-content; margin: 4px 0 14px; font-size: 13px; }
+  .src-sweep-l { display: flex; align-items: center; gap: 8px; cursor: pointer; }
   .src-sweep input { flex: none; width: 16px; height: 16px; margin: 0; accent-color: var(--accent); cursor: pointer; }
+  /* Beside Sweep PII: the governing body the sweep is checked against */
+  .src-body { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; color: var(--muted); }
+  .src-body select { height: 30px; padding: 0 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--card); color: var(--text);
+    font: inherit; font-size: 12.5px; cursor: pointer; }
+  .src-body select:disabled { opacity: .5; cursor: default; }
+  .src-body select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .irm-foot .src-body select { background: #0b1324; color: #e6ecff; border-color: #2a3a5f; }
   .src-sweep-t { font-weight: 600; color: var(--text); }
   .src-sweep-h { font-size: 12px; color: var(--muted); }
   .src-status { margin-top: 12px; font-size: 13px; line-height: 1.5; }
@@ -4737,7 +4745,7 @@
      word as well as a colour. */
   #piiSweepPanel { --pii-crit: #fb7185; --pii-high: #fb923c; --pii-med: #fbbf24; --pii-low: #7aa2ff; }
   .pis-card { padding: 18px 22px 20px; }
-  .pis-pickrow { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(250px, 1fr) auto auto; align-items: end; gap: 14px; }
+  .pis-pickrow { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(190px, 1fr) auto minmax(180px, auto) auto; align-items: end; gap: 14px; }
   .pis-pickrow .pis-field-l { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   @media (max-width: 1100px) { .pis-pickrow { grid-template-columns: minmax(0, 1fr) minmax(250px, 300px); } }
   @media (max-width: 900px) { .pis-pickrow { grid-template-columns: minmax(0, 1fr); } }
@@ -4747,6 +4755,9 @@
   .pis-rows::placeholder { color: var(--muted); }
   .pis-field-l .pis-opt { font-weight: 400; letter-spacing: 0; text-transform: none; }
   .pis-rows:focus { outline: none; border-color: var(--accent); }
+  .pis-body { width: 100%; height: 50px; padding: 0 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--card-2); color: var(--text);
+    font: inherit; font-size: 13.5px; cursor: pointer; }
+  .pis-body:focus { outline: none; border-color: var(--accent); } .pis-body:disabled { opacity: .55; cursor: default; }
   .pis-go-wrap { display: flex; align-items: center; gap: 10px; }
   button.dsx-btn.pis-go { height: 50px; padding: 0 22px; font-size: 14px; }
   button.dsx-btn.pis-go:disabled { opacity: .45; cursor: default; filter: none; }
@@ -4965,6 +4976,32 @@
   button.pis-newpill.worse { border-color: color-mix(in srgb, var(--pii-crit) 40%, var(--border)); background: color-mix(in srgb, var(--pii-crit) 13%, transparent); }
   button.pis-newpill .pis-ico { width: 15px; height: 15px; color: var(--accent); } button.pis-newpill.worse .pis-ico { color: var(--pii-crit); }
   button.pis-newpill:hover { border-color: var(--accent); } button.pis-newpill:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  /* The governing body's verdict, beside the figures: what to act on first */
+  button.pis-bodypill { flex: none; display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 11px; border-radius: 999px;
+    border: 1px solid var(--border); background: var(--card); box-shadow: none; color: var(--text); font: inherit; font-size: 12px; font-weight: 650; cursor: pointer; }
+  button.pis-bodypill .pis-ico { width: 14px; height: 14px; color: var(--muted); }
+  button.pis-bodypill.act { border-color: color-mix(in srgb, var(--pii-high) 45%, var(--border)); background: color-mix(in srgb, var(--pii-high) 12%, transparent); }
+  button.pis-bodypill.act .pis-ico { color: var(--pii-high); }
+  button.pis-bodypill.confirm { border-color: color-mix(in srgb, var(--pii-med) 45%, var(--border)); background: color-mix(in srgb, var(--pii-med) 11%, transparent); }
+  button.pis-bodypill.confirm .pis-ico { color: var(--pii-med); }
+  button.pis-bodypill.met .pis-ico { color: var(--ok); }
+  button.pis-bodypill:hover { border-color: var(--accent); } button.pis-bodypill:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  /* Regulator: the body's checks beside the sky */
+  .pis-bsum { display: flex; flex-wrap: wrap; gap: 6px 12px; margin: 0 0 4px; }
+  .pis-bst { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 650; color: var(--text); }
+  .pis-bst i { width: 9px; height: 9px; border-radius: 50%; background: var(--k, var(--muted)); }
+  .pis-bst.act, .pis-bcheck.act { --k: var(--pii-high); } .pis-bst.confirm, .pis-bcheck.confirm { --k: var(--pii-med); }
+  .pis-bst.met, .pis-bcheck.met { --k: var(--ok); } .pis-bst.na, .pis-bcheck.na { --k: var(--muted); }
+  .pis-bchecks { gap: 10px; }
+  .pis-bcheck > .pis-fitem > i { background: var(--k); }
+  .pis-bcheck > .pis-fitem > .pis-ico { flex: none; width: 15px; height: 15px; color: var(--muted); }
+  .pis-bdetail { margin: 6px 2px 0; font-size: 12.5px; line-height: 1.5; color: var(--text); }
+  .pis-bcheck.met .pis-bdetail, .pis-bcheck.na .pis-bdetail { color: var(--muted); }
+  .pis-bcols { margin: 6px 2px 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px; font-size: 12px; color: var(--muted); }
+  .pis-bcols code { padding: 0 5px; border-radius: 4px; border: 1px solid var(--border); font-size: 11px; color: var(--text); }
+  .pis-bsrc { margin: 6px 2px 0; display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 12px; }
+  .pis-bsrc a { color: var(--accent); text-decoration: none; } .pis-bsrc a:hover { text-decoration: underline; }
+  .pis-bnote { margin-top: 14px; font-size: 11.5px; }
   .pis-top .pis-note.partial { margin-top: 12px; }
   .pis-skycard { padding: 18px 20px; scroll-margin-top: 76px; }
   .pis-skybar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; margin-bottom: 14px; }
@@ -5964,7 +6001,7 @@
         <div id="weightsGrid"></div>
         <button type="button" class="linkbtn" id="weightsReset" style="margin-top: 8px;">Reset to defaults</button>
       </details>
-      <label class="src-sweep"><input type="checkbox" data-sweep="file" checked><span class="src-sweep-t">Sweep PII</span><span class="src-sweep-h">Check the dataset for personal data before it is assessed</span></label>
+      <div class="src-sweep"><label class="src-sweep-l"><input type="checkbox" data-sweep="file" checked><span class="src-sweep-t">Sweep PII</span><span class="src-sweep-h">Check the dataset for personal data before it is assessed</span></label><label class="src-body" data-tip="The regulator whose rules the PII sweep checks this dataset against. The dataset keeps it: its schedules and re-runs are checked against the same one."><span>Checked against</span><select data-body="file"><option value="general">No governing body</option><option value="ico">ICO: UK GDPR</option><option value="ofwat">Ofwat: water</option><option value="fca">FCA: financial services</option></select></label></div>
       <button id="go" disabled>Upload &amp; assess</button>
         </div>
       </div>
@@ -6016,7 +6053,7 @@
           <div class="src-field full"><label>…or Secrets Manager secret ARN</label><input data-f="secret_arn" placeholder="arn:aws:secretsmanager:eu-west-1:…:secret:…"></div>
           <div class="src-field"><label>Sample rows <span class="hint">(optional)</span></label><input data-f="sample_rows" type="number" min="1" placeholder="Empty = whole table"></div>
         </div>
-        <label class="src-sweep"><input type="checkbox" data-sweep="redshift" checked><span class="src-sweep-t">Sweep PII</span><span class="src-sweep-h">Check the dataset for personal data before it is assessed</span></label>
+        <div class="src-sweep"><label class="src-sweep-l"><input type="checkbox" data-sweep="redshift" checked><span class="src-sweep-t">Sweep PII</span><span class="src-sweep-h">Check the dataset for personal data before it is assessed</span></label><label class="src-body" data-tip="The regulator whose rules the PII sweep checks this dataset against. The dataset keeps it: its schedules and re-runs are checked against the same one."><span>Checked against</span><select data-body="redshift"><option value="general">No governing body</option><option value="ico">ICO: UK GDPR</option><option value="ofwat">Ofwat: water</option><option value="fca">FCA: financial services</option></select></label></div>
         <button type="button" class="src-run" data-runsource="redshift">Run assessment</button>
         <div class="src-status" data-status="redshift"></div>
       </div>
@@ -6038,7 +6075,7 @@
           <div class="src-field"><label>Secret access key <span class="hint">(optional)</span></label><input data-f="secret_key" type="password"></div>
           <div class="src-field"><label>Sample rows <span class="hint">(optional)</span></label><input data-f="sample_rows" type="number" min="1" placeholder="Empty = whole file"></div>
         </div>
-        <label class="src-sweep"><input type="checkbox" data-sweep="s3" checked><span class="src-sweep-t">Sweep PII</span><span class="src-sweep-h">Check the dataset for personal data before it is assessed</span></label>
+        <div class="src-sweep"><label class="src-sweep-l"><input type="checkbox" data-sweep="s3" checked><span class="src-sweep-t">Sweep PII</span><span class="src-sweep-h">Check the dataset for personal data before it is assessed</span></label><label class="src-body" data-tip="The regulator whose rules the PII sweep checks this dataset against. The dataset keeps it: its schedules and re-runs are checked against the same one."><span>Checked against</span><select data-body="s3"><option value="general">No governing body</option><option value="ico">ICO: UK GDPR</option><option value="ofwat">Ofwat: water</option><option value="fca">FCA: financial services</option></select></label></div>
         <button type="button" class="src-run" data-runsource="s3">Run assessment</button>
         <div class="src-status" data-status="s3"></div>
       </div>
@@ -6065,7 +6102,7 @@
           <div class="src-field"><label>Role ARN <span class="hint">(optional)</span></label><input data-f="role_arn" placeholder="arn:aws:iam::…:role/…"></div>
           <div class="src-field"><label>Sample rows <span class="hint">(optional)</span></label><input data-f="sample_rows" type="number" min="1" placeholder="Empty = whole table"></div>
         </div>
-        <label class="src-sweep"><input type="checkbox" data-sweep="athena" checked><span class="src-sweep-t">Sweep PII</span><span class="src-sweep-h">Check the dataset for personal data before it is assessed</span></label>
+        <div class="src-sweep"><label class="src-sweep-l"><input type="checkbox" data-sweep="athena" checked><span class="src-sweep-t">Sweep PII</span><span class="src-sweep-h">Check the dataset for personal data before it is assessed</span></label><label class="src-body" data-tip="The regulator whose rules the PII sweep checks this dataset against. The dataset keeps it: its schedules and re-runs are checked against the same one."><span>Checked against</span><select data-body="athena"><option value="general">No governing body</option><option value="ico">ICO: UK GDPR</option><option value="ofwat">Ofwat: water</option><option value="fca">FCA: financial services</option></select></label></div>
         <button type="button" class="src-run" data-runsource="athena">Run assessment</button>
         <div class="src-status" data-status="athena"></div>
       </div>
@@ -6089,7 +6126,7 @@
           <div class="src-field"><label>Table</label><input data-f="table" placeholder="ORDERS"></div>
           <div class="src-field"><label>Sample rows <span class="hint">(optional)</span></label><input data-f="sample_rows" type="number" min="1" placeholder="Empty = whole table"></div>
         </div>
-        <label class="src-sweep"><input type="checkbox" data-sweep="snowflake" checked><span class="src-sweep-t">Sweep PII</span><span class="src-sweep-h">Check the dataset for personal data before it is assessed</span></label>
+        <div class="src-sweep"><label class="src-sweep-l"><input type="checkbox" data-sweep="snowflake" checked><span class="src-sweep-t">Sweep PII</span><span class="src-sweep-h">Check the dataset for personal data before it is assessed</span></label><label class="src-body" data-tip="The regulator whose rules the PII sweep checks this dataset against. The dataset keeps it: its schedules and re-runs are checked against the same one."><span>Checked against</span><select data-body="snowflake"><option value="general">No governing body</option><option value="ico">ICO: UK GDPR</option><option value="ofwat">Ofwat: water</option><option value="fca">FCA: financial services</option></select></label></div>
         <button type="button" class="src-run" data-runsource="snowflake">Run assessment</button>
         <div class="src-status" data-status="snowflake"></div>
       </div>
@@ -6111,7 +6148,7 @@
           <div class="src-field"><label>Table</label><input data-f="table" placeholder="orders"></div>
           <div class="src-field"><label>Sample rows <span class="hint">(optional)</span></label><input data-f="sample_rows" type="number" min="1" placeholder="Empty = whole table"></div>
         </div>
-        <label class="src-sweep"><input type="checkbox" data-sweep="databricks" checked><span class="src-sweep-t">Sweep PII</span><span class="src-sweep-h">Check the dataset for personal data before it is assessed</span></label>
+        <div class="src-sweep"><label class="src-sweep-l"><input type="checkbox" data-sweep="databricks" checked><span class="src-sweep-t">Sweep PII</span><span class="src-sweep-h">Check the dataset for personal data before it is assessed</span></label><label class="src-body" data-tip="The regulator whose rules the PII sweep checks this dataset against. The dataset keeps it: its schedules and re-runs are checked against the same one."><span>Checked against</span><select data-body="databricks"><option value="general">No governing body</option><option value="ico">ICO: UK GDPR</option><option value="ofwat">Ofwat: water</option><option value="fca">FCA: financial services</option></select></label></div>
         <button type="button" class="src-run" data-runsource="databricks">Run assessment</button>
         <div class="src-status" data-status="databricks"></div>
       </div>
@@ -6144,7 +6181,7 @@
           <div class="src-field"><label>Table</label><input data-f="table" placeholder="EMPLOYEES"></div>
           <div class="src-field"><label>Sample rows <span class="hint">(optional)</span></label><input data-f="sample_rows" type="number" min="1" placeholder="Empty = whole table"></div>
         </div>
-        <label class="src-sweep"><input type="checkbox" data-sweep="oracle" checked><span class="src-sweep-t">Sweep PII</span><span class="src-sweep-h">Check the dataset for personal data before it is assessed</span></label>
+        <div class="src-sweep"><label class="src-sweep-l"><input type="checkbox" data-sweep="oracle" checked><span class="src-sweep-t">Sweep PII</span><span class="src-sweep-h">Check the dataset for personal data before it is assessed</span></label><label class="src-body" data-tip="The regulator whose rules the PII sweep checks this dataset against. The dataset keeps it: its schedules and re-runs are checked against the same one."><span>Checked against</span><select data-body="oracle"><option value="general">No governing body</option><option value="ico">ICO: UK GDPR</option><option value="ofwat">Ofwat: water</option><option value="fca">FCA: financial services</option></select></label></div>
         <button type="button" class="src-run" data-runsource="oracle">Run assessment</button>
         <div class="src-status" data-status="oracle"></div>
       </div>
@@ -6180,7 +6217,7 @@
           <div class="src-field"><label>Sample rows <span class="hint">(optional)</span></label>
             <input data-f="sample_rows" type="number" min="1" placeholder="Empty = whole file"></div>
         </div>
-        <label class="src-sweep"><input type="checkbox" data-sweep="agentfile" checked><span class="src-sweep-t">Sweep PII</span><span class="src-sweep-h">Check the dataset for personal data before it is assessed</span></label>
+        <div class="src-sweep"><label class="src-sweep-l"><input type="checkbox" data-sweep="agentfile" checked><span class="src-sweep-t">Sweep PII</span><span class="src-sweep-h">Check the dataset for personal data before it is assessed</span></label><label class="src-body" data-tip="The regulator whose rules the PII sweep checks this dataset against. The dataset keeps it: its schedules and re-runs are checked against the same one."><span>Checked against</span><select data-body="agentfile"><option value="general">No governing body</option><option value="ico">ICO: UK GDPR</option><option value="ofwat">Ofwat: water</option><option value="fca">FCA: financial services</option></select></label></div>
         <button type="button" class="src-run" data-runsource="agentfile">Run assessment</button>
         <div class="src-status" data-status="agentfile"></div>
       </div>
@@ -6207,7 +6244,7 @@
             <select data-f="sslmode"><option value="">default</option><option>require</option><option>verify-full</option><option>disable</option></select></div>
           <div class="src-field"><label>Sample rows <span class="hint">(optional)</span></label><input data-f="sample_rows" type="number" min="1" placeholder="Empty = whole table"></div>
         </div>
-        <label class="src-sweep"><input type="checkbox" data-sweep="postgres" checked><span class="src-sweep-t">Sweep PII</span><span class="src-sweep-h">Check the dataset for personal data before it is assessed</span></label>
+        <div class="src-sweep"><label class="src-sweep-l"><input type="checkbox" data-sweep="postgres" checked><span class="src-sweep-t">Sweep PII</span><span class="src-sweep-h">Check the dataset for personal data before it is assessed</span></label><label class="src-body" data-tip="The regulator whose rules the PII sweep checks this dataset against. The dataset keeps it: its schedules and re-runs are checked against the same one."><span>Checked against</span><select data-body="postgres"><option value="general">No governing body</option><option value="ico">ICO: UK GDPR</option><option value="ofwat">Ofwat: water</option><option value="fca">FCA: financial services</option></select></label></div>
         <button type="button" class="src-run" data-runsource="postgres">Run assessment</button>
         <div class="src-status" data-status="postgres"></div>
       </div>
@@ -6234,7 +6271,7 @@
             <select data-f="sslmode"><option value="">default</option><option>require</option><option>verify-full</option><option>disable</option></select></div>
           <div class="src-field"><label>Sample rows <span class="hint">(optional)</span></label><input data-f="sample_rows" type="number" min="1" placeholder="Empty = whole table"></div>
         </div>
-        <label class="src-sweep"><input type="checkbox" data-sweep="mysql" checked><span class="src-sweep-t">Sweep PII</span><span class="src-sweep-h">Check the dataset for personal data before it is assessed</span></label>
+        <div class="src-sweep"><label class="src-sweep-l"><input type="checkbox" data-sweep="mysql" checked><span class="src-sweep-t">Sweep PII</span><span class="src-sweep-h">Check the dataset for personal data before it is assessed</span></label><label class="src-body" data-tip="The regulator whose rules the PII sweep checks this dataset against. The dataset keeps it: its schedules and re-runs are checked against the same one."><span>Checked against</span><select data-body="mysql"><option value="general">No governing body</option><option value="ico">ICO: UK GDPR</option><option value="ofwat">Ofwat: water</option><option value="fca">FCA: financial services</option></select></label></div>
         <button type="button" class="src-run" data-runsource="mysql">Run assessment</button>
         <div class="src-status" data-status="mysql"></div>
       </div>
@@ -6260,7 +6297,7 @@
           <div class="src-field"><label>Table</label><input data-f="table" placeholder="orders"></div>
           <div class="src-field"><label>Sample rows <span class="hint">(optional)</span></label><input data-f="sample_rows" type="number" min="1" placeholder="Empty = whole table"></div>
         </div>
-        <label class="src-sweep"><input type="checkbox" data-sweep="sqlserver" checked><span class="src-sweep-t">Sweep PII</span><span class="src-sweep-h">Check the dataset for personal data before it is assessed</span></label>
+        <div class="src-sweep"><label class="src-sweep-l"><input type="checkbox" data-sweep="sqlserver" checked><span class="src-sweep-t">Sweep PII</span><span class="src-sweep-h">Check the dataset for personal data before it is assessed</span></label><label class="src-body" data-tip="The regulator whose rules the PII sweep checks this dataset against. The dataset keeps it: its schedules and re-runs are checked against the same one."><span>Checked against</span><select data-body="sqlserver"><option value="general">No governing body</option><option value="ico">ICO: UK GDPR</option><option value="ofwat">Ofwat: water</option><option value="fca">FCA: financial services</option></select></label></div>
         <button type="button" class="src-run" data-runsource="sqlserver">Run assessment</button>
         <div class="src-status" data-status="sqlserver"></div>
       </div>
@@ -6287,7 +6324,7 @@
           <div class="src-field"><label>ODBC driver <span class="hint">(optional)</span></label><input data-f="driver" placeholder="Newest OpenEdge driver installed"></div>
           <div class="src-field"><label>Sample rows <span class="hint">(optional)</span></label><input data-f="sample_rows" type="number" min="1" placeholder="Empty = whole table"></div>
         </div>
-        <label class="src-sweep"><input type="checkbox" data-sweep="progress" checked><span class="src-sweep-t">Sweep PII</span><span class="src-sweep-h">Check the dataset for personal data before it is assessed</span></label>
+        <div class="src-sweep"><label class="src-sweep-l"><input type="checkbox" data-sweep="progress" checked><span class="src-sweep-t">Sweep PII</span><span class="src-sweep-h">Check the dataset for personal data before it is assessed</span></label><label class="src-body" data-tip="The regulator whose rules the PII sweep checks this dataset against. The dataset keeps it: its schedules and re-runs are checked against the same one."><span>Checked against</span><select data-body="progress"><option value="general">No governing body</option><option value="ico">ICO: UK GDPR</option><option value="ofwat">Ofwat: water</option><option value="fca">FCA: financial services</option></select></label></div>
         <button type="button" class="src-run" data-runsource="progress">Run assessment</button>
         <div class="src-status" data-status="progress"></div>
       </div>
@@ -6313,7 +6350,7 @@
           <div class="src-field"><label>Table</label><input data-f="table" placeholder="orders"></div>
           <div class="src-field"><label>Sample rows <span class="hint">(optional)</span></label><input data-f="sample_rows" type="number" min="1" placeholder="Empty = whole table"></div>
         </div>
-        <label class="src-sweep"><input type="checkbox" data-sweep="fabric" checked><span class="src-sweep-t">Sweep PII</span><span class="src-sweep-h">Check the dataset for personal data before it is assessed</span></label>
+        <div class="src-sweep"><label class="src-sweep-l"><input type="checkbox" data-sweep="fabric" checked><span class="src-sweep-t">Sweep PII</span><span class="src-sweep-h">Check the dataset for personal data before it is assessed</span></label><label class="src-body" data-tip="The regulator whose rules the PII sweep checks this dataset against. The dataset keeps it: its schedules and re-runs are checked against the same one."><span>Checked against</span><select data-body="fabric"><option value="general">No governing body</option><option value="ico">ICO: UK GDPR</option><option value="ofwat">Ofwat: water</option><option value="fca">FCA: financial services</option></select></label></div>
         <button type="button" class="src-run" data-runsource="fabric">Run assessment</button>
         <div class="src-status" data-status="fabric"></div>
       </div>
@@ -6335,7 +6372,7 @@
           <div class="src-field"><label>Table</label><input data-f="table" placeholder="orders"></div>
           <div class="src-field"><label>Sample rows <span class="hint">(optional)</span></label><input data-f="sample_rows" type="number" min="1" placeholder="Empty = whole table"></div>
         </div>
-        <label class="src-sweep"><input type="checkbox" data-sweep="synapse" checked><span class="src-sweep-t">Sweep PII</span><span class="src-sweep-h">Check the dataset for personal data before it is assessed</span></label>
+        <div class="src-sweep"><label class="src-sweep-l"><input type="checkbox" data-sweep="synapse" checked><span class="src-sweep-t">Sweep PII</span><span class="src-sweep-h">Check the dataset for personal data before it is assessed</span></label><label class="src-body" data-tip="The regulator whose rules the PII sweep checks this dataset against. The dataset keeps it: its schedules and re-runs are checked against the same one."><span>Checked against</span><select data-body="synapse"><option value="general">No governing body</option><option value="ico">ICO: UK GDPR</option><option value="ofwat">Ofwat: water</option><option value="fca">FCA: financial services</option></select></label></div>
         <button type="button" class="src-run" data-runsource="synapse">Run assessment</button>
         <div class="src-status" data-status="synapse"></div>
       </div>
@@ -6357,7 +6394,7 @@
             <textarea data-f="credentials_json" rows="5" placeholder='{ "type": "service_account", "project_id": "…", "private_key": "…", "client_email": "…" }' style="font-family:ui-monospace,Menlo,monospace;font-size:12px;resize:vertical;"></textarea></div>
           <div class="src-field"><label>Sample rows <span class="hint">(optional)</span></label><input data-f="sample_rows" type="number" min="1" placeholder="Empty = whole table"></div>
         </div>
-        <label class="src-sweep"><input type="checkbox" data-sweep="bigquery" checked><span class="src-sweep-t">Sweep PII</span><span class="src-sweep-h">Check the dataset for personal data before it is assessed</span></label>
+        <div class="src-sweep"><label class="src-sweep-l"><input type="checkbox" data-sweep="bigquery" checked><span class="src-sweep-t">Sweep PII</span><span class="src-sweep-h">Check the dataset for personal data before it is assessed</span></label><label class="src-body" data-tip="The regulator whose rules the PII sweep checks this dataset against. The dataset keeps it: its schedules and re-runs are checked against the same one."><span>Checked against</span><select data-body="bigquery"><option value="general">No governing body</option><option value="ico">ICO: UK GDPR</option><option value="ofwat">Ofwat: water</option><option value="fca">FCA: financial services</option></select></label></div>
         <button type="button" class="src-run" data-runsource="bigquery">Run assessment</button>
         <div class="src-status" data-status="bigquery"></div>
       </div>
@@ -6378,7 +6415,7 @@
           <div class="src-field"><label>Display name <span class="hint">(optional)</span></label><input data-f="dataset" placeholder="Defaults to the file name"></div>
           <div class="src-field"><label>Sample rows <span class="hint">(optional)</span></label><input data-f="sample_rows" type="number" min="1" placeholder="Empty = whole file"></div>
         </div>
-        <label class="src-sweep"><input type="checkbox" data-sweep="sharepoint" checked><span class="src-sweep-t">Sweep PII</span><span class="src-sweep-h">Check the dataset for personal data before it is assessed</span></label>
+        <div class="src-sweep"><label class="src-sweep-l"><input type="checkbox" data-sweep="sharepoint" checked><span class="src-sweep-t">Sweep PII</span><span class="src-sweep-h">Check the dataset for personal data before it is assessed</span></label><label class="src-body" data-tip="The regulator whose rules the PII sweep checks this dataset against. The dataset keeps it: its schedules and re-runs are checked against the same one."><span>Checked against</span><select data-body="sharepoint"><option value="general">No governing body</option><option value="ico">ICO: UK GDPR</option><option value="ofwat">Ofwat: water</option><option value="fca">FCA: financial services</option></select></label></div>
         <button type="button" class="src-run" data-runsource="sharepoint">Run assessment</button>
         <div class="src-status" data-status="sharepoint"></div>
       </div>
@@ -6399,7 +6436,7 @@
           <div class="src-field"><label>Display name <span class="hint">(optional)</span></label><input data-f="dataset" placeholder="Defaults to the file name"></div>
           <div class="src-field"><label>Sample rows <span class="hint">(optional)</span></label><input data-f="sample_rows" type="number" min="1" placeholder="Empty = whole file"></div>
         </div>
-        <label class="src-sweep"><input type="checkbox" data-sweep="gcs" checked><span class="src-sweep-t">Sweep PII</span><span class="src-sweep-h">Check the dataset for personal data before it is assessed</span></label>
+        <div class="src-sweep"><label class="src-sweep-l"><input type="checkbox" data-sweep="gcs" checked><span class="src-sweep-t">Sweep PII</span><span class="src-sweep-h">Check the dataset for personal data before it is assessed</span></label><label class="src-body" data-tip="The regulator whose rules the PII sweep checks this dataset against. The dataset keeps it: its schedules and re-runs are checked against the same one."><span>Checked against</span><select data-body="gcs"><option value="general">No governing body</option><option value="ico">ICO: UK GDPR</option><option value="ofwat">Ofwat: water</option><option value="fca">FCA: financial services</option></select></label></div>
         <button type="button" class="src-run" data-runsource="gcs">Run assessment</button>
         <div class="src-status" data-status="gcs"></div>
       </div>
@@ -6419,7 +6456,7 @@
           <div class="src-field"><label>Display name <span class="hint">(optional)</span></label><input data-f="dataset" placeholder="Defaults to the file name"></div>
           <div class="src-field"><label>Sample rows <span class="hint">(optional)</span></label><input data-f="sample_rows" type="number" min="1" placeholder="Empty = whole file"></div>
         </div>
-        <label class="src-sweep"><input type="checkbox" data-sweep="azureblob" checked><span class="src-sweep-t">Sweep PII</span><span class="src-sweep-h">Check the dataset for personal data before it is assessed</span></label>
+        <div class="src-sweep"><label class="src-sweep-l"><input type="checkbox" data-sweep="azureblob" checked><span class="src-sweep-t">Sweep PII</span><span class="src-sweep-h">Check the dataset for personal data before it is assessed</span></label><label class="src-body" data-tip="The regulator whose rules the PII sweep checks this dataset against. The dataset keeps it: its schedules and re-runs are checked against the same one."><span>Checked against</span><select data-body="azureblob"><option value="general">No governing body</option><option value="ico">ICO: UK GDPR</option><option value="ofwat">Ofwat: water</option><option value="fca">FCA: financial services</option></select></label></div>
         <button type="button" class="src-run" data-runsource="azureblob">Run assessment</button>
         <div class="src-status" data-status="azureblob"></div>
       </div>
@@ -7201,7 +7238,7 @@
         <span class="now">Review and edit them</span><i>&rarr;</i><span>Run the assessment</span></div>
       <div class="irm-body"><div id="irRules"></div></div>
       <div class="irm-foot">
-        <label class="src-sweep"><input type="checkbox" id="irSweep" checked><span class="src-sweep-t">Sweep PII</span></label>
+        <div class="src-sweep"><label class="src-sweep-l"><input type="checkbox" id="irSweep" checked><span class="src-sweep-t">Sweep PII</span></label><label class="src-body" data-tip="The regulator whose rules the PII sweep checks this dataset against. The dataset keeps it: its schedules and re-runs are checked against the same one."><span>against</span><select id="irBody"><option value="general">No governing body</option><option value="ico">ICO: UK GDPR</option><option value="ofwat">Ofwat: water</option><option value="fca">FCA: financial services</option></select></label></div>
         <span class="irm-note" id="irNote">Nothing has been assessed yet. Your rules are saved even if you close this.</span>
         <button type="button" class="btn-sm" id="irLater">Keep for later</button>
         <button type="button" id="irRun">Run assessment with these rules</button>
@@ -10281,7 +10318,7 @@ goBtn.addEventListener('click', async () => {
     const augment = collectSourceRefsAugment();
     if (augment) trigBody.ruleset_augment = augment;
     log('POST /data-quality', trigBody);
-    trig = await postJSON(`${API_BASE}/data-quality`, srcRunHeaders(sweep, infer), trigBody);
+    trig = await postJSON(`${API_BASE}/data-quality`, srcRunHeaders(sweep, infer, srcBodyOf('file')), trigBody);
     log('trigger response', trig);
   } catch (err) {
     // Back to the form, which still holds the file, with the reason above it.
@@ -10308,7 +10345,7 @@ async function fileRunReviewed(card, name, trigBody) {
     sub: 'Scoring against the 9 DAMA quality dimensions with the rules you reviewed.' });
   let trig;
   try {
-    trig = await postJSON(`${API_BASE}/data-quality`, srcSweepHeaders(sweep), trigBody);
+    trig = await postJSON(`${API_BASE}/data-quality`, srcSweepHeaders(sweep, srcBodyOf('file')), trigBody);
   } catch (err) {
     if (srcRunCurrent('file', seq)) srcRunFail(card, '');
     banner('err', err.message);
@@ -21055,7 +21092,7 @@ async function srcLaunch(key, statusEl, endpoint, body, words, extra) {
   const { seq, infer } = begun;
   let res;
   try {
-    res = await postJSON(`${API_BASE}/data-quality/${endpoint}`, srcRunHeaders(sweep, infer), body);
+    res = await postJSON(`${API_BASE}/data-quality/${endpoint}`, srcRunHeaders(sweep, infer, srcBodyOf(key)), body);
   } catch (e) {
     if (srcRunCurrent(key, seq)) srcRunFail(key, e.message);
     return;
@@ -21090,7 +21127,7 @@ const _srcKnownT = {};
 const SRC_INFER_STEPS = ['Launch', 'Infer the rules', 'Review'];
 const SRC_AGENT_INFER_STEPS = ['Queue', 'Infer the rules on the agent', 'Review'];
 const SRC_FILE_INFER_STEPS = ['Upload', 'Infer the rules', 'Review'];
-const srcRunHeaders = (sweep, infer) => infer ? Object.assign({}, srcSweepHeaders(sweep), { 'X-DQ-Infer': 'on' }) : srcSweepHeaders(sweep);
+const srcRunHeaders = (sweep, infer, body) => infer ? Object.assign({}, srcSweepHeaders(sweep), { 'X-DQ-Infer': 'on' }) : srcSweepHeaders(sweep, body);
 /** What a form tells /data-quality/dataset-known: the fields that could name its dataset, never a secret. */
 function _srcKnownAsk(key) {
   const k = _srcKey(key);
@@ -21123,9 +21160,10 @@ async function srcInferNow(key) {
   const k = _srcKey(key), ask = _srcKnownAsk(k), sig = JSON.stringify(ask);
   if (ask && !(srcKnown[k] && srcKnown[k].sig === sig)) {
     clearTimeout(_srcKnownT[k]);
-    let known = (srcKnown[k] || {}).known || false;
-    try { known = !!(await postJSON(`${API_BASE}/data-quality/dataset-known`, HEADERS, ask)).known; } catch (e) { /* kept */ }
-    srcKnown[k] = { sig, known };
+    let known = (srcKnown[k] || {}).known || false, body = (srcKnown[k] || {}).body || null;
+    try { const r = await postJSON(`${API_BASE}/data-quality/dataset-known`, HEADERS, ask); known = !!r.known; body = r.piiBody || null; } catch (e) { /* kept */ }
+    srcKnown[k] = { sig, known, body };
+    srcBodyShow(k, body);
     srcRunLabel(k);
   }
   return srcInferMode(k);
@@ -21149,12 +21187,13 @@ function _srcKnownSoon(k) {
   clearTimeout(_srcKnownT[k]);
   _srcKnownT[k] = setTimeout(async () => {
     const ask = _srcKnownAsk(k), sig = JSON.stringify(ask);
-    if (!ask) { srcKnown[k] = { sig, known: false }; srcRunLabel(k); return; }
+    if (!ask) { srcKnown[k] = { sig, known: false }; srcBodyShow(k, null); srcRunLabel(k); return; }
     if (srcKnown[k] && srcKnown[k].sig === sig) { srcRunLabel(k); return; }
-    let known = (srcKnown[k] || {}).known || false;      // an answer that does not come keeps the last one
-    try { known = !!(await postJSON(`${API_BASE}/data-quality/dataset-known`, HEADERS, ask)).known; } catch (e) { /* kept */ }
+    let known = (srcKnown[k] || {}).known || false, body = (srcKnown[k] || {}).body || null;   // an answer that does not come keeps the last one
+    try { const r = await postJSON(`${API_BASE}/data-quality/dataset-known`, HEADERS, ask); known = !!r.known; body = r.piiBody || null; } catch (e) { /* kept */ }
     if (JSON.stringify(_srcKnownAsk(k)) !== sig) return;  // the form moved on meanwhile; its own check follows
-    srcKnown[k] = { sig, known };
+    srcKnown[k] = { sig, known, body };
+    srcBodyShow(k, body);
     srcRunLabel(k);
   }, 350);
 }
@@ -21168,7 +21207,7 @@ function srcRulesReady(key, r, run) {
   _srcUnmark(st);
   if (st) st.running = false;
   if (st && !st.done) delete srcRunState[k];
-  srcKnown[k] = { sig: JSON.stringify(_srcKnownAsk(k)), known: true };
+  srcKnown[k] = { sig: JSON.stringify(_srcKnownAsk(k)), known: true, body: (srcKnown[k] || {}).body || null };
   srcRunBtn(k, false);
   srcRunLabel(k);
   dqShowFace(srcStage(k), srcFace(k, 'form'));
@@ -21176,7 +21215,9 @@ function srcRulesReady(key, r, run) {
   const statusEl = document.querySelector(`[data-status="${k}"]`);
   if (statusEl) { statusEl.className = 'src-status'; statusEl.textContent = 'Its rules are ready to review. Nothing has been assessed yet.'; }
   irOpen({ prefix, name: (r && r.status && r.status.dataset) || '', sweep: srcSweepOn(k), run,
-           onSweep: on => { const b = document.querySelector(`input[data-sweep="${k}"]`); if (b) b.checked = on; } });
+           body: srcBodyOf(k) || (_srcBodySel(k) || {}).value,
+           onSweep: on => { const b = document.querySelector(`input[data-sweep="${k}"]`); if (b) b.checked = on; },
+           onBody: v => { const s = _srcBodySel(k); if (s && SRC_BODY_L[v]) { s.value = v; s.dataset.chosen = '1'; s.disabled = !srcSweepOn(k); } } });
 }
 
 let irNow = null;                                         // under review: { prefix, name, run, onSweep }
@@ -21191,6 +21232,8 @@ function irOpen(o) {
   $('#irTitle').textContent = o.name ? `Review the rules for ${o.name}` : 'Review the rules';
   $('#irSub').textContent = 'Worked out from the data, with AI. Change any rule, describe one in plain English, or add a rule across columns.';
   $('#irSweep').checked = o.sweep !== false;
+  $('#irBody').value = SRC_BODY_L[o.body] ? o.body : 'general';
+  $('#irBody').disabled = o.sweep === false;
   const note = $('#irNote');
   note.className = 'irm-note';
   note.textContent = 'Nothing has been assessed yet. Your rules are saved even if you close this.';
@@ -21230,12 +21273,13 @@ async function irRun() {
       return;
     }
   }
-  const sweep = $('#irSweep').checked;
+  const sweep = $('#irSweep').checked, body = $('#irBody').value;
   if (o.onSweep) o.onSweep(sweep);
+  if (o.onBody) o.onBody(body);
   $('#irModal').classList.remove('open');
   irNow = null;
   _irFrom = null;
-  o.run(sweep);
+  o.run(sweep, body);
 }
 $('#irClose').addEventListener('click', () => irClose());
 $('#irLater').addEventListener('click', () => irClose());
@@ -21245,9 +21289,9 @@ $('#irModal').addEventListener('keydown', e => {
 });
 /** A dataset the Overview lists as rules ready: its rules open for review, and Run gives it its first assessment. */
 function irOpenDataset(ds) {
-  irOpen({ prefix: ds.resultPrefix, name: ds.name, sweep: true, run: sweep => irRunDataset(ds, sweep) });
+  irOpen({ prefix: ds.resultPrefix, name: ds.name, sweep: true, body: 'general', run: (sweep, body) => irRunDataset(ds, sweep, body) });
 }
-async function irRunDataset(ds, sweep) {
+async function irRunDataset(ds, sweep, body) {
   if (ds.isUpload && ds.inputUri) {
     // An upload's file is kept until its first assessment, which reads it where it lies, in its own run folder.
     const runId = String(ds.resultPrefix || '').replace(/\/+$/, '').split('/').pop();
@@ -21257,7 +21301,7 @@ async function irRunDataset(ds, sweep) {
       sub: 'Scoring against the 9 DAMA quality dimensions with the rules you reviewed.' });
     let trig;
     try {
-      trig = await postJSON(`${API_BASE}/data-quality`, srcSweepHeaders(sweep),
+      trig = await postJSON(`${API_BASE}/data-quality`, srcSweepHeaders(sweep, body),
         { input_uri: ds.inputUri, run_id: runId, notify_email: EMAIL || undefined });
     } catch (e) {
       if (srcRunCurrent('file', seq)) srcRunFail('file', '');
@@ -21268,7 +21312,7 @@ async function irRunDataset(ds, sweep) {
     if (trig.resultPrefix) await pollResults(trig.resultPrefix);
     return;
   }
-  await reRunTable(ds.name, ds.sourceFormat, ds.resultPrefix, srcSweepHeaders(sweep));
+  await reRunTable(ds.name, ds.sourceFormat, ds.resultPrefix, srcSweepHeaders(sweep, body));
 }
 /**
  * Every data source form, the upload included, has a "Sweep PII" box above its run button, ticked to start with.
@@ -21280,7 +21324,31 @@ function srcSweepOn(key) {
   const b = document.querySelector(`input[data-sweep="${_srcKey(key)}"]`);
   return !b || b.checked;
 }
-const srcSweepHeaders = sweep => sweep ? HEADERS : Object.assign({}, HEADERS, { 'X-PII-Sweep': 'off' });
+/**
+ * Beside each Sweep PII box, the governing body its sweep is checked against (dq/compliance/bodies.py): none, the ICO,
+ * Ofwat or the FCA. A dataset keeps the body it was last swept against, which the box shows once the form names a dataset
+ * the API knows (piiBody, from /data-quality/dataset-known). Left alone, a run says nothing and the dataset keeps its own;
+ * changed, the run says which in a header (the API adds the worker's --pii-body), and the dataset keeps that from then on.
+ */
+const SRC_BODY_L = { general: 'no governing body', ico: 'the ICO', ofwat: 'Ofwat', fca: 'the FCA' };
+const _srcBodySel = key => document.querySelector(`select[data-body="${_srcKey(key)}"]`);
+function srcBodyOf(key) {
+  const s = _srcBodySel(key);
+  return s && s.dataset.chosen === '1' && SRC_BODY_L[s.value] ? s.value : null;
+}
+function srcBodyShow(key, body) {
+  const s = _srcBodySel(key);
+  if (s && s.dataset.chosen !== '1') s.value = SRC_BODY_L[body] ? body : 'general';
+}
+const srcSweepHeaders = (sweep, body) => !sweep ? Object.assign({}, HEADERS, { 'X-PII-Sweep': 'off' })
+  : body ? Object.assign({}, HEADERS, { 'X-PII-Body': body }) : HEADERS;
+document.addEventListener('change', e => {
+  const t = e.target;
+  if (!t || !t.matches) return;
+  if (t.matches('select[data-body]')) t.dataset.chosen = '1';      // chosen: sent with the run, and kept from then on
+  else if (t.matches('input[data-sweep]')) { const s = _srcBodySel(t.dataset.sweep); if (s) s.disabled = !t.checked; }
+  else if (t.id === 'irSweep') { const s = $('#irBody'); if (s) s.disabled = !t.checked; }
+});
 /** Where a section goes to sit above a form's run button: above its Sweep PII box, which stays next to the button. */
 function srcAboveRun(btn) {
   const prev = btn && btn.previousElementSibling;
@@ -26234,7 +26302,7 @@ function buildGuides() {
             `Press the ${ui('Data source')} button at the top of the card and pick where the data lives: a cloud warehouse, a database, cloud storage, or ${ui('Local File')} for something on your computer (CSV, TSV, Excel, parquet, JSON or QVD). Type to find one by name.`,
             `Fill in the connection. Each field has an ${ui('ⓘ')} explaining what it expects. If this connection has been saved before, choose it under ${ui('Credential profile')} and press ${ui('Apply')}.`,
             `Leave ${ui('Sample rows')} empty to assess every row. That is the default, and it is the point: counts are exact rather than estimated.`,
-            `${ui('Sweep PII')}, above the run button, is ticked to start with: the assessment sweeps the dataset for personal data first. Untick it to assess without the sweep this time. Its Compliance then shows the dataset's last sweep, if it has one.`) +
+            `${ui('Sweep PII')}, above the run button, is ticked to start with: the assessment sweeps the dataset for personal data first. Untick it to assess without the sweep this time. Its Compliance then shows the dataset's last sweep, if it has one. Beside it, ${ui('Checked against')} picks the regulator whose rules the sweep checks the dataset against: the ICO, Ofwat or the FCA, or none. The dataset keeps the one chosen, so its schedules are checked against it too, and the box shows it once the form names a dataset assessed before.`) +
           shot('source-menu', `Every source, grouped by kind. ${n(1)} Type to find one, or ${n(2)} pick it.`) +
           shot('source-picker', `${n(1)} The source you picked, which opens the menu again. For a file, ${n(2)} choose it, ${n(3)} leave the sample empty to assess every row, and ${n(4)} press ${ui('Upload & assess')}.`) },
       { h: 'Run it and read the result', body:
@@ -27214,6 +27282,7 @@ ${HDRS}
           p(`${go('piisweep', 'PII sweep')} is in the menu on the left. There is nothing to start there: each assessment sweeps its dataset first, whoever or whatever started it (a person, ${go('schedules', 'a schedule')}, or source monitoring). The one exception is a person who unticks ${ui('Sweep PII')} on a data source form before running it: that one run is not swept. The card at the top of the tab picks a dataset and says how its assessments sweep it; under it is every dataset swept so far.`) +
           steps(`Press ${ui('Choose a dataset')} and pick one, or type to find it by name. Picking a dataset swept before opens its newest sweep.`,
                 `${ui('Rows each sweep reads')}: leave it empty to read every row, or type a number for each sweep of this dataset to read only that many (a very large table, say). ${ui('Sweep with each assessment')} switches its sweeping off and on.${ADMIN ? ' Both are saved as soon as you change them.' : ' Only an admin can change them.'}`,
+                `${ui('Checked against')} is the regulator whose rules its sweeps check it against: the ICO, Ofwat or the FCA, or none. ${ui('Run again')} checks it against the one chosen there, and the dataset keeps it from then on.`,
                 `${ui('Run again')} assesses the dataset again now, through the saved connection its last assessment used (one on an on-premises agent runs on that agent). A card says what the sweep is doing and how many rows it has read, and ${ui('Cancel this run')} stops the sweep and its assessment. When the sweep finishes, its result opens in that card, while its assessment finishes in the background.`,
                 `A new file is swept as it is assessed: ${ui('Assess a new file')} goes to the Upload tab. An uploaded file is not kept once assessed, so ${ui('Upload it again')} sweeps it again.`) +
           shot('pii-start', `${n(1)} Choose the dataset, ${n(2)} how many rows each of its sweeps reads (empty: every row), ${n(3)} whether its assessments sweep it at all, and ${n(4)} Run again. ${n(5)} Assess a new file. Underneath, ${n(6)} Open shows a swept dataset's newest sweep.`) +
@@ -27268,6 +27337,13 @@ ${HDRS}
           shot('pii-rule', `${n(1)} Back to every rule and kind of data. ${n(2)} A column it touches, lit. ${n(3)} Its findings, and ${n(4)} the same as rows in the list.`) +
           sm('pii-rules') +
           p(`${ui('All rules and kinds of data')}, or Escape, goes back to the list.`) },
+      { h: 'Regulator', body:
+          p(`${ui('Regulator')} judges the sweep against the rules of the governing body the dataset is checked against: the ICO (UK GDPR and the Data Protection Act 2018), Ofwat (the Priority Services Register standards and Service for all) or the FCA (the Consumer Duty, its guidance on vulnerable customers, SYSC and the Money Laundering Regulations). The body is chosen beside ${ui('Sweep PII')} on a data source form, or in ${ui('Checked against')} above, and the dataset keeps it, so its schedules are checked against it too.`) +
+          list(`${ui('To act on')}: the data shows something to fix, such as a card number in the clear or personal data hidden in notes.`,
+               `${ui('To confirm')}: the data holds something the body attaches a duty to, such as special category data or identity documents, which only you can confirm you meet.`,
+               `${ui('Met')} and ${ui('Not applicable')}: checked and fine, or nothing in this dataset that the check is about.`) +
+          p(`Each check names the body's rule, says what it found and where, and links to where the body says so. Picking one lights the columns it is about; Escape lets it go. A body also counts what its checks need while the sweep reads, never a value: the ages in a column of dates of birth and columns of MD5 or SHA-1 hashes (the ICO), columns named for customers' needs and circumstances (Ofwat and the FCA), and when each record was last contacted or checked (all three; Ofwat's minimum is actual contact with 35% of priority services households every two years, and attempted contact with 90%).`) +
+          p(`The pill beside the dataset's name says the body and what to act on, and opens this view. Dismissing a finding updates the checks that rest on it at once. The checks are a guide to what each body expects, from its published guidance, not legal advice.`) },
       { h: 'The list instead', body:
           p(`${ui('List')}, at the top right of the sky, shows every finding as a table: its severity, its risk, what it is, its column, and whether it hides in free text, riskiest first. Choosing it is remembered in this browser, so every dataset then opens as a list until you choose ${ui('Sky')} again.`) +
           shot('pii-findings', `${n(1)} The sky, or the list. ${n(2)} Search the findings. ${n(3)} Show only one severity, or only those hidden in free text. ${n(4)} Turn the order round. ${n(5)} A finding opened: why it matters and where it sits in each value. ${n(6)} Label its column${GOV ? ' or dismiss it' : ''}.`) +
@@ -28003,7 +28079,8 @@ const PIS_CONF_S = { high: 'Confirmed', medium: 'Strong match', low: 'Likely' };
 const PIS_ROLE = { free_text: 'hidden in free text', dedicated: 'held in the clear', named: 'known by its name' };
 // The same names the worker gives them (dq/pii_sweep.py CATEGORIES and REGULATIONS).
 const PIS_CAT_L = { identity: 'Identity', contact: 'Contact details', financial: 'Financial', health: 'Health',
-                    special: 'Special category', credentials: 'Credentials and secrets', online: 'Location and online identifiers' };
+                    special: 'Special category', credentials: 'Credentials and secrets', online: 'Location and online identifiers',
+                    vulnerability: 'Vulnerability and extra help' };
 const PIS_REG_L = { gdpr: 'UK GDPR and EU GDPR', gdpr_art9: 'GDPR Article 9 (special category data)', gdpr_art10: 'GDPR Article 10 (criminal offence data)',
                     ccpa: 'CCPA and CPRA (California)', pci_dss: 'PCI DSS', hipaa: 'HIPAA (US health information)' };
 const PIS_FIX = {
@@ -28014,7 +28091,11 @@ const PIS_FIX = {
   identity: 'Names, identity numbers and dates of birth together are enough for fraud. Keep them only where a process needs them, masked elsewhere.',
   contact: 'Contact details belong in the columns meant for them, not in notes and descriptions where nobody manages them.',
   online: 'IP addresses and precise locations identify people too. Truncate or round them where the detail is not needed.',
+  vulnerability: 'Customers\' needs and circumstances are sensitive, and often health data. Keep them in fields meant for them, up to date, and seen only by the people who act on them.',
 };
+// A governing body's checks (dq/compliance/bodies.py): how each stands, its colour, and the bodies to choose from.
+const PIS_BODY_ST = { act: ['To act on', 'var(--pii-high)'], confirm: ['To confirm', 'var(--pii-med)'], met: ['Met', 'var(--ok)'], na: ['Not applicable', 'var(--muted)'] };
+const PIS_BODY_OPTS = [['general', 'No governing body'], ['ico', 'ICO: UK GDPR'], ['ofwat', 'Ofwat: water'], ['fca', 'FCA: financial services']];
 const PIS_PHASE = { queued: 'Waiting for a worker', reading: 'Connecting to the data', scanning: 'Reading every value' };
 
 const pisN = n => (n == null ? '-' : Number(n).toLocaleString());
@@ -28024,7 +28105,7 @@ const pisRunTime = id => { const m = /^(\d{4}-\d{2}-\d{2})T(\d{2})-(\d{2})-(\d{2
 const pisBand = r => (r >= 80 ? 'critical' : r >= 60 ? 'high' : r >= 40 ? 'medium' : 'low');
 const pisPct = r => { const p = 100 * (Number(r) || 0); return (p >= 10 || p === 0 ? Math.round(p) : p >= 1 ? p.toFixed(1) : p.toFixed(2)) + '%'; };
 const pisPl = (n, one, many) => `${pisN(n)} ${n === 1 ? one : (many || one + 's')}`;
-const pisApi = body => postJSON(`${API_BASE}/data-quality/pii-sweep`, HEADERS, { app_id: APP_ID, ...body });
+const pisApi = (body, hdr) => postJSON(`${API_BASE}/data-quality/pii-sweep`, hdr ? Object.assign({}, HEADERS, hdr) : HEADERS, { app_id: APP_ID, ...body });
 /**
  * The sample typed in a "Sample rows" box: {} when it is empty (every row is read), { max_rows } for a
  * whole number of 1 or more, and null for anything else, which the caller refuses with a reason.
@@ -28103,6 +28184,7 @@ function pisPaintPick() {
   const d = pisDs(pis.sel), set = (d && d.settings) || {}, can = !!d && !!pis.canDismiss, up = !!d && d.how === 'upload';
   const ready = !!d && !pis.busy && !set.off && (d.how === 'source' || d.how === 'qlik' || up);
   const rows = pis.rowsRaw != null ? pis.rowsRaw : (set.maxRows ? String(set.maxRows) : '');
+  const bodyNow = pis.body || (((d && d.latest) || {}).body || {}).id || 'general';
   const lock = d && !pis.canDismiss ? ' data-tip="Only an admin can change how a dataset is swept"' : '';
   row.innerHTML = `<div class="pis-field"><span class="pis-field-l">Dataset</span><div class="rcx-pick${pis.open ? ' open' : ''}">` +
     `<button type="button" class="rcx-pick-btn lngb${d ? '' : ' empty'}" data-pis="open" aria-haspopup="listbox" aria-expanded="${pis.open}">` +
@@ -28113,6 +28195,10 @@ function pisPaintPick() {
     `<label class="pis-field"${lock}><span class="pis-field-l">Rows each sweep reads <span class="pis-opt">(optional)</span></span>` +
     `<input class="pis-rows" data-pis-rows type="number" min="1" step="1" inputmode="numeric" placeholder="Empty = every row" value="${esc(rows)}"${can ? '' : ' disabled'}></label>` +
     `<label class="pis-auto"${lock}><input type="checkbox" data-pis-auto${set.off ? '' : ' checked'}${can ? '' : ' disabled'}><span>Sweep with each assessment</span></label>` +
+    `<label class="pis-field" data-tip="${esc(up ? 'An upload is checked against the body chosen beside Sweep PII when it is uploaded again'
+      : 'The regulator whose rules its sweeps check it against. Run again to check it against another: the dataset keeps the one chosen.')}">` +
+      `<span class="pis-field-l">Checked against</span><select class="pis-body" data-pis-body${d && !up ? '' : ' disabled'}>` +
+      PIS_BODY_OPTS.map(([v, l]) => `<option value="${v}"${v === bodyNow ? ' selected' : ''}>${l}</option>`).join('') + `</select></label>` +
     `<div class="pis-go-wrap"><button type="button" class="dsx-btn primary pis-go" data-pis="go"${ready ? '' : ' disabled'} ` +
     `data-tip="${up ? 'Upload the file again: its assessment sweeps it first' : 'Assess it again: the assessment sweeps it first, in the same run'}">` +
     `${pisIco('refresh')}<span>${pis.busy ? 'Running…' : up ? 'Upload it again' : 'Run again'}</span></button></div>` +
@@ -28141,6 +28227,8 @@ function pisOptsHtml() {
     `<span class="ifr-dsi" aria-hidden="true">${srcIcon(d.sourceFormat)}</span><span class="rcx-opt-n">${esc(d.name)}</span>` +
     (d.how === 'upload' ? `<span class="pis-opt-tag" data-tip="Its file was not kept after assessment: upload it again, and its assessment sweeps it">Upload again</span>`
       : d.how === 'qlik' ? `<span class="pis-opt-tag" data-tip="A Qlik app table: Run again assesses it in the app, which sweeps it">App table</span>` : '') +
+    (((d.latest || {}).body || {}).id && d.latest.body.id !== 'general'
+      ? `<span class="pis-opt-tag" data-tip="${esc(`Checked against ${d.latest.body.against || d.latest.body.short}`)}">${esc(d.latest.body.short)}</span>` : '') +
     (d.latest ? pisSevHtml(d.latest.severity) : `<span class="rcx-opt-s">${esc(sourceLabel(d.sourceFormat))}</span>`) + `</button>`).join('');
 }
 function pisPopHtml() {
@@ -28202,12 +28290,12 @@ function pisStageFail(title, msg) {
 async function pisStart() {
   const d = pisDs(pis.sel); if (!d || pis.busy) return;
   if (d.how === 'upload') { reUploadPrompt(d.name); return; }
-  if (d.how === 'qlik') { reRunTable(d.name, 'qlik', d.resultPrefix || ''); return; }
+  if (d.how === 'qlik') { reRunTable(d.name, 'qlik', d.resultPrefix || '', srcSweepHeaders(true, pis.body)); return; }
   if ((d.settings || {}).off) { pisHint(`${d.name} is not swept with its assessments. Tick Sweep with each assessment first.`, 'err'); return; }
   pis.busy = true; pis.res = null; pisPaintPick(); pisHint('');
   pisStageLoader('queued', 'Asking for a worker');
   try {
-    const r = await pisApi({ action: 'start', dataset_key: d.key });
+    const r = await pisApi({ action: 'start', dataset_key: d.key }, pis.body ? { 'X-PII-Body': pis.body } : null);
     pisFollow({ key: r.datasetKey || d.key, sweepId: r.sweepId, job: agentJobOf(r), startedAt: Date.now() });
     return true;
   } catch (e) { pis.busy = false; pisPaintPick(); pisStageFail('Could not run it again', rcxErrText(e)); }
@@ -28328,7 +28416,7 @@ function pisIco(name) {
   return `<span class="pis-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">` +
     `${PIS_ICONS[name] || GD_ICONS[name] || GD_ICONS.doc}</svg></span>`;
 }
-const PIS_LENSES = [['severity', 'Severity'], ['identify', 'Who it identifies'], ['changes', 'Changes'], ['rules', 'Rules']];
+const PIS_LENSES = [['severity', 'Severity'], ['identify', 'Who it identifies'], ['changes', 'Changes'], ['rules', 'Rules'], ['body', 'Regulator']];
 /** A choice this browser keeps: the view (sky or list), and whether the sky has been explained. */
 function pisPref(k, v) {
   try {
@@ -28417,8 +28505,11 @@ function pisPeople(res) {
 /** A chip of the Rules view: "rule:pci_dss" or "kind:financial". */
 function pisChipMatch(f, chip) {
   const [by, key] = String(chip || '').split(':');
+  if (by === 'check') { const c = pisCheck(key); return !!(c && c.about && (c.findings || []).includes(f.id)); }
   return by === 'rule' ? (f.regulations || []).includes(key) : by === 'kind' ? f.category === key : false;
 }
+/** One of the governing body's checks of the sweep on show, by its id. */
+const pisCheck = id => ((((pis.res || {}).body || {}).checks) || []).find(c => c.id === id) || null;
 function pisSkyLayout(res, W, H) {
   const all = pisColumns(res), pii = all.filter(c => c.risk > 0).sort((a, b) => b.risk - a.risk || a.order - b.order), clean = all.filter(c => !(c.risk > 0));
   const cx = W / 2, cy = H / 2 + 8, R = Math.max(90, Math.min(H / 2 - 76, W / 2 - 170)), base = .18;
@@ -28439,7 +28530,7 @@ function pisSkySvg(res, L, o) {
   const ids = pisIdentityCols(res, o.lens === 'identify' ? o.way : null);
   const idRows = o.lens === 'identify' && o.way != null ? (((res.identity || {}).combinations || [])[o.way] || {}).rows : (res.identity || {}).rows;
   // Rules: the columns the rule picked touches are lit; until one is picked, none are.
-  const lit = o.lens === 'rules' ? new Set(o.chip ? pisLive(res).filter(f => pisChipMatch(f, o.chip)).map(f => f.column) : []) : null;
+  const lit = o.lens === 'rules' || o.lens === 'body' ? new Set(o.chip ? pisLive(res).filter(f => pisChipMatch(f, o.chip)).map(f => f.column) : []) : null;
   const dimmed = c => (o.col && o.col !== c.name) || (o.lens === 'identify' && ids.size > 0 && !ids.has(c.name)) || (lit && !lit.has(c.name));
   // A rule picked: a column it does not touch is only a dim star. It cannot be pointed at, reached or opened, so what is lit
   // is plainly what the rule is about.
@@ -28565,7 +28656,49 @@ function pisSideHtml(res) {
   if (pis.lens === 'identify') return pisIdentPanel(res);
   if (pis.lens === 'changes') return pisChangesPanel(res);
   if (pis.lens === 'rules') return pis.chip ? pisRulesPanel(res, pis.chip) : pisRulesList(res);
+  if (pis.lens === 'body') return pisBodyPanel(res);
   return '';
+}
+/** Regulator: the sweep judged against the governing body it was checked against (dq/compliance/bodies.py), the checks to
+ *  act on first. Picking one that is about findings lights up their columns in the sky. */
+function pisBodyPanel(res) {
+  const b = res.body || { id: 'general' }, none = b.id === 'general' || !(b.checks || []).length;
+  const head = `<div class="pis-side-h"><span class="pis-side-t">${pisIco('shield')}${none ? 'No governing body' : `Checked against ${esc(b.against || b.short || b.id)}`}</span></div>`;
+  if (none) return `<aside class="pis-side" data-key="lens:body">${head}<p class="pis-side-s">This sweep was not checked against a regulator's rules. ` +
+    `Choose the ICO, Ofwat or the FCA in <b>Checked against</b>, above, and run it again, or beside Sweep PII on its data source form. ` +
+    `The dataset keeps the one chosen, so its schedules are checked against it too.</p></aside>`;
+  const n = b.counts || {}, src = b.sources || {}, live = new Map(pisLive(res).map(f => [f.id, f]));
+  const st = c => PIS_BODY_ST[c.status] ? c.status : 'na';
+  const item = c => {
+    const cols = [...new Set((c.findings || []).map(id => live.get(id)).filter(Boolean).map(f => f.column))];
+    const lights = !!(c.about && cols.length), chip = `check:${c.id}`, on = pis.chip === chip;
+    const inner = `<i aria-hidden="true"></i><span class="pis-fitem-t"><b>${esc(c.title)}</b><small>${esc(c.rule || '')}</small></span>${lights ? pisIco('target') : ''}`;
+    return `<li class="pis-bcheck ${st(c)}">` + (lights
+        ? `<button type="button" class="pis-fitem lngb${on ? ' on' : ''}" data-pis="chip" data-v="${esc(chip)}" aria-pressed="${on}" ` +
+          `data-tip="${on ? 'Light up every column again' : 'Light up the columns it is about'}">${inner}</button>` : `<div class="pis-fitem">${inner}</div>`) +
+      `<p class="pis-bdetail">${esc(c.detail || '')}</p>` +
+      (lights ? `<p class="pis-bcols">In ${cols.map(x => `<code>${esc(x)}</code>`).join('')}</p>` : '') +
+      ((c.sources || []).some(k => src[k]) ? `<p class="pis-bsrc">${c.sources.filter(k => src[k]).map(k =>
+        `<a href="${esc(src[k].url)}" target="_blank" rel="noopener noreferrer">${esc(src[k].title)}</a>`).join('')}</p>` : '') + `</li>`;
+  };
+  const groups = ['act', 'confirm', 'met', 'na'].map(k => { const cs = (b.checks || []).filter(c => st(c) === k);
+    return cs.length ? `<h6>${PIS_BODY_ST[k][0]} <small>${pisN(cs.length)}</small></h6><ul class="pis-fitems pis-bchecks">${cs.map(item).join('')}</ul>` : ''; }).join('');
+  return `<aside class="pis-side" data-key="lens:body">${head}<p class="pis-side-s">${esc(b.regime || '')}. Each check is judged from what this sweep read. ` +
+      `One to confirm is a duty the data shows you hold, which only you can confirm you meet.</p>` +
+    `<div class="pis-bsum">${['act', 'confirm', 'met', 'na'].filter(k => n[k]).map(k => `<span class="pis-bst ${k}"><i></i>${pisN(n[k])} ${PIS_BODY_ST[k][0].toLowerCase()}</span>`).join('')}</div>` +
+    groups + `<p class="pis-side-s pis-bnote">A guide to what ${esc(b.against || b.short)} expects, from its published guidance. It is not legal advice.</p></aside>`;
+}
+/** Beside the figures: the governing body's verdict, which opens its checks. Nothing for a sweep from before bodies. */
+function pisBodyPill(res) {
+  const b = res.body;
+  if (!b || !b.id) return '';
+  if (b.id === 'general') return `<button type="button" class="pis-bodypill lngb" data-pis="lens" data-v="body" ` +
+    `data-tip="Check it against the rules of the ICO, Ofwat or the FCA">${pisIco('shield')}No regulator chosen</button>`;
+  const n = b.counts || {}, v = PIS_BODY_ST[b.verdict] ? b.verdict : 'na';
+  const say = n.act ? `${pisN(n.act)} to act on` : n.confirm ? `${pisN(n.confirm)} to confirm` : n.met ? 'every check met' : 'nothing applies';
+  const all = ['act', 'confirm', 'met', 'na'].filter(k => n[k]).map(k => `${n[k]} ${PIS_BODY_ST[k][0].toLowerCase()}`).join(', ');
+  return `<button type="button" class="pis-bodypill lngb ${v}" data-pis="lens" data-v="body" ` +
+    `data-tip="${esc(`Checked against ${b.against || b.short}: ${all}. Press to see the checks.`)}">${pisIco('shield')}${esc(b.short)}: ${say}</button>`;
 }
 function pisColPanel(res, name) {
   if (name === '__clean') {
@@ -28796,7 +28929,8 @@ function pisPaintResult() {
   const btn = (a, ic, label, cls, tip) => `<button type="button" class="dsx-btn lngb${cls ? ' ' + cls : ''}" data-pis="${a}"${tip ? ` data-tip="${esc(tip)}"` : ''}>${pisIco(ic)}${esc(label)}</button>`;
   const head = `<div class="pis-head"><div class="pis-head-l"><span class="pis-dsi" aria-hidden="true">${srcIcon(d.sourceFormat || (res.source || {}).format)}</span>` +
       `<div style="min-width:0"><div class="pis-title"><h3>${esc(res.dataset || d.name || '')}</h3>` +
-      (who ? `<span class="pis-who ${esc(x.audience || '')}" data-tip="${esc(pisWho(x))} can open this dataset">${esc(who)}</span>` : '') + `</div>` +
+      (who ? `<span class="pis-who ${esc(x.audience || '')}" data-tip="${esc(pisWho(x))} can open this dataset">${esc(who)}</span>` : '') +
+      pisBodyPill(res) + `</div>` +
       `<p class="pis-sub">Swept <b>${esc(rcxWhen(res.generated_at_utc))}</b>${res.assessment_run ? ' with its assessment' : ''} • ${rowsTxt} • ${pisPl(nCols, 'column')}</p></div></div>` +
     `<div class="pis-acts">` +
       (d.how === 'source' || d.how === 'qlik' ? btn('again', 'refresh', 'Run again', '', 'Assess it again: the assessment sweeps it first, in the same run')
@@ -29065,6 +29199,7 @@ function pisPaintSky(animate) {
   const legend = tl ? ['done', 'fail', 'stop', 'run'].map(k => `<span class="pis-runleg ${k}">${pisRunIco(k)}${PIS_RUN[{ done: 'SUCCEEDED', fail: 'FAILED', stop: 'CANCELLED', run: 'RUNNING' }[k]][1]}</span>`).join('')
     : pis.lens === 'identify' ? `<span><i class="link"></i>held together in a row</span>`
     : pis.lens === 'rules' ? `<span><i style="background:var(--muted)"></i>lit: falls under it</span>`
+    : pis.lens === 'body' ? `<span><i style="background:var(--muted)"></i>lit: the check is about it</span>`
     : sevs.map(s => `<span><i style="background:${PIS_SEV_VAR[s]}"></i>${PIS_SEV_L[s]}</span>`).join('') +
       `<span><i class="hollow"></i>Clean</span><span><i class="ring"></i>in free text</span>`;
   const side = pisSideHtml(res), dpane = side && pis.detail ? pisDetailPane(res, pis.detail) : '';
@@ -29082,10 +29217,11 @@ function pisPaintSky(animate) {
   const wrap = $('#pisSkyWrap'), W = Math.max(300, Math.floor(wrap.getBoundingClientRect().width)), H = side || tl ? 560 : Math.round(Math.max(440, Math.min(560, W * .72)));
   const L = pis.sky = tl ? { W, H, tl: true, D: [] } : pisSkyLayout(res, W, H);
   grid.style.setProperty('--pis-sky-h', H + 'px');   // the panel beside the sky is as tall as the sky
-  const hint = side || pis.howto ? '' : pis.lens === 'rules' ? 'Pick a rule or a kind of data to light up its columns' : 'Pick a star to see what it holds';
+  const hint = side || pis.howto ? '' : pis.lens === 'rules' ? 'Pick a rule or a kind of data to light up its columns'
+    : pis.lens === 'body' ? 'Pick a check to light up its columns' : 'Pick a star to see what it holds';
   // What has just come into view plays in, once: the constellation on entering Who it identifies, a rule's columns lit on picking it.
   // Picking another way a row singles someone out draws its constellation afresh.
-  const motion = !dqReduced(), chipNow = pis.lens === 'rules' ? pis.chip : '';
+  const motion = !dqReduced(), chipNow = pis.lens === 'rules' || pis.lens === 'body' ? pis.chip : '';
   const way = pis.lens === 'identify' ? pisWayIdx(res) : null, wayNow = way == null ? '' : pisWayKey(((res.identity || {}).combinations || [])[way]);
   const cons = motion && pis.lens === 'identify' && (pis.paintedLens !== 'identify' || pis.paintedWay !== wayNow), light = motion && !!chipNow && chipNow !== pis.paintedChip;
   const tlIn = motion && tl && pis.paintedLens !== 'changes';            // the timeline plays in on entering Changes
@@ -29576,7 +29712,7 @@ function pisScheduleRun(key) {
         pis.open = !pis.open; pis.q = ''; pisPaintPick();
         if (pis.open) { const s = panel.querySelector('.rcx-search'); if (s) s.focus(); }
       } else if (a === 'pick') {
-        pis.sel = t.dataset.key; pis.open = false; pis.q = ''; pis.rowsRaw = null; pisPaintPick();
+        pis.sel = t.dataset.key; pis.open = false; pis.q = ''; pis.rowsRaw = null; pis.body = null; pisPaintPick();
         const d = pisDs(pis.sel);
         pisHint(!d ? '' : (d.settings || {}).off ? `${d.name} is not swept with its assessments. Tick Sweep with each assessment to switch it back on.`
           : d.latest || d.current ? ''
@@ -29600,9 +29736,11 @@ function pisScheduleRun(key) {
       } else if (a === 'delete') {
         pisDelete();
       } else if (a === 'lens') {
+        // A rule picked belongs to Rules and a check to Regulator: either is let go on moving to the other.
+        if (String(pis.chip || '').startsWith('check:') !== (t.dataset.v === 'body')) pis.chip = '';
         pis.lens = t.dataset.v; pis.col = ''; pis.detail = ''; pis.view = 'sky'; pis.listed = false;
         pisPaintSky();
-        if (t.closest('.pis-verdict')) { const c = $('#pisSkyCard'); if (c) c.scrollIntoView({ behavior: dqReduced() ? 'auto' : 'smooth', block: 'start' }); }
+        if (t.closest('.pis-verdict, .pis-title')) { const c = $('#pisSkyCard'); if (c) c.scrollIntoView({ behavior: dqReduced() ? 'auto' : 'smooth', block: 'start' }); }
         else pisRefocus(`.pis-seg [data-pis="lens"][data-v="${t.dataset.v}"]`);
       } else if (a === 'col') {
         const v = t.dataset.v, closing = pis.col === v, fromDet = !!t.closest('.pis-dpane');
@@ -29640,7 +29778,8 @@ function pisScheduleRun(key) {
       } else if (a === 'chip') {
         pis.chip = pis.chip === t.dataset.v ? '' : t.dataset.v; pis.col = ''; pis.detail = '';
         pisPaintSky();
-        pisRefocus(pis.chip ? '.pis-side .pis-back' : `.pis-side .pis-ritem[data-v="${CSS.escape(t.dataset.v)}"]`);
+        pisRefocus(t.dataset.v.startsWith('check:') ? `.pis-side [data-pis="chip"][data-v="${CSS.escape(t.dataset.v)}"]`
+          : pis.chip ? '.pis-side .pis-back' : `.pis-side .pis-ritem[data-v="${CSS.escape(t.dataset.v)}"]`);
       } else if (a === 'todo') {
         pis.todoOpen = !pis.todoOpen;
         const n = panel.querySelector('#pisSkyCard .pis-next');
@@ -29743,9 +29882,9 @@ function pisScheduleRun(key) {
         pisRefocus(`#pisSkyWrap [data-pis="col"][data-v="${CSS.escape(v)}"]`);
         return;
       }
-      if (e.key === 'Escape' && pis.lens === 'rules' && pis.chip && !pis.menuF && e.target.closest && e.target.closest('#pisSkyCard')) {
+      if (e.key === 'Escape' && (pis.lens === 'rules' || pis.lens === 'body') && pis.chip && !pis.menuF && e.target.closest && e.target.closest('#pisSkyCard')) {
         e.preventDefault();
-        const v = pis.chip; pis.chip = ''; pisPaintSky(); pisRefocus(`.pis-side .pis-ritem[data-v="${CSS.escape(v)}"]`);
+        const v = pis.chip; pis.chip = ''; pisPaintSky(); pisRefocus(`.pis-side [data-pis="chip"][data-v="${CSS.escape(v)}"]`);
         return;
       }
       if (e.key === 'Escape' && pis.open) { e.preventDefault(); pisClosePick(); const b = panel.querySelector('.rcx-pick-btn'); if (b) b.focus(); }
@@ -29824,6 +29963,13 @@ function pisScheduleRun(key) {
     // How the dataset's assessments sweep it, saved as soon as it is changed (an admin's to change).
     panel.addEventListener('change', e => {
       if (e.target.matches('[data-pis-auto]')) { pisSaveSettings({ off: !e.target.checked }); return; }
+      if (e.target.matches('[data-pis-body]')) {
+        // Not saved: the body is chosen as the dataset is swept, so it is Run again that checks it against this one.
+        const d = pisDs(pis.sel), was = (((d && d.latest) || {}).body || {}).id || 'general';
+        pis.body = e.target.value;
+        pisHint(d && pis.body !== was ? `Run again to check ${d.name} against ${SRC_BODY_L[pis.body] || pis.body}. It keeps that from then on.` : '');
+        return;
+      }
       if (!e.target.matches('[data-pis-rows]')) return;
       const want = pisSampleOf(e.target.value);
       if (!want) { pisHint(PIS_SAMPLE_ERR, 'err'); return; }
