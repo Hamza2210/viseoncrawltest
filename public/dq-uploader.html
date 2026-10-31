@@ -5055,7 +5055,13 @@
     border-radius: 999px; cursor: pointer; font-size: 12.5px; color: var(--text); }
   .pis-np-why label:has(input:checked) { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 15%, transparent); }
   .pis-np .dqin { margin: 0; }
-  .pis-side .pis-np-col { margin-top: 12px; }
+  /* A field's Not personal data, at the top in its (sticky) header: under its name, the close on the name's line */
+  .pis-side-h:has(.pis-np-head) { display: grid; grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas: "code role x" "np np np"; column-gap: 10px; row-gap: 8px; }
+  .pis-side-h:has(.pis-np-head) .pis-side-code { grid-area: code; min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pis-side-h:has(.pis-np-head) .pis-side-role { grid-area: role; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pis-side-h:has(.pis-np-head) .pis-side-x { grid-area: x; margin-left: 0; }
+  .pis-side-h button.pis-np-head { grid-area: np; justify-self: start; height: 28px; padding: 0 11px; font-size: 12px; }
   /* A governing body's register: every requirement it publishes, judged for the dataset (Regulator, and Compliance) */
   .breg { display: flex; flex-direction: column; gap: 10px; }
   .breg .breg-t { margin: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; font-size: 15px; font-weight: 750;
@@ -27715,7 +27721,7 @@ ${HDRS}
           steps(`Press a star. Its column opens in the list beside the sky: how many of its values hold personal data, and every finding in it, riskiest first. The other stars step back.`,
                 `Pick a finding. It opens in a pane of its own: its severity and risk, what changed about it since the sweep before, how many values hold it and how sure the match is, why it matters, the rules it touches, what the latest assessment makes of its column, and where it sits in each value, as a bar per value with a mark at its characters. No value is ever shown.`,
                 `From there, ${ui('Label the column as personal data')}${GOV ? `, ${ui('Not personal data: dismiss')} it with a reason,` : ''} or ${ui('See it in the list')}.`) +
-          (GOV ? p(`A field that holds no personal data is set aside whole: ${ui('Not personal data: dismiss the field')} beside the sky, ${ui('Not personal data: the whole field')} in a finding's menu, or ${ui('Not personal data')} at the top, which lists every field with a finding so you can tick several at once. Pick a reason in a click (test or made-up data, codes or references, already masked or encrypted, about a business) and add a word if you like. Only what was found is set aside: if a later sweep finds something new in a field, it is shown.`) : '') +
+          (GOV ? p(`A field that holds no personal data is set aside whole: ${ui('Not personal data')} beside its name when it is open beside the sky, ${ui('Not personal data: the whole field')} in a finding's menu, or ${ui('Not personal data')} at the top, which lists every field with a finding so you can tick several at once. Pick a reason in a click (test or made-up data, codes or references, already masked or encrypted, about a business) and add a word if you like. Only what was found is set aside: if a later sweep finds something new in a field, it is shown.`) : '') +
           shot('pii-column', `${n(1)} The column open, ringed in the sky. ${n(2)} Its findings: pick one. ${n(3)} The finding picked, in full, with ${n(4)} where it sits in each value and ${n(5)} what you can do about it. ${n(6)} Drag the list's left edge to make the list wider or narrower.`) +
           sm('pii-column') +
           p(`On a wide window the finding's pane sits between the sky and the list; on a narrower one it opens underneath them, and the page moves down to it. The list stays put, to pick another. Escape closes the finding, then the column.`) +
@@ -29126,8 +29132,11 @@ function pisColPanel(res, name) {
   }
   const c = pisColumns(res).find(x => x.name === name); if (!c) return '';
   const nw = new Set(((res.changes || {}).new || []).map(f => f.id)), labelled = ((res.pii_labels || {})[name] || '') === 'pii';
-  const head = `<div class="pis-side-h"><code class="pis-side-code">${esc(name)}</code>${c.sev && c.role ? `<span class="pis-side-role">${esc(PIS_ROLE[c.role] || '')}</span>` : ''}` +
-    `<button type="button" class="pis-side-x lngb" data-pis="col" data-v="${esc(name)}" aria-label="Close ${esc(name)}">${pisIco('cross')}</button></div>`;
+  // The field as a whole is set aside from its header, beside its name: every finding in it at once.
+  const np = c.finds.length && pis.canDismiss ? `<button type="button" class="dsx-btn lngb pis-np-head" data-pis="notpii" data-col="${esc(name)}" ` +
+    `data-tip="Dismiss the whole field: every finding in ${esc(name)}, with one reason">Not personal data</button>` : '';
+  const head = `<div class="pis-side-h"><code class="pis-side-code" title="${esc(name)}">${esc(name)}</code>${c.sev && c.role ? `<span class="pis-side-role">${esc(PIS_ROLE[c.role] || '')}</span>` : ''}` +
+    np + `<button type="button" class="pis-side-x lngb" data-pis="col" data-v="${esc(name)}" aria-label="Close ${esc(name)}">${pisIco('cross')}</button></div>`;
   if (!c.finds.length) {
     return `<aside class="pis-side" data-key="col:${esc(name)}" aria-label="${esc(name)}">${head}<div class="pis-side-v">${pisSevHtml(null, true)}</div>` +
       `<p class="pis-side-s">Nothing in its ${c.nonNull != null ? pisPl(c.nonNull, 'value') : 'values'} matched a kind of personal data, and its name does not say it holds any.</p>` +
@@ -29144,10 +29153,8 @@ function pisColPanel(res, name) {
     `<div class="pis-side-v">${pisSevHtml(c.sev, true)}<span class="pis-side-risk"><b>${c.risk}</b><small>risk</small></span></div>` +
     (c.pii != null && c.nonNull ? `<p class="pis-side-s">${pisN(c.pii)} of ${pisPl(c.nonNull, 'value')} hold personal data.</p>` : '') +
     `<h6>${pisPl(c.finds.length, 'finding')} <small>pick one to read it in full</small></h6><ul class="pis-fitems">${items}</ul>` +
-    // What to do about one finding is in its pane. The field as a whole is set aside here: every finding in it at once.
-    (labelled ? `<p class="pis-side-s">Labelled as personal data.</p>` : '') +
-    (pis.canDismiss ? `<button type="button" class="dsx-btn lngb pis-np-col" data-pis="notpii" data-col="${esc(name)}" ` +
-      `data-tip="Every finding in ${esc(name)}, set aside with one reason">Not personal data: dismiss the field</button>` : '') + `</aside>`;
+    // What to do about one finding is in its pane; the field as a whole is set aside from the header, above.
+    (labelled ? `<p class="pis-side-s">Labelled as personal data.</p>` : '') + `</aside>`;
 }
 /** A finding picked from a list, in a pane wide enough to read: what it is and how sure, why it matters, the rules it
  *  touches, where it sits in each value (no value shown), what the assessment makes of its column, and what to do. */
