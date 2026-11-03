@@ -5089,33 +5089,110 @@
   .breg-q { margin-left: auto; height: 30px; min-width: 240px; padding: 0 10px; border: 1px solid var(--border); border-radius: 9px;
     background: var(--card); color: var(--text); font: inherit; font-size: 12.5px; }
   .breg-q:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-  .breg-list { max-height: 640px; overflow: auto; padding-right: 6px; border-top: 1px solid var(--border); }
+  .breg-list { min-width: 0; }
   .breg-list h6 { position: sticky; top: 0; z-index: 1; margin: 0; padding: 12px 2px 6px; background: var(--card);
     font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
   .breg-list h6 small { margin-left: 4px; letter-spacing: 0; }
   .breg-items { margin: 0 0 4px; padding: 0; list-style: none; display: grid; gap: 6px; }
-  /* Groups: the body's own areas, each opening and closing, its header saying how its requirements stand */
-  .breg-grpbar { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; padding: 10px 2px 6px; font-size: 12px; color: var(--muted); }
-  .breg-grpbar > span { flex: 1; }
-  .breg-grpbar .linkbtn { margin-left: 0; font-size: 12px; }
-  .breg-grp { border-bottom: 1px solid var(--border); }
-  .breg-grp:last-child { border-bottom: 0; }
-  button.breg-grp-h { position: sticky; top: 0; z-index: 1; width: 100%; display: flex; align-items: center; gap: 12px; padding: 11px 8px;
-    border: 0; border-radius: 0; background: var(--card); box-shadow: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
-  button.breg-grp-h:hover { background: color-mix(in srgb, var(--accent) 7%, var(--card)); }
-  button.breg-grp-h:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
-  .breg-grp-c { flex: none; width: 7px; height: 7px; margin: 0 3px 0 2px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted);
-    transform: rotate(-45deg); transition: transform .15s ease; }
-  button.breg-grp-h[aria-expanded="true"] .breg-grp-c { transform: rotate(45deg); }
-  .breg-grp-t { flex: 1; min-width: 0; font-size: 13px; font-weight: 700; }
-  .breg-grp-t small { margin-left: 6px; font-size: 12px; font-weight: 600; color: var(--muted); }
-  .breg-grp-st { flex: none; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px 12px; font-size: 11.5px; font-weight: 650; color: var(--muted); }
-  .breg-grp-st span { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
-  .breg-grp-st i { width: 7px; height: 7px; border-radius: 50%; background: var(--k); }
-  .breg-grp-bar { flex: none; width: 96px; height: 6px; display: flex; gap: 1px; border-radius: 999px; overflow: hidden; background: var(--card-2); }
-  .breg-grp-bar i { display: block; height: 100%; background: var(--k); }
-  .breg-grp > .breg-items { padding: 2px 0 12px; }
-  .breg-grp > .breg-items[hidden] { display: none; }
+  /* Two panes: the groups on the left, the picked group's requirements on the right (cards, one open at a time) */
+  .breg-split { display: grid; grid-template-columns: minmax(250px, 30%) minmax(0, 1fr); gap: 16px; align-items: start; padding-top: 4px; }
+  @media (max-width: 860px) { .breg-split { grid-template-columns: 1fr; } }
+  .breg-gpane, .breg-rpane { border: 1px solid var(--border); border-radius: 14px; background: color-mix(in srgb, var(--card-2) 55%, var(--card)); }
+  .breg-gpane { padding: 16px 14px 12px; }
+  .breg-gh { display: flex; flex-direction: column; gap: 2px; margin: 0 4px 12px; }
+  .breg-gh b { font-size: 16px; font-weight: 750; color: var(--text); }
+  .breg-gh small { font-size: 12px; color: var(--muted); }
+  .breg-gl { margin: 0; padding: 0 4px 0 0; list-style: none; display: grid; gap: 7px; max-height: 620px; overflow: auto; }
+  button.breg-g { width: 100%; display: flex; align-items: center; gap: 11px; padding: 7px 12px 7px 8px; border: 1px solid var(--border);
+    border-radius: 10px; background: var(--card); box-shadow: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+  button.breg-g:hover { border-color: color-mix(in srgb, var(--accent) 50%, var(--border)); }
+  button.breg-g:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  button.breg-g.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, var(--card)); box-shadow: 0 0 0 1px var(--accent) inset; }
+  .breg-gi { flex: none; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 8px; background: var(--card-2); color: var(--muted); }
+  button.breg-g.on .breg-gi { color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, var(--card-2)); }
+  .breg-gi .pis-ico { width: 16px; height: 16px; }
+  .breg-gn { flex: 1; min-width: 0; font-size: 12.5px; font-weight: 600; line-height: 1.3; }
+  .breg-gbar { flex: none; width: 80px; height: 5px; display: flex; gap: 1px; border-radius: 999px; overflow: hidden; background: var(--card-2); }
+  .breg-gbar i, .breg-rbar i { display: block; height: 100%; background: var(--k); }
+  .breg-gc { flex: none; min-width: 20px; text-align: right; font-size: 12.5px; font-weight: 750; color: var(--text); }
+  .breg-rpane { padding: 16px 18px 12px; min-width: 0; }
+  .breg-rh { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
+  .breg-ri { flex: none; display: grid; place-items: center; width: 46px; height: 46px; border-radius: 12px;
+    background: color-mix(in srgb, var(--accent) 16%, var(--card-2)); color: var(--accent); }
+  .breg-ri .pis-ico { width: 24px; height: 24px; }
+  .breg-rt { flex: 1; min-width: 0; }
+  .breg .breg-rt h5 { margin: 0; font-size: 17px; font-weight: 750; letter-spacing: 0; text-transform: none; color: var(--text); }
+  .breg-rt small { font-size: 12.5px; color: var(--muted); }
+  .breg-rst { flex: none; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px 12px; font-size: 12.5px; font-weight: 650; color: var(--text); }
+  .breg-rst span { display: inline-flex; align-items: center; gap: 6px; }
+  .breg-rst i { width: 9px; height: 9px; border-radius: 50%; background: var(--k); }
+  .breg-rbar { flex: none; width: 190px; height: 7px; display: flex; gap: 2px; border-radius: 999px; overflow: hidden; background: var(--card-2); }
+  .breg-ritems { margin: 0; padding: 0 4px 2px 0; list-style: none; display: grid; gap: 8px; max-height: 600px; overflow: auto; }
+  .breg-ritems > .breg-grp-li { list-style: none; display: flex; align-items: center; gap: 10px; padding: 0 0 4px; }
+  .breg-ritems > .breg-grp-li .breg-s { flex: 1; }
+  /* A requirement: its header always, its body when open */
+  .breg .breg-item { display: block; padding: 0; border: 1px solid var(--border); border-radius: 11px; background: var(--card); }
+  .breg .breg-item.open { border-color: var(--accent); box-shadow: inset 3px 0 0 var(--k); background: color-mix(in srgb, var(--accent) 5%, var(--card)); }
+  button.breg-ih { width: 100%; display: flex; align-items: center; gap: 12px; padding: 13px 16px; border: 0; border-radius: 11px; background: none;
+    box-shadow: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+  button.breg-ih:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .breg-ih .breg-dot { margin: 0; }
+  .breg-ih .breg-text { flex: 1; min-width: 0; font-size: 14px; font-weight: 650; }
+  .breg-item.other .breg-ih .breg-text, .breg-item.na .breg-ih .breg-text { color: var(--muted); }
+  .breg-ih .breg-chev { flex: none; width: 8px; height: 8px; margin: 0 4px 3px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted);
+    transform: rotate(45deg); transition: transform .15s ease; }
+  .breg-item.open .breg-chev { transform: rotate(-135deg); margin-top: 6px; margin-bottom: 0; }
+  .breg-ib { display: flex; flex-direction: column; gap: 9px; padding: 0 18px 16px 38px; }
+  .breg-ib .breg-tags { font-size: 12px; gap: 6px 8px; }
+  .breg-ib .breg-st { padding: 3px 10px; border-radius: 999px; background: var(--card-2); }
+  .breg-ib .breg-tag { padding: 3px 11px; color: var(--text); }
+  .breg-ib .breg-ref { padding: 3px 11px; border-radius: 999px; border: 1px solid var(--border); color: var(--text); }
+  .breg-ib .breg-quote { border-left: 0; padding-left: 0; font-size: 13px; }
+  .breg-ib .breg-quote a { display: inline-flex; align-items: center; gap: 4px; }
+  .breg-ib .breg-quote a .pis-ico { width: 13px; height: 13px; }
+  .breg-ib .breg-acts { gap: 8px 10px; padding-top: 4px; }
+  .breg-ib button.breg-a { display: inline-flex; align-items: center; gap: 7px; height: 34px; padding: 0 14px; border-radius: 9px; font-size: 13px;
+    background: var(--card); }
+  .breg-ib button.breg-a .pis-ico { width: 15px; height: 15px; }
+  .breg-ib button.breg-a.yes .pis-ico { color: var(--ok); } .breg-ib button.breg-a.no .pis-ico { color: var(--err); }
+  .breg-ib button.breg-a.na .pis-ico { color: var(--muted); }
+  .breg-ib button.breg-a.yes { border-color: color-mix(in srgb, var(--ok) 45%, var(--border)); }
+  .breg-ib button.breg-a.no { border-color: color-mix(in srgb, var(--err) 40%, var(--border)); }
+  .breg-ib .breg-acts .linkbtn { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
+  .breg-ib .breg-acts .linkbtn .pis-ico { width: 15px; height: 15px; }
+  /* The header, as the mockup: an icon, the title and its count, two lines of summary, the search at the right */
+  .breg-top { display: flex; align-items: flex-start; gap: 14px; }
+  .breg-ti { flex: none; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 12px;
+    background: color-mix(in srgb, var(--accent) 14%, var(--card-2)); color: var(--accent); }
+  .breg-ti .pis-ico { width: 24px; height: 24px; }
+  .breg-tt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+  .breg .breg-t .breg-pill { padding: 1px 9px; border-radius: 999px; background: var(--card-2); border: 1px solid var(--border); font-size: 13px; font-weight: 700; }
+  .breg .breg-top .breg-t { font-size: 20px; align-items: center; }
+  label.breg-search { flex: none; display: flex; align-items: center; gap: 8px; width: min(330px, 32%); height: 38px; padding: 0 12px;
+    border: 1px solid var(--border); border-radius: 10px; background: var(--card); color: var(--muted); }
+  label.breg-search:focus-within { outline: 2px solid var(--accent); outline-offset: 1px; }
+  label.breg-search .pis-ico { width: 16px; height: 16px; }
+  label.breg-search input { flex: 1; min-width: 0; height: 100%; border: 0; background: none; color: var(--text); font: inherit; font-size: 13px; outline: none; }
+  .breg-foot { display: flex; align-items: flex-start; gap: 8px; }
+  .breg-foot .pis-ico { flex: none; width: 15px; height: 15px; margin-top: 2px; color: var(--accent); }
+  /* An area's remaining requirements answered at once; answers copied from another dataset */
+  .breg-items > .breg-grp-li { list-style: none; display: flex; align-items: center; gap: 10px; padding: 2px 2px 4px; }
+  .breg-grp-li .breg-s { flex: 1; }
+  .breg-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; margin: -2px 0 0; font-size: 12px; }
+  .breg-tools .linkbtn { margin-left: 0; font-size: 12px; }
+  .breg-dlg { display: flex; flex-direction: column; gap: 12px; text-align: left; }
+  .dq-dialog.breg-dlg-box { width: min(640px, 92vw); }
+  .breg-dlg-list { margin: 0; padding: 8px 12px 8px 26px; max-height: 190px; overflow: auto; border: 1px solid var(--border); border-radius: 9px;
+    font-size: 12.5px; line-height: 1.5; color: var(--text); }
+  .breg-dlg label.breg-f { display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; font-weight: 650; color: var(--text); }
+  .breg-dlg textarea, .breg-dlg input[type="url"] { padding: 7px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--card);
+    color: var(--text); font: inherit; font-size: 12.5px; font-weight: 400; }
+  .breg-dlg textarea { min-height: 56px; resize: vertical; }
+  .breg-pick { margin: 0; padding: 0; list-style: none; display: grid; gap: 5px; max-height: 260px; overflow: auto; }
+  .breg-pick label { display: flex; align-items: center; gap: 9px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 9px;
+    cursor: pointer; font-size: 12.5px; color: var(--text); }
+  .breg-pick label:has(input:checked) { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 11%, transparent); }
+  .breg-pick input { margin: 0; accent-color: var(--accent); }
   .breg-item { display: flex; gap: 10px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--card); }
   .breg-item.other { background: transparent; }
   .breg-dot { flex: none; width: 9px; height: 9px; margin-top: 5px; border-radius: 50%; background: var(--k); }
@@ -16643,8 +16720,11 @@ async function bregMount(el, body, block, dk) {
     if (el._bregT !== token || !el.isConnected) return;
     const b = block || {}, swept = !!b.id && b.id !== 'general';
     el._breg = { body, reg, dk, org: ans.org || {}, data: ans.data || {}, canAnswer: !!ans.canAnswer, swept, same: b.id === body, sweptId: b.id,
-                 checks: new Map((b.id === body ? b.checks || [] : []).map(c => [c.id, c])),
-                 kinds: swept && Array.isArray(b.kinds) ? new Set(b.kinds) : null, filter: 'here', q: '', edit: '' };
+                 // The sweep's checks of this body, and what the dataset's own Compliance policy and its newest
+                 // assessment say of the requirements that ask for them (the API's policy.* checks).
+                 checks: new Map([...(b.id === body ? b.checks || [] : []), ...(ans.policy || [])].map(c => [c.id, c])),
+                 kinds: swept && Array.isArray(b.kinds) ? new Set(b.kinds) : null, filter: 'here', q: '', edit: '',
+                 group: '', openItem: '' };
     bregPaint(el);
     if (!el._bregWired) { el._bregWired = true; bregWire(el); }
   } catch (e) {
@@ -16658,7 +16738,7 @@ function bregPaint(el) {
   S.J.forEach(j => { n[j.st]++; });
   const js = [...S.J.values()], here = items.length - n.other, auto = js.filter(j => j.by === 'check').length,
         answered = js.filter(j => j.by === 'answer').length, todo = js.filter(j => j.st === 'confirm' && !j.c).length;
-  const name = SRC_BODY_L[S.body] || reg.short, list = el.querySelector('[data-breg-list]'), top = list ? list.scrollTop : 0;
+  const name = SRC_BODY_L[S.body] || reg.short;
   const read = reg.read_on ? new Date(reg.read_on + 'T12:00:00Z').toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
   const note = !S.swept ? `Not swept against a governing body yet, so nothing below is judged from its data: its next assessment is.`
     : !S.same ? `Its newest sweep was checked against ${esc(SRC_BODY_L[S.sweptId] || S.sweptId)}, so none of ${esc(name)}'s checks has judged it yet: its next assessment does. What it holds still says which apply.`
@@ -16666,27 +16746,45 @@ function bregPaint(el) {
   const chips = [['here', 'Apply here', here], ...BREG_ORDER.map(k => [k, BREG_ST[k], n[k]]), ['all', 'All', items.length]]
     .filter(([k, , c]) => c || k === 'here' || k === 'all' || S.filter === k);
   el.innerHTML = `<section class="breg" aria-label="Every requirement of ${esc(name)}">` +
-    `<h4 class="breg-t">${pisIco('doc')}Every requirement of ${esc(name)}<small>${pisN(items.length)}</small></h4>` +
-    `<p class="breg-s">${esc(reg.regime || '')}${read ? `, read on ${esc(read)}` : ''}. <b>${pisN(here)}</b> apply to this dataset: ` +
-      `<b>${pisN(auto)}</b> judged by the sweep itself, <b>${pisN(answered)}</b> answered, and <b>${pisN(todo)}</b> for you to confirm.` +
-      `${n.other ? ` ${pisN(n.other)} more are about kinds of records it does not hold.` : ''}</p>` +
+    `<div class="breg-top"><span class="breg-ti">${pisIco('file')}</span><div class="breg-tt">` +
+    `<h4 class="breg-t">Every requirement of ${esc(name)}<span class="breg-pill">${pisN(items.length)}</span></h4>` +
+    `<p class="breg-s">${esc(reg.regime || '')}${read ? `, read on ${esc(read)}` : ''}.<br><b>${pisN(here)}</b> apply to this dataset: ` +
+      `<b>${pisN(auto)}</b> judged automatically (by the sweep, or from its Compliance policy), <b>${pisN(answered)}</b> answered, and ` +
+      `<b>${pisN(todo)}</b> for you to confirm.` +
+      `${n.other ? ` <b>${pisN(n.other)}</b> more are about kinds of records it does not hold.` : ''}</p></div>` +
+    `<label class="breg-search">${pisIco('search')}<input type="search" data-breg-q placeholder="Search the requirements" ` +
+      `aria-label="Search the requirements of ${esc(name)}" value="${esc(S.q)}"></label></div>` +
+    (S.canAnswer && S.dk ? `<p class="breg-tools"><button type="button" class="linkbtn lngb" data-breg="copy">Copy answers from another dataset</button>` +
+      `<span class="breg-s">Its own answers only, to what it has not answered; the organisation's are shared already.</span></p>` : '') +
     (note ? `<p class="breg-s breg-note">${note}</p>` : '') +
     `<div class="breg-meter" role="img" aria-label="${esc(BREG_ORDER.filter(k => n[k]).map(k => `${n[k]} ${BREG_ST[k].toLowerCase()}`).join(', '))}">` +
       BREG_ORDER.filter(k => n[k]).map(k => `<i class="${k}" style="flex:${n[k]}"></i>`).join('') + `</div>` +
     `<div class="breg-bar"><div class="breg-chips" role="group" aria-label="Show">` + chips.map(([k, l, c]) =>
       `<button type="button" class="breg-chip lngb ${k}${S.filter === k ? ' on' : ''}" data-breg="filter" data-v="${k}" aria-pressed="${S.filter === k}">` +
-      `${BREG_ST[k] ? '<i aria-hidden="true"></i>' : ''}${esc(l)}<small>${pisN(c)}</small></button>`).join('') + `</div>` +
-      `<input type="search" class="breg-q" data-breg-q placeholder="Search the requirements" aria-label="Search the requirements of ${esc(name)}" value="${esc(S.q)}"></div>` +
+      `${BREG_ST[k] ? '<i aria-hidden="true"></i>' : ''}${esc(l)}<small>${pisN(c)}</small></button>`).join('') + `</div></div>` +
     `<div class="breg-list" data-breg-list tabindex="-1"></div>` +
-    `<p class="breg-s">Each quotes ${esc(name)} where it was read, with a link to the page. ` +
+    `<p class="breg-s breg-foot">${pisIco('info')}<span>Each quotes ${esc(name)} where it was read, with a link to the page. ` +
       `${S.canAnswer ? 'An answer for the organisation is given once and shows on every dataset; one for each dataset is given there. ' : 'An admin answers what only people can confirm. '}` +
-      `A guide to what ${esc(name)} expects, not legal advice.</p></section>`;
+      `A guide to what ${esc(name)} expects, not legal advice.</span></p></section>`;
   bregPaintList(el);
-  const l2 = el.querySelector('[data-breg-list]'); if (l2) l2.scrollTop = top;
 }
+/** An area's icon, by what it is about. */
+const BREG_AREA_ICO = [[/child/i, 'users'], [/anonymis|data sharing/i, 'layers'], [/pseudonym/i, 'link'], [/retention|retain/i, 'calendar'],
+  [/accura/i, 'checkc'], [/minimis/i, 'database'], [/storage/i, 'drive'], [/breach/i, 'alert'], [/integrity|confidential|security/i, 'shield'],
+  [/special category/i, 'tag'], [/criminal/i, 'gavel'], [/identifier/i, 'idcard'], [/lawful|consent|basis/i, 'scales'],
+  [/principle/i, 'book'], [/right/i, 'user'], [/marketing|pecr|electronic/i, 'mail'], [/transfer|international/i, 'globe'],
+  [/vulnerab|needs|psr|priority|service for all|extra help/i, 'heart'], [/complaint/i, 'chat'], [/money laundering|financial crime|cdd|due diligence/i, 'lock'],
+  [/transaction|report/i, 'chart'], [/recording|call|communication/i, 'phone'], [/debt|paying|payment|charge|bill/i, 'bank'],
+  [/monitor|outcome|mi\b/i, 'trend'], [/governance|accountab|board|system|resilience|condition/i, 'server'], [/definition|scope|categor|about/i, 'info']];
+function bregAreaIco(area) {
+  const hit = BREG_AREA_ICO.find(([rx]) => rx.test(area));
+  return pisIco(hit ? hit[1] : 'doc');
+}
+/** The groups on the left, the picked group's requirements on the right: as the mockup lays them out. */
 function bregPaintList(el) {
   const S = el._breg, list = el.querySelector('[data-breg-list]'); if (!S || !list) return;
-  const top = list.scrollTop, q = S.q.trim().toLowerCase(), rank = it => BREG_ORDER.indexOf(S.J.get(it.id).st);
+  const q = S.q.trim().toLowerCase(), rank = it => BREG_ORDER.indexOf(S.J.get(it.id).st);
+  const leftTop = (list.querySelector('.breg-gl') || {}).scrollTop || 0, rightTop = (list.querySelector('.breg-ritems') || {}).scrollTop || 0;
   const show = S.reg.items.filter(it => {
     const st = S.J.get(it.id).st;
     if (S.filter === 'here' ? st === 'other' : S.filter !== 'all' && st !== S.filter) return false;
@@ -16695,32 +16793,52 @@ function bregPaintList(el) {
   const areas = new Map();
   show.forEach(it => { if (!areas.has(it.area)) areas.set(it.area, []); areas.get(it.area).push(it); });
   S.areas = [...areas.keys()];
-  const groups = [...areas].map(([area, its], gi) => {
-    const n = {}; its.forEach(it => { const st = S.J.get(it.id).st; n[st] = (n[st] || 0) + 1; });
-    const sts = BREG_ORDER.filter(k => n[k]), open = bregOpen(S, area, n, !!q);
-    const says = sts.map(k => `${n[k]} ${BREG_ST[k].toLowerCase()}`).join(', ');
-    return `<section class="breg-grp" data-area="${esc(area)}">` +
-      `<button type="button" class="breg-grp-h lngb" data-breg="grp" aria-expanded="${open}" aria-controls="bregG${gi}" ` +
-        `aria-label="${esc(`${area}: ${its.length} requirement${its.length === 1 ? '' : 's'}, ${says}`)}">` +
-        `<i class="breg-grp-c" aria-hidden="true"></i><span class="breg-grp-t">${esc(area)}<small>${pisN(its.length)}</small></span>` +
-        `<span class="breg-grp-st" aria-hidden="true">${sts.map(k => `<span class="${k}"><i></i>${pisN(n[k])} ${BREG_ST[k].toLowerCase()}</span>`).join('')}</span>` +
-        `<span class="breg-grp-bar" aria-hidden="true">${sts.map(k => `<i class="${k}" style="flex:${n[k]}"></i>`).join('')}</span></button>` +
-      `<ul class="breg-items" id="bregG${gi}"${open ? '' : ' hidden'}>${its.slice().sort((x, y) => rank(x) - rank(y)).map(it => bregItemHtml(it, S)).join('')}</ul>` +
-      `</section>`;
-  });
-  list.innerHTML = show.length
-    ? `<div class="breg-grpbar"><span>${pisPl(areas.size, 'group')}, as ${esc(SRC_BODY_L[S.body] || S.reg.short)} groups them</span>` +
-        `<button type="button" class="linkbtn lngb" data-breg="open-all">Open every group</button>` +
-        `<button type="button" class="linkbtn lngb" data-breg="close-all">Close every group</button></div>` + groups.join('')
-    : `<p class="breg-s" style="padding:14px 2px">${q ? 'No requirement matches that search.' : 'None.'}</p>`;
-  list.scrollTop = top;
+  if (!show.length) {
+    list.innerHTML = `<p class="breg-s" style="padding:14px 2px">${q ? 'No requirement matches that search.' : 'None.'}</p>`;
+    return;
+  }
+  const count = its => { const n = {}; its.forEach(it => { const st = S.J.get(it.id).st; n[st] = (n[st] || 0) + 1; }); return n; };
+  // The group on show: the one picked, while it has something to show; else the first with something to act on.
+  if (!areas.has(S.group)) {
+    S.group = S.areas.find(a => areas.get(a).some(it => S.J.get(it.id).st === 'act')) || S.areas[0];
+    S.openItem = '';
+  }
+  const bar = (n, cls) => `<span class="${cls}" aria-hidden="true">${BREG_ORDER.filter(k => n[k]).map(k => `<i class="${k}" style="flex:${n[k]}"></i>`).join('')}</span>`;
+  const rows = S.areas.map(area => {
+    const its = areas.get(area), n = count(its), on = area === S.group;
+    const says = BREG_ORDER.filter(k => n[k]).map(k => `${n[k]} ${BREG_ST[k].toLowerCase()}`).join(', ');
+    return `<li><button type="button" class="breg-g lngb${on ? ' on' : ''}" data-breg="grp" data-area="${esc(area)}" aria-current="${on}" ` +
+      `aria-label="${esc(`${area}: ${its.length} requirement${its.length === 1 ? '' : 's'}, ${says}`)}">` +
+      `<span class="breg-gi">${bregAreaIco(area)}</span><span class="breg-gn">${esc(area)}</span>${bar(n, 'breg-gbar')}` +
+      `<b class="breg-gc">${pisN(its.length)}</b></button></li>`;
+  }).join('');
+  const its = areas.get(S.group).slice().sort((x, y) => rank(x) - rank(y)), n = count(its);
+  if (S.openItem && !its.some(it => it.id === S.openItem)) S.openItem = '';
+  if (S.openItem === '') S.openItem = its[0] ? its[0].id : '';
+  const head = `<div class="breg-rh"><span class="breg-ri">${bregAreaIco(S.group)}</span>` +
+    `<div class="breg-rt"><h5>${esc(S.group)}</h5><small>${pisPl(its.length, 'requirement')}</small></div>` +
+    `<span class="breg-rst">${BREG_ORDER.filter(k => n[k]).map(k => `<span class="${k}"><i></i>${pisN(n[k])} ${BREG_ST[k].toLowerCase()}</span>`).join('')}</span>` +
+    bar(n, 'breg-rbar') + `</div>`;
+  list.innerHTML = `<div class="breg-split">` +
+    `<nav class="breg-gpane" aria-label="Requirements by group"><div class="breg-gh"><b>Requirements by group</b>` +
+      `<small>${pisPl(S.areas.length, 'group')} · ${pisPl(show.length, 'requirement')}</small></div><ul class="breg-gl">${rows}</ul></nav>` +
+    `<section class="breg-rpane" aria-label="${esc(S.group)}">${head}` +
+      `<ul class="breg-items breg-ritems">${bregGroupAnswerHtml(its, S)}${its.map(it => bregItemHtml(it, S)).join('')}</ul></section></div>`;
+  const gl = list.querySelector('.breg-gl'), ri = list.querySelector('.breg-ritems');
+  if (gl) gl.scrollTop = leftTop;
+  if (ri) ri.scrollTop = rightTop;
 }
-/** Whether a group is open: as the reader left it, else open when it holds something to act on (or a search
- *  found something in it), else closed. */
-function bregOpen(S, area, n, searching) {
-  if (searching) return true;
-  if (S.open && S.open.has(area)) return S.open.get(area);
-  return !!n.act;
+/** The requirements an admin may still answer in a group: to confirm, unanswered, and not judged by a check. */
+function bregAnswerable(its, S) {
+  return its.filter(it => { const j = S.J.get(it.id); return j.st === 'confirm' && !j.a && !(j.c && j.c.status !== 'confirm'); });
+}
+/** At the head of an open group, for an admin: its remaining requirements answered at once. */
+function bregGroupAnswerHtml(its, S) {
+  const left = S.canAnswer ? bregAnswerable(its, S) : [];
+  if (!left.length) return '';
+  return `<li class="breg-grp-li"><button type="button" class="dsx-btn lngb" data-breg="grp-answer">` +
+    `Answer the ${pisN(left.length)} still to confirm in this group</button>` +
+    `<span class="breg-s">One answer for them all, with a note and a link; each can be changed on its own afterwards.</span></li>`;
 }
 function bregItemHtml(it, S) {
   const j = S.J.get(it.id), a = j.a, m = BREG_MODE[it.mode] || BREG_MODE.P, need = it.applies || 'personal';
@@ -16730,11 +16848,14 @@ function bregItemHtml(it, S) {
     : j.st === 'other' ? `<p class="breg-why">It is about ${esc(BREG_KIND[need] || need)}, and this sweep found none here.</p>` : '';
   const ans = a ? `<p class="breg-ans">${it.scope === 'org' ? 'Answered for the organisation' : 'Answered for this dataset'}: <b>${esc(BREG_ANS[a.value] || a.value)}</b>` +
       `${a.by ? `, by ${esc(a.by)}` : ''}${a.at ? `, ${esc(rcxWhen(a.at))}` : ''}${a.note ? `. ${esc(a.note)}` : ''}` +
-      `${a.evidence_url ? ` <a href="${esc(a.evidence_url)}" target="_blank" rel="noopener noreferrer">Evidence</a>` : ''}</p>` : '';
+      `${a.evidence_url ? ` <a href="${esc(a.evidence_url)}" target="_blank" rel="noopener noreferrer">Evidence</a>` : ''}` +
+      `${a.copied_from ? ` <span class="breg-ref">(copied from ${esc(String(a.copied_from).split('/').pop())})</span>` : ''}</p>` : '';
   const can = S.canAnswer && !(j.c && j.c.status !== 'confirm'), editing = can && S.edit === it.id;
-  const btn = (v, l) => `<button type="button" class="breg-a lngb${a && a.value === v ? ' on' : ''}" data-breg="ans" data-v="${v}" aria-pressed="${!!(a && a.value === v)}">${l}</button>`;
-  const acts = can && !editing ? `<div class="breg-acts" role="group" aria-label="Your answer">${btn('yes', 'Met')}${btn('no', 'Not met')}${btn('na', 'Not applicable')}` +
-      `<button type="button" class="linkbtn lngb" data-breg="edit">${a && (a.note || a.evidence_url) ? 'Edit the note and evidence' : 'Add a note and evidence'}</button>` +
+  const btn = (v, l, ic) => `<button type="button" class="breg-a lngb ${v}${a && a.value === v ? ' on' : ''}" data-breg="ans" data-v="${v}" ` +
+    `aria-pressed="${!!(a && a.value === v)}">${pisIco(ic)}${l}</button>`;
+  const acts = can && !editing ? `<div class="breg-acts" role="group" aria-label="Your answer">${btn('yes', 'Met', 'tick')}${btn('no', 'Not met', 'cross')}` +
+      `${btn('na', 'Not applicable', 'slash')}` +
+      `<button type="button" class="linkbtn lngb" data-breg="edit">${pisIco('plus')}${a && (a.note || a.evidence_url) ? 'Edit the note and evidence' : 'Add a note and evidence'}</button>` +
       (a ? `<button type="button" class="linkbtn lngb" data-breg="ans" data-v="">Clear the answer</button>` : '') + `</div>` : '';
   const edit = editing ? `<div class="breg-edit">` +
       `<label><span>Answer</span><select data-breg-val>${Object.entries(BREG_ANS).map(([v, l]) =>
@@ -16743,12 +16864,17 @@ function bregItemHtml(it, S) {
       `<label><span>A link to the evidence</span><input type="url" data-breg-url maxlength="500" placeholder="https://" value="${esc((a && a.evidence_url) || '')}"></label>` +
       `<div class="breg-edit-a"><button type="button" class="dsx-btn primary lngb" data-breg="save">Save</button>` +
       `<button type="button" class="linkbtn lngb" data-breg="cancel">Cancel</button></div></div>` : '';
-  return `<li class="breg-item ${j.st}" data-id="${esc(it.id)}"><i class="breg-dot" aria-hidden="true"></i><div class="breg-body">` +
-    `<p class="breg-text">${esc(it.text)}</p>` +
+  const open = S.openItem === it.id;
+  const headBtn = `<button type="button" class="breg-ih lngb" data-breg="item" aria-expanded="${open}" ` +
+    `aria-label="${esc(`${BREG_ST[j.st]}: ${it.text}`)}"><i class="breg-dot" aria-hidden="true"></i>` +
+    `<span class="breg-text">${esc(it.text)}</span><i class="breg-chev" aria-hidden="true"></i></button>`;
+  if (!open) return `<li class="breg-item ${j.st}" data-id="${esc(it.id)}">${headBtn}</li>`;
+  return `<li class="breg-item ${j.st} open" data-id="${esc(it.id)}">${headBtn}<div class="breg-ib">` +
     `<p class="breg-tags"><span class="breg-st">${BREG_ST[j.st]}</span><span class="breg-tag" data-tip="${esc(m[1])}">${m[0]}</span>` +
       `<span class="breg-tag">${it.scope === 'org' ? 'Once for the organisation' : 'For each dataset'}</span>` +
-      (j.c ? `<span class="breg-tag auto">Checked by the sweep</span>` : '') + (it.ref ? `<span class="breg-ref">${esc(it.ref)}</span>` : '') + `</p>` +
-    `<blockquote class="breg-quote">&ldquo;${esc(it.quote)}&rdquo;<a href="${esc(it.url)}" target="_blank" rel="noopener noreferrer">${esc(host || 'Where it says so')}</a></blockquote>` +
+      (j.c ? `<span class="breg-tag auto">${String(j.c.id).startsWith('policy.') ? 'From its Compliance policy' : 'Checked by the sweep'}</span>` : '') +
+      (it.ref ? `<span class="breg-ref">${esc(it.ref)}</span>` : '') + `</p>` +
+    `<blockquote class="breg-quote">&ldquo;${esc(it.quote)}&rdquo;<a href="${esc(it.url)}" target="_blank" rel="noopener noreferrer">${esc(host || 'Where it says so')}${pisIco('external')}</a></blockquote>` +
     why + ans + acts + edit + `</div></li>`;
 }
 /** Says in the requirement what went wrong with its answer, leaving what was typed as it is. */
@@ -16760,6 +16886,97 @@ function bregSay(li, msg) {
   }
   p.textContent = msg;
 }
+/** A dialog of the register's own: `html` inside, `read(ov)` the value to resolve with when OK is pressed (null keeps
+ *  OK disabled), so the reader can only finish once it is complete. Resolves to the value, or null when cancelled. */
+function bregDialog(title, html, okLabel, read) {
+  return new Promise(resolve => {
+    const ov = document.createElement('div');
+    ov.className = 'modal-overlay dq-ov open';
+    ov.innerHTML = `<div class="modal dq-dialog breg-dlg-box" role="dialog" aria-modal="true" aria-labelledby="bregDlgT">` +
+      `<div class="modal-head"><h3 id="bregDlgT">${esc(title)}</h3><button class="x-close" type="button" data-dq="cancel" aria-label="Close">&times;</button></div>` +
+      `<div class="modal-body"><div class="breg-dlg">${html}</div></div>` +
+      `<div class="modal-foot"><button type="button" class="btn-sm" data-dq="cancel">Cancel</button>` +
+      (okLabel ? `<button type="button" class="dq-ok" data-dq="ok">${esc(okLabel)}</button>` : '') + `</div></div>`;
+    document.body.appendChild(ov);
+    const ok = ov.querySelector('[data-dq="ok"]');
+    const sync = () => { if (ok) ok.disabled = read(ov) == null; };
+    const finish = v => { ov.remove(); document.removeEventListener('keydown', onKey, true); resolve(v); };
+    ov.addEventListener('click', e => {
+      const b = e.target.closest('[data-dq]');
+      if (b) { e.preventDefault(); if (b.dataset.dq === 'ok') { const v = read(ov); if (v != null) finish(v); } else finish(null); }
+      else if (e.target === ov) finish(null);
+    });
+    ov.addEventListener('input', sync); ov.addEventListener('change', sync);
+    function onKey(e) { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); finish(null); } }
+    document.addEventListener('keydown', onKey, true);
+    sync();
+    setTimeout(() => { const f = ov.querySelector('input, textarea, button.dq-ok, button[data-dq]'); if (f) f.focus(); }, 20);
+  });
+}
+/** An area's remaining requirements given one answer: Met, Not met or Not applicable, with a note and a link. */
+async function bregAnswerMany(el, area, its) {
+  const S = el._breg; if (!S || !its.length) return;
+  const org = its.filter(it => it.scope === 'org').length, data = its.length - org;
+  const where = [data ? `${pisPl(data, 'requirement')} for this dataset` : '', org ? `${pisPl(org, 'requirement')} once for the organisation` : '']
+    .filter(Boolean).join(' and ');
+  const html = `<p class="breg-s">The <b>${pisN(its.length)}</b> requirements in <b>${esc(area)}</b> still to confirm, all given the same answer: ` +
+      `${esc(where)}.</p>` +
+    `<ol class="breg-dlg-list">${its.map(it => `<li>${esc(it.text)}</li>`).join('')}</ol>` +
+    `<fieldset class="pis-np-why"><legend>Your answer for them all</legend>${Object.entries(BREG_ANS).map(([v, l]) =>
+      `<label><input type="radio" name="bregMany" value="${v}">${esc(l)}</label>`).join('')}</fieldset>` +
+    `<label class="breg-f">What it rests on<textarea data-breg-many-note maxlength="600" placeholder="Why these hold, or why they do not apply here"></textarea></label>` +
+    `<label class="breg-f">A link to the evidence<input type="url" data-breg-many-url maxlength="500" placeholder="https://"></label>` +
+    `<p class="breg-s">Recorded with your name. Each can be changed on its own afterwards.</p>`;
+  const got = await bregDialog(`Answer ${area}`, html, `Answer ${pisN(its.length)}`, ov => {
+    const v = (ov.querySelector('input[name="bregMany"]:checked') || {}).value;
+    const url = ov.querySelector('[data-breg-many-url]').value.trim();
+    if (!v || (url && !/^https?:/i.test(url))) return null;
+    return { answer: v, note: ov.querySelector('[data-breg-many-note]').value.trim(), evidence_url: url };
+  });
+  if (!got) return;
+  try {
+    const r = await bregCall({ action: 'set-answer', governing_body: S.body, dataset_key: S.dk || undefined,
+                               requirement_ids: its.map(it => it.id), ...got });
+    Object.entries((r && r.answers) || {}).forEach(([id, a]) => {
+      const box = (S.reg.byId[id] || {}).scope === 'org' ? S.org : S.data;
+      if (a) box[id] = a; else delete box[id];
+    });
+    bregPaint(el);
+  } catch (e) { dqAlert(rcxErrText(e), { title: 'Not answered' }); }
+}
+/** The datasets an admin may copy this one's answers from: the others checked against the same body. */
+async function bregCandidates(S) {
+  let ds = (typeof pis !== 'undefined' && pis.list && pis.list.datasets) || null;
+  if (!ds) { const r = await bregCall({ action: 'datasets' }); ds = (r && r.datasets) || []; }
+  return ds.filter(d => d.key !== S.dk && (d.body || ((d.latest || {}).body || {}).id) === S.body);
+}
+/** This dataset's answers copied from another's: only to what it has not answered, each saying where it came from. */
+async function bregCopy(el) {
+  const S = el._breg; if (!S || !S.dk) return;
+  let ds = [];
+  try { ds = await bregCandidates(S); } catch (e) { dqAlert(rcxErrText(e), { title: 'Not copied' }); return; }
+  const name = SRC_BODY_L[S.body] || S.body;
+  if (!ds.length) {
+    await bregDialog('Copy answers from another dataset', `<p class="breg-s">No other dataset is checked against ${esc(name)} yet.</p>`, '', () => null);
+    return;
+  }
+  const html = `<p class="breg-s">Its answers for each dataset are copied to this one, to the requirements it has not answered: ` +
+      `the value, the note and the evidence, recorded with your name and where it came from. Its own answers stand.</p>` +
+    `<ul class="breg-pick">${ds.map(d => `<li><label><input type="radio" name="bregFrom" value="${esc(d.key)}">${esc(d.name || d.key)}</label></li>`).join('')}</ul>`;
+  const from = await bregDialog('Copy answers from another dataset', html, 'Copy its answers',
+                                ov => (ov.querySelector('input[name="bregFrom"]:checked') || {}).value || null);
+  if (!from) return;
+  try {
+    const r = await bregCall({ action: 'copy-answers', governing_body: S.body, dataset_key: S.dk, source_dataset_key: from });
+    const ans = await bregCall({ action: 'answers', governing_body: S.body, dataset_key: S.dk });
+    S.org = ans.org || {}; S.data = ans.data || {};
+    (ans.policy || []).forEach(c => S.checks.set(c.id, c));
+    bregPaint(el);
+    const src = (ds.find(d => d.key === from) || {}).name || from;
+    dqDone('Answers copied', `${pisPl(r.copied || 0, 'answer')} copied from <strong>${esc(src)}</strong>` +
+      `${r.kept ? `; ${pisPl(r.kept, 'answer')} it had already given ${r.kept === 1 ? 'was' : 'were'} kept` : ''}.`);
+  } catch (e) { dqAlert(rcxErrText(e), { title: 'Not copied' }); }
+}
 function bregWire(el) {
   el.addEventListener('click', async e => {
     const t = e.target.closest && e.target.closest('[data-breg]'), S = el._breg;
@@ -16767,19 +16984,29 @@ function bregWire(el) {
     const act = t.dataset.breg, li = t.closest('.breg-item'), id = li ? li.dataset.id : '';
     const refocus = sel => { const f = el.querySelector(sel); if (f) f.focus({ preventScroll: true }); };
     if (act === 'grp') {
-      // Opened or closed where it is: nothing else is drawn again, so the reader keeps their place.
-      const sec = t.closest('.breg-grp'), ul = sec && sec.querySelector('.breg-items'); if (!ul) return;
-      const open = t.getAttribute('aria-expanded') !== 'true';
-      (S.open = S.open || new Map()).set(sec.dataset.area, open);
-      t.setAttribute('aria-expanded', String(open));
-      ul.hidden = !open;
+      // A group picked: its requirements on the right, the first of them open.
+      if (S.group !== t.dataset.area) { S.group = t.dataset.area; S.openItem = ''; S.edit = ''; }
+      bregPaintList(el);
+      const r = el.querySelector('.breg-ritems'); if (r) r.scrollTop = 0;
+      refocus(`.breg-g[data-area="${CSS.escape(t.dataset.area)}"]`);
       return;
     }
-    if (act === 'open-all' || act === 'close-all') {
-      S.open = S.open || new Map();
-      (S.areas || []).forEach(a => S.open.set(a, act === 'open-all'));
+    if (act === 'item') {
+      // One card open at a time: opening another closes the one that was open.
+      S.openItem = S.openItem === id ? null : id;
+      S.edit = '';
       bregPaintList(el);
-      refocus(`[data-breg="${act}"]`);
+      refocus(`.breg-item[data-id="${CSS.escape(id)}"] .breg-ih`);
+      return;
+    }
+    if (act === 'grp-answer') {
+      const area = S.group;
+      const its = S.reg.items.filter(it => it.area === area && S.J.get(it.id).st !== 'other');
+      bregAnswerMany(el, area, bregAnswerable(its, S));
+      return;
+    }
+    if (act === 'copy') {
+      bregCopy(el);
       return;
     }
     if (act === 'filter') {
@@ -16822,6 +17049,13 @@ function bregWire(el) {
       bregPaint(el);
       refocus(`.breg-item[data-id="${CSS.escape(id)}"] [data-breg="ans"]`);
     }
+  });
+  // Up and down the groups with the arrow keys, as down a list.
+  el.addEventListener('keydown', e => {
+    const g = e.target.closest && e.target.closest('.breg-g');
+    if (!g || (e.key !== 'ArrowDown' && e.key !== 'ArrowUp')) return;
+    const all = [...el.querySelectorAll('.breg-g')], i = all.indexOf(g), next = all[i + (e.key === 'ArrowDown' ? 1 : -1)];
+    if (next) { e.preventDefault(); next.focus(); }
   });
   el.addEventListener('input', e => {
     if (!e.target.matches || !e.target.matches('[data-breg-q]') || !el._breg) return;
@@ -28858,6 +29092,17 @@ function pisRiskWhy(o, live, x) {
 // (Severity, Who it identifies, Changes, Rules); a column opens beside it; List shows the findings as a table.
 // The line icons the sweep uses beside the guides' own (GD_ICONS, the same 24-unit stroke style).
 const PIS_ICONS = {
+  layers: '<path d="M12 3 2 8l10 5 10-5-10-5z"/><path d="m2 16 10 5 10-5"/><path d="m2 12 10 5 10-5"/>',
+  database: '<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/>',
+  drive: '<path d="M22 12H2"/><path d="M5.5 5h13L22 12v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-6z"/><path d="M6 16h.01M10 16h.01"/>',
+  gavel: '<path d="m14 13-8.5 8.5a2.1 2.1 0 0 1-3-3L11 10"/><path d="m16 16 6-6"/><path d="m8 8 6-6"/><path d="m9 7 8 8"/><path d="m21 11-8-8"/>',
+  link: '<path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/>',
+  scales: '<path d="M12 3v18"/><path d="M6 21h12"/><path d="M3 7h18"/><path d="m6 7-3 7a3 3 0 0 0 6 0L6 7z"/><path d="m18 7-3 7a3 3 0 0 0 6 0l-3-7z"/>',
+  slash: '<circle cx="12" cy="12" r="9"/><path d="m5.6 5.6 12.8 12.8"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  external: '<path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>',
+  checkc: '<circle cx="12" cy="12" r="9"/><path d="m8.5 12 2.5 2.5 5-5"/>',
+  tick: '<path d="M20 6 9 17l-5-5"/>',
   refresh: '<path d="M20 11a8 8 0 0 0-14.3-4.9L4 8"/><path d="M4 4v4h4"/><path d="M4 13a8 8 0 0 0 14.3 4.9L20 16"/><path d="M20 20v-4h-4"/>',
   download: '<path d="M12 3.5v11"/><path d="m7 10 5 5 5-5"/><path d="M4.5 19.5h15"/>',
   trash: '<path d="M4.5 6.5h15"/><path d="M9.5 6.5V4.5h5v2"/><path d="M6.5 6.5l1 13h9l1-13"/><path d="M10 10.5v6M14 10.5v6"/>',
