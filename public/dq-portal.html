@@ -1791,7 +1791,7 @@
   .dr-chg { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding: 8px 11px; border-radius: 10px; font-size: 12.5px;
     border: 1px solid color-mix(in srgb, var(--run) 38%, var(--border)); background: color-mix(in srgb, var(--run) 7%, var(--card)); }
   .dr-chg-l { margin-right: 2px; font-weight: 700; color: var(--run); }
-  .dr-chg .rx-chip.was { text-decoration: line-through; opacity: .7; }
+  .dr-chg .rx-chip.was, .dr-what .rx-chip.was { text-decoration: line-through; opacity: .7; }
   .dr-chg-to { color: var(--muted); }
   .dr-chg q { font-style: italic; }
   .dr-foot .linkbtn { margin: 0; font-size: 12.5px; }
@@ -1867,6 +1867,7 @@
   .rx-qpop-l b { font-weight: 700; }
   .rx-qpop-l code { padding: 1px 6px; border-radius: 5px; background: var(--code-bg); color: var(--code-fg); font-size: 11.5px; overflow-wrap: anywhere; }
   .rx-qpop .linkbtn { margin: 12px 0 0; font-size: 12.5px; }
+  .rx-qpop-acts { display: flex; flex-wrap: wrap; gap: 0 18px; }
   .rx-ti { flex: none; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 8px;
     border: 1px solid var(--border); background: var(--card); color: var(--accent); }
   .rx-ti svg { width: 16px; height: 16px; }
@@ -7745,6 +7746,7 @@
         <div id="prmList"></div>
       </div>
       <div class="modal-foot">
+        <button type="button" class="btn-sm" id="prmCancel" hidden>Cancel the queued changes</button>
         <button type="button" id="prmDone">Close</button>
       </div>
     </div>
@@ -9079,7 +9081,7 @@ function renderAssessment(r, bodyEl, opts) {
   } else if (mdEl) observeInlineMetadata(mdEl);   // metadata scores, loaded when the panel becomes visible
   const vpb = body.querySelector('[data-viewpins]');
   if (vpb) vpb.addEventListener('click', () =>
-    openPinRulesModal(r.pendingPinRules, { by: r.pendingPinBy, at: r.pendingPinAt }));
+    openPinRulesModal(r.pendingPinRules, { by: r.pendingPinBy, at: r.pendingPinAt, prefix: r.resultPrefix }));
   // The AI button toggles its panel: the first press asks, pressing again folds it away, and
   // opening it again shows the same answer without a new call (aiToggle).
   const esb = body.querySelector('[data-explainscore]');
@@ -9175,11 +9177,17 @@ function openPinRulesModal(aug, meta) {
     ? list.map(g => `<div class="trow"><div><strong>${esc(g.col)}</strong>` +
         `<div class="hint">${g.rules.map(esc).join('<br>')}</div></div></div>`).join('')
     : '<p class="hint">No rule details found in the queued pin.</p>';
+  // From a dataset, they can be cancelled here too, so the next run uses the rules in force.
+  const cb = $('#prmCancel');
+  if (cb) { cb.hidden = !(meta && meta.prefix); cb.dataset.prefix = (meta && meta.prefix) || ''; }
   $('#pinRulesModal').classList.add('open');
 }
 function closePinRulesModal() { $('#pinRulesModal').classList.remove('open'); }
 if ($('#prmClose')) $('#prmClose').addEventListener('click', closePinRulesModal);
 if ($('#prmDone')) $('#prmDone').addEventListener('click', closePinRulesModal);
+if ($('#prmCancel')) $('#prmCancel').addEventListener('click', async e => {
+  if (await rxCancelQueued(e.currentTarget.dataset.prefix)) closePinRulesModal();
+});
 if ($('#pinRulesModal')) $('#pinRulesModal').addEventListener('click', e => { if (e.target.id === 'pinRulesModal') closePinRulesModal(); });
 
 // ---- Edit active rules (the ruleset currently pinned / in effect for a dataset) --------
@@ -9363,7 +9371,8 @@ function rxRowHtml(rx, col, i) {
     const from = rxFrom(rx, col, f), tt = from ? (tip ? `${tip}. ${RX_FROM[from]}` : RX_FROM[from]) : tip;
     return `<span class="rx-chip${cls ? ' ' + cls : ''}${from ? ' ai' : ''}"${from ? ` data-from="${from}"` : ''}${tt ? ` data-tip="${esc(tt)}"` : ''}>${esc(x)}</span>`;
   };
-  const queued = !!(rx.queued && rx.queued.cols[col]);
+  // One put back to the rules in force here (Don't apply this change) goes with the next save: not marked.
+  const queued = !!(rx.queued && rx.queued.cols[col]) && !rxColBack(rx, col);
   return `<div class="rx-col${open ? ' open' : ''}${dirty ? ' edited' : ''}${queued ? ' queued' : ''}" data-col="${esc(col)}" role="listitem"><div class="rx-rowl">` +
     `<button type="button" class="rx-row lngb" data-rx="toggle" aria-expanded="${open}" aria-controls="rx-ed-${i}">` +
       `<span class="rx-chev" aria-hidden="true"></span>${_rxIco(spec.type)}` +
@@ -9517,7 +9526,7 @@ function rxCrossHtml(rx) {
     return `<div class="rx-cr${isNew ? ' new' : ''}" role="listitem" data-cr="${esc(r.id)}"><span class="rx-cr-b"><span class="rx-cr-t">${esc(what)}</span>` +
       `<code class="rx-cr-x">${esc(r.expr)}</code></span>` +
       (isNew ? '<span class="rx-mark" data-tip="Added, and not saved yet">New</span>' : '') +
-      (q && !isNew && q.cross[r.id] ? rxQBtn(`cr:${r.id}`, what) : q && !isNew && q.added.some(x => x.id === r.id) ? rxQBtn(`cr+:${r.id}`, what) : '') +
+      (q && !isNew && q.cross[r.id] && !rxCrBack(rx, r) ? rxQBtn(`cr:${r.id}`, what) : q && !isNew && q.added.some(x => x.id === r.id) ? rxQBtn(`cr+:${r.id}`, what) : '') +
       `<span class="rx-sev ${esc(sev)}">${esc((RX_SEV.find(x => x[0] === sev) || [sev, sev])[1])}</span>` +
       `<button type="button" class="rx-x lngb" data-rx="crdrop" data-i="${i}" aria-label="Remove the rule: ${esc(what)}" data-tip="Remove this rule">✕</button></div>`;
   };
@@ -9637,6 +9646,12 @@ function rxQueuedDiff(pinned, pend) {
   const added = now.filter(x => !was.some(r => r.id === x.id));
   return { cols, cross, added, at: pend.at || '', by: pend.by || '' };
 }
+/** A column, or a rule across columns, as it is in force again, so a queued change to it goes with the next save. */
+const rxColBack = (rx, col) => _rxCanon(rx.state.columns[col]) === _rxCanon(rx.pinned.columns[col]) && _rxPk(rx.state, col) === _rxPk(rx.pinned, col);
+function rxCrBack(rx, r) {
+  const was = (rx.pinned.consistencyRules || []).find(x => x.id === r.id);
+  return !!was && was.expr === r.expr && (was.severity || 'major') === (r.severity || 'major') && (was.description || '') === (r.description || '');
+}
 function rxQBtn(key, what) {
   return `<button type="button" class="rx-q lngb" data-rx="queued" data-q="${esc(key)}" aria-haspopup="dialog" aria-expanded="false" ` +
     `aria-label="${esc(`Changes queued for the next run on ${what}: show them`)}" data-tip="Saved for the next run. Press to see what changes">${RX_Q_ICO}<span>Queued</span></button>`;
@@ -9674,13 +9689,19 @@ function rxQueuedShow(rx, btn) {
     pop = document.createElement('div');
     pop.id = 'rxQPop'; pop.className = 'rx-qpop'; pop.setAttribute('role', 'dialog'); pop.hidden = true;
     document.body.appendChild(pop);
-    pop.addEventListener('click', e => { if (e.target.closest('[data-q-all]') && pop._rx) { dsxMenuHide(false); rxViewQueued(pop._rx); } });
+    pop.addEventListener('click', e => {
+      if (!pop._rx) return;
+      const undo = e.target.closest('[data-q-undo]');
+      if (undo) { dsxMenuHide(false); rxUnqueue(pop._rx, undo.dataset.qUndo); }
+      else if (e.target.closest('[data-q-all]')) { dsxMenuHide(false); rxViewQueued(pop._rx); }
+    });
   }
   pop._rx = rx;
   pop.setAttribute('aria-label', 'Queued for the next run');
   pop.innerHTML = `<div class="rx-qpop-h">${RX_Q_ICO}Queued for the next run</div>` +
     `<p class="rx-qpop-m">Saved${who}${when}. It applies when the dataset is next assessed.</p>${body}` +
-    `<button type="button" class="linkbtn lngb" data-q-all>See everything queued</button>`;
+    `<div class="rx-qpop-acts"><button type="button" class="linkbtn lngb" data-q-undo="${esc(key)}">Don't apply this change</button>` +
+    `<button type="button" class="linkbtn lngb" data-q-all>See everything queued</button></div>`;
   dsxMenuShow(btn, pop);
   rxQPlace(pop, btn);
   pop.tabIndex = -1;
@@ -9719,7 +9740,8 @@ function rxNotesHtml(rx) {
   if (rx.ui.restored) h += `<div class="rx-note">Your changes from earlier are still here, not saved yet.</div>`;
   if (rx.ui.dropped) h += `<div class="rx-note warn">The rules changed since you last edited them here, so your unsaved changes were set aside.</div>`;
   if (rx.state.hasPending) h += `<div class="rx-note warn"><span>Changes are queued for this dataset's next run, and the rules below already include them, each marked ⏱ Queued. Saving keeps them, with whatever else you change.</span>` +
-    `<button type="button" class="linkbtn lngb" data-rx="viewq">See them</button></div>`;
+    `<button type="button" class="linkbtn lngb" data-rx="viewq">See them</button>` +
+    `<button type="button" class="linkbtn lngb" data-rx="cancelq">Cancel them</button></div>`;
   return h;
 }
 function rxBarHtml(rx) {
@@ -9927,6 +9949,7 @@ function rxOnClick(rx, e) {
     case 'save': rxSave(rx); break;
     case 'discard': rxDiscard(rx); break;
     case 'viewq': rxViewQueued(rx); break;
+    case 'cancelq': rxCancelQueued(rx.prefix); break;
   }
 }
 /** Redraw the rules across columns. */
@@ -10014,8 +10037,9 @@ function rxTagKey(rx, e) {
 }
 
 // ---- Saving it ----
-async function rxSave(rx) {
-  const s = rx.state, columns = {};
+/** The editor's rules as Save sends them. */
+function rxSaveBody(s) {
+  const columns = {};
   for (const [c, spec] of Object.entries(s.columns)) {
     const clean = {};
     for (const [k, v] of Object.entries(spec || {})) if (_rxSet(v)) clean[k] = v;
@@ -10046,13 +10070,32 @@ async function rxSave(rx) {
   const colCase = {};
   Object.keys(s.columns || {}).forEach(c => { colCase[c.toLowerCase()] = c; });
   const primary_key = (s.primaryKey || []).map(x => colCase[String(x).toLowerCase()] || x);
+  return { columns, primary_key, integrity_rules: integrity, accuracy,
+           consistency_rules: (s.consistencyRules || []).map(r => ({ id: r.id, expr: r.expr, description: r.description || '',
+             severity: r.severity || 'major', weight: r.weight == null ? 1 : r.weight })) };
+}
+/** Two sets of rules as Save would send them, compared: the key in any order, and an empty value the same
+ *  as none, as the API takes them. */
+function rxSameSaved(a, b) {
+  const blank = y => y === null || y === undefined || y === '' || (Array.isArray(y) && !y.length) ||
+    (y && typeof y === 'object' && !Array.isArray(y) && !Object.keys(y).length);
+  const norm = x => Array.isArray(x) ? x.map(norm) : x && typeof x === 'object'
+    ? Object.fromEntries(Object.keys(x).sort().map(k => [k, norm(x[k])]).filter(([k, y]) => !k.startsWith('_') && !blank(y))) : x;
+  const key = o => Object.assign({}, o, { primary_key: (o.primary_key || []).slice().sort() });
+  return JSON.stringify(norm(key(a))) === JSON.stringify(norm(key(b)));
+}
+async function rxSave(rx) {
+  const s = rx.state, body = rxSaveBody(s), { columns, primary_key } = body;
   rx.root.querySelectorAll('.rx-bar button').forEach(b => { b.disabled = true; });
   const sv = rx.root.querySelector('.rx-bar [data-rx="save"]'); if (sv) sv.textContent = 'Saving…';
+  // Every queued change put back to the rules in force (Don't apply this change): nothing is left to
+  // queue, so the queue goes rather than a copy of the rules in force taking its place.
+  if (s.hasPending && rxSameSaved(body, rxSaveBody(rx.pinned))) {
+    if (!await rxCancelQueued(rx.prefix, { asked: true, msg: '<b>Saved.</b> Nothing is queued now: the next run uses the rules in force.' })) rxBar(rx);
+    return;
+  }
   try {
-    await postJSON(`${API_BASE}/data-quality/save-ruleset`, HEADERS,
-      { result_prefix: rx.prefix, columns, primary_key, integrity_rules: integrity, accuracy,
-        consistency_rules: (s.consistencyRules || []).map(r => ({ id: r.id, expr: r.expr, description: r.description || '',
-          severity: r.severity || 'major', weight: r.weight == null ? 1 : r.weight })), actor: EMAIL || undefined });
+    await postJSON(`${API_BASE}/data-quality/save-ruleset`, HEADERS, { result_prefix: rx.prefix, ...body, actor: EMAIL || undefined });
   } catch (e) {
     rxBar(rx);
     const m = rx.root.querySelector('.rx-bar .rx-bar-msg');
@@ -10083,10 +10126,62 @@ async function rxDiscard(rx) {
   rx.ui.restored = rx.ui.dropped = false;
   rxPaint(rx);
 }
+/** Cancel the rule changes queued for a dataset's next run, so that run uses the rules in force. Asked first
+ *  (unless `asked`); then the queued file goes, and the editor and the dataset's notes show the rules in
+ *  force again. True when they are cancelled. */
+async function rxCancelQueued(prefix, opts = {}) {
+  if (!prefix) return false;
+  const rx = rxNow && rxNow.prefix === prefix && rxNow.root.isConnected ? rxNow : null, n = rx ? rxChanges(rx).n : 0;
+  if (!opts.asked && !await dqConfirm(`Cancel the rule changes queued for this dataset? Its next run uses the rules in force now. ` +
+      (n === 1 ? 'Your change not saved yet goes too, since it was made on the queued rules. '
+        : n ? `Your ${n} changes not saved yet go too, since they were made on the queued rules. ` : '') +
+      `This cannot be undone.`, { title: 'Cancel the queued changes', danger: true, okLabel: 'Cancel them', cancelLabel: 'Keep them' })) return false;
+  try {
+    await postJSON(`${API_BASE}/data-quality/cancel-queued-rules`, HEADERS, { result_prefix: prefix, actor: EMAIL || undefined });
+  } catch (e) {
+    await dqAlert(`The queued changes were not cancelled. ${e.message}`, { title: 'Not cancelled' });
+    return false;
+  }
+  delete rxDrafts[prefix];
+  if (rx) {
+    await editActiveRules(prefix, rx.root);
+    const now = rx.root._rx;
+    if (now) {
+      rxBar(now, opts.msg || '<b>Cancelled.</b> The next run of this dataset uses the rules in force.', 'ok');
+      const bar = now.root.querySelector('.rx-bar');
+      if (bar) bar._t = setTimeout(() => rxBar(now), 4000);
+    }
+  }
+  refreshDatasetQueued(prefix);
+  return true;
+}
+/** Don't apply one queued change: the column, or the rule across columns, goes back to how it is in force,
+ *  as a change not saved yet. Save then queues the rest; with nothing left, it cancels the queue. */
+function rxUnqueue(rx, key) {
+  const s = rx.state, pin = rx.pinned;
+  if (key.startsWith('col:')) {
+    const col = key.slice(4);
+    s.columns[col] = _rxClone(pin.columns[col] || {});
+    const want = _rxPk(pin, col), has = _rxPk(s, col);
+    if (want && !has) s.primaryKey = (s.primaryKey || []).concat(col);
+    if (!want && has) s.primaryKey = s.primaryKey.filter(c => c !== col);
+    if (!rx.ui.open.includes(col)) rx.ui.open.push(col);
+  } else {
+    const id = key.slice(key.indexOf(':') + 1), was = (pin.consistencyRules || []).find(r => r.id === id);
+    const list = (s.consistencyRules || []).slice(), at = list.findIndex(r => r.id === id);
+    if (key.startsWith('cr+:')) { if (at >= 0) list.splice(at, 1); }        // queued to be added: it is not
+    else if (was) { if (at >= 0) list[at] = _rxClone(was); else list.push(_rxClone(was)); }   // changed or going: as it is
+    s.consistencyRules = list;
+  }
+  rxPaint(rx);
+  rxTouched(rx);
+  const save = rx.root.querySelector('.rx-bar [data-rx="save"]');
+  if (save) save.focus({ preventScroll: true });
+}
 async function rxViewQueued(rx) {
   let r = null;
   try { r = await dsxResult(rx.prefix, true); } catch (e) { /* the modal says there are no details */ }
-  openPinRulesModal((r && r.pendingPinRules) || {}, { by: r && r.pendingPinBy, at: r && r.pendingPinAt });
+  openPinRulesModal((r && r.pendingPinRules) || {}, { by: r && r.pendingPinBy, at: r && r.pendingPinAt, prefix: rx.prefix });
 }
 /** The queued state changed (rules saved or pinned elsewhere): the editor's note follows. */
 function rxQueued(prefix, r) {
@@ -14131,7 +14226,7 @@ async function dsxClick(e) {
     case 'incidents': dsxIncidents(d); break;
     case 'rules': {
       const r = dsxResNow();
-      if (r && r.pendingPin && r.pendingPinRules) openPinRulesModal(r.pendingPinRules, { by: r.pendingPinBy, at: r.pendingPinAt });
+      if (r && r.pendingPin && r.pendingPinRules) openPinRulesModal(r.pendingPinRules, { by: r.pendingPinBy, at: r.pendingPinAt, prefix: dashSelected && dashSelected.prefix });
       else dsxGoTab('rules');
       break;
     }
@@ -14410,14 +14505,22 @@ function drHtml(r, out) {
 }
 function drCardHtml(r, d, i, out) {
   const ac = d.augment || {}, cross = (ac.consistency_rules || [])[0], key = ac.keys && ac.keys.primary, col = _augCol(ac);
+  const unkey = ac.keys && ac.keys.drop_primary, uncross = (ac.drop_consistency_rules || [])[0], off = drOff(ac);
+  const rx = (_rulesBody(out) || {})._rx, have = !d._added && drIsIn(rx, d);
   let kind, what, imp;
   if (cross) {
     kind = 'Rule across columns';
     what = `<code class="dr-expr">${esc(cross.expr)}</code>`;
     imp = 'How many rows it fails shows after the dataset\'s next run: the profile cannot tell today.';
-  } else if (key) {
+  } else if (uncross) {
+    // One taken off: the rule it is, struck through.
+    const was = rx && (rx.state.consistencyRules || []).concat(rx.pinned.consistencyRules || []).find(x => x.id === uncross);
+    kind = 'Rule across columns';
+    what = was ? `<span class="rx-chip was">${esc(was.description || was.expr)}</span>` : '';
+    imp = '';
+  } else if (key || unkey) {
     kind = 'Primary key';
-    what = `<span class="rx-chip key">🔑 ${esc(key.join(' + '))}</span>`;
+    what = `<span class="rx-chip key${unkey ? ' was' : ''}">🔑 ${esc((key || unkey).join(' + '))}</span>`;
     imp = '';
   } else {
     kind = 'Rule on one column';
@@ -14426,7 +14529,6 @@ function drCardHtml(r, d, i, out) {
   }
   const on = (d.columns || []).map(c => `<code>${esc(c)}</code>`).join(' · ');
   const sev = cross ? (cross.severity || 'major') : (col && col.obj && col.obj.severity) || '';
-  const rx = (_rulesBody(out) || {})._rx, have = !d._added && drIsIn(rx, d);
   // What it changes in the rules already there, worked out before it is added (after, it is the rule).
   if (!d._added) {
     d._chg = cross || key || !col ? null : drChange(rx, col.col, col.obj);
@@ -14435,18 +14537,19 @@ function drCardHtml(r, d, i, out) {
   const chg = d._chg, twin = d._twin, chip = t => `<span class="rx-chip">${esc(t)}</span>`;
   const sevL = v => (RX_SEV.find(x => x[0] === v) || [v, v])[1];
   const chgHtml = chg && !have ? `<div class="dr-chg"><span class="dr-chg-l">Changes the rule ${esc(col.col)} has now</span>` +
-      (chg.was.length ? chg.was.map(t => `<span class="rx-chip was">${esc(t)}</span>`).join('') + `<span class="dr-chg-to" aria-label="becomes">→</span>` +
-        chg.now.map(chip).join('') : '') +
+      (chg.was.length ? chg.was.map(t => `<span class="rx-chip was">${esc(t)}</span>`).join('') +
+        (chg.now.length ? `<span class="dr-chg-to" aria-label="becomes">→</span>` + chg.now.map(chip).join('') : `<span class="dr-chg-to">taken off</span>`) : '') +
       (chg.sev ? `<span class="dr-chg-to">${chg.was.length ? ' · ' : ''}severity ${esc(sevL(chg.sev[0]))} → ${esc(sevL(chg.sev[1]))}</span>` : '') + `</div>`
     : twin && !have ? `<div class="dr-chg"><span class="dr-chg-l">Already a rule across these columns</span>` +
       `<q>${esc(twin.description || twin.expr)}</q><span class="dr-chg-to">Replace it with this one, or add this one as well.</span></div>` : '';
-  const done = d._added === 'replaced' || (d._added && chg) ? 'Changed below, not saved yet' : 'Added below, not saved yet';
+  const done = d._added === 'removed' ? 'Removed below, not saved yet'
+    : d._added === 'replaced' || (d._added && chg) ? 'Changed below, not saved yet' : 'Added below, not saved yet';
   const foot = d._added || have
-    ? `<span class="dr-done" role="status">✓ ${have ? "Already in this dataset's rules" : done}` +
+    ? `<span class="dr-done" role="status">✓ ${have ? (off ? "Nothing to take off: it is not in this dataset's rules" : "Already in this dataset's rules") : done}` +
       `<button type="button" class="linkbtn lngb" data-dr-see="${i}">See it</button></span>`
     : twin ? `<button type="button" class="linkbtn lngb" data-dr-add="${i}">Add as well</button>` +
         `<button type="button" class="dsx-btn primary lngb" data-dr-add="${i}" data-dr-replace="${esc(twin.id)}">Replace the rule</button>`
-    : `<button type="button" class="dsx-btn primary lngb" data-dr-add="${i}">${chg ? 'Change the rule' : 'Add to the rules'}</button>`;
+    : `<button type="button" class="dsx-btn primary lngb" data-dr-add="${i}">${off ? 'Remove the rule' : chg ? 'Change the rule' : 'Add to the rules'}</button>`;
   return `<div class="dr-card ai-rise${d._added ? ' added' : ''}" style="--i:${Math.min(i, 6)}" data-dr="${i}">` +
     `<div class="dr-head"><span class="tag">${kind}</span><span class="dr-title">${esc(d.title || '')}</span>` +
       (on ? `<span class="dr-on">on ${on}</span>` : '') + (sev ? `<span class="rx-sev ${esc(sev)}">${esc((RX_SEV.find(x => x[0] === sev) || [sev, sev])[1])}</span>` : '') + `</div>` +
@@ -14460,6 +14563,7 @@ function drCardHtml(r, d, i, out) {
 function drChange(rx, col, spec) {
   if (!rx || !spec) return null;
   const cur = rx.state.columns[col] || {}, next = Object.assign({}, cur, spec), fields = Object.keys(spec);
+  fields.forEach(f => { if (spec[f] === null) delete next[f]; });       // taken off
   const touches = c => (c[3] || []).some(f => fields.includes(f));
   const was = rxChips(cur, false).filter(touches).map(c => c[0]), now = rxChips(next, false).filter(touches).map(c => c[0]);
   const sevWas = cur.severity || 'major', sevNow = next.severity || 'major';
@@ -14475,14 +14579,27 @@ function drTwin(rx, cr, cols) {
   const reads = e => { const ids = new Set(String(e || '').match(/[A-Za-z_][A-Za-z0-9_]*/g) || []); return names.filter(n => ids.has(n)).sort().join('|'); };
   return (rx.state.consistencyRules || []).find(x => x.expr !== cr.expr && key && reads(x.expr) === key) || null;
 }
-/** Is a written rule already in the editor's rules, as it is written? Then there is nothing to add. */
+/** Is a written rule already in the editor's rules, as it is written? Then there is nothing to add. One
+ *  taken off is in already when the rules do not have it; a column with no severity set is major. */
 function drIsIn(rx, d) {
   const ac = (d && d.augment) || {}, same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
   const cols = Object.entries(ac.columns || {}), keys = (ac.keys || {}).primary, cross = ac.consistency_rules || [];
-  if (!rx || (!cols.length && !keys && !cross.length)) return false;
-  return cols.every(([c, spec]) => Object.entries(spec).every(([k, v]) => same((rx.state.columns[c] || {})[k], v))) &&
+  const unkey = (ac.keys || {}).drop_primary || [], uncross = ac.drop_consistency_rules || [];
+  if (!rx || (!cols.length && !keys && !cross.length && !unkey.length && !uncross.length)) return false;
+  const holds = (cur, k, v) => v === null ? !_rxSet(cur[k]) || cur[k] === false
+    : k === 'severity' ? (cur.severity || 'major') === v : same(cur[k], v);
+  return cols.every(([c, spec]) => Object.entries(spec).every(([k, v]) => holds(rx.state.columns[c] || {}, k, v))) &&
     (!keys || _rxSameKey(rx.state.primaryKey, keys)) &&
-    cross.every(cr => (rx.state.consistencyRules || []).some(x => x.expr === cr.expr));
+    unkey.every(c => !(rx.state.primaryKey || []).includes(c)) &&
+    cross.every(cr => (rx.state.consistencyRules || []).some(x => x.expr === cr.expr)) &&
+    uncross.every(id => !(rx.state.consistencyRules || []).some(x => x.id === id));
+}
+/** Does a written rule only take rules off (a column's, the key's, or one across columns)? */
+function drOff(ac) {
+  if ((ac.keys && ac.keys.drop_primary) || (ac.drop_consistency_rules || []).length) return true;
+  const specs = Object.values(ac.columns || {});
+  return specs.length > 0 && specs.every(sp => Object.values(sp).some(v => v === null) &&
+    Object.entries(sp).every(([k, v]) => v === null || k === 'severity'));
 }
 /** Add a written rule to the editor below, as a change not saved yet, and bring it into view there.
  *  On a column it merges into the rules there, so a range replaces the range; `replace` is a rule
@@ -14496,10 +14613,17 @@ function drAdd(out, i, replace) {
   }
   const ac = d.augment || {};
   for (const [col, spec] of Object.entries(ac.columns || {})) {
-    rx.state.columns[col] = Object.assign(rx.state.columns[col] || {}, _rxClone(spec));
+    const to = rx.state.columns[col] = Object.assign(rx.state.columns[col] || {}, _rxClone(spec));
+    Object.keys(spec).forEach(k => { if (spec[k] === null) delete to[k]; });     // taken off, as its ✕ does
     if (!rx.ui.open.includes(col)) rx.ui.open.push(col);
   }
   if (ac.keys && ac.keys.primary) rx.state.primaryKey = ac.keys.primary.slice();
+  if (ac.keys && ac.keys.drop_primary) {
+    rx.state.primaryKey = (rx.state.primaryKey || []).filter(c => !ac.keys.drop_primary.includes(c));
+    ac.keys.drop_primary.forEach(c => { if (rx.state.columns[c] && !rx.ui.open.includes(c)) rx.ui.open.push(c); });
+  }
+  if ((ac.drop_consistency_rules || []).length)
+    rx.state.consistencyRules = (rx.state.consistencyRules || []).filter(x => !ac.drop_consistency_rules.includes(x.id));
   (ac.consistency_rules || []).forEach(cr => {
     const list = rx.state.consistencyRules = (rx.state.consistencyRules || []).filter(x => !replace || x.id !== replace);
     const at = list.findIndex(x => x.id === cr.id);
@@ -14508,7 +14632,7 @@ function drAdd(out, i, replace) {
   rx.ui.filter = 'all';
   rxPaint(rx);
   rxTouched(rx);
-  d._added = replace ? 'replaced' : true;
+  d._added = replace ? 'replaced' : drOff(ac) ? 'removed' : true;
   const card = out.querySelector(`.dr-card[data-dr="${i}"]`);
   if (card) {
     const tmp = document.createElement('div');
@@ -14524,14 +14648,14 @@ function drAdd(out, i, replace) {
 function drSee(d, out) {
   const body = _rulesBody(out), rx = body && body._rx;
   if (!rx || !d) return;
-  const ac = d.augment || {}, cross = (ac.consistency_rules || [])[0];
+  const ac = d.augment || {}, cross = (ac.consistency_rules || [])[0] || (ac.drop_consistency_rules || []).length && { id: ac.drop_consistency_rules[0] };
   const smooth = dqReduced() ? 'auto' : 'smooth';
   if (cross) {
     const el = rx.root.querySelector(`.rx-cr[data-cr="${CSS.escape(cross.id)}"]`) || rx.root.querySelector('.rx-cross');
     if (el) el.scrollIntoView({ behavior: smooth, block: 'center' });
     return;
   }
-  const col = Object.keys(ac.columns || {})[0] || ((ac.keys || {}).primary || [])[0];
+  const col = Object.keys(ac.columns || {})[0] || ((ac.keys || {}).primary || (ac.keys || {}).drop_primary || [])[0];
   const el = col && _rxColEl(rx, col), list = rx.root.querySelector('.rx-list');
   if (!el) return;
   if (list) dqRevealIn(list, el, el);
@@ -18190,7 +18314,7 @@ async function refreshDatasetQueued(prefix) {
   el.innerHTML = `<span class="tag info-tag" data-tip="Rules are pinned for this dataset and apply on its next run">✎ Queued rules</span>` +
     (r.pendingPinRules ? `<button class="btn-sm" id="dashViewQueued">View queued rules</button>` : '');
   const vb = el.querySelector('#dashViewQueued');
-  if (vb) vb.addEventListener('click', () => openPinRulesModal(r.pendingPinRules, { by: r.pendingPinBy, at: r.pendingPinAt }));
+  if (vb) vb.addEventListener('click', () => openPinRulesModal(r.pendingPinRules, { by: r.pendingPinBy, at: r.pendingPinAt, prefix }));
 }
 // Close the dataset-level Edit panel and refresh the queued chip (called after a save).
 function closeDatasetRulesPanel() {
@@ -27429,9 +27553,10 @@ function buildGuides() {
             `In the dataset's ${ui('Rules')} tab, type the rule as you would say it in ${ui('Describe a rule')}, such as “the ship date is never before the order date” or “every customer has an email address”, and press ${ui('Write the rule')}.`,
             `The AI writes it for this dataset's columns. A rule about one column becomes a rule on that column, saying what it would fail in today's data; one that compares columns becomes a <b>rule across columns</b>, shown as the engine will read it.`,
             `Press ${ui('Add to the rules')}. It goes into the rules below as a change not saved yet, and ${ui('See it')} takes you to it. Press ${ui('Save changes')} to queue it for the dataset's next run, as with any other change.`) +
-          p(`It can change a rule as well as add one. If the column already has a rule of that kind, such as a range of 2 to 200 when you ask for 1 to 100, the card shows the rule as it is and as it would be, and ${ui('Change the rule')} replaces it, leaving the column's other rules alone. A rule across columns that reads the same columns as one already there offers ${ui('Replace the rule')} or ${ui('Add as well')}. To remove a rule, press its ${ui('✕')} in the editor.`) +
+          p(`It can change a rule as well as add one. If the column already has a rule of that kind, such as a range of 2 to 200 when you ask for 1 to 100, the card shows the rule as it is and as it would be, and ${ui('Change the rule')} replaces it, leaving the column's other rules alone. A rule across columns that reads the same columns as one already there offers ${ui('Replace the rule')} or ${ui('Add as well')}.`) +
+          p(`It knows every rule the editor has, decimal places and how serious a column is included, and writes each as that rule: asking for three decimal places where a column has two changes its decimal places, rather than adding a pattern beside them. It can take a rule off too, such as “email no longer needs a pattern” or “order_id is not the key any more”: the card shows the rule struck through, and ${ui('Remove the rule')} takes it off below, as its ${ui('✕')} would.`) +
           shot('rules-describe', `${n(1)} The rule, as you would say it. ${n(2)} The rule the AI wrote, as the engine will read it. ${n(3)} ${ui('Add to the rules')} puts it in the rules below, to save with the rest.`) +
-          p(`If the sentence cannot be written for this dataset, such as a rule on a column it does not have, the answer says why instead. A rule the dataset already has says ${ui("Already in this dataset's rules")}.`) +
+          p(`If the sentence cannot be written for this dataset, such as a rule on a column it does not have, the answer says why instead. A rule the dataset already has says ${ui("Already in this dataset's rules")}, and one to take off that it does not have says ${ui('Nothing to take off')}.`) +
           note(`As with Suggest rules with AI, the AI sees column names, aggregate statistics and masked value shapes, and your sentence. It never sees your values.`) },
       { h: 'Edit or remove rules', body:
           steps(
@@ -27441,7 +27566,8 @@ function buildGuides() {
           p(`A dataset has one primary key, set on its columns: switch ${ui('Primary key')} on in each column that is part of it, and its row shows ${ui('🔑 Key')}. Several columns together make one key, so each row must be unique on them taken together. A column that must be unique on its own wants ${ui('Unique')} instead.`) +
           p(`${ui('Rules across columns')}, under the columns, lists the rules that compare the columns of a row, with what each checks and the rule as the engine reads it. ${ui('✕')} removes one, saved like any other change.`) +
           note(`Changes you have not saved are kept if you leave the tab and come back. Changes you have saved are queued for the next run, and the tab shows the rules with them in, so saving again keeps them along with anything else you change.`) +
-          p(`Until that run, each rule a queued change touches is marked ${ui('Queued')}, on its column's row and on a rule across columns. Press it to see exactly what will change from the rules in force, such as a range of 2 to 200 becoming 1 to 100. A rule across columns that is queued to be taken off shows below the others, struck through and marked the same way. ${ui('See them')}, in the note above the rules, shows everything queued at once.`) },
+          p(`Until that run, each rule a queued change touches is marked ${ui('Queued')}, on its column's row and on a rule across columns. Press it to see exactly what will change from the rules in force, such as a range of 2 to 200 becoming 1 to 100. A rule across columns that is queued to be taken off shows below the others, struck through and marked the same way. ${ui('See them')}, in the note above the rules, shows everything queued at once.`) +
+          p(`To stop one queued change applying, press its ${ui('Queued')} mark, then ${ui("Don't apply this change")}. The rule goes back to how it is in force, as a change not saved yet, and ${ui('Save changes')} queues the rest without it. ${ui('Cancel them')}, in the note above the rules, or ${ui('Cancel the queued changes')} in ${ui('See them')}, cancels everything queued, so the next run uses the rules in force.`) },
       { h: 'Why pinning matters', body:
           p(`Incidents compare each run with the one before and with the dataset's learned baseline. If the rules shifted with the data, a column that started arriving empty would simply become optional. Pinned rules are what make a regression show up as one.`) },
     ],
