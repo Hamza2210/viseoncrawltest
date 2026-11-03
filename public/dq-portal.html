@@ -5358,6 +5358,16 @@
   .ep-sign { margin-top: 16px; padding: 16px 18px; border: 1.5px solid #15204a; border-radius: 6px; font-family: Inter, system-ui, sans-serif; }
   .ep-lines { display: grid; grid-template-columns: 1fr 1fr 140px; gap: 18px; margin-top: 14px; }
   .ep-lines div { height: 26px; border-bottom: 1px solid #9aa0b3; } .ep-lines span { font-size: 10px; letter-spacing: .05em; text-transform: uppercase; color: #6b7187; }
+  .ep-lines.preview div { display: flex; align-items: flex-end; padding-bottom: 3px; font: italic 600 13px Georgia, serif; color: #3b4cc0; overflow: hidden; white-space: nowrap; }
+  .ep-prev { margin: 8px 0 0; }
+  /* What is typed beside the page shows on it at once, marked until it is saved */
+  .ep-anote { margin-top: 3px; font-size: 10.5px; font-style: italic; color: #5b6178; }
+  .ep-anote[hidden] { display: none; }
+  .ep-tbl tr.ep-dirty td { background: #fff8e6; } .ep-tbl tr.ep-dirty.pick td { background: #fdf0cf; }
+  .ep-tbl tr.ep-dirty td:first-child { box-shadow: inset 3px 0 0 #d97706; }
+  .ep-unsaved { display: inline-block; margin-left: 6px; padding: 0 6px; border-radius: 8px; background: #fef3c7; color: #a16207;
+    font: 700 9.5px Inter, system-ui, sans-serif; vertical-align: 1px; }
+  .ep-tbl tr:not(.ep-dirty) .ep-unsaved { display: none; }
   .ep-insp { overflow: auto; padding: 16px; border-left: 1px solid var(--border); background: var(--card-2); font-size: 13px; color: var(--text); }
   .ep-card { margin: 0 0 12px; padding: 13px 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--card); }
   .ep-card > b { font-size: 13.5px; } .ep-card p { margin: 6px 0 0; font-size: 12.5px; line-height: 1.5; color: var(--muted); }
@@ -30896,9 +30906,11 @@ async function epOpen(o) {
     `<div class="ep-wait" role="status">Building the pack from the register, the sweep and the answers…</div></div>`;
   document.body.appendChild(ov);
   document.body.classList.add('ep-lock');
-  EP.open = { dk: o.dk, body: o.body, id: o.id || '', section: o.section || 'summary', opener: o.opener || null, ov, pick: '', act: '', edit: false };
+  EP.open = { dk: o.dk, body: o.body, id: o.id || '', section: o.section || 'summary', opener: o.opener || null, ov, pick: '', act: '', edit: false,
+              drafts: {} };
   ov.addEventListener('click', epBinderClick);
   ov.addEventListener('keydown', epBinderKey);
+  ov.addEventListener('input', epBinderInput);
   ov.querySelector('[data-epb="close"]').focus();
   try {
     const r = o.id ? await epCall({ action: 'get', dataset_key: o.dk, governing_body: o.body, pack_id: o.id })
@@ -31010,9 +31022,11 @@ function epPageHtml(P, o) {
   if (o.section === 'actions') {
     const acts = P.actions || [];
     return epHead(P, 'Actions') + `<h2>Actions</h2><p>Each requirement to act on, with who owns it and by when. ${o.canSign && P.kind !== 'signed' ? 'Pick one to give it an owner and a date.' : ''}</p>` +
-      (acts.length ? `<table class="ep-tbl"><tr><th>Requirement</th><th>Owner</th><th>By</th><th>Evidence</th></tr>` + acts.map(a =>
-        `<tr data-act="${esc(a.requirement)}" tabindex="0" class="${o.act === a.requirement ? 'pick' : ''}"><td>${esc(a.text)}</td><td>${a.owner ? esc(a.owner) : '<i>No owner yet</i>'}</td>` +
-        `<td>${a.due ? esc(epDay(a.due)) : '<i>No date yet</i>'}</td><td>${esc(a.evidence || '')}</td></tr>`).join('') + `</table>` : `<p class="ep-sm">Nothing is to act on.</p>`);
+      (acts.length ? `<table class="ep-tbl"><tr><th>Requirement</th><th>Owner</th><th>By</th><th>Evidence</th></tr>` + acts.map(a => { const v = epActVal(o, a);
+        return `<tr data-act="${esc(a.requirement)}" tabindex="0" class="${[o.act === a.requirement ? 'pick' : '', v.dirty ? 'ep-dirty' : ''].join(' ').trim()}">` +
+          `<td>${esc(a.text)}<span class="ep-unsaved">Not saved</span><div class="ep-anote" data-c="note"${v.note ? '' : ' hidden'}>${esc(v.note || '')}</div></td>` +
+          `<td data-c="owner">${epOwnerCell(v.owner)}</td><td data-c="due">${epDueCell(v.due)}</td><td>${esc(a.evidence || '')}</td></tr>`; }).join('') + `</table>`
+        : `<p class="ep-sm">Nothing is to act on.</p>`);
   }
   if (o.section === 'evidence') {
     const ev = P.evidence || [];
@@ -31036,7 +31050,43 @@ function epPageHtml(P, o) {
     `the dataset stands against these requirements on the date it was signed, and the gaps it lists have owners.</p>` +
     (P.kind === 'signed' ? `<p class="ep-sm" style="margin-top:10px">Signed by <b>${esc(P.signedBy)}</b>, ${esc(P.role || '')}, on ${esc(epDay(P.signedAt))}. Version ${pisN(P.version)}. ` +
         `Fingerprint ${esc(String(P.fingerprint || '').slice(0, 16))}…</p>`
-      : `<div class="ep-lines"><div></div><div></div><div></div><span>Name</span><span>Role</span><span>Date</span></div>`) + `</div>`;
+      : `<div data-ep-lines>${epLinesHtml(o)}</div>`) + `</div>`;
+}
+/** A draft's signature lines: blank, or as they will read once signed, while an admin types their role beside the page. */
+function epLinesHtml(o) {
+  const role = String(o.role || '').trim(), show = !!role && o.canSign && o.signing;
+  return `<div class="ep-lines${show ? ' preview' : ''}"><div>${show ? esc(EMAIL || 'You') : ''}</div><div>${show ? esc(role) : ''}</div>` +
+    `<div>${show ? esc(epDay(new Date().toISOString())) : ''}</div><span>Name</span><span>Role</span><span>Date</span></div>` +
+    (show ? `<p class="ep-sm ep-prev">A preview of your signature. Nothing is signed until you press Sign this version.</p>` : '');
+}
+const epOwnerCell = v => (v ? esc(v) : '<i>No owner yet</i>');
+const epDueCell = v => (v ? esc(epDay(v)) : '<i>No date yet</i>');
+/** An action as it reads on the page: as saved, or as typed beside it and not saved yet (`dirty`). */
+function epActVal(o, a) {
+  const d = ((o && o.drafts) || {})[a.requirement];
+  return d ? Object.assign({}, a, d, { dirty: true }) : a;
+}
+/** What is typed beside the page shows on it at once: an action's owner, date and note on its row; a signer's role in the
+ *  signature lines. Nothing is saved until Save (or signed until Sign this version). */
+function epBinderInput(e) {
+  const o = EP.open, f = e.target && e.target.dataset && e.target.dataset.epf; if (!o || !f || !o.pack) return;
+  if (f === 'role') {
+    o.role = e.target.value;
+    const box = o.ov.querySelector('[data-ep-lines]'); if (box) box.innerHTML = epLinesHtml(o);
+    return;
+  }
+  if (!['owner', 'due', 'note'].includes(f) || !o.act) return;
+  const a = (o.pack.actions || []).find(x => x.requirement === o.act); if (!a) return;
+  const d = Object.assign({ owner: a.owner || '', due: a.due || '', note: a.note || '' }, o.drafts[o.act] || {}, { [f]: e.target.value });
+  if (d.owner === (a.owner || '') && d.due === (a.due || '') && d.note === (a.note || '')) delete o.drafts[o.act]; else o.drafts[o.act] = d;
+  const row = o.ov.querySelector(`tr[data-act="${CSS.escape(o.act)}"]`), v = epActVal(o, a);
+  if (row) {
+    row.querySelector('[data-c="owner"]').innerHTML = epOwnerCell(v.owner);
+    row.querySelector('[data-c="due"]').innerHTML = epDueCell(v.due);
+    const n = row.querySelector('[data-c="note"]'); n.textContent = v.note || ''; n.hidden = !v.note;
+    row.classList.toggle('ep-dirty', !!v.dirty);
+  }
+  const say = o.ov.querySelector('[data-ep-dirty]'); if (say) say.hidden = !v.dirty;
 }
 function epEvidenceCard(P, e) {
   if (!e) return '';
@@ -31088,7 +31138,7 @@ function epInspHtml(P, o) {
       (o.say ? `<p class="ep-say ${o.say.ok ? 'ok' : 'err'}" role="status">${esc(o.say.t)}</p>` : '') + `</div>`;
   }
   if (o.section === 'actions') {
-    const a = (P.actions || []).find(x => x.requirement === o.act);
+    const a0 = (P.actions || []).find(x => x.requirement === o.act), a = a0 && epActVal(o, a0);
     if (!a) return `<h6>An action</h6><div class="ep-card"><b>Pick one</b><p>${signed ? 'Each action as it stood when this version was signed.' : 'Pick an action to see it, and give it an owner and a date.'}</p></div>`;
     const ro = signed || !o.canSign;
     return `<h6>An action</h6><div class="ep-card"><b>${esc(a.ref || a.requirement)}</b><p>${esc(a.text)}</p>` +
@@ -31098,6 +31148,7 @@ function epInspHtml(P, o) {
           `<label>By<input type="date" data-epf="due" value="${esc(a.due)}"></label>` +
           `<label>Note<textarea data-epf="note" maxlength="300" rows="3" placeholder="What will be done">${esc(a.note)}</textarea></label>` +
           `<div class="ep-row"><button type="button" class="dsx-btn primary lngb" data-epb="act-save">Save</button></div>` +
+          `<p class="ep-say" data-ep-dirty role="status"${a.dirty ? '' : ' hidden'}>Shown on the page as you type; not saved yet.</p>` +
           (o.say ? `<p class="ep-say ${o.say.ok ? 'ok' : 'err'}" role="status">${esc(o.say.t)}</p>` : '')) + `</div>` +
       (a.setBy ? `<p class="breg-s">Last set by ${esc(a.setBy)}, ${esc(epDay(a.setAt))}.</p>` : '');
   }
@@ -31113,8 +31164,10 @@ function epInspHtml(P, o) {
   }
   if (!o.canSign) return `<h6>Sign it off</h6><div class="ep-card"><b>Signed by an admin</b><p>An admin signs the pack: the version they sign is frozen, and can be checked against the data from then on.</p></div>`;
   if (!o.signing) return `<h6>Sign it off</h6><div class="ep-card"><b>Signing is not set up yet</b><p>The server has no signing key yet, so a pack cannot be signed. The draft can still be downloaded.</p></div>`;
-  const open = (P.actions || []).filter(a => !a.owner).length;
-  return `<h6>Sign it off</h6><div class="ep-card"><b>Sign this version</b><p>Signing freezes the pack exactly as it stands now and records who signed it, their role and the date. ` +
+  const open = (P.actions || []).filter(a => !a.owner).length, unsaved = Object.keys(o.drafts || {}).length;
+  return `<h6>Sign it off</h6>` + (unsaved ? `<p class="ep-say err" role="alert">${pisPl(unsaved, 'action has', 'actions have')} changes not saved, ` +
+      `so ${unsaved === 1 ? 'it is' : 'they are'} signed as last saved. Save ${unsaved === 1 ? 'it' : 'them'} in Actions first to sign ${unsaved === 1 ? 'it' : 'them'} as typed.</p>` : '') +
+    `<div class="ep-card"><b>Sign this version</b><p>Signing freezes the pack exactly as it stands now and records who signed it, their role and the date. ` +
     `It can be signed with gaps: they are part of what is signed.</p><div class="ep-kv"><span>To act on</span><span>${pisN((P.actions || []).length)}${open ? `, ${pisN(open)} without an owner` : ', each with an owner'}</span>` +
     `<span>To confirm</span><span>${pisN((P.counts || {}).confirm)}, listed as open</span><span>DPIA</span><span>${P.dpia ? (P.dpia.reviewedBy ? `reviewed by ${esc(P.dpia.reviewedBy)}` : 'drafted, not reviewed') : 'not drafted'}</span></div>` +
     `<label>Your role<input type="text" data-epf="role" maxlength="120" placeholder="Data Protection Officer" value="${esc(o.role || '')}"></label>` +
@@ -31161,6 +31214,7 @@ async function epBinderClick(e) {
     t.disabled = true;
     try {
       await epCall({ action: 'set-action', dataset_key: o.dk, governing_body: o.body, requirement_id: o.act, owner: v('owner'), due: v('due'), note: v('note') });
+      delete o.drafts[o.act];
       o.say = { ok: true, t: 'Saved. It is in the pack from now on.' };
       await epRebuild();
     } catch (err) { o.say = { ok: false, t: err.message }; o.keepScroll = true; epPaint(); }
