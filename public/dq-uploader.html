@@ -583,8 +583,10 @@
   tr.fr-blocker td { background: color-mix(in srgb, var(--err) 12%, var(--card)); }
   tr.fr-blocker td:first-child { box-shadow: inset 3px 0 0 var(--err); }
   .fr-count { font-weight: 800; color: var(--err); margin: 2px 0 8px; }
-  .fr-dl { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 4px 0 10px; }
-  .fr-dl .hint { flex: 1 1 260px; }
+  /* The panel's heading row: the blockers to fix first, and the download at its right */
+  .fr-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 16px; margin: 2px 0 8px; }
+  .fr-head .fr-count { margin: 0; }
+  .fr-head .fr-dl-btn { margin-left: auto; white-space: nowrap; }
   .fr-dl-none { margin: 4px 0 10px; }
   /* Failed records by dimension: one button per dimension that failed, with its count. */
   .fr-dims { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin: 2px 0 10px; }
@@ -15041,13 +15043,21 @@ function renderFailedRecords(data) {
   const note = data.truncated
     ? `<p class="dash-muted fr-total">Showing ${recs.length} of the ${data.total} failed records kept for this page${all.available ? ': download them all for every one' : ''}.</p>`
     : `<p class="dash-muted fr-total">${data.total} failed record(s).</p>`;
-  // Every failed record, not the sample: one line per row and check, with the dimension and why.
+  // At the top right: every failed record, not the sample, one line per row and check, with the dimension
+  // and why. A run from before that file was written offers the records it kept, and says so.
+  const pl = n => `${numInt(n)} failed record${n === 1 ? '' : 's'}`;
+  const kept = Math.min(data.total || recs.length, _FR_KEPT_MAX);
+  const dlTip = all.available
+    ? `Every failing row, each with the dimension it failed and why. Personal data stays redacted.${all.complete === false ? ` This run had more than ${numInt(all.rowsMax)}, so each check is cut back to its share.` : ''}`
+    : 'The records this run kept, a sample of each failing check, with the dimension each failed and why. Personal data stays redacted.';
   const dl = all.available && data.resultPrefix
-    ? `<div class="fr-dl"><button type="button" class="btn-sm" data-frdl="${esc(data.resultPrefix)}">⬇ Download all ${numInt(all.rows)} failed record${all.rows === 1 ? '' : 's'} (CSV)</button>` +
-      `<span class="hint">Every failing row, each with the dimension it failed and why. Personal data stays redacted.` +
-      `${all.complete === false ? ` This run had more than ${numInt(all.rowsMax)}, so each check is cut back to its share.` : ''}</span></div>`
-    : (data.resultPrefix ? `<p class="hint fr-dl-none">This run kept only the records shown here. Run the dataset again to download every failed record.</p>` : '');
-  return head + renderFailuresViz(data) + frPolicyNote(pol) + dl + frDimFilter(data) +
+    ? `<button type="button" class="btn-sm fr-dl-btn" data-frdl="${esc(data.resultPrefix)}" data-tip="${esc(dlTip)}">⬇ Download all ${pl(all.rows)} (CSV)</button>`
+    : `<button type="button" class="btn-sm fr-dl-btn" data-frkept data-tip="${esc(dlTip)}">⬇ Download the ${pl(kept)} kept (CSV)</button>`;
+  const cut = all.available && all.complete === false
+    ? `<p class="hint fr-dl-none">This run had more than ${numInt(all.rowsMax)} failed records, so the download holds each check's share of them.</p>` : '';
+  const old = !all.available && data.resultPrefix
+    ? `<p class="hint fr-dl-none">This run kept only the records shown here, so the download holds those. Run the dataset again to download every failed record.</p>` : '';
+  return `<div class="fr-head">${head || '<span></span>'}${dl}</div>` + renderFailuresViz(data) + frPolicyNote(pol) + cut + old + frDimFilter(data) +
     `<p class="dash-muted fr-filter-note" style="margin:0 0 6px;"></p>` + rowNote +
     `<div class="fr-scroll"><table class="dash-table">` +
     `<tr><th title="${esc(rowTip)}">${rowLabel}</th><th>Dimension</th><th class="fr-check">Check</th><th>Severity</th><th>Offending record</th></tr>${rows}</table></div>${note}` +
@@ -15071,6 +15081,7 @@ function frDimFilter(data) {
 const _FR_FILTER_CAP = 200;
 function showFailedRecords(el, data) {
   if (!el) return;
+  el._frData = data;                                   // for Download the records kept
   el.innerHTML = renderFailedRecords(data);
   // Filtered by severity (the legend), by dimension (the buttons above the table), both at once, or
   // by one check (See records, from the gate). `reveal` brings the table into view, for a filter
@@ -15159,10 +15170,56 @@ async function downloadAllFailed(prefix, btn) {
     if (btn) { btn.disabled = false; btn.textContent = orig; }
   }
 }
-// One handler for every Failed records panel, wherever it is drawn: the button carries its run.
+/** The most records a download of the kept ones holds: what the API serves a page at once. */
+const _FR_KEPT_MAX = 2000;
+/** The failed records a run kept (a sample of each failing check), for a run from before the file of every
+ *  failed record was written: the same columns as that file, made here from what the API serves this page,
+ *  so the records policy and the redaction are as on screen. */
+async function downloadKeptFailed(el, btn) {
+  const orig = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Preparing the file…';
+  try {
+    let data = el._frData || {};
+    if (data.truncated && data.resultPrefix)              // the page holds part of them: ask for the rest
+      data = Object.assign({}, data, await postJSON(`${API_BASE}/data-quality/failed-records`, HEADERS,
+        { result_prefix: data.resultPrefix, limit: _FR_KEPT_MAX, app_id: APP_ID || null }));
+    const recs = data.records || [], lead = ['dimension', 'why', 'severity', 'check_id', 'row'], cols = [];
+    recs.forEach(x => Object.keys(x.record || {}).forEach(k => { if (k !== '_row' && !lead.includes(k) && !cols.includes(k)) cols.push(k); }));
+    const held = recs.some(x => x.withheld);
+    // As the worker writes the whole file: a cell a spreadsheet would run as a formula is written as text.
+    const cell = v => {
+      if (v === null || v === undefined) return '';
+      let t = String(v);
+      if (/^[=+@\t\r]|^-(?![0-9.]+$)/.test(t)) t = "'" + t;
+      return /[",\r\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t;
+    };
+    const lines = [lead.concat(cols, held ? ['columns_withheld'] : []).map(cell).join(',')].concat(recs.map(x => {
+      const r = x.record || {}, l = checkLabel(x.check_id, data);
+      return [_GATE_DIM[x.dimension] || x.dimension || '', l.req ? `${l.what}: ${l.req}` : l.what, x.severity || '', x.check_id || '',
+              r._row].concat(cols.map(c => r[c]), held ? [x.withheld || ''] : []).map(cell).join(',');
+    }));
+    const seg = String(data.resultPrefix || '').replace(/\/+$/, '').split('/').slice(-2).join('-');
+    const name = `failed-records-kept${seg ? '-' + seg : ''}`.replace(/[^A-Za-z0-9._-]+/g, '-').slice(0, 150) + '.csv';
+    // A byte-order mark, so Excel opens it as UTF-8.
+    const url = URL.createObjectURL(new Blob(['\ufeff' + lines.join('\r\n') + '\r\n'], { type: 'text/csv;charset=utf-8' }));
+    const a = document.createElement('a'); a.href = url; a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+  } catch (e) {
+    dqAlert(`Could not download the failed records: ${e.message}`, { title: 'Download failed' });
+  } finally {
+    btn.disabled = false; btn.textContent = orig;
+  }
+}
+// One handler for every Failed records panel, wherever it is drawn: the button carries its run, and a
+// download of the records kept finds them on its panel.
 document.addEventListener('click', e => {
   const b = e.target.closest && e.target.closest('[data-frdl]');
-  if (b && !b.disabled) downloadAllFailed(b.dataset.frdl, b);
+  if (b && !b.disabled) { downloadAllFailed(b.dataset.frdl, b); return; }
+  const k = e.target.closest && e.target.closest('[data-frkept]');
+  let host = k;
+  while (host && !host._frData) host = host.parentElement;
+  if (k && host && !k.disabled) downloadKeptFailed(host, k);
 });
 
 // Pull the selected dataset's latest run inline: full scores + criteria + failed records.
@@ -27516,7 +27573,7 @@ function buildGuides() {
       { h: 'Reading failed records', body:
           p(`The top line says how many blocker records stand between the dataset and a passing gate. Each offending record shows its row or key, the dimension, the check that failed and its severity. ${showme('ds-failed')}`) +
           shot('failed-records', `${n(1)} How many blocker records stand in the gate's way, ${n(2)} failing checks by severity, ${n(3)} the most affected columns, and ${n(4)} the records themselves.`) +
-          p(`The page shows a sample of each failing check, at most 50 records each, taken from every check that failed. ${ui('⬇ Download all failed records (CSV)')} saves every one of them: a line per record and check, starting with the dimension it failed and why (for example "CURRENCY is not on its list of correct values"), then the record. Personal data stays redacted and the same columns are kept as on the page. A run keeps up to a million, shared between the checks. A run from before 29 October 2026 kept only its sample: run it again to download the lot.`) +
+          p(`The page shows a sample of each failing check, at most 50 records each, taken from every check that failed. ${ui('⬇ Download all failed records (CSV)')}, at the top right of the records, saves every one of them: a line per record and check, starting with the dimension it failed and why (for example "CURRENCY is not on its list of correct values"), then the record. Personal data stays redacted and the same columns are kept as on the page. A run keeps up to a million, shared between the checks. A run from before 29 October 2026 kept only its sample, so the button there downloads the records it kept, and running it again keeps the lot.`) +
           note(`Only the columns a check flagged are kept, plus the key that locates the row. The rest of the row reads as withheld, for example ${ui('+12 withheld')}. Personal data is always redacted: a column whose values look personal, whose name says it is about a person (such as <code>first_name</code> or <code>date_of_birth</code>), or that somebody marked ${ui('Confirm PII')} in the Metadata tab. ${ui('Not PII')} there shows a column's values from the next run, unless the values themselves look like personal data.`) },
       { h: 'Provisional rules', body:
           p(`${ui('⚠ Provisional')} beside Rules at the top of a dataset (${ui('⚠ Provisional - rules not yet reviewed')} on a run's report) means the rules were inferred automatically and nobody has reviewed them yet. The score is real, but look at the Rules tab before you rely on it. ${see('rules', 'Rules and AI review')}`) },
