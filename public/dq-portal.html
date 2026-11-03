@@ -5094,6 +5094,28 @@
     font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
   .breg-list h6 small { margin-left: 4px; letter-spacing: 0; }
   .breg-items { margin: 0 0 4px; padding: 0; list-style: none; display: grid; gap: 6px; }
+  /* Groups: the body's own areas, each opening and closing, its header saying how its requirements stand */
+  .breg-grpbar { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; padding: 10px 2px 6px; font-size: 12px; color: var(--muted); }
+  .breg-grpbar > span { flex: 1; }
+  .breg-grpbar .linkbtn { margin-left: 0; font-size: 12px; }
+  .breg-grp { border-bottom: 1px solid var(--border); }
+  .breg-grp:last-child { border-bottom: 0; }
+  button.breg-grp-h { position: sticky; top: 0; z-index: 1; width: 100%; display: flex; align-items: center; gap: 12px; padding: 11px 8px;
+    border: 0; border-radius: 0; background: var(--card); box-shadow: none; color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+  button.breg-grp-h:hover { background: color-mix(in srgb, var(--accent) 7%, var(--card)); }
+  button.breg-grp-h:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .breg-grp-c { flex: none; width: 7px; height: 7px; margin: 0 3px 0 2px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted);
+    transform: rotate(-45deg); transition: transform .15s ease; }
+  button.breg-grp-h[aria-expanded="true"] .breg-grp-c { transform: rotate(45deg); }
+  .breg-grp-t { flex: 1; min-width: 0; font-size: 13px; font-weight: 700; }
+  .breg-grp-t small { margin-left: 6px; font-size: 12px; font-weight: 600; color: var(--muted); }
+  .breg-grp-st { flex: none; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px 12px; font-size: 11.5px; font-weight: 650; color: var(--muted); }
+  .breg-grp-st span { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+  .breg-grp-st i { width: 7px; height: 7px; border-radius: 50%; background: var(--k); }
+  .breg-grp-bar { flex: none; width: 96px; height: 6px; display: flex; gap: 1px; border-radius: 999px; overflow: hidden; background: var(--card-2); }
+  .breg-grp-bar i { display: block; height: 100%; background: var(--k); }
+  .breg-grp > .breg-items { padding: 2px 0 12px; }
+  .breg-grp > .breg-items[hidden] { display: none; }
   .breg-item { display: flex; gap: 10px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--card); }
   .breg-item.other { background: transparent; }
   .breg-dot { flex: none; width: 9px; height: 9px; margin-top: 5px; border-radius: 50%; background: var(--k); }
@@ -16672,10 +16694,33 @@ function bregPaintList(el) {
   });
   const areas = new Map();
   show.forEach(it => { if (!areas.has(it.area)) areas.set(it.area, []); areas.get(it.area).push(it); });
-  list.innerHTML = show.length ? [...areas].map(([area, its]) => `<h6>${esc(area)}<small>${pisN(its.length)}</small></h6>` +
-      `<ul class="breg-items">${its.slice().sort((x, y) => rank(x) - rank(y)).map(it => bregItemHtml(it, S)).join('')}</ul>`).join('')
+  S.areas = [...areas.keys()];
+  const groups = [...areas].map(([area, its], gi) => {
+    const n = {}; its.forEach(it => { const st = S.J.get(it.id).st; n[st] = (n[st] || 0) + 1; });
+    const sts = BREG_ORDER.filter(k => n[k]), open = bregOpen(S, area, n, !!q);
+    const says = sts.map(k => `${n[k]} ${BREG_ST[k].toLowerCase()}`).join(', ');
+    return `<section class="breg-grp" data-area="${esc(area)}">` +
+      `<button type="button" class="breg-grp-h lngb" data-breg="grp" aria-expanded="${open}" aria-controls="bregG${gi}" ` +
+        `aria-label="${esc(`${area}: ${its.length} requirement${its.length === 1 ? '' : 's'}, ${says}`)}">` +
+        `<i class="breg-grp-c" aria-hidden="true"></i><span class="breg-grp-t">${esc(area)}<small>${pisN(its.length)}</small></span>` +
+        `<span class="breg-grp-st" aria-hidden="true">${sts.map(k => `<span class="${k}"><i></i>${pisN(n[k])} ${BREG_ST[k].toLowerCase()}</span>`).join('')}</span>` +
+        `<span class="breg-grp-bar" aria-hidden="true">${sts.map(k => `<i class="${k}" style="flex:${n[k]}"></i>`).join('')}</span></button>` +
+      `<ul class="breg-items" id="bregG${gi}"${open ? '' : ' hidden'}>${its.slice().sort((x, y) => rank(x) - rank(y)).map(it => bregItemHtml(it, S)).join('')}</ul>` +
+      `</section>`;
+  });
+  list.innerHTML = show.length
+    ? `<div class="breg-grpbar"><span>${pisPl(areas.size, 'group')}, as ${esc(SRC_BODY_L[S.body] || S.reg.short)} groups them</span>` +
+        `<button type="button" class="linkbtn lngb" data-breg="open-all">Open every group</button>` +
+        `<button type="button" class="linkbtn lngb" data-breg="close-all">Close every group</button></div>` + groups.join('')
     : `<p class="breg-s" style="padding:14px 2px">${q ? 'No requirement matches that search.' : 'None.'}</p>`;
   list.scrollTop = top;
+}
+/** Whether a group is open: as the reader left it, else open when it holds something to act on (or a search
+ *  found something in it), else closed. */
+function bregOpen(S, area, n, searching) {
+  if (searching) return true;
+  if (S.open && S.open.has(area)) return S.open.get(area);
+  return !!n.act;
 }
 function bregItemHtml(it, S) {
   const j = S.J.get(it.id), a = j.a, m = BREG_MODE[it.mode] || BREG_MODE.P, need = it.applies || 'personal';
@@ -16721,6 +16766,22 @@ function bregWire(el) {
     if (!t || !S || !el.contains(t)) return;
     const act = t.dataset.breg, li = t.closest('.breg-item'), id = li ? li.dataset.id : '';
     const refocus = sel => { const f = el.querySelector(sel); if (f) f.focus({ preventScroll: true }); };
+    if (act === 'grp') {
+      // Opened or closed where it is: nothing else is drawn again, so the reader keeps their place.
+      const sec = t.closest('.breg-grp'), ul = sec && sec.querySelector('.breg-items'); if (!ul) return;
+      const open = t.getAttribute('aria-expanded') !== 'true';
+      (S.open = S.open || new Map()).set(sec.dataset.area, open);
+      t.setAttribute('aria-expanded', String(open));
+      ul.hidden = !open;
+      return;
+    }
+    if (act === 'open-all' || act === 'close-all') {
+      S.open = S.open || new Map();
+      (S.areas || []).forEach(a => S.open.set(a, act === 'open-all'));
+      bregPaintList(el);
+      refocus(`[data-breg="${act}"]`);
+      return;
+    }
     if (act === 'filter') {
       S.filter = t.dataset.v; S.edit = '';
       bregPaint(el);
