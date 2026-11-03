@@ -5309,6 +5309,45 @@
   .pis-skyhint { position: absolute; top: 16px; right: 18px; display: inline-flex; align-items: center; gap: 8px; padding: 7px 13px; border-radius: 999px;
     border: 1px solid var(--border); background: rgba(10,14,26,.7); font-size: 12.5px; color: var(--muted); pointer-events: none; }
   .pis-skyhint .pis-ico { width: 15px; height: 15px; }
+  /* Regulator: the flow (what the sweep read, the checks, the requirements they decide) and the skyline */
+  .preg { display: block; }
+  .preg .pfl-h { font-size: 10.5px; font-weight: 700; letter-spacing: .08em; fill: var(--muted); text-transform: uppercase; }
+  .preg .pfl-t { font-size: 12px; font-weight: 600; fill: var(--text); }
+  .preg .pfl-s { font-size: 9.5px; font-weight: 500; fill: var(--muted); }
+  .preg .pfl-n { font-size: 11px; font-weight: 650; fill: var(--muted); }
+  .preg .pfl-sum { font-size: 12.5px; font-weight: 650; fill: var(--text); } .preg .pfl-sum2 { font-size: 11.5px; fill: var(--muted); }
+  .preg .pfl-wait { font-size: 12px; fill: var(--muted); }
+  .pfl-edge { fill: none; stroke-linecap: round; opacity: .42; transition: opacity .2s ease; }
+  .pfl-edge.ans { stroke-dasharray: 1 5; }
+  .pfl-node { cursor: pointer; outline: none; transition: opacity .2s ease; }
+  .pfl-node .bx { fill: #121933; stroke: #2a3352; transition: stroke .15s, fill .15s; }
+  .pfl-node:hover .bx, .pfl-node:focus-visible .bx { stroke: var(--accent); }
+  .pfl-node.on .bx { fill: #1b2550; stroke: var(--k); stroke-width: 1.5; }
+  .pfl-node:focus-visible .bx { stroke-width: 2; }
+  .preg.pfl-focus .pfl-edge { opacity: .06; } .preg.pfl-focus .pfl-edge.lit { opacity: .88; }
+  .preg.pfl-focus .pfl-node { opacity: .3; } .preg.pfl-focus .pfl-node.lit { opacity: 1; }
+  .preg.in .pfl-edge:not(.ans) { stroke-dasharray: 1 1; stroke-dashoffset: 1; animation: pflDraw .9s cubic-bezier(.4,0,.2,1) forwards; animation-delay: var(--d, 0s); }
+  .preg.in .pfl-node { animation: pflIn .45s ease both; animation-delay: var(--d, 0s); }
+  .preg.in .pfl-edge.ans { animation: pflFade .6s ease both; animation-delay: var(--d, 0s); }
+  @keyframes pflFade { from { opacity: 0; } }
+  @keyframes pflDraw { to { stroke-dashoffset: 0; } }
+  @keyframes pflIn { from { opacity: 0; transform: translateY(5px); } }
+  .preg .psl-t { font-size: 15px; font-weight: 750; fill: var(--text); } .preg .psl-s { font-size: 11.5px; fill: var(--muted); }
+  .preg .psl-lbl { font-size: 10.5px; font-weight: 600; fill: #aeb5cc; } .preg .psl-cnt { font-size: 10px; font-weight: 700; fill: var(--muted); }
+  .psl-bld { cursor: pointer; outline: none; }
+  .psl-bld .bx { fill: #141c38; stroke: #2c365a; transition: stroke .15s; }
+  .psl-bld:hover .bx, .psl-bld:focus-visible .bx { stroke: var(--accent); }
+  .psl-bld:focus-visible .bx { stroke-width: 2; }
+  .psl-win { cursor: pointer; transition: opacity .2s ease; }
+  .psl-bld:hover .psl-win { filter: brightness(1.25); }
+  .preg.psl-focus .psl-win { opacity: .16; } .preg.psl-focus .psl-win.lit { opacity: 1; }
+  .psl-beacon { animation: pslBlink 2.6s ease-in-out infinite; }
+  @keyframes pslBlink { 50% { opacity: .35; } }
+  .preg.in .psl-bld .bx { transform-box: fill-box; transform-origin: 50% 100%; animation: pslRise .6s cubic-bezier(.2,.7,.2,1) both; animation-delay: var(--d, 0s); }
+  .preg.in .psl-win { animation: pslLight .3s ease both; animation-delay: var(--d, 0s); }
+  @keyframes pslRise { from { transform: scaleY(0); } }
+  @keyframes pslLight { from { opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { .psl-beacon { animation: none; } }
   .pis-howto { position: absolute; left: 16px; top: 16px; z-index: 2; width: min(310px, calc(100% - 32px)); padding: 16px 18px; border-radius: 14px;
     border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--border)); background: rgba(14,21,38,.94); box-shadow: 0 18px 40px rgba(0,0,0,.4); }
   .pis-howto-h { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; font-size: 14.5px; font-weight: 750; }
@@ -16818,6 +16857,7 @@ function bregPaint(el) {
       `${S.canAnswer ? 'An answer for the organisation is given once and shows on every dataset; one for each dataset is given there. ' : 'An admin answers what only people can confirm. '}` +
       `A guide to what ${esc(name)} expects, not legal advice.</span></p></section>`;
   bregPaintList(el);
+  if (el.id === 'pisRegCard') pisRegRefresh();           // the flow or the skyline over it says what it says
 }
 /** An area's icon, by what it is about. */
 const BREG_AREA_ICO = [[/child/i, 'users'], [/anonymis|data sharing/i, 'layers'], [/pseudonym/i, 'link'], [/retention|retain/i, 'calendar'],
@@ -29120,7 +29160,7 @@ async function pisOpen(key, sweepId) {
   if (!pis.res || pis.res.dataset_key !== key) {
     st.innerHTML = dqSkeleton('Loading the sweep', 4);
     pis.fq = ''; pis.sev = ''; pis.riskAsc = false; pis.focus = null; pis.listed = false; pis.todoOpen = false;
-    pis.lens = 'severity'; pis.col = ''; pis.chip = ''; pis.view = pisPref('view') === 'list' ? 'list' : 'sky';
+    pis.lens = 'severity'; pis.col = ''; pis.chip = ''; pis.flowHi = ''; pis.view = pisPref('view') === 'list' ? 'list' : 'sky';
     pis.sideTop = {}; pis.sideKey = ''; pis.detail = ''; pis.detKey = ''; pis.paintedLens = ''; pis.paintedChip = ''; pis.way = ''; pis.paintedWay = '';
   }
   try {
@@ -29166,6 +29206,8 @@ function pisRiskWhy(o, live, x) {
 // (Severity, Who it identifies, Changes, Rules); a column opens beside it; List shows the findings as a table.
 // The line icons the sweep uses beside the guides' own (GD_ICONS, the same 24-unit stroke style).
 const PIS_ICONS = {
+  flow: '<path d="M3 6h3c6 0 6 12 12 12h3"/><path d="M3 18h3c6 0 6-12 12-12h3"/>',
+  city: '<path d="M3 21V11h5v10"/><path d="M8 21V4h7v17"/><path d="M15 21v-8h6v8"/><path d="M2 21h20"/><path d="M11 8h0M11 12h0M11 16h0"/>',
   layers: '<path d="M12 3 2 8l10 5 10-5-10-5z"/><path d="m2 16 10 5 10-5"/><path d="m2 12 10 5 10-5"/>',
   database: '<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/>',
   drive: '<path d="M22 12H2"/><path d="M5.5 5h13L22 12v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-6z"/><path d="M6 16h.01M10 16h.01"/>',
@@ -29453,7 +29495,7 @@ function pisSideHtml(res) {
   return '';
 }
 /** Regulator: the sweep judged against the governing body it was checked against (dq/compliance/bodies.py), the checks to
- *  act on first. Picking one that is about findings lights up their columns in the sky. */
+ *  act on first. Picking one that is about findings lights its path in the flow, or the requirements it decides in the skyline. */
 function pisBodyPanel(res) {
   const b = res.body || { id: 'general' }, none = b.id === 'general' || !(b.checks || []).length;
   const head = `<div class="pis-side-h"><span class="pis-side-t">${pisIco('shield')}${none ? 'No governing body' : `Checked against ${esc(b.against || b.short || b.id)}`}</span></div>`;
@@ -29468,7 +29510,7 @@ function pisBodyPanel(res) {
     const inner = `<i aria-hidden="true"></i><span class="pis-fitem-t"><b>${esc(c.title)}</b><small>${esc(c.rule || '')}</small></span>${lights ? pisIco('target') : ''}`;
     return `<li class="pis-bcheck ${st(c)}" data-check="${esc(c.id)}">` + (lights
         ? `<button type="button" class="pis-fitem lngb${on ? ' on' : ''}" data-pis="chip" data-v="${esc(chip)}" aria-pressed="${on}" ` +
-          `data-tip="${on ? 'Light up every column again' : 'Light up the columns it is about'}">${inner}</button>` : `<div class="pis-fitem">${inner}</div>`) +
+          `data-tip="${on ? 'Show every path again' : pis.regView === 'skyline' ? 'Light up the requirements it decides' : 'Light up its path'}">${inner}</button>` : `<div class="pis-fitem">${inner}</div>`) +
       `<p class="pis-bdetail">${esc(c.detail || '')}</p>` +
       (lights ? `<p class="pis-bcols">In ${cols.map(x => `<code>${esc(x)}</code>`).join('')}</p>` : '') +
       ((c.sources || []).some(k => src[k]) ? `<p class="pis-bsrc">${c.sources.filter(k => src[k]).map(k =>
@@ -29987,8 +30029,13 @@ function pisPaintSky(animate) {
   const res = pis.res, card = $('#pisSkyCard'); if (!res || !card) return;
   pisCloseMenu();
   const o = res.overall || {}, live = pisLive(res), todo = pisTodoItems(res, live), cc = pisChangeCounts(res.changes);
-  const view = `<div class="pis-seg pis-view" role="radiogroup" aria-label="Show it as">` + [['sky', 'target', 'Sky'], ['list', 'columns', 'List']].map(([k, ic, l]) =>
-    `<button type="button" class="lngb${pis.view === k ? ' on' : ''}" role="radio" aria-checked="${pis.view === k}" data-pis="view" data-v="${k}">${pisIco(ic)}${l}</button>`).join('') + `</div>`;
+  // On Regulator the sky gives way to a drawing of its own, and the toggle chooses which: the flow or the skyline.
+  const reg = pis.view === 'sky' && pis.lens === 'body';
+  if (!pis.regView) pis.regView = pisPref('regview') === 'skyline' ? 'skyline' : 'flow';
+  const view = reg ? `<div class="pis-seg pis-view" role="radiogroup" aria-label="Show it as">` + [['flow', 'flow', 'Flow'], ['skyline', 'city', 'Skyline']].map(([k, ic, l]) =>
+      `<button type="button" class="lngb${pis.regView === k ? ' on' : ''}" role="radio" aria-checked="${pis.regView === k}" data-pis="regview" data-v="${k}">${pisIco(ic)}${l}</button>`).join('') + `</div>`
+    : `<div class="pis-seg pis-view" role="radiogroup" aria-label="Show it as">` + [['sky', 'target', 'Sky'], ['list', 'columns', 'List']].map(([k, ic, l]) =>
+      `<button type="button" class="lngb${pis.view === k ? ' on' : ''}" role="radio" aria-checked="${pis.view === k}" data-pis="view" data-v="${k}">${pisIco(ic)}${l}</button>`).join('') + `</div>`;
   if (pis.view === 'list') {
     pis.sky = null; pis.paintedLens = ''; pis.paintedChip = '';   // back in the sky, its view plays in again
     card.innerHTML = `<div class="pis-skybar"><span class="pis-skybar-t">${pisListTitle(res)}</span><span class="pis-grow"></span>${view}</div>` +
@@ -30006,14 +30053,15 @@ function pisPaintSky(animate) {
   const legend = tl ? ['done', 'fail', 'stop', 'run'].map(k => `<span class="pis-runleg ${k}">${pisRunIco(k)}${PIS_RUN[{ done: 'SUCCEEDED', fail: 'FAILED', stop: 'CANCELLED', run: 'RUNNING' }[k]][1]}</span>`).join('')
     : pis.lens === 'identify' ? `<span><i class="link"></i>held together in a row</span>`
     : pis.lens === 'rules' ? `<span><i style="background:var(--muted)"></i>lit: falls under it</span>`
-    : pis.lens === 'body' ? `<span><i style="background:var(--muted)"></i>lit: the check is about it</span>`
+    : pis.lens === 'body' ? ['act', 'confirm', 'met', 'na'].map(k => `<span><i style="background:${PIS_BODY_ST[k][1]}"></i>${PIS_BODY_ST[k][0]}</span>`).join('') +
+      `<span class="pis-legend-note">${pis.regView === 'skyline' ? 'Press a building: its group, below' : 'Press anything: its path lights'}</span>`
     : sevs.map(s => `<span><i style="background:${PIS_SEV_VAR[s]}"></i>${PIS_SEV_L[s]}</span>`).join('') +
       `<span><i class="hollow"></i>Clean</span><span><i class="ring"></i>in free text</span>`;
   const side = pisSideHtml(res), dpane = side && pis.detail ? pisDetailPane(res, pis.detail) : '';
   if (!dpane) pis.detail = '';
   const detCol = dpane ? (pisLive(res).find(f => f.id === pis.detail) || {}).column || '' : '';
-  card.innerHTML = `<div class="pis-skybar">${seg}<div class="pis-legend">${legend}${tl ? '' : '<span class="pis-legend-note">Further out: riskier</span>'}</div>` +
-      `<button type="button" class="pis-help lngb" data-pis="howto" aria-label="How to read the ${tl ? 'timeline' : 'sky'}" aria-expanded="${!!pis.howto}">?</button>${view}</div>` +
+  card.innerHTML = `<div class="pis-skybar">${seg}<div class="pis-legend">${legend}${tl || reg ? '' : '<span class="pis-legend-note">Further out: riskier</span>'}</div>` +
+      `<button type="button" class="pis-help lngb" data-pis="howto" aria-label="How to read the ${tl ? 'timeline' : reg ? pis.regView : 'sky'}" aria-expanded="${!!pis.howto}">?</button>${view}</div>` +
     `<div class="pis-skygrid${side ? '' : ' full'}${dpane ? ' det' : ''}"><div class="pis-skywrap" id="pisSkyWrap"></div>${dpane}${side}` +
       (side ? `<div class="pis-grip" role="separator" tabindex="0" aria-orientation="vertical" aria-label="Width of the list beside the sky" ` +
         `aria-valuemin="${PIS_SIDE_MIN}" data-tip="Drag to make the list wider or narrower. Double-click for its usual width."><i></i></div>` : '') +
@@ -30022,7 +30070,7 @@ function pisPaintSky(animate) {
   if (side) pisSideFit(grid, !!dpane);
   // With a panel beside it the sky keeps the panels' height, however narrow a detail pane makes it.
   const wrap = $('#pisSkyWrap'), W = Math.max(300, Math.floor(wrap.getBoundingClientRect().width)), H = side || tl ? 560 : Math.round(Math.max(440, Math.min(560, W * .72)));
-  const L = pis.sky = tl ? { W, H, tl: true, D: [] } : pisSkyLayout(res, W, H);
+  const L = pis.sky = tl ? { W, H, tl: true, D: [] } : reg ? { W, H, reg: true, D: [] } : pisSkyLayout(res, W, H);
   grid.style.setProperty('--pis-sky-h', H + 'px');   // the panel beside the sky is as tall as the sky
   const hint = side || pis.howto ? '' : pis.lens === 'rules' ? 'Pick a rule or a kind of data to light up its columns'
     : pis.lens === 'body' ? 'Pick a check to light up its columns' : 'Pick a star to see what it holds';
@@ -30032,8 +30080,12 @@ function pisPaintSky(animate) {
   const way = pis.lens === 'identify' ? pisWayIdx(res) : null, wayNow = way == null ? '' : pisWayKey(((res.identity || {}).combinations || [])[way]);
   const cons = motion && pis.lens === 'identify' && (pis.paintedLens !== 'identify' || pis.paintedWay !== wayNow), light = motion && !!chipNow && chipNow !== pis.paintedChip;
   const tlIn = motion && tl && pis.paintedLens !== 'changes';            // the timeline plays in on entering Changes
-  pis.paintedLens = pis.lens; pis.paintedChip = chipNow; pis.paintedWay = wayNow;
-  wrap.innerHTML = (tl ? pisTimelineSvg(res, W, H, { anim: tlIn, col: pis.col }) : pisSkySvg(res, L, { lens: pis.lens, col: pis.col, chip: pis.chip, animate, detCol, cons, light, way })) +
+  const regIn = motion && reg && (pis.paintedLens !== 'body' || pis.paintedReg !== pis.regView);   // and the flow or skyline on entering it
+  pis.paintedLens = pis.lens; pis.paintedChip = chipNow; pis.paintedWay = wayNow; pis.paintedReg = reg ? pis.regView : '';
+  pis.regHovEl = null; pis.regHov = '';
+  const alt = pis.regView === 'flow' ? 'skyline' : 'flow';
+  wrap.innerHTML = (tl ? pisTimelineSvg(res, W, H, { anim: tlIn, col: pis.col }) : reg ? pisRegDrawSvg(res, W, H, regIn)
+      : pisSkySvg(res, L, { lens: pis.lens, col: pis.col, chip: pis.chip, animate, detCol, cons, light, way })) +
     // Many clean columns are dust by the centre: this lists them, in a corner where it cannot sit on a star's label.
     (L.D.length ? `<button type="button" class="pis-dustbtn lngb${pis.col === '__clean' ? ' on' : ''}" data-pis="col" data-v="__clean" ` +
       `aria-pressed="${pis.col === '__clean'}">${pisIco('shield')}${pisPl(L.D.length, 'clean column')}</button>` : '') +
@@ -30042,15 +30094,28 @@ function pisPaintSky(animate) {
       `<li><b>The line is the risk</b> each completed sweep found, from 0 to 100.</li>` +
       `<li><b>Showing</b> is the sweep on screen and <b>Compared</b> the one before it. What moved compares the two, column by column.</li>` +
       `<li>Click an earlier completed sweep to open it.</li></ul>` : '') +
-    (pis.howto && !tl ? `<div class="pis-howto" role="note" aria-label="How to read the sky"><div class="pis-howto-h">${pisIco('target')}How to read the sky</div><ul>` +
+    (pis.howto && reg && pis.regView === 'flow' ? `<div class="pis-howto" role="note" aria-label="How to read the flow"><div class="pis-howto-h">${pisIco('flow')}How to read the flow</div><ul>` +
+      `<li><b>On the left</b>, what the sweep read: the columns its checks found something in, the dataset as a whole, its Compliance policy and people's answers.</li>` +
+      `<li><b>In the middle</b>, the checks, coloured by how each stands.</li>` +
+      `<li><b>On the right</b>, the groups of requirements they decide, and how many of each are decided.</li>` +
+      `<li>Point at anything, or press it, to light its path. Press a group to open it below.</li></ul>` : '') +
+    (pis.howto && reg && pis.regView === 'skyline' ? `<div class="pis-howto" role="note" aria-label="How to read the skyline"><div class="pis-howto-h">${pisIco('city')}How to read the skyline</div><ul>` +
+      `<li><b>Each building is a group</b> of the requirements: the taller, the more of them apply here.</li>` +
+      `<li><b>Each window is one requirement</b>: orange to act on, amber to confirm, green met, grey not applicable. What is still open is lit at the top.</li>` +
+      `<li>A light on the roof: something in that group to act on.</li>` +
+      `<li>Press a building to open its group below, or a window for that requirement.</li></ul>` : '') +
+    (pis.howto && !tl && !reg ? `<div class="pis-howto" role="note" aria-label="How to read the sky"><div class="pis-howto-h">${pisIco('target')}How to read the sky</div><ul>` +
       `<li><b>Each star is a column</b> of this dataset.</li>` +
       `<li><b>The further out, the riskier.</b> The rings mark a risk of 25, 50, 75 and 100.</li>` +
       `<li><b>Riskiest at the top</b>, then clockwise round to the safest.</li>` +
       `<li>Colour, size and brightness agree: red, big and bright is worst.</li></ul>` : '') + (pis.howto ?
       `<div class="pis-howto-a"><button type="button" class="dsx-btn primary lngb" data-pis="howto-ok">Got it</button>` +
-      `<button type="button" class="linkbtn lngb" data-pis="view" data-v="list">Show me a list instead</button></div></div>` : '') +
+      (reg ? `<button type="button" class="linkbtn lngb" data-pis="regview" data-v="${alt}">Show me the ${alt} instead</button></div></div>`
+        : `<button type="button" class="linkbtn lngb" data-pis="view" data-v="list">Show me a list instead</button></div></div>`) : '') +
     (hint ? `<span class="pis-skyhint">${pisIco('target')}${hint}</span>` : '');
   if (animate) { clearTimeout(pis.skyT); pis.skyT = setTimeout(() => { const v = wrap.querySelector('svg'); if (v) v.classList.remove('pis-sky-in'); }, 2900); }
+  if (regIn) { clearTimeout(pis.regT); pis.regT = setTimeout(() => { const v = wrap.querySelector('svg.preg'); if (v) v.classList.remove('in'); }, 2800); }
+  if (reg) pisRegLight();
   if (cons || light || tlIn) {
     clearTimeout(pis.fxT);
     pis.fxT = setTimeout(() => {
@@ -30072,6 +30137,226 @@ function pisPaintSky(animate) {
   if (pis.hover) pisSkyHover(pis.hover);
   if (pis.wayHover) pisWayHover(pis.wayHover);
   pisPaintReg();
+}
+/** The register as judged for the sweep on show (#pisRegCard's), once it is read; null until then. */
+function pisRegState(res) {
+  const card = $('#pisRegCard'), b = (res && res.body) || {};
+  return res && card && card._breg && card._breg.body === b.id && card.dataset.key === `${res.dataset_key}|${res.sweep_id || ''}|${b.id}` ? card._breg : null;
+}
+const PREG_K = { act: 'var(--pii-high)', confirm: 'var(--pii-med)', met: 'var(--ok)', na: 'var(--muted)', other: '#39415a' };
+const pregCut = (t, n) => { t = String(t || ''); return t.length > n ? t.slice(0, Math.max(1, n - 1)) + '…' : t; };
+const pregDecided = j => j.by === 'answer' || (j.by === 'check' && !!j.c && j.c.status !== 'confirm');
+/** Regulator's drawing: the flow or the skyline, whichever is chosen. `anim`: it plays in. */
+function pisRegDrawSvg(res, W, H, anim) {
+  const b = res.body || {}, S = pisRegState(res);
+  const bg = `<radialGradient id="pregBg" cx="50%" cy="35%" r="80%"><stop offset="0" stop-color="#18224a"/><stop offset="1" stop-color="#0a0e1a"/></radialGradient>` +
+    `<filter id="pregGlow" x="-200%" y="-200%" width="500%" height="500%"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>`;
+  let seed = 11; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  let stars = ''; for (let i = Math.round(W * H / 6000); i > 0; i--) stars += `<circle cx="${(rnd() * W).toFixed(1)}" cy="${(rnd() * H * .72).toFixed(1)}" r="${(0.4 + rnd()).toFixed(2)}" fill="#fff" opacity="${(0.05 + rnd() * 0.25).toFixed(2)}"/>`;
+  const frame = (cls, label, defs, body) => `<svg class="preg ${cls}${anim ? ' in' : ''}" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="group" aria-label="${esc(label)}">` +
+    `<defs>${bg}${defs}</defs><rect width="${W}" height="${H}" rx="14" fill="url(#pregBg)"/><g aria-hidden="true">${stars}</g>${body}</svg>`;
+  if (!b.id || b.id === 'general' || !(b.checks || []).length)
+    return frame('preg-none', 'Not checked against a governing body', '', `<text x="${W / 2}" y="${H / 2 - 6}" text-anchor="middle" class="pfl-sum">This sweep was not checked against a governing body</text>` +
+      `<text x="${W / 2}" y="${H / 2 + 16}" text-anchor="middle" class="pfl-sum2">Choose the ICO, Ofwat or the FCA in Checked against, above, and run it again.</text>`);
+  return pis.regView === 'skyline' ? pisSkylineSvg(res, W, H, S, frame) : pisFlowSvg(res, W, H, S, frame);
+}
+/** Flow: what the sweep read (its columns, the dataset as a whole, its Compliance policy, people's answers), the checks of the
+ *  body, and the groups of requirements they decide, joined where one leads to the next. */
+function pisFlowSvg(res, W, H, S, frame) {
+  const b = res.body || {}, live = new Map(pisLive(res).map(f => [f.id, f])), colInfo = new Map(pisColumns(res).map(c => [c.name, c]));
+  const stOf = c => PIS_BODY_ST[c.status] ? c.status : 'na', ord = c => ['act', 'confirm', 'met', 'na'].indexOf(stOf(c));
+  const sweep = (b.checks || []).slice().sort((x, y) => ord(x) - ord(y));
+  const policy = S ? [...S.checks.values()].filter(c => String(c.id).startsWith('policy.')).sort((x, y) => ord(x) - ord(y)) : [];
+  const colsOf = c => [...new Set((c.findings || []).map(id => live.get(id)).filter(Boolean).map(f => f.column))];
+  let cols = [...new Set(sweep.flatMap(colsOf))].sort((x, y) => ((colInfo.get(y) || {}).risk || 0) - ((colInfo.get(x) || {}).risk || 0));
+  const more = cols.length > 8 ? cols.slice(7) : [];
+  if (more.length) cols = cols.slice(0, 7);
+  const colNode = n => more.includes(n) ? 'cols:more' : 'col:' + n;
+  const items = S ? S.reg.items : [], J = S ? S.J : new Map(), answered = items.filter(it => J.get(it.id).by === 'answer');
+  const name = b.against || b.short || b.id;
+  const left = cols.map(n => { const ci = colInfo.get(n) || {}, k = sweep.filter(c => colsOf(c).includes(n)).length;
+    return { id: 'col:' + n, t: n, s: ci.sev ? `${PIS_SEV_L[ci.sev]} · risk ${ci.risk}` : 'clean', k: PIS_SEV_VAR[ci.sev] || 'var(--muted)',
+             tt: n, ts: ci.sev ? `${PIS_SEV_L[ci.sev]} · risk ${ci.risk}` : 'Nothing found', tx: `${pisPl(k, 'check')} found something in it`, te: 'Press to light its path' }; });
+  if (more.length) left.push({ id: 'cols:more', t: `${pisN(more.length)} more columns`, s: pregCut(more.join(', '), 26), k: 'var(--muted)',
+                               tt: `${pisN(more.length)} more columns`, ts: pregCut(more.join(', '), 120), te: 'Press to light their paths' });
+  if (sweep.some(c => !colsOf(c).length)) left.push({ id: 'whole', t: 'The whole dataset', s: 'its counts and dates', k: '#7c8db5',
+    tt: 'The whole dataset', ts: 'Checks judged from what it holds as a whole: its counts, its dates, the kinds of records in it', te: 'Press to light their paths' });
+  if (policy.length) left.push({ id: 'policy', t: 'Its Compliance policy', s: 'and newest assessment', k: '#8b7cf6',
+    tt: 'Its Compliance policy', ts: 'Its retention, consent and erasure settings, and what its newest assessment found', te: 'Press to light their paths' });
+  if (answered.length) left.push({ id: 'people', t: "People's answers", s: pisPl(answered.length, 'answer'), k: 'var(--accent)',
+    tt: "People's answers", ts: `${pisPl(answered.length, 'requirement')} answered by people`, te: 'Press to light their paths' });
+  const mid = sweep.concat(policy).map(c => { const st = stOf(c), n = items.filter(it => it.check === c.id).length, pol = String(c.id).startsWith('policy.');
+    return { id: c.id, t: c.title, k: PREG_K[st], tt: c.title, ts: `${PIS_BODY_ST[st][0]}${pol ? ', from its Compliance policy' : ''}`, tx: pregCut(c.detail || '', 180),
+             te: S ? `${st === 'confirm' ? 'Leaves' : 'Decides'} ${pisPl(n, 'requirement')}${st === 'confirm' ? ' for you to confirm' : ''}. Press to light its path` : 'Press to light its path' }; });
+  const E = [];
+  sweep.forEach(c => { const cs = colsOf(c); if (cs.length) [...new Set(cs.map(colNode))].forEach(n => E.push([n, c.id, 1])); else E.push(['whole', c.id, 1]); });
+  policy.forEach(c => E.push(['policy', c.id, 1]));
+  const areas = [], ids = new Set(mid.map(m => m.id));
+  items.forEach(it => { if (((it.check && ids.has(it.check)) || J.get(it.id).by === 'answer') && !areas.includes(it.area)) areas.push(it.area); });
+  mid.forEach(m => { const by = new Map(); items.filter(it => it.check === m.id).forEach(it => by.set(it.area, (by.get(it.area) || 0) + 1)); by.forEach((n, a) => E.push([m.id, 'area:' + a, n])); });
+  const pa = new Map(); answered.forEach(it => pa.set(it.area, (pa.get(it.area) || 0) + 1)); pa.forEach((n, a) => E.push(['people', 'area:' + a, n]));
+  const right = areas.map(a => { const its = items.filter(it => it.area === a && J.get(it.id).st !== 'other'), n = {};
+    its.forEach(it => { const st = J.get(it.id).st; n[st] = (n[st] || 0) + 1; });
+    const dec = its.filter(it => pregDecided(J.get(it.id))).length;
+    return { id: 'area:' + a, t: a, its, n, dec, k: 'var(--accent)', tt: a,
+             ts: `${pisPl(its.length, 'requirement')} apply here, ${pisN(dec)} decided`, tx: BREG_ORDER.filter(k => n[k]).map(k => `${n[k]} ${BREG_ST[k].toLowerCase()}`).join(', '),
+             te: 'Press to open the group below' }; });
+  const top = 52, bot = H - 66;
+  const place = (arr, hMax) => { const n = arr.length; if (!n) return;
+    const h = Math.max(16, Math.min(hMax, (bot - top) / n - 5)), gap = n > 1 ? Math.min(16, (bot - top - n * h) / (n - 1)) : 0, y0 = top + (bot - top - (n * h + (n - 1) * gap)) / 2;
+    arr.forEach((nd, i) => { nd.h = h; nd.y = y0 + i * (h + gap); }); };
+  place(left, 28); place(mid, 24); place(right, 28);
+  const xL = 18, wL = Math.round(Math.min(170, W * .18)), xM = Math.round(W * .33), wM = Math.round(W * .29), xR = Math.round(W * .72), wR = W - xR - 18;
+  const pos = new Map(); left.forEach(n => pos.set(n.id, [0, n])); mid.forEach(n => pos.set(n.id, [1, n])); right.forEach(n => pos.set(n.id, [2, n]));
+  pis.flowG = { E, tier: new Map([...pos].map(([id, [t]]) => [id, t])) };
+  let defs = '', s = `<text x="${xL}" y="30" class="pfl-h">What the sweep read</text><text x="${xM}" y="30" class="pfl-h">The checks</text>` +
+    `<text x="${xR}" y="30" class="pfl-h">The requirements they decide</text>`;
+  E.forEach((e, i) => {
+    const [ta, a] = pos.get(e[0]) || [], [tz, z] = pos.get(e[1]) || []; if (!a || !z) return;
+    const x1 = ta === 1 ? xM + wM : xL + wL, x2 = tz === 1 ? xM : xR, y1 = a.y + a.h / 2, y2 = z.y + z.h / 2, mx = (x1 + x2) / 2;
+    const sw = Math.min(12, 1.6 + e[2] * 1.8), d = ta === 1 ? .45 + i * .012 : i * .015;
+    let stroke = a.k;
+    if (ta === 0 && tz === 1) { defs += `<linearGradient id="pregE${i}" gradientUnits="userSpaceOnUse" x1="${x1}" y1="0" x2="${x2}" y2="0"><stop offset="0" style="stop-color:${a.k}"/><stop offset="1" style="stop-color:${z.k}"/></linearGradient>`; stroke = `url(#pregE${i})`; }
+    s += `<path d="M${x1} ${y1.toFixed(1)} C${mx} ${y1.toFixed(1)} ${mx} ${y2.toFixed(1)} ${x2} ${y2.toFixed(1)}" ${e[0] === 'people' ? '' : 'pathLength="1" '}class="pfl-edge${e[0] === 'people' ? ' ans' : ''}" ` +
+      `data-e="${i}" style="stroke:${stroke};stroke-width:${sw.toFixed(1)};--d:${d.toFixed(2)}s" aria-hidden="true"/>`;
+  });
+  const node = (n, tier, x, w, inner, label, d) => `<g class="pfl-node" role="button" tabindex="0" data-pis="flow" data-v="${esc(n.id)}" data-tier="${tier}" data-y="${n.y.toFixed(0)}" ` +
+    `data-tt="${esc(n.tt || n.t)}" data-ts="${esc(n.ts || '')}" data-tx="${esc(n.tx || '')}" data-te="${esc(n.te || '')}" aria-label="${esc(label)}" aria-pressed="false" ` +
+    `style="--k:${n.k};--d:${d}s">${inner}</g>`;
+  left.forEach((n, i) => { const two = n.h >= 24;
+    s += node(n, 0, xL, wL, `<rect class="bx" x="${xL}" y="${n.y.toFixed(1)}" width="${wL}" height="${n.h.toFixed(1)}" rx="${(n.h / 2).toFixed(1)}"/>` +
+      `<circle cx="${xL + 13}" cy="${(n.y + n.h / 2).toFixed(1)}" r="4.5" style="fill:${n.k}"/>` +
+      `<text x="${xL + 25}" y="${(n.y + (two ? 12.5 : n.h / 2 + 4)).toFixed(1)}" class="pfl-t">${esc(pregCut(n.t, Math.floor((wL - 32) / 6.6)))}</text>` +
+      (two ? `<text x="${xL + 25}" y="${(n.y + 23).toFixed(1)}" class="pfl-s">${esc(pregCut(n.s, Math.floor((wL - 32) / 5.2)))}</text>` : ''),
+      `${n.t}: ${n.ts || n.s}`, (i * .03).toFixed(2)); });
+  mid.forEach((n, i) => { s += node(n, 1, xM, wM, `<rect class="bx" x="${xM}" y="${n.y.toFixed(1)}" width="${wM}" height="${n.h.toFixed(1)}" rx="7"/>` +
+      `<rect x="${xM}" y="${n.y.toFixed(1)}" width="4" height="${n.h.toFixed(1)}" rx="2" style="fill:${n.k}"/>` +
+      `<text x="${xM + 13}" y="${(n.y + n.h / 2 + 4).toFixed(1)}" class="pfl-t">${esc(pregCut(n.t, Math.floor((wM - 20) / 6.6)))}</text>`,
+      `${n.t}: ${n.ts}`, (.25 + i * .025).toFixed(2)); });
+  right.forEach((n, i) => { let x = xR + 10, bar = ''; const bw = wR - 20, tot = n.its.length || 1, by = n.y + n.h - 6;
+    BREG_ORDER.forEach(k => { if (!n.n[k]) return; const w = bw * n.n[k] / tot; bar += `<rect x="${x.toFixed(1)}" y="${by.toFixed(1)}" width="${Math.max(1, w - 1).toFixed(1)}" height="3" rx="1.5" style="fill:${PREG_K[k]}"/>`; x += w; });
+    s += node(n, 2, xR, wR, `<rect class="bx" x="${xR}" y="${n.y.toFixed(1)}" width="${wR}" height="${n.h.toFixed(1)}" rx="8"/>` +
+      `<text x="${xR + 10}" y="${(n.y + Math.min(14, n.h / 2 + 2)).toFixed(1)}" class="pfl-t">${esc(pregCut(n.t, Math.floor((wR - 64) / 6.5)))}</text>` +
+      `<text x="${xR + wR - 10}" y="${(n.y + Math.min(14, n.h / 2 + 2)).toFixed(1)}" text-anchor="end" class="pfl-n">${pisN(n.dec)} of ${pisN(n.its.length)}</text>` + bar,
+      `${n.t}: ${n.ts}`, (.6 + i * .025).toFixed(2)); });
+  if (!S) s += `<text x="${xR}" y="${(top + bot) / 2}" class="pfl-wait">Reading every requirement of ${esc(name)}…</text>`;
+  else {
+    const js = items.map(it => J.get(it.id)), dec = js.filter(j => j.by === 'check' && j.c && j.c.status !== 'confirm');
+    const nPol = dec.filter(j => String(j.c.id).startsWith('policy.')).length, nSweep = dec.length - nPol;
+    const todo = js.filter(j => j.st === 'confirm').length, other = js.filter(j => j.st === 'other').length;
+    s += `<text x="${xL}" y="${H - 34}" class="pfl-sum">${pisPl(nSweep, 'requirement')} decided by the sweep's checks, ${pisN(nPol)} by its Compliance policy, ${pisN(answered.length)} by people's answers.</text>` +
+      `<text x="${xL}" y="${H - 15}" class="pfl-sum2">${pisN(todo)} wait for you to confirm, below${other ? `; ${pisN(other)} are about records it does not hold` : ''}.</text>`;
+  }
+  return frame(`pfl${S ? '' : ' preg-wait'}`, `How the checks of ${name} decide its requirements: what each check read, and the groups of requirements it decides. ` +
+    `Press a check, a column or a group to light its path.`, defs, s);
+}
+/** Skyline: a building for each group of the body's requirements, a window for each that applies here, lit by how it stands. */
+function pisSkylineSvg(res, W, H, S, frame) {
+  const b = res.body || {}, name = b.against || b.short || b.id, Name = name.charAt(0).toUpperCase() + name.slice(1);
+  if (!S) return frame('psl preg-wait', `${Name}'s skyline`, '', `<text x="${W / 2}" y="${H / 2}" text-anchor="middle" class="pfl-wait">Reading every requirement of ${esc(name)}…</text>`);
+  const J = S.J, UP = ['met', 'na', 'confirm', 'act'], groups = [];
+  S.reg.items.forEach(it => { if (J.get(it.id).st === 'other') return; let g = groups.find(x => x.a === it.area); if (!g) groups.push(g = { a: it.area, its: [] }); g.its.push(it); });
+  groups.forEach(g => g.its.sort((x, y) => UP.indexOf(J.get(x.id).st) - UP.indexOf(J.get(y.id).st)));
+  const n = Math.max(1, groups.length), horizon = H - 118, x0 = 74, gap = n > 26 ? 4 : 7, bw = (W - x0 - 18 - gap * (n - 1)) / n, cols = bw >= 46 ? 3 : 2;
+  const maxF = Math.max(1, ...groups.map(g => Math.ceil(g.its.length / cols)));
+  const cell = Math.max(4, Math.min((bw - 8) / cols, (horizon - 132) / maxF)), win = Math.max(2.5, cell - 3);
+  const OP = { act: 1, confirm: .55, met: .9, na: .4 };
+  const chk = String(pis.chip || '').startsWith('check:') ? pis.chip.slice(6) : '', ck = chk ? S.checks.get(chk) : null;
+  const nLit = chk ? S.reg.items.filter(it => it.check === chk && J.get(it.id).st !== 'other').length : 0;
+  let s = `<circle cx="${W - 84}" cy="62" r="20" fill="#e8ecff" opacity=".9" filter="url(#pregGlow)" aria-hidden="true"/><circle cx="${W - 76}" cy="56" r="18" fill="#121a3a" aria-hidden="true"/>` +
+    `<text x="22" y="34" class="psl-t">${esc(Name)}'s skyline</text>` +
+    `<text x="22" y="53" class="psl-s">${esc(ck ? `Lit: the ${pisPl(nLit, 'requirement')} ${ck.title} ${ck.status === 'confirm' ? 'leaves for you to confirm' : 'decides'}. Press it again beside, or Esc, to see every window.`
+      : 'A building for each group of its requirements, a window for each that applies here: lit orange to act on, amber to confirm, green met.')}</text>`;
+  let refl = '';
+  groups.forEach((g, i) => {
+    const x = x0 + i * (bw + gap), floors = Math.ceil(g.its.length / cols), h = floors * cell + 10, y = horizon - h, cn = {};
+    g.its.forEach(it => { const st = J.get(it.id).st; cn[st] = (cn[st] || 0) + 1; });
+    const says = BREG_ORDER.filter(k => cn[k]).map(k => `${cn[k]} ${BREG_ST[k].toLowerCase()}`).join(', ');
+    let wins = '', plain = '';
+    g.its.forEach((it, k) => {
+      const j = J.get(it.id), st = j.st, f = Math.floor(k / cols), c = k % cols;
+      const wx = x + (bw - cols * cell) / 2 + c * cell + 1.5, wy = y + h - 5 - (f + 1) * cell + 1.5;
+      const at = `x="${wx.toFixed(1)}" y="${wy.toFixed(1)}" width="${win.toFixed(1)}" height="${win.toFixed(1)}" rx="1.5" opacity="${OP[st]}"`;
+      wins += `<rect class="psl-win ${st}" ${at} data-pis="skyw" data-v="${esc(it.id)}" data-chk="${esc(it.check || '')}" data-tt="${esc(pregCut(it.text, 110))}" ` +
+        `data-ts="${esc(BREG_ST[st])}${j.c && pregDecided(j) ? `, decided by ${esc(j.c.title)}` : j.a ? ', answered' : ''}" data-te="Press to open it below" ` +
+        `style="fill:${PREG_K[st]};--d:${(.35 + i * .03 + f * .03).toFixed(2)}s"${st === 'act' ? ' filter="url(#pregGlow)"' : ''}/>`;
+      plain += `<rect ${at} style="fill:${PREG_K[st]}"/>`;
+    });
+    const beacon = cn.act ? `<line x1="${(x + bw / 2).toFixed(1)}" y1="${y.toFixed(1)}" x2="${(x + bw / 2).toFixed(1)}" y2="${(y - 15).toFixed(1)}" stroke="#5a6488" stroke-width="1.5"/>` +
+      `<circle cx="${(x + bw / 2).toFixed(1)}" cy="${(y - 17).toFixed(1)}" r="3.2" class="psl-beacon" style="fill:var(--pii-high)" filter="url(#pregGlow)"/>` : '';
+    s += `<g class="psl-bld" role="button" tabindex="0" data-pis="skyb" data-v="${esc(g.a)}" data-tt="${esc(g.a)}" data-ts="${esc(`${pisPl(g.its.length, 'requirement')} apply here`)}" ` +
+      `data-tx="${esc(says)}" data-te="Press to open the group below" aria-label="${esc(`${g.a}: ${pisPl(g.its.length, 'requirement')} apply here, ${says}`)}">` +
+      `<rect class="bx" x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" rx="3" style="--d:${(i * .03).toFixed(2)}s"/>${beacon}${wins}` +
+      `<text x="${(x + bw / 2).toFixed(1)}" y="${(y - (cn.act ? 25 : 6)).toFixed(1)}" text-anchor="middle" class="psl-cnt">${pisN(g.its.length)}</text>` +
+      `<text transform="translate(${(x + bw / 2).toFixed(1)} ${horizon + 15}) rotate(-50)" text-anchor="end" class="psl-lbl">${esc(pregCut(g.a, 22))}</text></g>`;
+    refl += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" rx="3" fill="#141c38"/>${plain}`;
+  });
+  const defs = `<linearGradient id="pregFade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".2"/><stop offset=".55" stop-color="#fff" stop-opacity="0"/></linearGradient>` +
+    `<mask id="pregRefl"><rect x="0" y="${horizon}" width="${W}" height="${H - horizon}" fill="url(#pregFade)"/></mask>`;
+  s += `<g mask="url(#pregRefl)" aria-hidden="true" style="pointer-events:none"><g transform="translate(0 ${2 * horizon}) scale(1 -1)">${refl}</g></g>` +
+    `<line x1="14" y1="${horizon}" x2="${W - 14}" y2="${horizon}" stroke="#3a4570" stroke-width="1.5" aria-hidden="true"/>`;
+  return frame('psl', `${Name}'s skyline: a building for each group of its requirements, a window for each that applies here. Press a building to open its group below.`, defs, s);
+}
+/** What is lit: the path of the check, column or group pressed (or pointed at) in the flow; the requirements a check
+ *  picked beside it decides, in the skyline. */
+function pisRegLight() {
+  const svg = document.querySelector('#pisSkyWrap svg.preg'); if (!svg) return;
+  const chk = String(pis.chip || '').startsWith('check:') ? pis.chip.slice(6) : '';
+  const press = pis.flowHi || chk;
+  if (svg.classList.contains('psl')) {
+    svg.classList.toggle('psl-focus', !!chk);
+    svg.querySelectorAll('.psl-win').forEach(w => w.classList.toggle('lit', !!chk && w.dataset.chk === chk));
+    return;
+  }
+  const G = pis.flowG, id = pis.regHov || press;
+  svg.querySelectorAll('.pfl-node').forEach(g => { const on = !!press && g.dataset.v === press; g.classList.toggle('on', on); g.setAttribute('aria-pressed', on); });
+  svg.classList.toggle('pfl-focus', !!(id && G));
+  if (!id || !G) { svg.querySelectorAll('.pfl-node.lit, .pfl-edge.lit').forEach(e => e.classList.remove('lit')); return; }
+  const lit = new Set([id]), on = new Set(), out = v => G.E.filter(e => e[0] === v), inn = v => G.E.filter(e => e[1] === v), tier = G.tier.get(id);
+  const walk = (v, step, hops) => step(v).forEach(e => { on.add(e); const w = e[step === out ? 1 : 0]; lit.add(w); if (hops > 1) walk(w, step, hops - 1); });
+  if (tier === 0) walk(id, out, 2); else if (tier === 2) walk(id, inn, 2); else { walk(id, inn, 1); walk(id, out, 1); }
+  svg.querySelectorAll('.pfl-edge').forEach(p => p.classList.toggle('lit', on.has(G.E[+p.dataset.e])));
+  svg.querySelectorAll('.pfl-node').forEach(g => g.classList.toggle('lit', lit.has(g.dataset.v)));
+}
+/** Pointing at (or reaching from the keyboard) a part of the flow or the skyline: its tip, and in the flow its path lit. */
+function pisRegHover(el) {
+  const wrap = $('#pisSkyWrap'); if (!wrap) return;
+  wrap.querySelectorAll('.pis-tipbox').forEach(e => e.remove());
+  pis.regHov = el && el.classList.contains('pfl-node') ? el.dataset.v : '';
+  pisRegLight();
+  if (!el || !el.dataset.tt) return;
+  const tip = document.createElement('div');
+  tip.className = 'pis-tipbox'; tip.setAttribute('aria-hidden', 'true');
+  tip.innerHTML = `<b>${esc(el.dataset.tt)}</b>${el.dataset.ts ? `<span>${esc(el.dataset.ts)}</span>` : ''}` +
+    `${el.dataset.tx ? `<small>${esc(el.dataset.tx)}</small>` : ''}${el.dataset.te ? `<em>${esc(el.dataset.te)}</em>` : ''}`;
+  wrap.appendChild(tip);
+  const r = el.getBoundingClientRect(), w = wrap.getBoundingClientRect();
+  let x = r.right - w.left + 12; if (x + tip.offsetWidth > w.width - 8) x = r.left - w.left - 12 - tip.offsetWidth;
+  tip.style.left = Math.max(8, x) + 'px';
+  tip.style.top = Math.max(8, Math.min(r.top - w.top - 8, w.height - tip.offsetHeight - 8)) + 'px';
+}
+/** The register read or answered: the flow or the skyline drawn again from it, playing in if it was waiting for it. */
+function pisRegRefresh() {
+  const res = pis.res, wrap = $('#pisSkyWrap'), L = pis.sky;
+  if (!res || !wrap || !L || !L.reg) return;
+  const old = wrap.querySelector('svg.preg'); if (!old) return;
+  const anim = !dqReduced() && old.classList.contains('preg-wait');
+  // The tip goes first, and the drawing is swapped whole: taking away a part that has the focus lets the focus go, and
+  // what that does to the tip must not pull the ground from under the swap.
+  wrap.querySelectorAll('.pis-tipbox').forEach(e => e.remove()); pis.regHovEl = null; pis.regHov = '';
+  const tpl = document.createElement('template'); tpl.innerHTML = pisRegDrawSvg(res, L.W, L.H, anim);
+  if (old.parentNode === wrap) wrap.replaceChild(tpl.content.firstElementChild, old);
+  if (anim) { clearTimeout(pis.regT); pis.regT = setTimeout(() => { const v = wrap.querySelector('svg.preg'); if (v) v.classList.remove('in'); }, 2800); }
+  pisRegLight();
+}
+/** A group of the register opened below (and one of its requirements, open), from the flow or the skyline. */
+function pisRegGo(area, id) {
+  const card = $('#pisRegCard'), S = pisRegState(pis.res); if (!card || !S) return;
+  Object.assign(S, { check: '', filter: 'here', q: '', group: area, openItem: id || '', edit: '' });
+  bregPaint(card);
+  card.scrollIntoView({ behavior: dqReduced() ? 'auto' : 'smooth', block: 'start' });
+  const f = id ? card.querySelector(`.breg-item[data-id="${CSS.escape(id)}"] .breg-ih`) : card.querySelector(`.breg-g[data-area="${CSS.escape(area)}"]`);
+  if (f) f.focus({ preventScroll: true });
 }
 /** Under the sky, on Regulator: every requirement of the body this sweep was checked against, judged for the dataset. */
 function pisPaintReg() {
@@ -30674,7 +30959,7 @@ function pisScheduleRun(key) {
       } else if (a === 'lens') {
         // A rule picked belongs to Rules and a check to Regulator: either is let go on moving to the other.
         if (String(pis.chip || '').startsWith('check:') !== (t.dataset.v === 'body')) pis.chip = '';
-        pis.lens = t.dataset.v; pis.col = ''; pis.detail = ''; pis.view = 'sky'; pis.listed = false;
+        pis.lens = t.dataset.v; pis.col = ''; pis.detail = ''; pis.view = 'sky'; pis.listed = false; pis.flowHi = '';
         pisPaintSky();
         if (t.closest('.pis-verdict, .pis-title')) { const c = $('#pisSkyCard'); if (c) c.scrollIntoView({ behavior: dqReduced() ? 'auto' : 'smooth', block: 'start' }); }
         else pisRefocus(`.pis-seg [data-pis="lens"][data-v="${t.dataset.v}"]`);
@@ -30705,6 +30990,24 @@ function pisScheduleRun(key) {
         if (pis.howto) { pis.howto = false; pisPref('howto', 'seen'); }
         pisPaintSky();
         pisRefocus(`.pis-view [data-v="${pis.view}"]`);
+      } else if (a === 'regview') {
+        pis.regView = t.dataset.v === 'skyline' ? 'skyline' : 'flow'; pisPref('regview', pis.regView);
+        if (pis.howto) { pis.howto = false; pisPref('howto', 'seen'); }
+        pisPaintSky();
+        pisRefocus(`.pis-view [data-v="${pis.regView}"]`);
+      } else if (a === 'flow') {
+        // A group: open below. A check: its path lit, as picking it beside the flow does. Anything else: its path lit.
+        const v = t.dataset.v;
+        if (v.startsWith('area:')) { pisRegGo(v.slice(5)); return; }
+        if ((pis.flowG && pis.flowG.tier.get(v) === 1)) { const k = 'check:' + v; pis.chip = pis.chip === k ? '' : k; pis.flowHi = ''; }
+        else { pis.flowHi = pis.flowHi === v ? '' : v; if (String(pis.chip || '').startsWith('check:')) pis.chip = ''; }
+        pisPaintSky();
+        pisRefocus(`#pisSkyWrap [data-pis="flow"][data-v="${CSS.escape(v)}"]`);
+      } else if (a === 'skyb') {
+        pisRegGo(t.dataset.v);
+      } else if (a === 'skyw') {
+        const S = pisRegState(res), it = S && S.reg.byId[t.dataset.v];
+        if (it) pisRegGo(it.area, it.id);
       } else if (a === 'howto') {
         pis.howto = !pis.howto; if (!pis.howto) pisPref('howto', 'seen');
         pisPaintSky();
@@ -30712,7 +31015,7 @@ function pisScheduleRun(key) {
       } else if (a === 'howto-ok') {
         pis.howto = false; pisPref('howto', 'seen'); pisPaintSky(); pisRefocus('.pis-help');
       } else if (a === 'chip') {
-        pis.chip = pis.chip === t.dataset.v ? '' : t.dataset.v; pis.col = ''; pis.detail = '';
+        pis.chip = pis.chip === t.dataset.v ? '' : t.dataset.v; pis.col = ''; pis.detail = ''; pis.flowHi = '';
         pisPaintSky();
         pisRefocus(t.dataset.v.startsWith('check:') ? `.pis-side [data-pis="chip"][data-v="${CSS.escape(t.dataset.v)}"]`
           : pis.chip ? '.pis-side .pis-back' : `.pis-side .pis-ritem[data-v="${CSS.escape(t.dataset.v)}"]`);
@@ -30787,9 +31090,28 @@ function pisScheduleRun(key) {
         if (next) next.click();
         return;
       }
+      // The flow: up and down a column of it, left and right to the nearest in the next. The skyline: building to building.
+      const rn = e.target.closest && e.target.closest('#pisSkyWrap .pfl-node, #pisSkyWrap .psl-bld');
+      if (rn && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+        e.preventDefault();
+        if (rn.classList.contains('psl-bld')) {
+          const all = [...panel.querySelectorAll('#pisSkyWrap .psl-bld')], nx = all[all.indexOf(rn) + (e.key === 'ArrowRight' || e.key === 'ArrowDown' ? 1 : -1)];
+          if (nx) nx.focus();
+          return;
+        }
+        const all = [...panel.querySelectorAll('#pisSkyWrap .pfl-node')], tier = +rn.dataset.tier;
+        if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+          const same = all.filter(x => +x.dataset.tier === tier), nx = same[same.indexOf(rn) + (e.key === 'ArrowDown' ? 1 : -1)]; if (nx) nx.focus();
+        } else {
+          const y = +rn.dataset.y, other = all.filter(x => +x.dataset.tier === tier + (e.key === 'ArrowRight' ? 1 : -1))
+            .sort((p, q) => Math.abs(+p.dataset.y - y) - Math.abs(+q.dataset.y - y));
+          if (other[0]) other[0].focus();
+        }
+        return;
+      }
       // A star is a button: Enter or Space opens its column, and the arrow keys walk the stars in order of risk.
       const star = e.target.closest && e.target.closest('.pis-star');
-      const press = e.target.closest && e.target.closest('.pis-star, #pisSkyWrap .tl-run, #pisSkyWrap .tl-mv');
+      const press = e.target.closest && e.target.closest('.pis-star, #pisSkyWrap .tl-run, #pisSkyWrap .tl-mv, #pisSkyWrap .pfl-node, #pisSkyWrap .psl-bld');
       if (press && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); press.dispatchEvent(new MouseEvent('click', { bubbles: true })); return; }
       // On the timeline the arrow keys walk the sweeps (left and right) and the columns that moved (up and down).
       const tlEl = e.target.closest && e.target.closest('#pisSkyWrap .tl-run, #pisSkyWrap .tl-mv');
@@ -30818,6 +31140,11 @@ function pisScheduleRun(key) {
         pisRefocus(`#pisSkyWrap [data-pis="col"][data-v="${CSS.escape(v)}"]`);
         return;
       }
+      if (e.key === 'Escape' && pis.lens === 'body' && pis.flowHi && !pis.menuF && e.target.closest && e.target.closest('#pisSkyCard')) {
+        e.preventDefault();
+        const v = pis.flowHi; pis.flowHi = ''; pisPaintSky(); pisRefocus(`#pisSkyWrap [data-pis="flow"][data-v="${CSS.escape(v)}"]`);
+        return;
+      }
       if (e.key === 'Escape' && (pis.lens === 'rules' || pis.lens === 'body') && pis.chip && !pis.menuF && e.target.closest && e.target.closest('#pisSkyCard')) {
         e.preventDefault();
         const v = pis.chip; pis.chip = ''; pisPaintSky(); pisRefocus(`.pis-side [data-pis="chip"][data-v="${CSS.escape(v)}"]`);
@@ -30832,6 +31159,8 @@ function pisScheduleRun(key) {
       // a sweep on the timeline pointed at: its tip
       const run = (e.target.closest && e.target.closest('#pisSkyWrap .tl-run')) || null;
       if (run !== pis.tlHover) { pis.tlHover = run; pisRunTip(run); }
+      const rg = (e.target.closest && e.target.closest('#pisSkyWrap .pfl-node, #pisSkyWrap .psl-win, #pisSkyWrap .psl-bld')) || null;
+      if (rg !== (pis.regHovEl || null)) { pis.regHovEl = rg; pisRegHover(rg); }
       // a way pointed at, as a figure or as one of the ways: its figures light in its place
       const wy = e.target.closest && e.target.closest('#pisStage .pis-side [data-pis="way"]'), wv = wy ? wy.dataset.v : '';
       if (wv !== (pis.wayHover || '')) { pis.wayHover = wv; pisWayHover(wv); }
@@ -30840,6 +31169,7 @@ function pisScheduleRun(key) {
       if (pis.hover) { pis.hover = ''; pisSkyHover(''); }
       if (pis.wayHover) { pis.wayHover = ''; pisWayHover(''); }
       if (pis.tlHover) { pis.tlHover = null; pisRunTip(null); }
+      if (pis.regHovEl) { pis.regHovEl = null; pisRegHover(null); }
     });
     panel.addEventListener('focusin', e => {
       // From the keyboard only: focus put back on a star after a click would otherwise leave a tip over the sky.
@@ -30847,11 +31177,14 @@ function pisScheduleRun(key) {
       if (s && s.matches(':focus-visible')) { pis.hover = s.dataset.v; pisSkyHover(pis.hover, true); }
       const run = e.target.closest && e.target.closest('#pisSkyWrap .tl-run');
       if (run && run.matches(':focus-visible')) { pis.tlHover = run; pisRunTip(run, true); }
+      const rf = e.target.closest && e.target.closest('#pisSkyWrap .pfl-node, #pisSkyWrap .psl-bld');
+      if (rf && rf.matches(':focus-visible')) { pis.regHovEl = rf; pisRegHover(rf); }
     });
     panel.addEventListener('focusout', e => {
       const to = e.relatedTarget;
       if (e.target.closest && e.target.closest('.pis-star') && !(to && to.closest && to.closest('.pis-star'))) { pis.hover = ''; pisSkyHover(''); }
       if (e.target.closest && e.target.closest('.tl-run') && !(to && to.closest && to.closest('.tl-run'))) { pis.tlHover = null; pisRunTip(null); }
+      if (e.target.closest && e.target.closest('.pfl-node, .psl-bld') && !(to && to.closest && to.closest('.pfl-node, .psl-bld'))) { pis.regHovEl = null; pisRegHover(null); }
     });
     // The list's edge, dragged: to the left for a wider list, to the right for a narrower one. The sky makes room as it
     // goes, and the width is kept for every list beside the sky; a double-click puts it back to its usual width.
