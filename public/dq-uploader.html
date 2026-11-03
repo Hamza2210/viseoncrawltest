@@ -5032,6 +5032,11 @@
   .pis-bnote { margin-top: 14px; font-size: 11.5px; }
   .pis-side .pis-breglink { margin-top: 12px; display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; }
   .pis-side .pis-breglink .pis-ico { width: 14px; height: 14px; }
+  /* A check's requirements, a press away; and the check, flashed when a requirement it decided sends you to it */
+  .pis-bdecides { margin: 7px 2px 0; display: inline-flex; align-items: center; gap: 6px; font-size: 12px; }
+  .pis-bdecides .pis-ico { width: 13px; height: 13px; }
+  .pis-bcheck { scroll-margin: 90px 0 24px; border-radius: 10px; outline: 2px solid transparent; outline-offset: 5px; transition: outline-color .35s ease; }
+  .pis-bcheck.pis-bflash { outline-color: color-mix(in srgb, var(--accent) 75%, transparent); }
   .pis-regcard { padding: 18px 20px; scroll-margin-top: 76px; }
   /* Not personal data: fields set aside in one go (on the body, so it carries the sweep's colours itself) */
   .pis-np { --pii-crit: #fb7185; --pii-high: #fb923c; --pii-med: #fbbf24; --pii-low: #7aa2ff;
@@ -5202,6 +5207,15 @@
   .breg-st { font-weight: 700; color: var(--text); }
   .breg-tag { padding: 1px 7px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); }
   .breg-tag.auto { border-color: color-mix(in srgb, var(--accent) 45%, var(--border)); color: var(--text); }
+  button.breg-tag { font: inherit; background: none; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; }
+  button.breg-tag .pis-ico { width: 12px; height: 12px; color: var(--accent); }
+  button.breg-tag:hover, button.breg-tag:focus-visible { border-color: var(--accent); }
+  .breg-by { margin: 0 0 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 9px 13px; border-radius: 10px;
+    border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--border)); background: color-mix(in srgb, var(--accent) 8%, transparent);
+    font-size: 12.5px; line-height: 1.45; color: var(--text); }
+  .breg-by > .pis-ico { flex: none; width: 15px; height: 15px; color: var(--accent); }
+  .breg-by > span { flex: 1; min-width: 200px; text-align: left; }
+  .breg-by .linkbtn { margin-left: auto; font-size: 12.5px; }
   .breg-ref { color: var(--muted); }
   .breg-quote { margin: 0; padding-left: 9px; border-left: 2px solid var(--border); font-size: 12px; line-height: 1.5; color: var(--muted); font-style: italic; }
   .breg-quote a { margin-left: 4px; font-style: normal; color: var(--accent); text-decoration: none; } .breg-quote a:hover { text-decoration: underline; }
@@ -16632,11 +16646,12 @@ function bodyChecksHtml(b) {
   const src = b.sources || {}, n = b.counts || {}, st = c => PIS_BODY_ST[c.status] ? c.status : 'na';
   const item = c => {
     const cols = c.about ? [...new Set((c.findings || []).map(id => String(id).split('::')[0]))] : [];
-    return `<li class="pis-bcheck ${st(c)}"><div class="pis-fitem"><i aria-hidden="true"></i><span class="pis-fitem-t"><b>${esc(c.title)}</b>` +
+    return `<li class="pis-bcheck ${st(c)}" data-check="${esc(c.id)}"><div class="pis-fitem"><i aria-hidden="true"></i><span class="pis-fitem-t"><b>${esc(c.title)}</b>` +
       `<small>${esc(c.rule || '')}</small></span></div><p class="pis-bdetail">${esc(c.detail || '')}</p>` +
       (cols.length ? `<p class="pis-bcols">In ${cols.map(x => `<code>${esc(x)}</code>`).join('')}</p>` : '') +
       ((c.sources || []).some(k => src[k]) ? `<p class="pis-bsrc">${c.sources.filter(k => src[k]).map(k =>
-        `<a href="${esc(src[k].url)}" target="_blank" rel="noopener noreferrer">${esc(src[k].title)}</a>`).join('')}</p>` : '') + `</li>`;
+        `<a href="${esc(src[k].url)}" target="_blank" rel="noopener noreferrer">${esc(src[k].title)}</a>`).join('')}</p>` : '') +
+      bregDecidesHtml(c, b.id) + `</li>`;
   };
   return `<div class="pis-bsum">${['act', 'confirm', 'met', 'na'].filter(k => n[k]).map(k =>
       `<span class="pis-bst ${k}"><i></i>${pisN(n[k])} ${PIS_BODY_ST[k][0].toLowerCase()}</span>`).join('')}</div>` +
@@ -16676,7 +16691,7 @@ function wireComplianceGov(container, key, comp) {
 // status (one the check leaves to confirm takes an answer); one about records the dataset does not hold is about other
 // records; the rest are answered by people, once for the organisation or for each dataset (`answers`, an admin's
 // `set-answer`). Under the sky on the PII sweep tab's Regulator, and in Compliance's Governing body.
-const BREG = { regs: {} };
+const BREG = { regs: {}, ready: {} };
 const BREG_ORDER = ['act', 'confirm', 'met', 'na', 'other'];
 const BREG_ST = { act: 'To act on', confirm: 'To confirm', met: 'Met', na: 'Not applicable', other: 'About other records' };
 const BREG_ANS = { yes: 'Met', no: 'Not met', na: 'Not applicable' };
@@ -16693,10 +16708,46 @@ const bregCall = body => postJSON(`${API_BASE}/data-quality/pii-sweep`, HEADERS,
 function bregRegister(body) {
   if (!BREG.regs[body]) BREG.regs[body] = bregCall({ action: 'register', governing_body: body }).then(r => {
     const items = (r.items || []).map(row => Object.fromEntries((r.columns || []).map((c, i) => [c, row[i]])));
-    return Object.assign({}, r, { items, byId: Object.fromEntries(items.map(it => [it.id, it])) });
+    BREG.ready[body] = Object.assign({}, r, { items, byId: Object.fromEntries(items.map(it => [it.id, it])) });
+    bregFillDecides(body);
+    return BREG.ready[body];
   }).catch(e => { delete BREG.regs[body]; throw e; });
   return BREG.regs[body];
 }
+/** Under a sweep's check: how many of the body's requirements it decides, a press away from them in the register below.
+ *  Drawn before the register is read, it is filled in once it is (bregFillDecides). */
+function bregDecidesHtml(c, body) {
+  const reg = BREG.ready[body], n = reg ? reg.items.filter(it => it.check === c.id).length : 0;
+  return `<button type="button" class="linkbtn lngb pis-bdecides" data-decides="${esc(c.id)}" data-body="${esc(body)}" ` +
+    `data-st="${esc(c.status || '')}"${n ? '' : ' hidden'}>${n ? bregDecidesText(n, c.status) : ''}</button>`;
+}
+function bregDecidesText(n, st) {
+  return pisIco('doc') + (st === 'confirm' ? `Leaves ${pisPl(n, 'requirement')} below for you to confirm` : `Decides ${pisPl(n, 'requirement')} below`);
+}
+function bregFillDecides(body) {
+  const reg = BREG.ready[body]; if (!reg) return;
+  document.querySelectorAll(`.pis-bdecides[data-body="${CSS.escape(body)}"]`).forEach(b => {
+    const n = reg.items.filter(it => it.check === b.dataset.decides).length;
+    b.hidden = !n;
+    b.innerHTML = n ? bregDecidesText(n, b.dataset.st) : '';
+  });
+}
+/** The register narrowed to the requirements one check decides, scrolled to, the first of them open. */
+function bregShowCheck(el, id) {
+  const S = el._breg; if (!S) return;
+  if (!S.check) S.checkWas = S.filter;
+  Object.assign(S, { check: id, filter: 'all', q: '', group: '', openItem: '', edit: '' });
+  bregPaint(el);
+  el.scrollIntoView({ block: 'start', behavior: dqReduced() ? 'auto' : 'smooth' });
+  const f = el.querySelector('.breg-item.open .breg-ih') || el.querySelector('[data-breg="uncheck"]');
+  if (f) f.focus({ preventScroll: true });
+}
+// A check's "Decides N requirements below": the register under it narrowed to them (Compliance's, or the PII sweep tab's).
+document.addEventListener('click', e => {
+  const b = e.target.closest && e.target.closest('.pis-bdecides[data-decides]'); if (!b) return;
+  const gov = b.closest('.cmp-gov'), el = gov ? gov.querySelector('[data-cmpreg]') : $('#pisRegCard');
+  if (el && el._breg && el._breg.body === b.dataset.body) bregShowCheck(el, b.dataset.decides);
+});
 /** How one requirement stands for the dataset: st, the check that judges it (c), its answer (a), and which decided (by). */
 function bregJudge(it, S) {
   const a = (it.scope === 'org' ? S.org : S.data)[it.id] || null;
@@ -16786,14 +16837,19 @@ function bregPaintList(el) {
   const leftTop = (list.querySelector('.breg-gl') || {}).scrollTop || 0, rightTop = (list.querySelector('.breg-ritems') || {}).scrollTop || 0;
   const show = S.reg.items.filter(it => {
     const st = S.J.get(it.id).st;
+    if (S.check && it.check !== S.check) return false;
     if (S.filter === 'here' ? st === 'other' : S.filter !== 'all' && st !== S.filter) return false;
     return !q || `${it.text} ${it.quote} ${it.ref} ${it.area} ${it.id}`.toLowerCase().includes(q);
   });
   const areas = new Map();
   show.forEach(it => { if (!areas.has(it.area)) areas.set(it.area, []); areas.get(it.area).push(it); });
   S.areas = [...areas.keys()];
+  const ck = S.check ? S.checks.get(S.check) : null, ckN = S.check ? S.reg.items.filter(it => it.check === S.check).length : 0;
+  const by = !S.check ? '' : `<p class="breg-by" role="status">${pisIco('target')}<span>The ${pisPl(ckN, 'requirement')} the check ` +
+    `<b>${esc(ck ? ck.title : S.check)}</b> ${ck && ck.status === 'confirm' ? 'leaves for you to confirm' : 'decides'}.</span>` +
+    `<button type="button" class="linkbtn lngb" data-breg="uncheck">Show every requirement</button></p>`;
   if (!show.length) {
-    list.innerHTML = `<p class="breg-s" style="padding:14px 2px">${q ? 'No requirement matches that search.' : 'None.'}</p>`;
+    list.innerHTML = by + `<p class="breg-s" style="padding:14px 2px">${q ? 'No requirement matches that search.' : 'None.'}</p>`;
     return;
   }
   const count = its => { const n = {}; its.forEach(it => { const st = S.J.get(it.id).st; n[st] = (n[st] || 0) + 1; }); return n; };
@@ -16812,13 +16868,14 @@ function bregPaintList(el) {
       `<b class="breg-gc">${pisN(its.length)}</b></button></li>`;
   }).join('');
   const its = areas.get(S.group).slice().sort((x, y) => rank(x) - rank(y)), n = count(its);
+  S.its = its;
   if (S.openItem && !its.some(it => it.id === S.openItem)) S.openItem = '';
   if (S.openItem === '') S.openItem = its[0] ? its[0].id : '';
   const head = `<div class="breg-rh"><span class="breg-ri">${bregAreaIco(S.group)}</span>` +
     `<div class="breg-rt"><h5>${esc(S.group)}</h5><small>${pisPl(its.length, 'requirement')}</small></div>` +
     `<span class="breg-rst">${BREG_ORDER.filter(k => n[k]).map(k => `<span class="${k}"><i></i>${pisN(n[k])} ${BREG_ST[k].toLowerCase()}</span>`).join('')}</span>` +
     bar(n, 'breg-rbar') + `</div>`;
-  list.innerHTML = `<div class="breg-split">` +
+  list.innerHTML = by + `<div class="breg-split">` +
     `<nav class="breg-gpane" aria-label="Requirements by group"><div class="breg-gh"><b>Requirements by group</b>` +
       `<small>${pisPl(S.areas.length, 'group')} · ${pisPl(show.length, 'requirement')}</small></div><ul class="breg-gl">${rows}</ul></nav>` +
     `<section class="breg-rpane" aria-label="${esc(S.group)}">${head}` +
@@ -16843,7 +16900,8 @@ function bregItemHtml(it, S) {
   const j = S.J.get(it.id), a = j.a, m = BREG_MODE[it.mode] || BREG_MODE.P, need = it.applies || 'personal';
   let host = '';
   try { host = new URL(it.url).hostname.replace(/^www[.]/, ''); } catch (e) { host = ''; }
-  const why = j.c ? `<p class="breg-why"><b>${esc(j.c.title)}:</b> ${esc(j.c.detail || '')}</p>`
+  const pol = !!j.c && String(j.c.id).startsWith('policy.'), decided = !!j.c && j.c.status !== 'confirm';
+  const why = j.c ? `<p class="breg-why">${pol ? `<b>${esc(j.c.title)}:</b> ` : ''}${esc(j.c.detail || '')}</p>`
     : j.st === 'other' ? `<p class="breg-why">It is about ${esc(BREG_KIND[need] || need)}, and this sweep found none here.</p>` : '';
   const ans = a ? `<p class="breg-ans">${it.scope === 'org' ? 'Answered for the organisation' : 'Answered for this dataset'}: <b>${esc(BREG_ANS[a.value] || a.value)}</b>` +
       `${a.by ? `, by ${esc(a.by)}` : ''}${a.at ? `, ${esc(rcxWhen(a.at))}` : ''}${a.note ? `. ${esc(a.note)}` : ''}` +
@@ -16871,7 +16929,9 @@ function bregItemHtml(it, S) {
   return `<li class="breg-item ${j.st} open" data-id="${esc(it.id)}">${headBtn}<div class="breg-ib">` +
     `<p class="breg-tags"><span class="breg-st">${BREG_ST[j.st]}</span><span class="breg-tag" data-tip="${esc(m[1])}">${m[0]}</span>` +
       `<span class="breg-tag">${it.scope === 'org' ? 'Once for the organisation' : 'For each dataset'}</span>` +
-      (j.c ? `<span class="breg-tag auto">${String(j.c.id).startsWith('policy.') ? 'From its Compliance policy' : 'Checked by the sweep'}</span>` : '') +
+      (!j.c ? '' : pol ? `<span class="breg-tag auto">${decided ? 'Decided from its Compliance policy' : 'From its Compliance policy'}</span>`
+        : `<button type="button" class="breg-tag auto lngb" data-breg="tocheck" data-check="${esc(j.c.id)}" data-tip="Go to the check">` +
+          `${pisIco('target')}${decided ? 'Decided by' : 'Checked by'}: ${esc(j.c.title)}</button>`) +
       (it.ref ? `<span class="breg-ref">${esc(it.ref)}</span>` : '') + `</p>` +
     `<blockquote class="breg-quote">&ldquo;${esc(it.quote)}&rdquo;<a href="${esc(it.url)}" target="_blank" rel="noopener noreferrer">${esc(host || 'Where it says so')}${pisIco('external')}</a></blockquote>` +
     why + ans + acts + edit + `</div></li>`;
@@ -16999,9 +17059,23 @@ function bregWire(el) {
       return;
     }
     if (act === 'grp-answer') {
-      const area = S.group;
-      const its = S.reg.items.filter(it => it.area === area && S.J.get(it.id).st !== 'other');
-      bregAnswerMany(el, area, bregAnswerable(its, S));
+      bregAnswerMany(el, S.group, bregAnswerable(S.its || [], S));     // those on show: as its button counts them
+      return;
+    }
+    if (act === 'uncheck') {
+      S.check = ''; S.filter = S.checkWas || 'here'; S.edit = '';
+      bregPaint(el);
+      refocus(`[data-breg="filter"][data-v="${S.filter}"]`);
+      return;
+    }
+    if (act === 'tocheck') {
+      // The check it rests on: beside the sky on the PII sweep tab, above the register in Compliance.
+      const gov = el.closest('.cmp-gov'), root = gov || document.querySelector('.pis-side[data-key="lens:body"]');
+      const row = root && root.querySelector(`.pis-bcheck[data-check="${CSS.escape(t.dataset.check)}"]`);
+      if (!row) return;
+      row.scrollIntoView({ block: 'center', behavior: dqReduced() ? 'auto' : 'smooth' });
+      row.classList.add('pis-bflash'); clearTimeout(row._flashT); row._flashT = setTimeout(() => row.classList.remove('pis-bflash'), 1800);
+      const f = row.querySelector('.pis-bdecides:not([hidden])'); if (f) f.focus({ preventScroll: true });
       return;
     }
     if (act === 'copy') {
@@ -29391,13 +29465,14 @@ function pisBodyPanel(res) {
     const cols = [...new Set((c.findings || []).map(id => live.get(id)).filter(Boolean).map(f => f.column))];
     const lights = !!(c.about && cols.length), chip = `check:${c.id}`, on = pis.chip === chip;
     const inner = `<i aria-hidden="true"></i><span class="pis-fitem-t"><b>${esc(c.title)}</b><small>${esc(c.rule || '')}</small></span>${lights ? pisIco('target') : ''}`;
-    return `<li class="pis-bcheck ${st(c)}">` + (lights
+    return `<li class="pis-bcheck ${st(c)}" data-check="${esc(c.id)}">` + (lights
         ? `<button type="button" class="pis-fitem lngb${on ? ' on' : ''}" data-pis="chip" data-v="${esc(chip)}" aria-pressed="${on}" ` +
           `data-tip="${on ? 'Light up every column again' : 'Light up the columns it is about'}">${inner}</button>` : `<div class="pis-fitem">${inner}</div>`) +
       `<p class="pis-bdetail">${esc(c.detail || '')}</p>` +
       (lights ? `<p class="pis-bcols">In ${cols.map(x => `<code>${esc(x)}</code>`).join('')}</p>` : '') +
       ((c.sources || []).some(k => src[k]) ? `<p class="pis-bsrc">${c.sources.filter(k => src[k]).map(k =>
-        `<a href="${esc(src[k].url)}" target="_blank" rel="noopener noreferrer">${esc(src[k].title)}</a>`).join('')}</p>` : '') + `</li>`;
+        `<a href="${esc(src[k].url)}" target="_blank" rel="noopener noreferrer">${esc(src[k].title)}</a>`).join('')}</p>` : '') +
+      bregDecidesHtml(c, b.id) + `</li>`;
   };
   const groups = ['act', 'confirm', 'met', 'na'].map(k => { const cs = (b.checks || []).filter(c => st(c) === k);
     return cs.length ? `<h6>${PIS_BODY_ST[k][0]} <small>${pisN(cs.length)}</small></h6><ul class="pis-fitems pis-bchecks">${cs.map(item).join('')}</ul>` : ''; }).join('');
@@ -30005,7 +30080,10 @@ function pisPaintReg() {
   if (!show) return;
   const key = `${res.dataset_key}|${res.sweep_id || ''}|${b.id}`;
   if (card.dataset.key === key) {                   // drawn already: again only when a dismissal has moved the checks
-    if (card._breg && card._bregRes !== res) { card._bregRes = res; card._breg.checks = new Map((b.checks || []).map(c => [c.id, c])); bregPaint(card); }
+    if (card._breg && card._bregRes !== res) {
+      const policy = [...card._breg.checks.values()].filter(c => String(c.id).startsWith('policy.'));
+      card._bregRes = res; card._breg.checks = new Map([...(b.checks || []), ...policy].map(c => [c.id, c])); bregPaint(card);
+    }
     return;
   }
   card.dataset.key = key; card._bregRes = res;
