@@ -1455,7 +1455,6 @@
   .ipk-l { margin-top: 2px; font-size: 13px; font-weight: 650; }
   .ipk.open .ipk-n, .ipk.open .ipk-l { color: var(--err); }
   .ipk.closed .ipk-n, .ipk.closed .ipk-l { color: var(--inc-blue); }
-  .ipk-d { margin-top: 5px; font-size: 11.5px; color: var(--muted); }
   .ipk-sp { flex: none; align-self: flex-start; width: 78px; height: 26px; margin-top: 4px; color: var(--k); }
   .ipk-sp.bars rect { fill: currentColor; opacity: .5; }
   .ipk-sp.bars rect:last-child { opacity: 1; }
@@ -19237,29 +19236,27 @@ function incSpark(vals, bars) {
     `fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>` +
     `<circle cx="${last[0].toFixed(1)}" cy="${last[1].toFixed(1)}" r="2.4" fill="currentColor"/></svg>`;
 }
-const _incDelta = (d, than) => d > 0 ? `+${d} vs ${than}` : d < 0 ? `-${-d} vs ${than}` : `Same as ${than}`;
+/** The four tiles: a count and what it counts, centred beside the icon, with a line of the last 30 days. */
 function incTilesHtml() {
-  const now = Date.now(), from = now - INC_DAYS * INC_DAY;
+  const now = Date.now();
   const steps = (n, every) => Array.from({ length: n }, (_, i) => now - (n - 1 - i) * every);
   const open = INC_LIST.filter(incIsOpen), unack = open.filter(it => !it.ackBy).length, closed = INC_LIST.length - open.length;
   const openS = steps(15, 2 * INC_DAY).map(t => incOpenAt(t)), unackS = steps(15, 2 * INC_DAY).map(t => incOpenAt(t, true));
   const buckets = (tsOf) => steps(10, 3 * INC_DAY).map(t => INC_SCOPED.filter(it => { const x = tsOf(it); return x > t - 3 * INC_DAY && x <= t; }).length);
   const closedS = buckets(it => incIsOpen(it) ? NaN : incClosedT(it)), openedS = buckets(incOpenedT);
-  const prevClosed = INC_SCOPED.filter(it => { const x = incIsOpen(it) ? NaN : incClosedT(it); return x > from - INC_DAYS * INC_DAY && x <= from; }).length;
-  const wk = now - 7 * INC_DAY;
   const tiles = [
-    { k: 'open', v: 'open', n: open.length, l: 'Open', d: _incDelta(open.length - incOpenAt(wk), '7 days ago'), sp: incSpark(openS),
+    { k: 'open', v: 'open', n: open.length, l: 'Open', sp: incSpark(openS),
       tip: 'Open now. The line is how many were open on each of the last 30 days.' },
-    { k: 'unack', v: 'unack', n: unack, l: 'Unacknowledged', d: _incDelta(unack - incOpenAt(wk, true), '7 days ago'), sp: incSpark(unackS),
+    { k: 'unack', v: 'unack', n: unack, l: 'Unacknowledged', sp: incSpark(unackS),
       tip: 'Open, and nobody has said they are on it. The line is the last 30 days.' },
-    { k: 'closed', v: 'closed', n: closed, l: `Closed (${INC_DAYS} days)`, d: _incDelta(closed - prevClosed, `previous ${INC_DAYS} days`), sp: incSpark(closedS),
+    { k: 'closed', v: 'closed', n: closed, l: `Closed (${INC_DAYS} days)`, sp: incSpark(closedS),
       tip: 'Recovered or dismissed in the last 30 days. The line is how many closed in each 3 days.' },
-    { k: 'total', v: 'all', n: INC_LIST.length, l: `Total (${INC_DAYS} days)`, d: '', sp: incSpark(openedS, true),
+    { k: 'total', v: 'all', n: INC_LIST.length, l: `Total (${INC_DAYS} days)`, sp: incSpark(openedS, true),
       tip: 'Every incident open now or closed in the last 30 days. The bars are how many opened in each 3 days.' },
   ];
   return tiles.map(x => `<button type="button" class="ipk ${x.k} lngb" data-ix="tile" data-v="${x.v}" aria-pressed="${incView === x.v}" data-tip="${esc(x.tip)}">` +
     `<span class="ipk-ic" aria-hidden="true">${INC_DOT}</span>` +
-    `<span class="ipk-txt"><b class="ipk-n">${x.n}</b><span class="ipk-l">${esc(x.l)}</span>${x.d ? `<span class="ipk-d">${esc(x.d)}</span>` : ''}</span>` +
+    `<span class="ipk-txt"><b class="ipk-n">${x.n}</b><span class="ipk-l">${esc(x.l)}</span></span>` +
     x.sp + `</button>`).join('');
 }
 /** Said to a screen reader when it changes: the tiles say it to everyone else. */
@@ -26792,8 +26789,8 @@ const GD_SHOTS = {
   "failed-records": [1600, 1026, "915e3fb9cf"],
   "history-p": [1600, 1164, "cfca32980f"],
   "history-q": [1600, 979, "539a02e628"],
-  "incidents-p": [1600, 1163, "d257df8b88"],
-  "incidents-q": [1600, 1163, "8acb69c159"],
+  "incidents-p": [1600, 1156, "f09a54531d"],
+  "incidents-q": [1600, 1155, "5ebd9f2704"],
   "lineage-app": [1600, 1141, "8605e85254"],
   "lineage-source": [1600, 1129, "d903b63cd1"],
   "onprem-file": [1600, 1156, "244201089c"],
@@ -28056,7 +28053,7 @@ function buildGuides() {
           ['Diverged from its pair', 'Warning, then Major', `A pair watched in Reconcile has more rows differing than its watch allows; ten times over makes it major. Its companion, Reconcile could not run, opens when a watched comparison could not happen. ${see('reconcile', 'Reconcile')}`],
         ]) },
       { h: 'The list', body:
-          p(`Incidents opens on four tiles: what is ${ui('Open')}, what is ${ui('Unacknowledged')}, what has closed in the last 30 days, and the total. Each says how that has moved, with a line of the last 30 days. Press a tile to show only those. ${showme('inc-board')}`) +
+          p(`Incidents opens on four tiles: what is ${ui('Open')}, what is ${ui('Unacknowledged')}, what has closed in the last 30 days, and the total. Each has a line of the last 30 days, and its tip says what the line shows. Press a tile to show only those. ${showme('inc-board')}`) +
           shot('incidents', `${n(1)} How many, and how that has moved: press a tile to show only those. ${n(2)} Search, and narrow by severity and status. ${n(3)} Each dataset, with its source, its score and how many of its incidents are open and unacknowledged: press it to show or hide them. ${n(4)} The incident picked, beside the list. ${n(5)} What you can do about it.`) +
           list(
             `<b>A card per dataset</b>, worst first, says where it comes from, how it is scoring, and how many of its incidents are open and unacknowledged. The first one starts open; press any to show or hide its incidents.`,
