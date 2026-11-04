@@ -28215,6 +28215,7 @@ function buildGuides() {
           list(`A key is still checked against <b>every earlier row</b>, so a new row reusing an old key is a duplicate. Row-count limits and the freshness of the newest record are the whole table's.`,
                `A run you start yourself reads every row, and so does a scheduled run a week after the last full one. Those runs also sweep for personal data; a run of new rows leaves the sweep to them, so Compliance keeps the last sweep of every row.`,
                `A run with nothing new is not scored. The run's page says how many rows were new, of how many in the table.`,
+               `Parquet in S3 is read where it lies on a run of new rows: only the parts of the files past where the last run stopped are fetched, and nothing is downloaded first.`,
                `Each run checks it can find again the newest value it read. A column it cannot (a time a session would shift, an old SQL Server DATETIME) keeps no mark, and every run reads every row, as the dialog then says.`) },
       { h: 'Manage your schedules', body: table(['Action', 'What it does'], [
           ['Its switch', 'Pauses or resumes it. Pausing asks first, because nothing announces a run that did not happen. Resumed, it runs from its next due time.'],
