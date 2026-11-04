@@ -10696,6 +10696,14 @@ async function dqRunCancelClick(btn) {
 document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('.dq-run-cancel'); if (b && !b.disabled) dqRunCancelClick(b); });
 function dqRunId(f, id) { if (f) { f._runId = id || ''; _dqRunMeta(f); } }
 function dqRunNote(f, text) { const n = f && f.querySelector('.dq-run-note'); if (n) n.textContent = text || ''; }
+/** A run started on the quick worker and handed to a full one to finish (dq/resume.py) says so, once: without it
+ *  a run that paused while its full worker started would look stuck. Its status says why it moved. */
+function dqRunMoved(f, r) {
+  const st = (r && r.status) || {};
+  if (!f || f._moved || !st.moved_at) return;
+  f._moved = true;
+  dqRunNote(f, st.detail || 'Moved to a full worker, which carries on from where it got to.');
+}
 /** Change the loader's message and/or its line underneath; null leaves either as it is. */
 function dqRunSay(f, msg, sub) {
   const box = f && f.querySelector('.dq-loader');
@@ -10797,6 +10805,7 @@ async function pollResults(resultPrefix, onRulesReady) {
       return;                              // history reloads fresh whenever the tab is opened
     }
     await dqRunSweep(srcFace('file', 'run'), resultPrefix);
+    dqRunMoved(srcFace('file', 'run'), r);
     if (!nudged && Date.now() - start > NUDGE_MS) {
       nudged = true;
       dqRunNote(srcFace('file', 'run'), 'This is taking longer than usual - still working…');
@@ -28227,6 +28236,7 @@ function buildGuides() {
           `A <b>tag schedule</b> captures its datasets when you save it. Re-save it after tagging more.`,
           `A run is put on a lane by when it started and what it assessed. The river reads the newest 500 runs; a time older than those shows as not known rather than missed.`,
           `A <b>source-monitoring schedule</b> rebuilds its list every time it fires, so new datasets are picked up automatically.`,
+          `An assessment starts on a fast worker, under way in seconds. One that needs more than 15 minutes, or more memory, moves to a full worker, which carries on from where it got to; the run says so. A source on an internal network is always assessed on a full worker.`,
           (Q || ADMIN) ? `An <b>on-premises</b> schedule fires into its agent's queue. If the agent is offline at the time, the job waits for it rather than failing.` : null) },
     ],
   });
@@ -32948,6 +32958,7 @@ async function pollInto(resultPrefix, bodyEl, opts) {
       return;
     }
     if (stage) await dqRunSweep(srcFace(stage, 'run'), resultPrefix);
+    if (stage) dqRunMoved(srcFace(stage, 'run'), r);
     if (!nudged && Date.now() - start > NUDGE_MS) {
       nudged = true;
       if (stage) dqRunNote(srcFace(stage, 'run'), 'Still working. A large table can take a while, and the result is saved to History either way.');
