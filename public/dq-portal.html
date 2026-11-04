@@ -5256,6 +5256,11 @@
     background: var(--card); color: var(--text); font: inherit; font-size: 12.5px; font-weight: 400; }
   .breg-edit textarea { resize: vertical; min-height: 54px; }
   .breg-edit-a { grid-column: 2; display: flex; align-items: center; gap: 12px; }
+  /* ---- New rows only: the dialog that chooses the column a dataset's scheduled runs tell new rows by */
+  .nr-dlg p { margin: 0 0 8px; line-height: 1.5; }
+  .nr-dlg ul { margin: 0 0 10px; padding-left: 18px; }
+  .nr-dlg li { margin: 4px 0; line-height: 1.45; color: var(--muted, #64748b); }
+  .nr-dlg .nr-state { margin-top: 6px; padding: 8px 10px; border-radius: 8px; background: rgba(129, 140, 248, .10); }
   /* ---- Evidence packs: the runway above the register on Regulator, its signed versions, and the pack itself (the binder) */
   .pis-epcard { padding: 18px 20px; scroll-margin-top: 76px; }
   .ep-h { display: flex; align-items: center; gap: 14px; }
@@ -8580,6 +8585,7 @@ function cmpSweepHtml(comp, key) {
   const why = { not_asked: 'This run was started with Sweep PII unticked and did not sweep the dataset',
                 switched_off: 'Sweeping is switched off for this dataset: this run did not sweep it',
                 off_everywhere: 'Sweeping is switched off for every dataset: this run did not sweep it',
+                new_rows: 'This run read only the rows added since the last one, and left the sweep to the next full run',
                 failed: 'This run\'s PII sweep failed (the PII sweep tab says why)' }[skipped] || 'This run did not sweep the dataset';
   if (!s) return key ? `<p class="hint cmp-sweep-none">${why}${skipped ? '' : ' for personal data'}, so these checks judged it from a sample of whole values.` +
     (skipped === 'switched_off' ? ` An admin can switch it back on, on the PII sweep tab.${open(key, 'Open PII sweep')}`
@@ -9072,9 +9078,15 @@ function renderAssessment(r, bodyEl, opts) {
   const onSee = opts && opts.onSee;
   if (!gatePass) html += gatePanel(st, { tabbed: tabbed || !!onSee, ruleNames: r.ruleNames,
     canSee: (!(opts && opts.noRecords) && !!r.resultPrefix) || !!onSee });
-  const rowsTxt = st.rows_assessed == null ? '' : st.sampled
+  const nrw = st.new_rows || null;
+  const rowsTxt = st.rows_assessed == null ? '' : (nrw && nrw.only)
+    ? (Number(st.rows_assessed) === 0
+      ? `No rows were added since the last run (by ${esc(nrw.column)}), so nothing was assessed.`
+      : `Assessed the ${Number(st.rows_assessed).toLocaleString()} rows added since the last run (${esc(nrw.column)} after ${esc(nrWhen(nrw.after))}), of ${Number(st.rows_in_source).toLocaleString()} in the table. Keys were checked against every earlier row.`)
+    : st.sampled
     ? `Assessed a random sample of ${Number(st.rows_assessed).toLocaleString()} of ${Number(st.rows_in_source).toLocaleString()} rows.`
-    : `Assessed all ${Number(st.rows_assessed).toLocaleString()} rows.`;
+    : `Assessed all ${Number(st.rows_assessed).toLocaleString()} rows.` +
+      (nrw && nrw.every_row_because ? ` New rows only is on; this run read every row because ${esc(nrw.every_row_because)}.` : '');
   const wd = weightsDesc(st.dimension_weights);
   // How much was read, and how it was weighted: under the headline when tabbed, inline otherwise.
   const metaHtml = [rowsTxt, wd ? `Custom weights: ${wd}.` : ''].filter(Boolean).map(t => `<p class="hint">${t}</p>`).join('');
@@ -10935,6 +10947,7 @@ function histTilesHtml(tiles) {
 function rowsDesc(r) {
   if (r.rowsAssessed == null) return '';
   const a = Number(r.rowsAssessed).toLocaleString();
+  if (r.newRowsOnly && r.rowsInSource != null) return `${a} new of ${Number(r.rowsInSource).toLocaleString()} rows`;
   return (r.sampled && r.rowsInSource != null)
     ? `sampled ${a} of ${Number(r.rowsInSource).toLocaleString()} rows`
     : `${a} rows`;
@@ -13986,6 +13999,7 @@ function dsxKpisHtml(ds, r) {
 
   const ra = Number(st.rows_assessed);
   const rowsSub = none || lost ? '' : !r ? wait
+    : (st.new_rows && st.new_rows.only) ? `${ra.toLocaleString()} new assessed`
     : st.sampled ? `a sample of ${ra.toLocaleString()} assessed` : (st.rows_assessed != null ? 'all assessed' : '');
   const rows = tile('rows', 'Rows', `<b>${esc(numInt(d.rows))}</b>`, rowsSub);
 
@@ -14109,6 +14123,14 @@ function dsxSchedPlan(d) {
   }
   return { kind, key: d.key };
 }
+/** New rows only (dq/new_rows.py): whether a dataset's scheduled runs can read just what was added, and what they do now. */
+function dsxNewRowsPlan(d) {
+  if (dsxIsUpload(d)) return { off: true, sub: 'An uploaded file is assessed once' };
+  if (!isSourceDataset(d)) return { off: true, sub: 'App tables are read whole by the app' };
+  const col = ((dashEntries[d.key] || {}).newRows || {}).column;
+  return col ? { sub: 'Scheduled runs read only the rows added since the last', side: col }
+    : { sub: 'Let scheduled runs read only the rows added since the last' };
+}
 function dsxLineagePlan(d) {
   if (!isSourceDataset(d)) return PORTAL ? { why: 'Not available for app tables here' } : { scope: 'app', side: 'whole app' };
   const fmt = String(d.sourceFormat || '').toLowerCase();
@@ -14138,6 +14160,7 @@ function dsxMenuHtml(key, ds) {
   let html = h('Run') +
     dsxMi('rerun', '↻', 'Re-run now', dsxIsUpload(d) ? { sub: 'Upload the file again to assess it' } : null) +
     dsxMi('schedule', '⏰', 'Schedule…', sch.why ? { off: true, sub: sch.why } : { sub: 'Fills in the Schedules form for it' }) +
+    dsxMi('newrows', '⏩', 'New rows only…', dsxNewRowsPlan(d)) +
     dsxMi('monitor', '📡', 'Monitor at source', mon ? { off: true, sub: mon } : { sub: 'Row counts and freshness, between runs' }) +
     sep + h('Explore') +
     dsxMi('lineage', '🔗', 'Lineage', lin.why ? { off: true, sub: lin.why } : { side: lin.side }) +
@@ -14234,6 +14257,54 @@ async function dsxSchedule(d) {
   schBanner('info', manual
     ? `Scheduling ${d.name}: enter where the file is, choose the saved connection it uses, then choose when it runs.`
     : `Scheduling ${d.name}: choose when it runs, then save.`);
+}
+// ---- New rows only: the column a dataset's scheduled runs tell new rows by, and what the last run made of it ----
+/** A mark as the column holds it: a time without its zero fraction and seconds, a number as it is. */
+function nrWhen(v) {
+  const t = String(v == null ? '' : v);
+  return /^\d{4}-\d\d-\d\d \d\d:\d\d:\d\d/.test(t) ? t.replace(/\.0+$/, '').replace(/(\d\d:\d\d):00$/, '$1') : t;
+}
+function nrBodyHtml(d, r) {
+  const m = r.mark, last = r.lastRun;
+  let state;
+  if (last && last.only) {
+    state = Number(last.rowsAssessed) === 0
+      ? `The last run found no rows added after ${esc(nrWhen(last.after))}.`
+      : `The last run read the ${Number(last.rowsAssessed).toLocaleString()} rows added after ${esc(nrWhen(last.after))}, of ${Number(last.rowsInSource).toLocaleString()} in the table.`;
+  } else if (last && last.every_row_because) {
+    state = `The last run read every row, because ${esc(last.every_row_because)}.`;
+  } else state = '';
+  if (m && m.verified) state += ` The next scheduled run starts after ${esc(nrWhen(m.through))}${m.last_full_at
+    ? `; the last full run was on ${esc(new Date(m.last_full_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }))}` : ''}.`;
+  else if (m && m.column) state += ' No mark could be kept, so the next run reads every row.';
+  else if (r.column) state += ' No run has kept a mark yet: the next reads every row and keeps one.';
+  return `<div class="nr-dlg"><p>Each scheduled run of <b>${esc(d.name || '')}</b> reads only the rows whose chosen column is past where the last run stopped, so a table that only grows is not read in full every time.</p>
+    <ul><li>A key is still checked against every earlier row, and row-count limits and freshness are the whole table's.</li>
+    <li>A run you start yourself reads every row, and so does a scheduled run ${Number(r.fullEveryDays || 7)} days after the last full one. Those also sweep for personal data, which a run of new rows leaves to them.</li>
+    <li>Choose a column that only grows as rows are added: an id, or when each row was loaded.</li></ul>
+    ${state ? `<p class="hint nr-state">${state}</p>` : ''}</div>`;
+}
+async function dsxNewRows(d) {
+  let r = null;
+  try { r = await postJSON(`${API_BASE}/data-quality/new-rows`, HEADERS, { app_id: APP_ID, dataset_key: d.key, action: 'get' }); }
+  catch (e) { dqAlert(`What ${d.name}'s scheduled runs read could not be loaded: ${e.message || e}`, { title: 'New rows only' }); return; }
+  const html = nrBodyHtml(d, r);
+  if (!r.canSet) {
+    await dqModal({ kind: 'alert', title: 'New rows only', html: html + `<p class="hint">${r.column
+      ? `Scheduled runs tell new rows by <b>${esc(r.column)}</b>.` : 'It is off: every run reads every row.'} Only an admin can change it.</p>` });
+    return;
+  }
+  const what = { number: 'a number', time: 'a date or time' };
+  const opts = [{ value: '', label: 'Off: every run reads every row' }].concat((r.columns || [])
+    .filter(c => c.kind !== 'text').map(c => ({ value: c.name, label: what[c.kind] ? `${c.name}, ${what[c.kind]}` : c.name })));
+  if (r.column && !opts.some(o => o.value === r.column)) opts.push({ value: r.column, label: r.column });
+  const v = await dqSelect('', opts, r.column || '', { title: 'New rows only', html, okLabel: 'Save' });
+  if (v == null || v === (r.column || '')) return;
+  try { await postJSON(`${API_BASE}/data-quality/new-rows`, HEADERS, { app_id: APP_ID, dataset_key: d.key, action: 'set', column: v || null }); }
+  catch (e) { dqAlert(`It could not be saved: ${e.message || e}`, { title: 'New rows only' }); return; }
+  const ent = dashEntries[d.key] || (dashEntries[d.key] = { stage: '', tags: [] });
+  if (v) ent.newRows = { column: v }; else delete ent.newRows;
+  dsxFlash(v ? `Scheduled runs now read only new rows, by ${v}` : 'Scheduled runs read every row again');
 }
 function dsxMonitor(d) {
   Object.assign(swView, { want: d.key, q: '', src: '', health: '' });
@@ -14335,6 +14406,7 @@ async function dsxClick(e) {
     switch (t.dataset.act) {
       case 'rerun': reRunTable(name, d.sourceFormat || '', d.resultPrefix || ''); break;
       case 'schedule': dsxSchedule(d); break;
+      case 'newrows': dsxNewRows(d); break;
       case 'monitor': dsxMonitor(d); break;
       case 'lineage': dsxLineage(d); break;
       case 'incidents': dsxIncidents(d); break;
@@ -16583,7 +16655,9 @@ function cmtMount(box, d, comp, cols, sec) {
   if (!sw.sweep_id) notes.push('Not swept for PII yet: these are from a sample of whole values.');
   else if (!sw.this_run && comp.pii_sweep_skipped) notes.push({ not_asked: 'This run was started with Sweep PII unticked, so these are from its last sweep.',
     switched_off: 'Sweeping is switched off for this dataset, so these are from its last sweep.',
-    off_everywhere: 'Sweeping is switched off for every dataset, so these are from its last sweep.', failed: "This run's PII sweep failed, so these are from the one before." }[comp.pii_sweep_skipped] || '');
+    off_everywhere: 'Sweeping is switched off for every dataset, so these are from its last sweep.',
+    new_rows: 'This run read only its new rows, so these are from the last full run\'s sweep.',
+    failed: "This run's PII sweep failed, so these are from the one before." }[comp.pii_sweep_skipped] || '');
   if (m.hidden) notes.push(`${_cmpPlural(m.hidden, 'other column')} with nothing found are left out of a table this wide.`);
   box.innerHTML = `<div class="cmt-vis" tabindex="-1"></div><div class="cmt-dock" role="region" aria-live="polite" hidden></div>
     <div class="cmt-legend"><span class="cmb-key"><i class="c-critical"></i>Critical</span><span class="cmb-key"><i class="c-high"></i>High</span>
@@ -27702,7 +27776,7 @@ function buildGuides() {
       { h: 'Everything you can do to it', body:
           p(`${ui('Re-run')} assesses it again now. Everything else is under ${ui('Actions')}, which lands on the right tab with this dataset already chosen there. ${showme('ds-actions')}`) +
           table(['Group', 'What is in it'], [
-            ['Run', `${ui('Re-run now')}, ${ui('Schedule…')} (opens the Schedules form with this dataset chosen: you choose when it runs) and ${ui('Monitor at source')}.`],
+            ['Run', `${ui('Re-run now')}, ${ui('Schedule…')} (opens the Schedules form with this dataset chosen: you choose when it runs), ${ui('New rows only…')} (scheduled runs read just the rows added since the last) and ${ui('Monitor at source')}.`],
             ['Explore', `Its ${ui('Lineage')}, its ${ui('Incidents')}, and its latest run in ${ui('History')}.`],
             ['Share', `${ui('Export summary (parquet)')} downloads its scores run by run, ready to load into Qlik or any BI tool.${P ? ` ${ui('Copy a link to this dataset')} for anyone in your workspace.` : ''}`],
             ['Describe', `Edit its description, or add a note.${P && !ADMIN ? ` ${ui('Submit for approval')} puts your latest run forward to an admin.` : ''}`],
@@ -28137,6 +28211,12 @@ function buildGuides() {
           shot('schedule-form', `${n(1)} When it runs, ${n(2)} what it assesses and ${n(3)} its name. ${n(4)} What it will do, its next runs, and its week beside the others. ${n(5)} ${ui('Save schedule')}, with whether it starts in a busy hour beside it.`) },
       { h: 'Who gets the alerts', body:
           p(`Each dataset's owner, or whoever submitted it when it has no owner. A dataset with neither raises no email.`) },
+      { h: 'Read only the new rows', body:
+          p(`A table that only grows need not be read in full each time its schedule fires. On the dataset, open ${ui('Actions')}, choose ${ui('New rows only…')} and pick a column that grows as rows are added: an id, or when each row was loaded. Each scheduled run then reads only the rows past where the last one stopped.`) +
+          list(`A key is still checked against <b>every earlier row</b>, so a new row reusing an old key is a duplicate. Row-count limits and the freshness of the newest record are the whole table's.`,
+               `A run you start yourself reads every row, and so does a scheduled run a week after the last full one. Those runs also sweep for personal data; a run of new rows leaves the sweep to them, so Compliance keeps the last sweep of every row.`,
+               `A run with nothing new is not scored. The run's page says how many rows were new, of how many in the table.`,
+               `Each run checks it can find again the newest value it read. A column it cannot (a time a session would shift, an old SQL Server DATETIME) keeps no mark, and every run reads every row, as the dialog then says.`) },
       { h: 'Manage your schedules', body: table(['Action', 'What it does'], [
           ['Its switch', 'Pauses or resumes it. Pausing asks first, because nothing announces a run that did not happen. Resumed, it runs from its next due time.'],
           ['Its name', 'Shows its expression, what it assesses, its next run and its last runs, with Pause, Edit and Delete.'],
