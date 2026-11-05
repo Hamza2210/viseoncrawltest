@@ -8894,6 +8894,7 @@ function checkLabel(cid, data) {
 function _gateParse(reason) {
   const t = String(reason || '').trim();
   let m = /^(\w+) check '([^']+)' failed on ([\d,]+) record\(s\)$/.exec(t);
+  if (!m && (m = /^(\w+) check '([^']+)' failed \(about the whole dataset\)$/.exec(t))) return Object.assign({ type: 'whole', sev: m[1] }, _checkParse(m[2]));
   if (m) return Object.assign({ type: 'check', sev: m[1], failed: Number(m[3].replace(/,/g, '')) || 0 }, _checkParse(m[2]));
   if ((m = /^blocker check '([^']+)' could not be evaluated: ([\s\S]*)$/.exec(t))) return Object.assign({ type: 'unrun', why: m[2] }, _checkParse(m[1]));
   if ((m = /^the (\w+) checks could not run: ([\s\S]*)$/.exec(t))) return { type: 'dimfail', dimension: m[1], why: m[2] };
@@ -8924,6 +8925,8 @@ function gatePanel(st, o) {
   if (n) bits.push(`${n} blocker check${n === 1 ? '' : 's'} failed`);
   if (other.some(p => p.type === 'score' || p.type === 'noscore')) bits.push("the overall score is under the gate's threshold");
   if (other.some(p => p.type === 'cap')) bits.push('there are more failures than the gate allows');
+  const whole = other.filter(p => p.type === 'whole').length;
+  if (whole) bits.push(`${whole} blocker check${whole === 1 ? '' : 's'} about the whole dataset failed`);
   const unrun = other.filter(p => p.type === 'unrun').length + other.filter(p => p.type === 'dimfail').length;
   if (unrun) bits.push(`${unrun} blocking check${unrun === 1 ? '' : 's'} could not be run, and a check nobody could run cannot pass`);
   const said = bits.length < 3 ? bits.join(', and ') : bits.slice(0, -1).join(', ') + ', and ' + bits[bits.length - 1];
@@ -8949,6 +8952,7 @@ function gatePanel(st, o) {
       ? ['Overall score', `${fmtScore(p.score)} is under the gate's threshold of ${fmtScore(p.threshold)}.`]
       : p.type === 'noscore' ? ['Overall score', 'It could not be computed, so the gate cannot pass.']
       : p.type === 'cap' ? ['All failures', `${p.n.toLocaleString()} check failures, over the gate's limit of ${p.limit.toLocaleString()}.`]
+      : p.type === 'whole' ? [_GATE_DIM[p.dim] || p.dim || 'Check', `${_GATE_WHOLE[p.kind] || _gateTarget(p)}: ${(_GATE_REQ[p.kind] || 'Must satisfy its rule').replace(/\.$/, '')}. This is about the whole dataset, so there are no records to show.`]
       : p.type === 'unrun' ? [_GATE_DIM[p.dim] || p.dim || 'Check', `${_gateTarget(p)}: could not be checked. ${p.why}`]
       : p.type === 'dimfail' ? [_GATE_DIM[p.dimension] || p.dimension, `Its checks could not run: ${p.why}`]
       : ['Reason', p.text];
@@ -15175,7 +15179,7 @@ function renderDimRadar(criteria) {
 // per-check counts (check_summary), not the capped record sample.
 function renderFailuresViz(data) {
   const cs = data.check_summary || [];
-  if (!cs.length) return '';
+  if (!cs.length && !(data.dataset_findings || []).length) return '';
   const sev = { blocker: 0, major: 0, minor: 0 }, byCol = new Map();
   cs.forEach(k => {
     const s = (k.severity || '').toLowerCase(); if (s in sev) sev[s] += (k.failed || 0);
@@ -15198,7 +15202,12 @@ function renderFailuresViz(data) {
         <span class="bar-lab">${esc(x.c)}</span>
         <span class="bar-track"><span class="bar-fill mag" style="width:${Math.max(3, 100 * x.n / max)}%"></span></span>
         <span class="bar-val">${x.n.toLocaleString()}</span></div>`).join('') + `</div>` : '';
-  return sevBlock + colBlock;
+  // Checks about the whole dataset that failed (empty columns, row counts, freshness): not records, so not in
+  // the counts above, which once showed "2 major" failing records with none to see.
+  const whole = (data.dataset_findings || []).filter(Boolean);
+  const wholeBlock = whole.length ? `<p class="hint ra-whole">About the whole dataset, not its records: ` +
+    whole.map(f => esc(f.description || f.check_id) + ((f.columns || []).length ? ` (${(f.columns || []).map(esc).join(', ')})` : '')).join('; ') + `.</p>` : '';
+  return sevBlock + colBlock + wholeBlock;
 }
 
 // App-level: tables (rows, worst first) x DAMA dimensions (cols), each cell RAG-coloured with
@@ -27200,7 +27209,8 @@ function apxCalls() {
       answer: [['records', 'The failing rows, as far as your failing-record policy allows.'],
                ['total', 'How many failing rows the run recorded.'],
                ['truncated', '<code>true</code> when there were more than <code>limit</code>.'],
-               ['check_summary', 'Every failing check with exact counts, whatever the policy.'],
+               ['check_summary', 'Every failing check of records, with exact counts, whatever the policy.'],
+               ['dataset_findings', 'Checks about the whole dataset that failed (empty columns, row counts, freshness): not records, so not counted with them.'],
                ['records_policy', 'The policy applied, and whether any columns were withheld.'],
                ['all', 'Whether the run kept every failed record for download, and how many (<code>rows</code>, <code>complete</code>).']],
       errors: [['400', 'Not a run folder.'], ['404', 'No such dataset, or not one you can see.']] },
