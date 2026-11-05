@@ -873,6 +873,8 @@
   .ra-head .ds-name { font-size: 20px; margin-bottom: 6px; }
   .ra-head .headline { margin-bottom: 6px; }
   .ra-meta p.hint { margin: 2px 0 0; }
+  /* A run that says something went wrong around its result: its values withheld, its personal-data checks not run */
+  .hint.ra-warn { color: var(--run); }
   .rd-tabs.ra-tabs { margin: 18px 0 16px; }
   .rd-tab .ra-n { margin-left: 7px; padding: 1px 7px; border-radius: 999px; font-size: 11px; font-weight: 700;
     background: var(--idle-bg); color: var(--muted); }
@@ -8121,6 +8123,16 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 // stopped, so a wrong password showed an assessment spinner indefinitely.
 const TERMINAL = ['SUCCEEDED', 'GATE_FAILED', 'FAILED', 'ERROR', 'CANCELLED', 'ABORTED'];
 const fmtScore = n => (n == null ? '-' : Number(Number(n).toFixed(2)));
+/** A data-quality score's band, as the engine judges it (dq/scoring.py status_for): on the score as shown (two
+ *  places, so a "95" is never amber), against the dataset's own thresholds when known (`thr`: a report's
+ *  overall.thresholds), else the platform's: green from 95, amber from 85. Null for no score. */
+function dqBand(score, thr) {
+  if (typeof score !== 'number' || !isFinite(score)) return null;
+  const s = Math.round(score * 100) / 100;
+  const g = thr && typeof thr.green_at === 'number' ? thr.green_at : 95;
+  const a = thr && typeof thr.amber_at === 'number' ? thr.amber_at : 85;
+  return s >= g ? 'green' : s >= a ? 'amber' : 'red';
+}
 function tagClass(s) { return ({ green: 'green', amber: 'amber', red: 'red' })[s] || ''; }
 // A friendly label + chip for the dataset's origin (source_format on the run).
 const SOURCE_FMT_LABEL = {
@@ -8884,6 +8896,8 @@ function _gateParse(reason) {
   const t = String(reason || '').trim();
   let m = /^(\w+) check '([^']+)' failed on ([\d,]+) record\(s\)$/.exec(t);
   if (m) return Object.assign({ type: 'check', sev: m[1], failed: Number(m[3].replace(/,/g, '')) || 0 }, _checkParse(m[2]));
+  if ((m = /^blocker check '([^']+)' could not be evaluated: ([\s\S]*)$/.exec(t))) return Object.assign({ type: 'unrun', why: m[2] }, _checkParse(m[1]));
+  if ((m = /^the (\w+) checks could not run: ([\s\S]*)$/.exec(t))) return { type: 'dimfail', dimension: m[1], why: m[2] };
   if ((m = /^overall score ([\d.]+) below threshold ([\d.]+)$/.exec(t))) return { type: 'score', score: Number(m[1]), threshold: Number(m[2]) };
   if (/^overall score could not be computed$/.test(t)) return { type: 'noscore' };
   if ((m = /^([\d,]+) check failure\(s\) exceed the limit of ([\d,]+)$/.exec(t))) {
@@ -8911,6 +8925,8 @@ function gatePanel(st, o) {
   if (n) bits.push(`${n} blocker check${n === 1 ? '' : 's'} failed`);
   if (other.some(p => p.type === 'score' || p.type === 'noscore')) bits.push("the overall score is under the gate's threshold");
   if (other.some(p => p.type === 'cap')) bits.push('there are more failures than the gate allows');
+  const unrun = other.filter(p => p.type === 'unrun').length + other.filter(p => p.type === 'dimfail').length;
+  if (unrun) bits.push(`${unrun} blocking check${unrun === 1 ? '' : 's'} could not be run, and a check nobody could run cannot pass`);
   const said = bits.length < 3 ? bits.join(', and ') : bits.slice(0, -1).join(', ') + ', and ' + bits[bits.length - 1];
   let sub = bits.length ? said + '.' : 'One or more blocking checks failed.';
   sub = sub.charAt(0).toUpperCase() + sub.slice(1);
@@ -8934,6 +8950,8 @@ function gatePanel(st, o) {
       ? ['Overall score', `${fmtScore(p.score)} is under the gate's threshold of ${fmtScore(p.threshold)}.`]
       : p.type === 'noscore' ? ['Overall score', 'It could not be computed, so the gate cannot pass.']
       : p.type === 'cap' ? ['All failures', `${p.n.toLocaleString()} check failures, over the gate's limit of ${p.limit.toLocaleString()}.`]
+      : p.type === 'unrun' ? [_GATE_DIM[p.dim] || p.dim || 'Check', `${_gateTarget(p)}: could not be checked. ${p.why}`]
+      : p.type === 'dimfail' ? [_GATE_DIM[p.dimension] || p.dimension, `Its checks could not run: ${p.why}`]
       : ['Reason', p.text];
     return `<li class="gate-row gate-plain"><div class="gate-what"><div class="gate-name"><span class="gate-dim">${esc(label)}</span></div>` +
       `<div class="gate-req">${esc(text)}</div></div></li>`;
@@ -9080,7 +9098,7 @@ function renderAssessment(r, bodyEl, opts) {
   const nrw = st.new_rows || null;
   const rowsTxt = st.rows_assessed == null ? '' : (nrw && nrw.only)
     ? (Number(st.rows_assessed) === 0
-      ? `No rows were added since the last run (by ${esc(nrw.column)}), so nothing was assessed.`
+      ? `No rows were added since the last run (by ${esc(nrw.column)}), so no rows were assessed. Where it has a time limit, how recent its newest record is was still checked.`
       : `Assessed the ${Number(st.rows_assessed).toLocaleString()} rows added since the last run (${esc(nrw.column)} after ${esc(nrWhen(nrw.after))}), of ${Number(st.rows_in_source).toLocaleString()} in the table. Keys were checked against every earlier row.`)
     : st.sampled
     ? `Assessed a random sample of ${Number(st.rows_assessed).toLocaleString()} of ${Number(st.rows_in_source).toLocaleString()} rows.`
@@ -9088,7 +9106,11 @@ function renderAssessment(r, bodyEl, opts) {
       (nrw && nrw.every_row_because ? ` New rows only is on; this run read every row because ${esc(nrw.every_row_because)}.` : '');
   const wd = weightsDesc(st.dimension_weights);
   // How much was read, and how it was weighted: under the headline when tabbed, inline otherwise.
-  const metaHtml = [rowsTxt, wd ? `Custom weights: ${wd}.` : ''].filter(Boolean).map(t => `<p class="hint">${t}</p>`).join('');
+  const adj = (r.rulesAdjusted || []).filter(Boolean);
+  const adjTxt = adj.length ? `Checking the inferred rules against the data changed ${adj.length === 1 ? 'one' : adj.length}: ` +
+    adj.slice(0, 6).map(a => esc(a)).join('; ') + (adj.length > 6 ? `; and ${adj.length - 6} more` : '') + '.' : '';
+  const metaHtml = [rowsTxt, wd ? `Custom weights: ${wd}.` : '', adjTxt].filter(Boolean).map(t => `<p class="hint">${t}</p>`).join('') +
+    [r.valuesWithheld, r.complianceError].filter(Boolean).map(t => `<p class="hint ra-warn">${esc(t)}</p>`).join('');
   if (!tabbed) html += metaHtml;
   const crit = sum.criteria || [];
   // Referential integrity gets a friendlier, fuller explanation; every other
@@ -11098,9 +11120,11 @@ function appBatchRow(b) {
   const avg = b.avgScore != null ? fmtScore(b.avgScore) : '-';
   const cnt = b.tablesTotal != null ? `${b.tablesReported} of ${b.tablesTotal} tables`
                                     : `${b.tablesReported} tables`;
-  const ragTag = s => s >= 90 ? 'green' : s >= 75 ? 'amber' : 'red';
+  // Coloured as that table was judged (its own thresholds), never by a band of its own.
+  const worst = (b.tables || []).find(t => t.overallScore === b.worstScore);
+  const worstBand = (worst && ['green', 'amber', 'red'].includes(worst.overallStatus)) ? worst.overallStatus : dqBand(b.worstScore);
   const worstChip = b.worstScore != null
-    ? `<span class="tag ${ragTag(b.worstScore)}" data-tip="Lowest table score in this run">low ${fmtScore(b.worstScore)}</span>`
+    ? `<span class="tag ${worstBand}" data-tip="Lowest table score in this run">low ${fmtScore(b.worstScore)}</span>`
     : '';
   const hasTables = (b.tables || []).length;
   const listHtml = hasTables
@@ -11133,7 +11157,7 @@ async function loadBatchOverall(el, b) {
   try {
     const results = await Promise.all(tables.map(t =>
       postJSON(`${API_BASE}/data-quality/result`, HEADERS, { result_prefix: t.resultPrefix }).catch(() => null)));
-    renderOverall(box, results.filter(Boolean), tables.length);
+    renderOverall(box, results.filter(Boolean), tables.length, { unloaded: results.filter(x => !x).length });
   } catch (e) {
     box.dataset.loaded = '';   // let a re-expand retry
     box.innerHTML = `<p class="hint" style="color:var(--err)">Could not load app-wide average: ${esc(e.message)}</p>`;
@@ -13566,7 +13590,7 @@ function ehStatus(s, score) {
   const v = String(s || '').toLowerCase();
   if (v === 'green' || v === 'amber' || v === 'red') return v;
   // A response from before each point carried its status: the platform's default lines.
-  return typeof score === 'number' && isFinite(score) ? (score >= 95 ? 'green' : (score >= 85 ? 'amber' : 'red')) : null;
+  return dqBand(score);
 }
 const ehDate = t => new Date(t).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
 
@@ -26255,7 +26279,7 @@ const _GX_RANK = { red: 3, amber: 2, green: 1, na: 0 };
 // is not hidden, it is carried separately as a ring and stated in the tooltip.
 function _gxClusterFill(c) {
   if (c.mean == null) return 'na';
-  return c.mean >= 95 ? 'green' : (c.mean >= 85 ? 'amber' : 'red');
+  return dqBand(c.mean) || 'na';
 }
 
 function _gxBuildClusters(datasets, by) {
@@ -32800,7 +32824,7 @@ function renderAppResultsFinal(tables, results, isFullApp) {
     if (r) renderAssessment(r, $('#appres_' + i), { context: 'app', lazyRecords: true });
     else $('#appres_' + i).innerHTML = '<p class="hint">No result for this table.</p>';
   });
-  if (showOverall) renderOverall($('#apppanel_overall'), results.filter(Boolean), tables.length);
+  if (showOverall) renderOverall($('#apppanel_overall'), results.filter(Boolean), tables.length, { unloaded: results.filter(x => !x).length });
 }
 
 const _avg = a => a.reduce((x, y) => x + y, 0) / a.length;
@@ -32823,14 +32847,15 @@ function _gatePassOf(r) {
 // "Overall Quality": the app-wide rating = mean of each table's overall score,
 // coloured by the worst table status (an honest health roll-up), plus per-dimension
 // averages across the tables that scored each dimension.
-function renderOverall(panelEl, results, total) {
+function renderOverall(panelEl, results, total, o) {
   const scored = results.filter(r => r && _overallScoreOf(r) != null);
   const scores = scored.map(_overallScoreOf);
   const avg = scores.length ? _avg(scores) : null;
+  const unloaded = (o && o.unloaded) || 0;            // tables whose result could not be read
   // The headline number is the app-wide AVERAGE, coloured by the average's own band so a healthy
   // average reads green. A weak table can't hide behind it, though: a separate callout chip flags
   // any red/amber tables + gate failures, so "why is this flagged" stays explicit and honest.
-  const avgStatus = avg == null ? '' : (avg >= 95 ? 'green' : avg >= 85 ? 'amber' : 'red');
+  const avgStatus = avg == null ? '' : dqBand(avg);
   const statusCounts = { red: 0, amber: 0, green: 0 };
   scored.forEach(r => { const s = _overallStatusOf(r); if (statusCounts[s] != null) statusCounts[s]++; });
   const gatePass = results.filter(_gatePassOf).length;
@@ -32849,7 +32874,8 @@ function renderOverall(panelEl, results, total) {
       ${calloutChip}
     </div>`;
   html += `<p class="hint">App-wide average across ${scores.length} of ${total} table(s)`
-    + `${results.length < total ? ' - still assessing…' : ''}.`
+    + (unloaded ? `. ${unloaded} table${unloaded === 1 ? `'s result` : `s' results`} could not be loaded, so ${unloaded === 1 ? 'it is' : 'they are'} not in it`
+                : results.length < total ? ' - still assessing…' : '') + `.`
     + `${results.length ? ` ${gatePass} of ${results.length} passed the gate.` : ''}</p>`;
 
   html += renderAppHeatmap(scored);
