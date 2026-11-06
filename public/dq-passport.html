@@ -92,7 +92,7 @@
 <main>
   <header>
     <span class="mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v6c0 4.4-3 7.9-7 9-4-1.1-7-4.6-7-9V6l7-3z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg></span>
-    <div><h1>Data Passport</h1><p>How fit a dataset is for AI to use, from evidence measured where the data lives. Issued with Data Assurance.</p></div>
+    <div><h1>Data Passport</h1><p>How fit a dataset is for AI to use, from evidence measured where the data lives. Issued with VISEON Data Assurance.</p></div>
   </header>
   <div id="pp" aria-live="polite"><p class="loading">Reading the passport…</p></div>
 </main>
@@ -144,9 +144,9 @@
     if (parts.length !== 3) return { ok: false, why: 'This is not a signed passport.' };
     let header;
     try { header = b64uJson(parts[0]); } catch (e) { return { ok: false, why: 'This is not a signed passport.' }; }
-    if (header.alg !== 'ES256') return { ok: false, why: 'It is signed with an algorithm Data Assurance does not use.' };
+    if (header.alg !== 'ES256') return { ok: false, why: 'It is signed with an algorithm VISEON Data Assurance does not use.' };
     const jwk = (keys || []).find(k => k.kid === header.kid);
-    if (!jwk) return { ok: false, why: 'It was signed with a key Data Assurance does not publish.', kid: header.kid };
+    if (!jwk) return { ok: false, why: 'It was signed with a key VISEON Data Assurance does not publish.', kid: header.kid };
     if (!(window.crypto && crypto.subtle)) return { ok: null, why: 'This browser cannot check signatures here.', kid: header.kid };
     try {
       const key = await crypto.subtle.importKey('jwk', { kty: 'EC', crv: 'P-256', x: jwk.x, y: jwk.y, ext: true }, { name: 'ECDSA', namedCurve: 'P-256' }, false, ['verify']);
@@ -258,7 +258,7 @@
   }
   function sigHtml(sig) {
     if (!sig) return `<div class="sig wait">Checking the signature…</div>`;
-    if (sig.ok) return `<div class="sig ok"><span aria-hidden="true">✓</span><span>Signature verified in your browser, with the key Data Assurance publishes (<code>${esc(String(sig.kid).slice(0, 12))}…</code>). Nothing below has changed since it was issued.</span></div>`;
+    if (sig.ok) return `<div class="sig ok"><span aria-hidden="true">✓</span><span>Signature verified in your browser, with the key VISEON Data Assurance publishes (<code>${esc(String(sig.kid).slice(0, 12))}…</code>). Nothing below has changed since it was issued.</span></div>`;
     if (sig.ok === null) return `<div class="sig wait">${esc(sig.why)}</div>`;
     return `<div class="sig bad"><span aria-hidden="true">✕</span><span>${esc(sig.why)}</span></div>`;
   }
