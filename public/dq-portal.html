@@ -4580,8 +4580,8 @@
   button.dsx-mi.danger { color: var(--err); }
   button.dsx-mi.danger:hover, button.dsx-mi.danger:focus { background: color-mix(in srgb, var(--err) 12%, transparent); }
   .dsx-k { font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
-  /* The rail: every dataset, grouped by how it is doing and worst first, the open one opened out into its
-     name, description, score and sections. It sticks beside the section being read. */
+  /* The rail: the open dataset at the top, under Selected, opened out into its name, score and sections; then
+     every other dataset, grouped by how it is doing and worst first. It sticks beside the section being read. */
   .overview-top.split > #dashDetail { padding: 0; }
   .dsx-wrap { display: grid; grid-template-columns: 280px minmax(0, 1fr); min-height: var(--dsx-gx-h, 600px); }
   .dsx-railcol { min-width: 0; border-right: 1px solid var(--border); border-radius: 14px 0 0 14px;
@@ -4599,6 +4599,7 @@
   .dsx-find-none { margin: 10px 8px; font-size: 12.5px; color: var(--muted); }
   .dsx-gh { display: flex; justify-content: space-between; margin: 16px 8px 5px; font-size: 10.5px; font-weight: 700;
     letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  .dsx-selg > .dsx-gh { margin-top: 12px; }
   button.dsx-st { display: flex; align-items: center; gap: 10px; width: 100%; padding: 7px 10px; border: 0; border-radius: 9px;
     background: none; box-shadow: none; color: var(--text); font: inherit; font-size: 13.5px; text-align: left; cursor: pointer; }
   button.dsx-st:hover { background: color-mix(in srgb, var(--text) 5%, transparent); }
@@ -14181,9 +14182,9 @@ function dsxHeadHtml(key, name, ds) {
 }
 
 // ---- The rail and the Summary ----
-// An open dataset takes the whole width. On its left, the rail: every dataset, grouped by how it is doing and
-// worst first, the open one opened out where it sits into its name and description, its score and its
-// sections. On the right, the section being read; the first, Summary, says whether it passes, the numbers,
+// An open dataset takes the whole width. On its left, the rail: the open one at the top, under Selected, opened
+// out into its name, its score and its sections; then every other dataset, grouped by how it is doing and worst
+// first. On the right, the section being read; the first, Summary, says whether it passes, the numbers,
 // what to fix and its dimensions, then its incidents and notes.
 const _DSX_SEV = ['blocker', 'major', 'minor'];
 const _DSX_SEVC = { blocker: 'var(--err)', major: 'var(--run)', minor: 'var(--muted)' };
@@ -14255,27 +14256,28 @@ function dsxOpenHtml(key, d) {
       `<span class="dsx-st-s">${typeof d.score === 'number' ? esc(String(fmtScore(d.score))) : '-'}</span></div>` +
     `<nav class="dsx-nav" id="dsSubtabs" role="tablist" aria-orientation="vertical" aria-label="${esc(name)}">${nav}</nav></div>`;
 }
-/** Every dataset, grouped by how it is doing (worst first in each), the open one opened out; what is typed in
+/** The open dataset at the top, under Selected, opened out into its sections, so they are in reach however far down
+ *  the list it was; then every other dataset, grouped by how it is doing (worst first in each). What is typed in
  *  Find a dataset narrows the rest. */
 function dsxRailHtml(key) {
   const q = dsxFind.trim().toLowerCase();
-  const all = (dashDatasets || []).filter(d => d.key === key || !q || String(d.name || '').toLowerCase().includes(q));
-  if (!all.some(d => d.key === key) && dsxRow(key)) all.push(dsxRow(key));
+  const open = dsxRow(key);
+  const all = (dashDatasets || []).filter(d => d.key !== key && (!q || String(d.name || '').toLowerCase().includes(q)));
   const by = {};
   all.forEach(d => { const g = dsxGroupOf(d); (by[g] = by[g] || []).push(d); });
   const worst = list => list.slice().sort((a, b) =>
     (a.score == null ? 1e9 : a.score) - (b.score == null ? 1e9 : b.score) || String(a.name).localeCompare(String(b.name)));
   const groups = DSX_GROUPS.filter(([g]) => (by[g] || []).length).map(([g, l]) =>
     `<div class="dsx-g" data-group="${g}"><div class="dsx-gh"><span>${l}</span><span>${by[g].length}</span></div>` +
-    worst(by[g]).map(d => d.key === key ? dsxOpenHtml(key, d)
-      : `<button type="button" class="dsx-st" data-dsx="open" data-key="${esc(d.key)}" data-name="${esc(d.name || '')}" style="--c:${dsxDot(d)}" ` +
+    worst(by[g]).map(d => `<button type="button" class="dsx-st" data-dsx="open" data-key="${esc(d.key)}" data-name="${esc(d.name || '')}" style="--c:${dsxDot(d)}" ` +
         `data-tip="${esc((d.name || '') + (d.score != null ? ' · ' + fmtScore(d.score) + (d.status ? ' ' + d.status : '') : ' · not scored yet') + (d.gate === false ? ' · gate failing' : ''))}">` +
         `<span class="dsx-st-d" aria-hidden="true"></span><span class="dsx-st-n">${esc(d.name || '')}</span>` +
         `<span class="dsx-st-s">${d.score == null ? '-' : esc(String(fmtScore(d.score)))}</span></button>`).join('') + `</div>`).join('');
   return `<button type="button" class="dsx-btn dsx-back lngb" data-dsx="close" data-tip="Close it, and go back to the quality space">← Quality space</button>` +
+    (open ? `<div class="dsx-selg"><div class="dsx-gh"><span>Selected</span></div>${dsxOpenHtml(key, open)}</div>` : '') +
     `<label class="dsx-find"><span aria-hidden="true">⌕</span><input type="search" id="dsxFind" placeholder="Find a dataset" ` +
       `aria-label="Find a dataset" autocomplete="off" value="${esc(dsxFind)}"></label>` +
-    groups + (q && all.length === 1 ? `<p class="dsx-find-none">No other dataset matches.</p>` : '');
+    groups + (q && !all.length ? `<p class="dsx-find-none">No other dataset matches.</p>` : '');
 }
 /** Redraws the rail, keeping its scroll, what was typed in Find a dataset and where the focus was. Only when
  *  something in it has changed: a redraw replaces every element in it, and the chips and notes repaint often
@@ -14295,13 +14297,14 @@ function dsxPaintRail(key) {
   if (find) { const i = $('#dsxFind'); if (i) { i.focus({ preventScroll: true }); try { i.setSelectionRange(find[0], find[1]); } catch (e) { /* not a text field */ } } }
   else if (back) { const b = el.querySelector(back); if (b) b.focus({ preventScroll: true }); }
 }
-/** Brings the open dataset into view in the rail, if it is out of it (only the rail scrolls). */
+/** Brings the open dataset into view in the rail, if it is out of it (only the rail scrolls). It sits at the top, so a
+ *  dataset opened from far down the list takes the rail back up to it. */
 function dsxRailReveal() {
   const rail = $('#dsxRail'), open = rail && rail.querySelector('.dsx-open');
   if (!open || !rail.clientHeight) return;
   const a = rail.getBoundingClientRect(), b = open.getBoundingClientRect();
   if (b.top >= a.top && b.bottom <= a.bottom) return;
-  rail.scrollTop += (b.top - a.top) - 60;
+  rail.scrollTop = 0;
 }
 
 // The Summary
@@ -27326,9 +27329,9 @@ const GD_SHOTS = {
   "dataset-actions-pa": [1424, 1344, "708f568047"],
   "dataset-actions-q": [1424, 1346, "0ac4a51c8c"],
   "dataset-compliance": [1424, 1118, "61128e2312"],
-  "dataset-header-p": [1600, 1570, "aa8021eadb"],
-  "dataset-header-pa": [1600, 1570, "7e1d6d0507"],
-  "dataset-header-q": [1600, 1572, "b07ba67bf3"],
+  "dataset-header-p": [1600, 1570, "ce1d553c2d"],
+  "dataset-header-pa": [1600, 1570, "9667414b41"],
+  "dataset-header-q": [1600, 1572, "1498ef658f"],
   "dataset-list-p": [1600, 945, "aa2b5e6b27"],
   "dataset-list-pa": [1600, 945, "e1a8f36fed"],
   "dataset-list-q": [1600, 945, "6ea430762c"],
@@ -28313,7 +28316,7 @@ function buildGuides() {
     open: { tab: 'dashboard', label: 'Open Overview' },
     sections: [
       { h: 'Opening a dataset', body:
-          p(`Click it in the dataset list, or its orb in the Quality Space. It takes the whole width. Down the left is every dataset, grouped as ${ui('Needs attention')}, ${ui('Amber')} and ${ui('Green')}, worst first: press one to move to it, type in ${ui('Find a dataset')} to narrow them, or press ${ui('← Quality space')} to go back. The open one is highlighted where it sits, with its sections under it. The link in a run-completion email opens it directly, and ${ui('✕')} closes it. ${showme('ds-header')}`) },
+          p(`Click it in the dataset list, or its orb in the Quality Space. It takes the whole width. Down the left, the open one sits at the top under ${ui('Selected')}, with its sections beneath it, so they are always in reach. Below it is every other dataset, grouped as ${ui('Needs attention')}, ${ui('Amber')} and ${ui('Green')}, worst first: press one to move to it (it takes the top), type in ${ui('Find a dataset')} to narrow them, or press ${ui('← Quality space')} to go back. The link in a run-completion email opens it directly, and ${ui('✕')} closes it. ${showme('ds-header')}`) },
       { h: 'Its sections', body: list(
           `${ui('Summary')}, ${ui('Failed records')} (with how many), ${ui('Rules')}, ${ui('History')}, ${ui('Compliance')}, ${ui('Metadata')} and ${ui('Passport')}. The list stays beside whatever you are reading, and the up and down arrow keys move along it.`) },
       { h: 'Its Summary', body: list(
@@ -28331,7 +28334,7 @@ function buildGuides() {
           `<b>Compliance</b> and <b>Incidents</b>: its compliance grade and its open incidents. Each opens its tab.`,
           `<b>Rules</b>, when there is something to know: ${ui('⚠ Provisional')} when nobody has reviewed them yet, or ${ui('✎ Changes queued')} when pinned changes wait for the next run.`,
           `${ui('Re-run')}, ${ui('Actions')} and ${ui('✕')}, on the right.`) +
-          shot('dataset-header', `${n(1)} Every dataset, worst first, ${n(2)} the open one's score, name and description, ${n(3)} its sections, ${n(4)} owner, stage, trust and tags, ${n(5)} compliance and incidents, ${n(6)} ${ui('Actions')}, and ${n(7)} whether it passes its quality gate.`) },
+          shot('dataset-header', `${n(1)} Every other dataset, worst first, ${n(2)} the open one's score, name and description, ${n(3)} its sections, ${n(4)} owner, stage, trust and tags, ${n(5)} compliance and incidents, ${n(6)} ${ui('Actions')}, and ${n(7)} whether it passes its quality gate.`) },
       { h: 'Everything you can do to it', body:
           p(`${ui('Re-run')} assesses it again now. Everything else is under ${ui('Actions')}, which lands on the right tab with this dataset already chosen there. ${showme('ds-actions')}`) +
           table(['Group', 'What is in it'], [
