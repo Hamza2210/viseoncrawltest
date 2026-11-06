@@ -4705,6 +4705,9 @@
   .dsx-dim-v { margin-top: 6px; font-size: 16px; font-weight: 800; font-variant-numeric: tabular-nums; }
   .dsx-dim-v.na { font-size: 11.5px; font-weight: 600; color: var(--muted); }
   .dsx-box .actions { margin-top: 12px; }
+  .dsx-dimbox .dsx-box-h { align-items: center; flex-wrap: wrap; }
+  .dsx-box-note { margin-left: 10px; font-size: 12px; color: var(--muted); }
+  .dsx-box-h .ai-btn.dsx-ai { padding: 6px 13px; font-size: 12.5px; }
   .dsx-sum .score-ai-out { margin-top: 14px; }
   .dsx-fixbox { margin-top: 18px; container: dsxfix / inline-size; }
   .dsx-fixh { display: inline-flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 16px; }
@@ -7938,6 +7941,12 @@
                 <div id="schDsList" class="schd"></div>
                 <label for="schDsSample">Sample size <span class="hint" style="font-weight:400;">(optional)</span></label>
                 <input type="number" id="schDsSample" min="1" placeholder="Leave empty to assess the whole dataset" />
+                <!-- New rows only (dq/new_rows.py): the dataset's own setting, chosen here where its runs are planned. -->
+                <div id="schNrWrap" style="margin-top:14px;" hidden>
+                  <label for="schNr">New rows only</label>
+                  <select id="schNr"></select>
+                  <p class="hint" id="schNrHint"></p>
+                </div>
               </div>
               <!-- SharePoint and on-premises files: where the file is, and the saved connection to read it with. -->
               <div id="schManualWrap">
@@ -14508,10 +14517,12 @@ function dsxSummaryHtml(key, d, r) {
   const legend = `<span class="dsx-legend" aria-hidden="true">${_DSX_SEV.map(k => `<span>${dsxSevIco(k, 11)}${k}</span>`).join('')}</span>`;
   return `<div class="dsx-sum">` + dsxHeroHtml(key, d, dsxGateHtml(key, d, r)) + facts +
     (notes ? `<div class="dsx-runnotes">${notes}</div>` : '') +
-    `<div class="dsx-box dsx-dimbox"><div class="dsx-box-h"><span class="dsx-k">Dimensions</span><span>worst first${runs.length > 1 ? ` · ▲▼ over ${win}` : ''}</span></div>` +
+    // Explain score is about these scores, so it sits in their heading, and its answer opens beneath them.
+    `<div class="dsx-box dsx-dimbox"><div class="dsx-box-h"><span><span class="dsx-k">Dimensions</span>` +
+        `<span class="dsx-box-note">worst first${runs.length > 1 ? ` · ▲▼ over ${win}` : ''}</span></span>` +
+        (canAI ? aiBtn('Explain score & how to improve', 'data-explainscore="1"', 'dsx-ai') : '') + `</div>` +
       (scored.length || unscored.length ? `<div class="dsx-tiles">${scored.concat(unscored).map(tile).join('')}</div>` : `<p class="dash-muted">No dimension could be scored on this run.</p>`) +
-      (canAI ? `<div class="actions">${aiBtn('Explain score & how to improve', 'data-explainscore="1"')}</div>` : '') + `</div>` +
-    (canAI ? `<div class="score-ai-out ai-out" hidden></div>` : '') +
+      (canAI ? `<div class="score-ai-out ai-out" hidden></div>` : '') + `</div>` +
     `<div class="dsx-box dsx-fixbox"><div class="dsx-box-h"><span class="dsx-k">What to fix, worst first</span><span class="dsx-fixh"><span id="dsxFixN"></span>${legend}</span></div>` +
       `<div id="dsxFix">${dqSkeleton('Loading the failing checks', 3)}</div></div>` +
     `<div class="dsx-act">${ev}<div id="dsxNote"></div></div>` +
@@ -27304,9 +27315,9 @@ const GD_SHOTS = {
   "dataset-actions-pa": [1424, 1344, "708f568047"],
   "dataset-actions-q": [1424, 1346, "0ac4a51c8c"],
   "dataset-compliance": [1424, 1118, "61128e2312"],
-  "dataset-header-p": [1600, 1625, "3f1c7e2756"],
-  "dataset-header-pa": [1600, 1625, "fb2ea35f74"],
-  "dataset-header-q": [1600, 1627, "697edefc5d"],
+  "dataset-header-p": [1600, 1570, "aa8021eadb"],
+  "dataset-header-pa": [1600, 1570, "7e1d6d0507"],
+  "dataset-header-q": [1600, 1572, "b07ba67bf3"],
   "dataset-list-p": [1600, 945, "aa2b5e6b27"],
   "dataset-list-pa": [1600, 945, "e1a8f36fed"],
   "dataset-list-q": [1600, 945, "6ea430762c"],
@@ -28297,7 +28308,7 @@ function buildGuides() {
       { h: 'Its Summary', body: list(
           `<b>At the top</b>: its score, and beside it its name and description (click the description to change it; it shows wherever the dataset is listed), its status, how it has moved across the Overview's window and its line (press the score for History); then whether it passes its quality gate. If it fails: the check that fails it, how long its incident has been open, and a button to the records. Point at ⓘ for why, in a sentence.`,
           `<b>The numbers</b>: its check failures by severity (⛔ blocker, ▲ major, ● minor; press for Failed records), the rows read, and its runs: a square a day, lit in the colour that run scored (press for History).`,
-          `<b>Dimensions</b>: a tile for each of the nine, worst first, with its score, how far it has moved, and in the corner how many checks it rests on. A hatched tile was not assessed: point at it to see why and how to score it. ${ui('Explain score & how to improve')} asks AI.`,
+          `<b>Dimensions</b>: a tile for each of the nine, worst first, with its score, how far it has moved, and in the corner how many checks it rests on. A hatched tile was not assessed: point at it to see why and how to score it. ${ui('Explain score & how to improve')}, at the top right of the tiles, asks AI, and its answer opens beneath them.`,
           `<b>What to fix, worst first</b>: every failing check, blockers first, with a picture of what it asks of its column and how many records fail it, said as "1 in 4 records". Point at one for what it requires; press it to see its records.`,
           `<b>Incidents and notes</b>: its open incidents (point at one for what happened) and its latest note, with every note and a box to add one.`) },
       { h: 'Above every section', body: list(
@@ -28749,7 +28760,7 @@ function buildGuides() {
       { h: 'Who gets the alerts', body:
           p(`Each dataset's owner, or whoever submitted it when it has no owner. A dataset with neither raises no email.`) },
       { h: 'Read only the new rows', body:
-          p(`A table that only grows need not be read in full each time its schedule fires. On the dataset, open ${ui('Actions')}, choose ${ui('New rows only…')} and pick a column that grows as rows are added: an id, or when each row was loaded. Each scheduled run then reads only the rows past where the last one stopped.`) +
+          p(`A table that only grows need not be read in full each time its schedule fires. Choose ${ui('New rows only')} under the dataset when you make its schedule, or on the dataset open ${ui('Actions')}, choose ${ui('New rows only…')} and pick a column that grows as rows are added: an id, or when each row was loaded. Each scheduled run then reads only the rows past where the last one stopped.`) +
           list(`A key is still checked against <b>every earlier row</b>, so a new row reusing an old key is a duplicate. Row-count limits and the freshness of the newest record are the whole table's.`,
                `A run you start yourself reads every row, and so does a scheduled run a week after the last full one. Those runs also sweep for personal data; a run of new rows leaves the sweep to them, so Compliance keeps the last sweep of every row.`,
                `A run with nothing new is not scored. The run's page says how many rows were new, of how many in the table.`,
@@ -34004,6 +34015,7 @@ async function schDsLoad(kind, want) {
   const seq = ++schDs.seq;
   Object.assign(schDs, { kind, list: null, err: '', picked: want || '', missing: '', q: '' });
   schDsPaint();
+  schNrLoad('');
   let r;
   try {
     [r] = await Promise.all([
@@ -34021,6 +34033,7 @@ async function schDsLoad(kind, want) {
     if (ok.length === 1) schDs.picked = ok[0].key;
   }
   schDsPaint();
+  schNrLoad(schDs.picked);
   schBodyUI();                                            // "Keep its own" names the dataset's body
   renderSchedulePreview();
 }
@@ -34064,6 +34077,53 @@ function schDsPaint() {
     `<div class="schd-list" role="radiogroup" aria-label="${esc(label)} datasets"></div>`;
   schDsPaintList();
 }
+// ---- New rows only, where a dataset's schedule is made ----
+// It is the dataset's own setting (dq/new_rows.py; the Actions menu's New rows only… sets the same), so it is read for
+// the dataset picked, offered with its number and time columns, and kept when the schedule is saved. Only an admin may
+// change it; anyone else sees what it is.
+const schNr = { key: '', r: null, seq: 0 };
+async function schNrLoad(key) {
+  const wrap = $('#schNrWrap'); if (!wrap) return;
+  const seq = ++schNr.seq;
+  Object.assign(schNr, { key: key || '', r: null });
+  if (!key) { wrap.hidden = true; return; }
+  wrap.hidden = false;
+  const sel = $('#schNr');
+  sel.innerHTML = '<option value="">Reading its columns…</option>'; sel.disabled = true; $('#schNrHint').textContent = '';
+  let r;
+  try { r = await postJSON(`${API_BASE}/data-quality/new-rows`, HEADERS, { app_id: APP_ID, dataset_key: key, action: 'get' }); }
+  catch (e) { if (seq === schNr.seq) wrap.hidden = true; return; }
+  if (seq !== schNr.seq) return;                          // another dataset was picked meanwhile
+  schNr.r = r;
+  const what = { number: 'a number', time: 'a date or time' };
+  const opts = [{ value: '', label: 'Off: every run reads every row' }].concat((r.columns || []).filter(c => c.kind !== 'text')
+    .map(c => ({ value: c.name, label: what[c.kind] ? `By ${c.name}, ${what[c.kind]}` : `By ${c.name}` })));
+  if (r.column && !opts.some(o => o.value === r.column)) opts.push({ value: r.column, label: `By ${r.column}` });
+  sel.innerHTML = opts.map(o => `<option value="${esc(o.value)}"${o.value === (r.column || '') ? ' selected' : ''}>${esc(o.label)}</option>`).join('');
+  sel.disabled = !r.canSet;
+  schNrHint();
+  renderSchedulePreview();
+}
+/** What the choice does, in a line or two: the column it follows, or how to pick one; that every schedule of the dataset
+ *  follows it; who may change it; and that a sample size reads its sample instead. */
+function schNrHint() {
+  const r = schNr.r, hint = $('#schNrHint'); if (!r || !hint) return;
+  const v = $('#schNr').value, sampled = parseInt(($('#schDsSample').value || '').trim(), 10) > 0;
+  hint.textContent = (v ? `Each run reads only the rows whose ${v} is past where the last one stopped; every ${Number(r.fullEveryDays || 7)} days one reads every row.`
+      : 'Pick a column that only grows, such as an id or when each row was loaded, and each run reads only the rows added since the last.') +
+    ' It is the dataset\u2019s own setting, so all its schedules follow it.' + (r.canSet ? '' : ' Only an admin can change it.') +
+    (v && sampled ? ' With a sample size, a run reads its sample instead.' : '');
+}
+/** The column the schedule being saved asks its dataset's runs to follow, when that is a change an admin may make; else null. */
+function schNrWanted(key) {
+  if (!key || !schNr.r || schNr.key !== key || !schNr.r.canSet || $('#schNrWrap').hidden) return null;
+  const v = $('#schNr').value || '';
+  return v === (schNr.r.column || '') ? null : v;
+}
+if ($('#schNr')) {
+  $('#schNr').addEventListener('change', () => { schNrHint(); renderSchedulePreview(); });
+  $('#schDsSample').addEventListener('input', schNrHint);
+}
 if ($('#schDsList')) {
   const host = $('#schDsList');
   host.addEventListener('click', e => {
@@ -34085,6 +34145,7 @@ if ($('#schDsList')) {
       r.setAttribute('aria-checked', String(on));
     });
     const gone = host.querySelector('.schd-gone'); if (gone) gone.remove();
+    schNrLoad(schDs.picked);
     schBodyUI();
     renderSchedulePreview();
   });
@@ -35013,15 +35074,25 @@ async function saveSchedule() {
     body.source = cfg;
   }
 
+  const nrWant = schNrWanted(body.dataset_key);        // New rows only, if this schedule changes it
   $('#schSave').disabled = true;
   try {
     const hdr = { ...HEADERS };
     if (BEARER) hdr['X-Qlik-Bearer'] = BEARER;
     const r = await postJSON(`${API_BASE}/data-quality/schedules`, hdr, body);
+    let nrSaid = '', nrErr = '';
+    if (nrWant != null) {
+      try {
+        await postJSON(`${API_BASE}/data-quality/new-rows`, HEADERS, { app_id: APP_ID, dataset_key: body.dataset_key, action: 'set', column: nrWant || null });
+        const ent = dashEntries[body.dataset_key] || (dashEntries[body.dataset_key] = { stage: '', tags: [] });
+        if (nrWant) ent.newRows = { column: nrWant }; else delete ent.newRows;
+        nrSaid = nrWant ? ` Its runs read only new rows, by ${nrWant}.` : ' Its runs read every row again.';
+      } catch (e) { nrErr = ` New rows only could not be set: ${e.message || e}`; }
+    }
     schForm(false);
-    schBanner(r.action === 'updated' ? 'info' : 'ok', `Schedule ${r.action}.` + (r.piiBody && r.bodySetFor
+    schBanner(nrErr ? 'err' : r.action === 'updated' ? 'info' : 'ok', `Schedule ${r.action}.` + (r.piiBody && r.bodySetFor
       ? ` ${r.bodySetFor === 1 ? 'Its dataset is' : `Its ${r.bodySetFor} datasets are`} checked against ${SRC_BODY_L[r.piiBody]} from now on, wherever ${r.bodySetFor === 1 ? 'it is' : 'they are'} assessed.`
-      : r.piiBody && kind === 'qlik' ? ` Its tables are checked against ${SRC_BODY_L[r.piiBody]} each time it runs.` : ''));
+      : r.piiBody && kind === 'qlik' ? ` Its tables are checked against ${SRC_BODY_L[r.piiBody]} each time it runs.` : '') + nrSaid + nrErr);
     pisDropCache();
     loadSchedules();
   } catch (e) {
@@ -36148,8 +36219,9 @@ function renderSchedulePreview() {
   const what = k === 'qlik' ? "This app's tables" : k === 'tag' ? (s.tag ? `Datasets tagged ${s.tag}` : 'Datasets with a tag')
     : k === 'source-watch' ? 'Source monitoring' : (SOURCE_LABEL[k] || k);
   const pb = k === 'source-watch' ? '' : (($('#schPiiBody') && $('#schPiiBody').value) || '');
+  const nrv = schNr.r && $('#schNrWrap') && !$('#schNrWrap').hidden ? ($('#schNr').value || '') : '';
   const tell = (k === 'source-watch' ? 'an incident when a source stops loading' : "owners told if one fails") +
-    (pb ? ` · PII checked against ${pb === 'general' ? 'no governing body' : SRC_BODY_L[pb]}` : '');
+    (pb ? ` · PII checked against ${pb === 'general' ? 'no governing body' : SRC_BODY_L[pb]}` : '') + (nrv ? ` · new rows only, by ${nrv}` : '');
   const subj = k === 'tag' && s.tag ? (Array.isArray(s.members) ? (s.members.length === 1 ? `The one dataset tagged ${s.tag}` : `The ${s.members.length} datasets tagged ${s.tag}`) : `The datasets tagged ${s.tag}`)
     : k === 'qlik' ? (schSelected.length ? `${schSelected.length} of this app's tables` : "All of this app's tables")
     : k === 'source-watch' ? 'Every monitored source' : `${what}${s.sourceSummary ? ' ' + s.sourceSummary : ''}`;
