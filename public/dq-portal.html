@@ -4656,7 +4656,10 @@
   .dsx-sevbar i { display: block; height: 100%; }
   .dsx-runnotes { margin: -4px 0 14px; }
   .dsx-runnotes .hint { margin: 4px 0; }
-  .dsx-cols { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+  .dsx-cols { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+  .dsx-dims { padding: 18px 22px; }
+  .dsx-dims .dsx-box-h { margin-bottom: 8px; }
+  .dsx-fixbox { container: dsxfix / inline-size; }
   .dsx-box { min-width: 0; padding: 14px 18px; border: 1px solid var(--border); border-radius: 14px; }
   .dsx-box-h { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 4px; font-size: 12.5px; color: var(--muted); }
   .dsx-fix { display: grid; grid-template-columns: 66px minmax(0, 1fr) minmax(110px, 150px) 12px; gap: 14px; align-items: center; width: 100%;
@@ -4676,9 +4679,10 @@
   .dsx-fix-go { color: var(--muted); }
   .dsx-more { margin-top: 8px; }
   .dsx-calm { margin: 8px 0 4px; color: var(--ok); font-weight: 650; }
-  .dsx-dim { display: grid; grid-template-columns: 116px minmax(0, 1fr) 52px 50px; gap: 12px; align-items: center; padding: 7px 0; font-size: 13.5px; }
-  .dsx-dim-v { text-align: right; font-weight: 750; font-variant-numeric: tabular-nums; color: var(--c); }
-  .dsx-dim-d { text-align: right; font-size: 12px; color: var(--muted); }
+  .dsx-dim { display: grid; grid-template-columns: 136px minmax(0, 1fr) 60px 58px; gap: 14px; align-items: center; padding: 10px 0; font-size: 15px; }
+  .dsx-dim .dsx-meter { height: 9px; margin-top: 0; }
+  .dsx-dim-v { text-align: right; font-size: 17px; font-weight: 750; font-variant-numeric: tabular-nums; color: var(--c); }
+  .dsx-dim-d { text-align: right; font-size: 12.5px; color: var(--muted); }
   .dsx-na { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; font-size: 12.5px; color: var(--muted); }
   .dsx-box .actions { margin-top: 12px; }
   .dsx-sum .score-ai-out { margin-top: 14px; }
@@ -4701,8 +4705,12 @@
   @container dsxmain (max-width: 1040px) { .dsx-cols { grid-template-columns: minmax(0, 1fr); } }
   @container dsxmain (max-width: 560px) {
     .dsx-ver { flex-wrap: wrap; }
-    .dsx-fix { grid-template-columns: 62px minmax(0, 1fr) 12px; }
+    .dsx-dim { grid-template-columns: 112px minmax(0, 1fr) 48px 50px; gap: 10px; font-size: 14px; }
+  }
+  @container dsxfix (max-width: 480px) {
+    .dsx-fix { grid-template-columns: 62px minmax(0, 1fr) 12px; row-gap: 4px; }
     .dsx-fix-r { grid-column: 2; text-align: left; }
+    .dsx-fix-r .dsx-meter { display: inline-block; width: 110px; margin: 0 0 0 10px; vertical-align: middle; }
     .dsx-fix-go { grid-row: 1; grid-column: 3; }
   }
   /* One column: the open dataset's card and its sections on top, the way back above it, the rest of the list
@@ -14350,11 +14358,11 @@ function dsxSummaryHtml(key, d, r) {
   return `<div class="dsx-sum">` + dsxVerdictHtml(key, d, r) + stats +
     (notes ? `<div class="dsx-runnotes">${notes}</div>` : '') +
     `<div class="dsx-cols">` +
-      `<div class="dsx-box"><div class="dsx-box-h"><span class="dsx-k">What to fix, worst first</span><span id="dsxFixN"></span></div>` +
-        `<div id="dsxFix">${dqSkeleton('Loading the failing checks', 3)}</div></div>` +
-      `<div class="dsx-box"><div class="dsx-box-h"><span class="dsx-k">Dimensions</span><span>${runs.length > 1 ? 'change over ' + esc(dsWindowLabel()) : ''}</span></div>` +
+      `<div class="dsx-box dsx-dims"><div class="dsx-box-h"><span class="dsx-k">Dimensions</span><span>${runs.length > 1 ? 'change over ' + esc(dsWindowLabel()) : ''}</span></div>` +
         (dims || `<p class="dash-muted">No dimension could be scored on this run.</p>`) + na +
         (canAI ? `<div class="actions">${aiBtn('Explain score & how to improve', 'data-explainscore="1"')}</div>` : '') + `</div>` +
+      `<div class="dsx-box dsx-fixbox"><div class="dsx-box-h"><span class="dsx-k">What to fix, worst first</span><span id="dsxFixN"></span></div>` +
+        `<div id="dsxFix">${dqSkeleton('Loading the failing checks', 3)}</div></div>` +
     `</div>` + (canAI ? `<div class="score-ai-out ai-out" hidden></div>` : '') +
     `<div class="dsx-box dsx-act"><div class="dsx-box-h"><span class="dsx-k">Incidents and notes</span><span>${open.length ? open.length + ' open' : 'No incident open'}</span></div>` +
       ev + `<div id="dsxNote"></div></div>` +
@@ -27140,9 +27148,9 @@ const GD_SHOTS = {
   "dataset-actions-pa": [1424, 1344, "2397236e33"],
   "dataset-actions-q": [1424, 1346, "b8bf988e10"],
   "dataset-compliance": [1424, 1118, "65a7bc3424"],
-  "dataset-header-p": [1600, 2142, "112c02e332"],
-  "dataset-header-pa": [1600, 2142, "b94dad9b78"],
-  "dataset-header-q": [1600, 2144, "fed74411f4"],
+  "dataset-header-p": [1600, 1628, "2bd172c1c7"],
+  "dataset-header-pa": [1600, 1628, "b38671652e"],
+  "dataset-header-q": [1600, 1630, "42e679608f"],
   "dataset-list-p": [1600, 945, "aa2b5e6b27"],
   "dataset-list-pa": [1600, 945, "e1a8f36fed"],
   "dataset-list-q": [1600, 945, "6ea430762c"],
@@ -28135,8 +28143,8 @@ function buildGuides() {
       { h: 'Its Summary', body: list(
           `<b>Whether it passes</b> its quality gate, and if not, why, in a sentence, with a button to the records.`,
           `<b>The numbers</b>: its check failures by severity, the rows read, when it last ran, and how many of the nine dimensions were scored. Check failures opens Failed records; Last run opens History.`,
-          `<b>What to fix, worst first</b>: every failing check, blockers first, with what it requires, how many records and what share of those checked. Press one to see its records.`,
-          `<b>Dimensions</b>: each one scored, worst first, and how far it has moved. Hover a dimension that was not assessed to see why and how to score it. ${ui('Explain score & how to improve')} asks AI.`,
+          `<b>Dimensions</b>, first: each one scored, worst first, and how far it has moved. Hover a dimension that was not assessed to see why and how to score it. ${ui('Explain score & how to improve')} asks AI.`,
+          `<b>What to fix, worst first</b>, beside them: every failing check, blockers first, with what it requires, how many records and what share of those checked. Press one to see its records.`,
           `<b>Incidents and notes</b>: its open incidents, and its latest note, with every note and a box to add one.`) },
       { h: 'Above every section', body: list(
           `<b>Owner</b>: who the dataset's alerts go to.${GOV ? '' : ' Set by an admin.'}`,
@@ -30646,9 +30654,11 @@ function pisSideSet(grid, w, quiet) {
 }
 /** Just the sky drawn again to the width it now has: the panels beside it stay as they are, and a drag on the list's edge with them. */
 function pisRedrawSky() {
-  const res = pis.res, wrap = $('#pisSkyWrap'), old = wrap && wrap.querySelector('svg.pis-sky, svg.pis-tl'), L0 = pis.sky;
+  const res = pis.res, wrap = $('#pisSkyWrap'), old = wrap && wrap.querySelector('svg.pis-sky, svg.pis-tl, svg.preg'), L0 = pis.sky;
   if (!res || !old || !L0) return;
   const W = Math.max(300, Math.floor(wrap.getBoundingClientRect().width)); if (W === L0.W) return;
+  // Regulator's flow or skyline takes the room too, with whatever is lit kept lit.
+  if (L0.reg) { pis.sky = { W, H: L0.H, reg: true, D: [] }; pisRegRefresh(); return; }
   if (L0.tl) { pis.sky = { W, H: L0.H, tl: true, D: [] }; old.outerHTML = pisTimelineSvg(res, W, L0.H, { col: pis.col }); return; }
   const L = pis.sky = pisSkyLayout(res, W, L0.H), detCol = pis.detail ? (pisLive(res).find(f => f.id === pis.detail) || {}).column || '' : '';
   old.outerHTML = pisSkySvg(res, L, { lens: pis.lens, col: pis.col, chip: pis.chip, detCol });
@@ -31002,7 +31012,7 @@ function pisFlowSvg(res, W, H, S, frame) {
     const h = Math.max(16, Math.min(hMax, (bot - top) / n - 5)), gap = n > 1 ? Math.min(16, (bot - top - n * h) / (n - 1)) : 0, y0 = top + (bot - top - (n * h + (n - 1) * gap)) / 2;
     arr.forEach((nd, i) => { nd.h = h; nd.y = y0 + i * (h + gap); }); };
   place(left, 28); place(mid, 24); place(right, 28);
-  const xL = 18, wL = Math.round(Math.min(170, W * .18)), xM = Math.round(W * .33), wM = Math.round(W * .29), xR = Math.round(W * .72), wR = W - xR - 18;
+  const xL = 18, wL = Math.round(Math.min(210, W * .18)), xM = Math.round(W * .33), wM = Math.round(W * .29), xR = Math.round(W * .72), wR = W - xR - 18;
   const pos = new Map(); left.forEach(n => pos.set(n.id, [0, n])); mid.forEach(n => pos.set(n.id, [1, n])); right.forEach(n => pos.set(n.id, [2, n]));
   pis.flowG = { E, tier: new Map([...pos].map(([id, [t]]) => [id, t])) };
   let defs = '', s = `<text x="${xL}" y="30" class="pfl-h">What the sweep read</text><text x="${xM}" y="30" class="pfl-h">The checks</text>` +
