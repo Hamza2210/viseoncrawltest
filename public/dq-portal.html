@@ -6251,6 +6251,31 @@
   .signin-stop p { margin: 0 0 18px; color: var(--muted); line-height: 1.55; }
   .signin-stop .ss-btn { display: inline-block; padding: 9px 16px; border-radius: 10px; font-weight: 700;
     text-decoration: none; color: var(--accent-fg); background: var(--accent); }
+  /* Why a run did not run (dqWhy): what happened, what to do, and the source's own words. */
+  .src-status.src-why { padding: 0; background: none; border: 0; }
+  .dq-why { margin: 8px 0 12px; padding: 14px 16px 12px; border-radius: 12px; text-align: left;
+    border: 1px solid color-mix(in srgb, var(--err) 45%, var(--border)); background: color-mix(in srgb, var(--err) 7%, var(--card)); }
+  .dqw-head { display: flex; gap: 11px; align-items: flex-start; }
+  .dqw-ico { flex: none; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center;
+    color: var(--err); background: var(--err-bg); }
+  .dqw-ico svg { width: 17px; height: 17px; }
+  .dqw-t { font-weight: 750; font-size: 14.5px; color: var(--text); line-height: 1.35; }
+  .dqw-what { margin-top: 3px; color: var(--muted); font-size: 13px; line-height: 1.5; }
+  .dqw-list { margin: 10px 0 0 37px; padding: 0; font-size: 13px; line-height: 1.6; color: var(--text); }
+  .dqw-do { margin: 10px 0 0 37px; }
+  .dqw-dot { font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .dqw-do ol { margin: 4px 0 0; padding-left: 18px; font-size: 13px; line-height: 1.6; color: var(--text); }
+  .dqw-raw { margin: 10px 0 0 37px; display: grid; gap: 3px; }
+  .dqw-raw span { font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .dqw-raw code { display: block; padding: 7px 9px; border-radius: 8px; background: var(--code-bg); color: var(--code-fg);
+    font-size: 11.5px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; max-height: 140px; overflow: auto; }
+  /* Save this connection? (credAskDialog) */
+  .cred-ask { width: min(520px, 92vw); }
+  .cred-ask .ca-note { margin: 10px 0 14px; padding: 10px 12px; border-radius: 10px; font-size: 13px; line-height: 1.5;
+    color: var(--text); background: var(--run-bg); border: 1px solid color-mix(in srgb, var(--run) 40%, var(--border)); }
+  .cred-ask .ca-name { display: grid; gap: 5px; font-size: 12.5px; font-weight: 600; color: var(--muted); }
+  .cred-ask .ca-dont { display: flex; gap: 8px; align-items: center; margin-top: 12px; font-size: 12.5px; color: var(--muted); cursor: pointer; }
+  .cred-ask .ca-err { margin-top: 8px; font-size: 12.5px; color: var(--err); }
 </style>
 <script id="three-inline">
 /**
@@ -9770,24 +9795,23 @@ function renderAssessment(r, bodyEl, opts) {
     return;
   }
   if (r.state === 'ABORTED') {
+    const k = opts && opts.stage;
     body.innerHTML = `<div class="headline"><span class="tag red">Run stopped</span></div>` +
-      `<p class="dash-muted" style="margin:6px 0 10px;">The run stopped before it finished, so nothing was assessed. ` +
-      `Run it again; if it stops again, a sample size or a smaller table may help.</p>` +
-      `<pre>${esc((r.status && r.status.error) || 'The worker did not say why.')}</pre>`;
+      dqWhyHtml(dqWhy((r.status && r.status.error) || '', dqWhyCtx(k, { stage: 'run', state: 'ABORTED',
+        label: k ? SOURCE_LABEL[k] : (isApp ? 'Qlik' : '') })));
     return;
   }
   // FAILED = the run broke partway. ERROR = we never reached the source, which is almost
   // always a credential/host/permission problem, so it gets its own wording and a nudge to
   // the thing the user can actually fix.
   if (r.state === 'FAILED' || r.state === 'ERROR') {
-    const src = r.state === 'ERROR';
-    const err = (r.status && r.status.error)
-      || (src ? 'The data source could not be reached.' : 'The assessment run failed.');
-    body.innerHTML = `<div class="headline"><span class="tag red">${
-        src ? 'Could not reach the source' : 'Run failed'}</span></div>` +
-      (src ? `<p class="dash-muted" style="margin:6px 0 10px;">Nothing was assessed. Check the ` +
-             `credentials, host and that the account can read the table, then run it again.</p>` : '') +
-      `<pre>${err}</pre>` + filesHtml(r.files);
+    // Said in plain words, with what to do (dqWhy); the source's own message underneath, escaped.
+    const k = opts && opts.stage, src = r.state === 'ERROR';
+    const w = dqWhy((r.status && r.status.error) || '', dqWhyCtx(k, { stage: 'run', state: r.state,
+      label: k ? SOURCE_LABEL[k] : (isApp ? 'Qlik' : '') }));
+    body.innerHTML = `<div class="headline"><span class="tag red">${src ? 'Could not read the source' : 'Run failed'}</span></div>` +
+      dqWhyHtml(w, { fromWhom: 'The message from ' + (k ? SOURCE_LABEL[k] || 'the source' : (isApp ? 'Qlik' : 'the run')) }) +
+      filesHtml(r.files);
     return;
   }
   if (!TERMINAL.includes(r.state)) {
@@ -23256,6 +23280,345 @@ function _srcUnmark(st) {
   if (!st) return;
   document.querySelectorAll('.source-card.running').forEach(c => { if (c.dataset.source === st.card) c.classList.remove('running'); });
 }
+// ---- Why a run did not run ------------------------------------------------------------------------------- //
+// Every way a Run assessment or an Infer ruleset can fail ends here: a form missing something, an agent that cannot
+// take it, the API refusing to start it, or the run failing on our worker or on the agent. dqWhy reads what came back
+// (the API's sentence, or the source's own error, which names the cause in its own words) and says, in plain words,
+// what happened and exactly what to do; the source's message stays underneath for whoever looks after it.
+const WHY_TIP = {
+  snowflake: {
+    login: 'The account is the identifier before .snowflakecomputing.com (for example xy12345.eu-west-1), and the user name is the Snowflake login name, not an email address unless that is how it was set up.',
+    host: 'Enter only the account identifier (for example xy12345.eu-west-1), not the whole web address.',
+    grant: 'The role needs USAGE on the warehouse, database and schema, and SELECT on the table. If the form has a Role box, name a role that has them.',
+    compute: 'Name a warehouse the role may use in the Warehouse box, and check it is not suspended in Snowflake.' },
+  databricks: {
+    login: 'A personal access token expires: make a new one in Databricks (Settings, Developer, Access tokens) and paste it in.',
+    host: 'The host is the workspace address (for example adb-1234567890.12.azuredatabricks.net), and the HTTP path is the SQL warehouse\u2019s, from its Connection details tab.',
+    grant: 'The token\u2019s user needs USE CATALOG, USE SCHEMA and SELECT on the table in Unity Catalog.',
+    compute: 'Start the SQL warehouse in Databricks, or use the HTTP path of one that is running.' },
+  redshift: {
+    login: 'With the Data API, give either a Secrets Manager secret ARN or a database user, and check the cluster or workgroup name and region.',
+    grant: 'The database user needs SELECT on the table and USAGE on its schema; the role needs redshift-data and redshift:GetClusterCredentials (or redshift-serverless:GetCredentials).' },
+  athena: {
+    grant: 'The role needs Athena query access, glue:GetTable on the database and table, and read access to the table\u2019s S3 data and the query results location.',
+    missing: 'Check the database and table names as Athena shows them (lower case), and the workgroup and region.' },
+  s3: {
+    login: 'If you gave access keys, check both, and that they are still active. With a role ARN, check the role trusts Data Assurance.',
+    grant: 'The role or keys need s3:GetObject on the file (and s3:ListBucket on its bucket).',
+    missing: 'The address must be the whole s3://bucket/path/file, with the file name exactly as it is in the bucket.' },
+  oracle: {
+    host: 'Use the host name only, and the port the listener uses (1521 by default).',
+    missing: 'Check the service name (or SID, if Connect by is set to SID) with your DBA: a wrong one reads as "not found".',
+    grant: 'The user needs SELECT on the table, granted to it or through a role; a table in another schema needs the schema named.' },
+  postgres: {
+    host: 'Use the host name only, without postgres:// or a database name after it, and the port (5432 by default).',
+    grant: 'The user needs CONNECT on the database, USAGE on the schema and SELECT on the table.',
+    tls: 'Change the SSL mode (for example from verify-full to require) if the server\u2019s certificate cannot be checked.' },
+  mysql: {
+    host: 'Use the host name only, and the port (3306 by default).',
+    grant: 'The user needs SELECT on the table: GRANT SELECT ON database.table TO the user, from the host this runs from.' },
+  sqlserver: {
+    host: 'Use the server name only (add \\INSTANCE for a named instance), and the port (1433 by default).',
+    grant: 'The login needs to be a user in the database with SELECT on the table (db_datareader is enough).' },
+  progress: {
+    host: 'Use the host name and the SQL broker\u2019s port, and check the driver name matches the ODBC driver installed on the agent.' },
+  fabric: {
+    login: 'With a service principal, check the tenant ID, client ID and client secret (secrets expire), and that the app has been added to the workspace.',
+    grant: 'The user or service principal needs at least the Viewer role on the Fabric workspace, or read access to the item.' },
+  synapse: {
+    login: 'Check the user name and password, or the Entra ID user, for the serverless or dedicated SQL endpoint.',
+    grant: 'The user needs SELECT on the table, and the workspace needs to allow it to read the underlying storage.' },
+  bigquery: {
+    login: 'Paste the whole service account key file (JSON), and check the key has not been deleted in Google Cloud.',
+    grant: 'The service account needs BigQuery Data Viewer on the dataset and BigQuery Job User on the project.',
+    missing: 'Check the project ID (not its name), the dataset and the table, and the location if the dataset is not in the US.' },
+  gcs: {
+    login: 'Paste the whole service account key file (JSON).',
+    grant: 'The service account needs Storage Object Viewer on the bucket.' },
+  azureblob: {
+    login: 'Copy the connection string again from the storage account (Access keys), whole; keys that were rotated stop working.',
+    missing: 'Check the container name and the blob path, exactly as the portal shows them.' },
+  sharepoint: {
+    login: 'Check the tenant ID, client ID and client secret of the app registration (secrets expire).',
+    grant: 'The app registration needs Microsoft Graph Sites.Read.All (application permission) with admin consent.',
+    missing: 'Use the link to the file itself, copied from SharePoint, and the sheet name exactly as it is in the workbook.' },
+  agentfile: {
+    missing: 'The path is read on the agent\u2019s machine: check the file is there, and that the agent\u2019s service account can open it.' },
+};
+
+/** What a failure was and what to do about it. raw: the message that came back; c: { key, label, stage
+ *  ('launch' | 'run' | 'agent'), http, state, code, onAgent, agentName, profile }. */
+function dqWhy(raw, c) {
+  c = c || {};
+  const msg = String(raw == null ? '' : raw).trim();
+  const label = c.label || SOURCE_LABEL[c.key] || 'the source';
+  const tip = k => ((WHY_TIP[c.key] || {})[k]) || '';
+  const where = c.onAgent ? `the agent${c.agentName ? ` (${c.agentName})` : ''}` : 'Data Assurance';
+  const inNet = c.onAgent
+    ? `The run happens on ${where}: check that machine can reach it (its firewall, a VPN, or the database\u2019s own allow-list).`
+    : (AGENT_DB_SOURCES.has(c.key)
+      ? 'If the database is inside your network or behind a firewall, choose an agent under Runs on, so the run happens inside your network.'
+      : '');
+  const again = c.infer ? 'Then press Infer ruleset again.' : 'Then run it again.';
+  const W = (kind, title, what, todo) => ({ kind, title, what, todo: todo.filter(Boolean), raw: msg });
+  const has = re => re.test(msg);
+
+  // ---- before anything was sent: nothing reached the source
+  if (c.stage === 'launch' && (c.http === 0 || has(/^(TypeError: )?(Failed to fetch|NetworkError|Load failed|network error)/i)))
+    return W('offline', 'Data Assurance could not be reached', 'This browser could not reach Data Assurance, so the run was not started.',
+      ['Check your internet connection (or VPN), then try again.', 'If other sites work, wait a minute: Data Assurance may be restarting.']);
+  if (c.stage === 'launch' && c.http === 401)
+    return W('signedout', PORTAL ? 'You have been signed out' : 'Data Assurance did not accept this app\u2019s key',
+      PORTAL ? 'Your sign-in ran out, so the run was not started.' : 'The key this Qlik app uses was refused, so the run was not started.',
+      PORTAL ? ['Refresh the page and sign in again.', again] : ['Ask whoever set up the Data Assurance extension to check its API key.']);
+  if (c.stage === 'launch' && c.http === 403 && !has(/access ?denied|permission|not authori[sz]ed/i))
+    return W('forbidden', 'Your account cannot run this', msg || 'You do not have access to run an assessment of this source here.',
+      ['Ask an administrator of your organisation for access (a role or tag that includes this data).']);
+  if (c.stage === 'launch' && c.http === 429)
+    return W('busy', 'Too many runs are in progress', msg || 'Data Assurance is already running as many assessments for your organisation as it takes at once.',
+      ['Wait for one of them to finish (Assessment history shows them), then run this again.']);
+
+  // ---- the source's own answers, most specific first
+  if (c.stage === 'agent' && c.code === -2 || has(/^(the run was )?cancell?ed\.?$/i))
+    return W('cancelled', 'The run was cancelled', 'Someone stopped it before it finished, so nothing was assessed.', ['Run it again whenever you are ready.']);
+  if (has(/no pg_hba\.conf entry|is not allowed to connect to this MySQL server|Client with IP address .* is not allowed|IP address .* is not allowed|not allowed to access Snowflake|network policy|blocked by (the )?firewall|firewall rule/i))
+    return W('allowlist', `${label} turned the connection away`,
+      `${label} was reached, but it only accepts connections from approved addresses, and this run\u2019s address is not one of them.`,
+      [c.onAgent ? `Ask whoever looks after ${label} to allow connections from the agent\u2019s machine.`
+                 : `Ask whoever looks after ${label} to allow Data Assurance to connect, or run it inside your network: choose an agent under Runs on.`,
+       again]);
+  if (has(/password authentication failed|invalid username\/password|ORA-01017|Login failed for user|Access denied for user|Incorrect username or password|authentication failed|invalid credentials|invalid_client|AADSTS7000215|AADSTS50126|AADSTS7000222|AADSTS700016|Invalid access token|invalid token|token (has )?expired|InvalidClientTokenId|InvalidAccessKeyId|SignatureDoesNotMatch|security token included in the request is invalid|ExpiredToken|AuthenticationFailed|Server failed to authenticate|invalid_grant|Could not deserialize key data|not a valid service account|Unauthorized|(HTTP|status|code)[ :=]*401|\(401\)/i))
+    return W('login', `${label} did not accept the sign-in details`,
+      `${label} refused the user name, password, key or token this run used, so nothing was read.`,
+      ['Check the sign-in details are right and have not expired or been changed.', tip('login'),
+       c.profile ? 'This run used a saved credential profile. If its password or key has changed since, type the new one into the form and save the profile again (Save current as\u2026, with the same name).' : '',
+       again]);
+  if (has(/could not translate host name|Name or service not known|getaddrinfo|nodename nor servname|No such host is known|Temporary failure in name resolution|Unknown host|NameResolutionError|Failed to resolve|DNS/i) || /\bENOTFOUND\b/.test(msg))
+    return W('host', `The address for ${label} could not be found`,
+      `The host name in the form does not exist, or cannot be looked up from ${where}.`,
+      ['Check the host for typing mistakes. Enter the host name only, without https:// or anything after it.', tip('host'), inNet, again]);
+  if (has(/certificate verify failed|CERTIFICATE_VERIFY|self[- ]signed certificate|unable to get local issuer|SSL routines|SSL error|SSL connection has been closed|requires SSL|SSL is required|server does not support SSL|TLS handshake/i))
+    return W('tls', `The secure connection to ${label} failed`,
+      'The connection was made, but the encrypted (SSL/TLS) handshake did not work, so nothing was read.',
+      [tip('tls') || 'If the form has an SSL setting, try its other option.', 'Check the server\u2019s certificate is valid and has not expired.', again]);
+  if (has(/statement timeout|canceling statement due to|Query (was )?(cancell?ed|timed out)|exceeded the (maximum )?(time|execution)|Execution timeout|QueryTimeout|Read timed out|ReadTimeout|took too long/i))
+    return W('slow', `${label} took too long to answer`,
+      'The connection worked, but a query ran past the time allowed, so the run stopped.',
+      ['Set Sample rows (for example 1,000,000) so fewer rows are read.', 'Or try at a quieter time, or on a larger warehouse or cluster.', again]);
+  if (has(/Connection refused|ECONNREFUSED|timed? ?out|timeout expired|No route to host|Network is unreachable|EHOSTUNREACH|ENETUNREACH|could not connect|Can't connect to|Cannot connect|Unable to connect|Adaptive Server is unavailable|TNS:no listener|ORA-12541|ORA-12170|ORA-12543|DPY-6005|Login timeout expired|server closed the connection unexpectedly|Connection reset|Max retries exceeded|Failed to establish a new connection|250001|Could not connect to Snowflake/i))
+    return W('unreachable', `Could not connect to ${label}`,
+      `Nothing answered at that host and port from ${where}, so nothing was read.`,
+      ['Check the host and port are right, and that the database is running.', tip('host'), inNet, again]);
+  if (has(/warehouse .*(suspended|not (running|available))|No active warehouse|does not have a current (database|warehouse)|SQL warehouse is (stopped|not running)|cluster is (terminated|not running)|cluster .* (paused|not available)/i))
+    return W('compute', `${label} has nothing running to answer the query`,
+      'The sign-in worked, but no warehouse or cluster was running (or named) to run the query.',
+      [tip('compute') || 'Start the warehouse or cluster, or name one that is running.', again]);
+  if (!has(/does not exist or not authori[sz]ed/i) && has(/permission denied|permission was denied|command denied|Cannot open database|does not have [\w.]+ access|access ?denied|AccessDenied|not authori[sz]ed|insufficient privilege|PERMISSION_DENIED|Forbidden|(HTTP|status|code)[ :=]*403|\(403\)|does not have (the )?(required )?(permission|privilege)|USAGE privilege|User does not have|is not allowed to|AuthorizationPermissionMismatch|AuthorizationFailure|AADSTS65001|consent/i))
+    return W('grant', `Signed in to ${label}, but not allowed to read this`,
+      'The sign-in worked, but the account is not allowed to read the database, schema, table or file the run asked for.',
+      [tip('grant') || `Ask whoever looks after ${label} to give this account read access to it.`, again]);
+  if (has(/ORA-12514|ORA-12505|listener does not currently know of (service|SID)/i))
+    return W('missing', `${label} does not know that service name`,
+      'The database was reached, but the service name (or SID) in the form is not one it has.',
+      [tip('missing'), again]);
+  if (has(/does not exist|doesn't exist|not found|NoSuchKey|NoSuchBucket|ResourceNotFound|BlobNotFound|ContainerNotFound|Invalid object name|Unknown database|Unknown table|ORA-00942|TABLE_OR_VIEW_NOT_FOUND|SCHEMA_NOT_FOUND|EntityNotFound|itemNotFound|No such object|No such file or directory|cannot find the (path|file)|The system cannot find|(HTTP|status|code)[ :=]*404|\(404\)/i))
+    return W('missing', `${label} could not find what the run asked for`,
+      'The database, schema, table, file or bucket named in the form is not there, or this account cannot see it (something an account may not see often looks as if it does not exist).',
+      ['Check each name exactly: spelling, upper and lower case, and which schema or folder it is in.', tip('missing'), again]);
+  if (has(/MemoryError|out of memory|Cannot allocate memory|OutOfMemory|exit code 137|\bOOM\b|No space left on device|disk (is )?full/i))
+    return W('toobig', 'The data was too large to assess in one go',
+      'The run used up the memory or disk it had before it finished, so it stopped.',
+      ['Set Sample rows (for example 1,000,000) to assess a sample, or assess a smaller table or file.', again]);
+  if (has(/Unsupported (file|format)|could not (parse|read) (the )?file|ParserError|UnicodeDecodeError|codec can't decode|Error tokenizing data|BadZipFile|not a (zip|valid Excel|valid parquet)|ArrowInvalid|Invalid Parquet|Parquet magic bytes|No columns to parse|EmptyDataError|file is empty|is not a QVD/i))
+    return W('file', 'The file could not be read',
+      'It was found, but it is not in a form the assessment can read.',
+      ['Check it is CSV, TSV, Excel, Parquet, JSON or QVD, and that it opens in its usual program.',
+       'For a CSV, check it is saved as UTF-8 with one separator throughout, and has a header row.', again]);
+  if (has(/Throttl|Rate exceeded|Too Many Requests|SlowDown|TooManyRequests|quota exceeded|Resource has been exhausted|(HTTP|status|code)[ :=]*429|\(429\)/i))
+    return W('throttled', `${label} asked us to slow down`,
+      `${label} is limiting how many requests it takes just now, so the run stopped.`,
+      ['Wait a minute or two.', again]);
+  if (c.stage === 'agent')
+    return W('agent', c.code === -1 ? 'The run timed out on the agent' : 'The agent did not run this',
+      msg || 'The agent reported a failure but gave no reason.',
+      ['Check the agent is running on its machine (the ViseonDQAgent service) and shows as online on the Agents tab.',
+       'Fix what it says above.', again, 'The agent also writes this to its own log on that machine.']);
+  if (has(/ValidationException|InvalidParameter|Malformed|Invalid (identifier|account|region|URL|URI|value)|must be (a|an|one of|between)/i))
+    return W('value', 'A value in the form was not accepted', msg,
+      ['Change the value it mentions in the form.', again]);
+
+  // ---- nothing above matched
+  if (c.stage === 'launch' && c.http >= 500)
+    return W('ours', 'Data Assurance had a problem starting this run',
+      'Something went wrong on our side before the run reached the source. Nothing about the form is wrong.',
+      ['Try again in a minute.', 'If it keeps happening, tell us the time and the source, and we will look.']);
+  if (c.stage === 'launch')
+    return W('refused', 'The run could not start', msg || 'Data Assurance turned the request down.',
+      ['Change what it mentions in the form.', again]);
+  if (c.state === 'ERROR')
+    return W('unreachable', `Could not reach ${label}`,
+      'The run could not read from the source, so nothing was assessed. The message below is the source\u2019s own, and usually names the cause.',
+      ['Check the connection details and that the account can read the table.', inNet, again]);
+  if (c.state === 'ABORTED')
+    return W('stopped', 'The run stopped before it finished',
+      'Its worker stopped partway, so nothing was assessed.',
+      ['Run it again. If it stops again, set Sample rows, or assess a smaller table.']);
+  return W('unknown', 'The run failed',
+    'It stopped partway, and the message below did not match a cause we recognise.',
+    [`Read ${label}\u2019s message below: it usually names the cause.`,
+     'Run it again. If it fails the same way, tell us the time and the source, and we will look.']);
+}
+
+const WHY_ICO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M12 7.5v5.5"/><path d="M12 16.6v.1"/></svg>';
+/** The card: what happened, what to do, and (when there is one) the source's own message, word for word. */
+function dqWhyHtml(w, o) {
+  o = o || {};
+  const raw = o.noRaw ? '' : String(w.raw || '').trim();
+  const fromWhom = o.fromWhom || (w.kind === 'agent' ? 'What the agent said' : 'The message');
+  return `<div class="dq-why" role="alert" data-why="${esc(w.kind)}">` +
+    `<div class="dqw-head"><span class="dqw-ico">${WHY_ICO}</span><div><div class="dqw-t">${esc(w.title)}</div>` +
+    (w.what && w.what !== raw ? `<div class="dqw-what">${esc(w.what)}</div>` : '') + `</div></div>` +
+    (w.list && w.list.length ? `<ul class="dqw-list">${w.list.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : '') +
+    (w.todo.length ? `<div class="dqw-do"><div class="dqw-dot">What to do</div><ol>${w.todo.map(t => `<li>${esc(t)}</li>`).join('')}</ol></div>` : '') +
+    (raw ? `<div class="dqw-raw"><span>${esc(fromWhom)}</span><code>${esc(raw.length > 900 ? raw.slice(0, 900) + '\u2026' : raw)}</code></div>` : '') +
+    `</div>`;
+}
+/** Is this connector set to run on an agent, and which? Read from its form. */
+function srcAgentOf(key) {
+  if (!AGENT_DB_SOURCES.has(key) && key !== 'agentfile') return null;
+  const cfg = collectSourceFields(key);
+  if (!cfg.agent) return null;
+  return { id: cfg.agent, name: ((_dqAgentsSeen || []).find(a => a.id === cfg.agent) || {}).name || '' };
+}
+function dqWhyCtx(key, extra) {
+  const ag = key ? srcAgentOf(key) : null;
+  return Object.assign({ key, label: SOURCE_LABEL[key], onAgent: !!ag, agentName: ag ? ag.name : '',
+                         profile: !!(key && activeProfile[key]), infer: !!(key && srcInferMode(key)) }, extra || {});
+}
+/** The form's own line under the Run button, as a card. */
+function srcWhy(key, w) {
+  const statusEl = document.querySelector(`[data-status="${key}"]`);
+  if (!statusEl) return;
+  statusEl.className = 'src-status src-why';
+  statusEl.innerHTML = dqWhyHtml(w);
+}
+/** A refused launch: back to the form, with why. */
+function srcRunFailWhy(key, err) {
+  srcRunFail(key, null);
+  srcWhy(key, dqWhy(err && err.message, dqWhyCtx(key, { stage: 'launch', http: err && err.status != null ? err.status
+    : (/fetch|network|load failed/i.test(String(err && err.message)) ? 0 : undefined) })));
+}
+
+/** Values that are plainly wrong before anything is sent: [{ f, msg }]. Only the unmistakable, so a value that is
+ *  merely unusual is never refused here; the source has the last word on everything else. */
+function srcFieldProblems(key, cfg) {
+  const out = [], v = f => String(cfg[f] == null ? '' : cfg[f]).trim();
+  if (v('port') && !(/^\d+$/.test(v('port')) && +v('port') >= 1 && +v('port') <= 65535)) out.push({ f: 'port', msg: 'must be a number from 1 to 65535' });
+  if (v('sample_rows') && !(/^\d+$/.test(v('sample_rows').replace(/[,_\s]/g, '')) && +v('sample_rows').replace(/[,_\s]/g, '') > 0))
+    out.push({ f: 'sample_rows', msg: 'must be a whole number above 0, or left empty to read every row' });
+  if (['oracle', 'postgres', 'mysql', 'sqlserver', 'progress', 'synapse', 'fabric'].includes(key) && v('host')) {
+    if (/^[a-z][a-z0-9+.-]*:\/\//i.test(v('host')) || /\s/.test(v('host')) || /\/./.test(v('host').replace(/\/$/, '')))
+      out.push({ f: 'host', msg: 'should be the host name only (for example db.example.com), without https:// or anything after it' });
+    else if (/:\d+$/.test(v('host')) && 'port' in cfg) out.push({ f: 'host', msg: 'should not end in a port: put the port in the Port box' });
+  }
+  if (key === 'snowflake' && v('account') && /snowflakecomputing\.com|:\/\//i.test(v('account')))
+    out.push({ f: 'account', msg: 'should be the account identifier only, the part before .snowflakecomputing.com (for example xy12345.eu-west-1)' });
+  if (key === 's3' && v('uri') && !/^s3:\/\/[^/]+\/.+/i.test(v('uri')))
+    out.push({ f: 'uri', msg: 'should be the whole address of the file, s3://bucket/path/file' });
+  if (v('role_arn') && !/^arn:aws[a-z-]*:iam::\d{12}:role\/.+/.test(v('role_arn')))
+    out.push({ f: 'role_arn', msg: 'should look like arn:aws:iam::123456789012:role/name' });
+  if (v('secret_arn') && !/^arn:aws[a-z-]*:secretsmanager:[a-z0-9-]+:\d{12}:secret:.+/.test(v('secret_arn')))
+    out.push({ f: 'secret_arn', msg: 'should look like arn:aws:secretsmanager:region:123456789012:secret:name' });
+  if (v('credentials_json')) {
+    let ok = false;
+    try { const j = JSON.parse(v('credentials_json')); ok = !!(j && typeof j === 'object' && (j.private_key || j.type)); } catch (e) {}
+    if (!ok) out.push({ f: 'credentials_json', msg: 'should be the whole service account key file, as JSON, starting with {' });
+  }
+  if (key === 'sharepoint' && v('url') && !/^https:\/\//i.test(v('url'))) out.push({ f: 'url', msg: 'should be the link to the file, starting with https://' });
+  return out;
+}
+
+// ---- Save the connection first? ---------------------------------------------------------------------------- //
+// A run started with the connection typed in and no credential profile applied: offer to save it first. Saved, the
+// dataset can be re-run, scheduled, run by tag and monitored without anyone typing it in again; not saved, it has to
+// be typed in every time. Asked once a visit per source (the form keeps what was typed until the page is closed),
+// and never for a source the reader said not to ask about on this browser (localStorage dq.credask.<source>).
+const _credAskedThisVisit = new Set();
+function credAskWanted(key) {
+  if (!APP_ID || !(key in SRC_SECRET_FIELDS) || activeProfile[key] || _credAskedThisVisit.has(key)) return false;
+  try { if (localStorage.getItem('dq.credask.' + key) === 'no') return false; } catch (e) {}
+  return true;
+}
+function credProfileName(key, cfg) {
+  const where = [cfg.database, cfg.schema, cfg.table].filter(Boolean).join('.') || cfg.table || cfg.dataset
+    || cfg.object || cfg.blob || cfg.path || cfg.uri || cfg.url || '';
+  return ((SOURCE_LABEL[key] || key) + (where ? ' - ' + where : '')).slice(0, 80);
+}
+/** 'save' (saved, and now applied) | 'skip' | 'cancel'. */
+function credAskDialog(key, cfg) {
+  const label = SOURCE_LABEL[key] || key;
+  const secret = (SRC_SECRET_FIELDS[key] || []).length > 0;
+  const onAgent = !!srcAgentOf(key);
+  return new Promise(resolve => {
+    const ov = document.createElement('div');
+    ov.className = 'modal-overlay dq-ov open';
+    ov.innerHTML =
+      `<div class="modal dq-dialog cred-ask" role="dialog" aria-modal="true" aria-labelledby="credAskT">
+        <div class="modal-head"><h3 id="credAskT">Save this connection?</h3><button class="x-close" type="button" data-ca="cancel" aria-label="Close">&times;</button></div>
+        <div class="modal-body">
+          <p class="dq-modal-msg">Save it as a credential profile and this ${esc(label)} connection can be used again: to re-run the dataset, schedule it, run it by tag and monitor the source, without typing anything in again.${secret && !onAgent
+            ? ' Passwords and keys are kept securely on our side and never sent back to the browser.' : ''}${onAgent
+            ? ' The password stays on the agent\u2019s machine; the profile keeps the rest of the connection.' : ''}</p>
+          <div class="ca-note"><b>If you don\u2019t save it</b>, you\u2019ll need to re-enter ${secret && !onAgent
+            ? 'the credentials, including the password,' : 'these connection details'} every time you run this source.</div>
+          <label class="ca-name">Profile name<input class="dqin" type="text" maxlength="80"></label>
+          <label class="ca-dont"><input type="checkbox"> Don\u2019t ask again for ${esc(label)} on this browser</label>
+          <div class="ca-err" role="alert"></div>
+        </div>
+        <div class="modal-foot">
+          <button type="button" class="btn-sm" data-ca="cancel">Cancel</button>
+          <button type="button" class="btn-sm" data-ca="skip">Run without saving</button>
+          <button type="button" class="dq-ok" data-ca="save">Save and run</button>
+        </div>
+      </div>`;
+    document.body.appendChild(ov);
+    const input = ov.querySelector('.ca-name input'), dont = ov.querySelector('.ca-dont input');
+    input.value = credProfileName(key, cfg);
+    const finish = v => {
+      if (v !== 'cancel' && dont.checked) { try { localStorage.setItem('dq.credask.' + key, 'no'); } catch (e) {} }
+      ov.remove(); document.removeEventListener('keydown', onKey, true); resolve(v);
+    };
+    const save = async () => {
+      const name = input.value.trim();
+      if (!name) { ov.querySelector('.ca-err').textContent = 'Give the profile a name.'; input.focus(); return; }
+      const b = ov.querySelector('[data-ca="save"]');
+      b.disabled = true; b.textContent = 'Saving\u2026';
+      try { await credProfileSave(key, name); finish('save'); }
+      catch (e) {
+        b.disabled = false; b.textContent = 'Save and run';
+        ov.querySelector('.ca-err').textContent = 'It could not be saved: ' + e.message + ' You can still run without saving.';
+      }
+    };
+    ov.addEventListener('click', e => {
+      const b = e.target.closest('[data-ca]');
+      if (b) { e.preventDefault(); if (b.dataset.ca === 'save') save(); else finish(b.dataset.ca); }
+      else if (e.target === ov) finish('cancel');
+    });
+    function onKey(e) {
+      if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); finish('cancel'); }
+      else if (e.key === 'Enter' && document.activeElement === input) { e.preventDefault(); save(); }
+    }
+    document.addEventListener('keydown', onKey, true);
+    setTimeout(() => { input.focus(); input.select(); }, 20);
+  });
+}
+async function credAskThenRun(key) {
+  const choice = await credAskDialog(key, collectSourceFields(key));
+  if (choice === 'cancel') return;
+  _credAskedThisVisit.add(key);
+  runSource(key);
+}
+
 /** The run never started, or was refused: back to the form, where the reason is. */
 function srcRunFail(key, message) {
   const k = _srcKey(key), st = srcRunState[k];
@@ -23327,7 +23690,7 @@ async function srcLaunch(key, statusEl, endpoint, body, words, extra) {
   try {
     res = await postJSON(`${API_BASE}/data-quality/${endpoint}`, srcRunHeaders(sweep, infer, srcBodyOf(key)), body);
   } catch (e) {
-    if (srcRunCurrent(key, seq)) srcRunFail(key, e.message);
+    if (srcRunCurrent(key, seq)) srcRunFailWhy(key, e);
     return;
   }
   if (!srcRunCurrent(key, seq)) return;
@@ -24544,13 +24907,19 @@ async function saveCredProfileAs(key) {
   const cur = (credProfiles[key] || []).find(x => x.id === activeProfile[key]);
   const name = (await dqPrompt('Name this credential profile (e.g. “Prod Redshift – orders”):', cur ? cur.name : '', { title: 'Save credential profile' }) || '').trim();
   if (!name) return;
+  try { await credProfileSave(key, name); } catch (e) { setCredMsg(key, 'Could not save: ' + e.message, true); }
+}
+/** Save the form's connection (and its integrity and accuracy rules) as a profile named `name`, apply it, and say
+ *  so under the picker. Throws when the save fails. */
+async function credProfileSave(key, name) {
   const cfg = collectSourceFields(key);
   // The integrity and accuracy rules in the form go with it, so applying it brings them back. {}
   // when there are none, which clears any the profile had: what is saved is what the form shows.
   const refs = collectSourceRefsAugment() || {};
-  try {
+  {
     const r = await postJSON(`${API_BASE}/data-quality/credential-profiles`, HEADERS,
       { app_id: APP_ID, source: key, action: 'save', name, config: cfg, refs });
+    if (!r || !r.id) throw new Error('The profile was not saved.');
     activeProfile[key] = r.id;
     await renderCredProfiles(key);
     // Saved to run on an agent, the one thing left to do is on that machine, so say exactly what.
@@ -24559,7 +24928,7 @@ async function saveCredProfileAs(key) {
     setCredMsg(key, agent
       ? `Saved profile “${name}”, to run on ${agent}. Its password goes in that machine's secrets.json under "${agentSecretKey(key)}", or under "${agentSecretKey(key, r.id)}" if this connection needs a password of its own there.`
       : `Saved profile “${name}”.`);
-  } catch (e) { setCredMsg(key, 'Could not save: ' + e.message, true); }
+  }
 }
 
 async function deleteCredProfile(key) {
@@ -24766,15 +25135,21 @@ function runSource(key) {
   const secretF = SRC_SECRET_FIELDS[key] || [];
   const required = requiredFields(key, cfg).filter(f => !(activeProfile[key] && secretF.includes(f)));
   const missing = required.filter(f => !cfg[f]);
+  const wrong = srcFieldProblems(key, cfg).filter(p => !missing.includes(p.f));
   if (body) body.querySelectorAll('.src-missing').forEach(el => el.classList.remove('src-missing'));
-  if (missing.length) {
-    const labels = missing.map(f => srcFieldLabel(body, f));
-    missing.forEach(f => {
+  if (missing.length || wrong.length) {
+    missing.concat(wrong.map(p => p.f)).forEach(f => {
       const el = body && body.querySelector(`[data-f="${f}"]`);
       if (el) { el.classList.add('src-missing'); el.addEventListener('input', () => el.classList.remove('src-missing'), { once: true }); }
     });
-    statusEl.className = 'src-status err';
-    statusEl.textContent = `Please fill in the required field${labels.length > 1 ? 's' : ''}: ${labels.join(', ')}.`;
+    const list = missing.map(f => `${srcFieldLabel(body, f)}: required`)
+      .concat(wrong.map(p => `${srcFieldLabel(body, p.f)}: ${p.msg}`));
+    srcWhy(key, Object.assign(dqWhy('', dqWhyCtx(key)), {
+      kind: missing.length ? 'fields' : 'value',
+      title: missing.length && !wrong.length ? `${missing.length === 1 ? 'One detail is' : 'Some details are'} missing`
+        : !missing.length ? `${wrong.length === 1 ? 'One detail does' : 'Some details do'} not look right` : 'Some details need fixing',
+      what: 'Nothing was sent: the run needs these first.', list, raw: '',
+      todo: ['Fill in or correct the highlighted boxes.', srcInferMode(key) ? 'Then press Infer ruleset again.' : 'Then run it again.'] }));
     srcShowFace(key, 'form');                            // Run again from a result lands here
     const first = body && body.querySelector('.src-missing');
     if (first) first.focus();
@@ -24784,11 +25159,14 @@ function runSource(key) {
   cfg._credProfile = activeProfile[key] || null;
   const onAgent = agentRunProblem(key, cfg);
   if (onAgent) {
-    statusEl.className = 'src-status err';
-    statusEl.textContent = onAgent;
+    srcWhy(key, { kind: 'agent', title: 'This cannot run on the agent yet', what: onAgent, raw: '',
+      todo: ['Check the agent is running on its machine (the ViseonDQAgent service) and shows as online on the Agents tab.',
+             'Or choose another agent under Runs on.', srcInferMode(key) ? 'Then press Infer ruleset again.' : 'Then run it again.'] });
     srcShowFace(key, 'form');
     return;
   }
+  // Ready to run, with nothing saved to run it again: offer to save the connection first (credAskDialog).
+  if (credAskWanted(key)) { credAskThenRun(key); return; }
   if (key === 'athena') { runAthena(cfg, statusEl); return; }       // wired end-to-end
   if (key === 'oracle') { runOracle(cfg, statusEl); return; }       // wired end-to-end
   if (key === 'redshift') { runRedshift(cfg, statusEl); return; }   // wired end-to-end
@@ -28701,7 +29079,8 @@ function buildGuides() {
       { h: 'Save one', body: steps(
           `Open the source in ${go('upload', 'From a data source')} and fill in the connection. ${showme('src-profile')}`,
           `Press ${ui('Save current as…')} and give it a name people will recognise.`,
-          `It now appears in the ${ui('Credential profile')} list for that source.`) },
+          `It now appears in the ${ui('Credential profile')} list for that source.`) +
+          note(`Or just press ${ui('Run assessment')}: with no profile applied, you are asked whether to save the connection first. ${ui('Save and run')} saves it and runs with it; ${ui('Run without saving')} runs it once, and the credentials, the password too, then have to be typed in again next time.`) },
       { h: 'Use one', body: steps(
           `Choose it from the ${ui('Credential profile')} list and press ${ui('Apply')}.`,
           `Every field except the secret is filled in. Change anything you like, such as the table.`,
@@ -33985,26 +34364,12 @@ async function agentJobFailure(job) {
   };
 }
 
-function agentFailureNote(bad) {
-  // The agent's own words. It knows what it refused and why, and paraphrasing it here would mean
-  // maintaining a second description of every refusal the guard can produce.
+function agentFailureNote(bad, key) {
+  // Explained like any other failure (dqWhy). The agent's own words stay underneath, as it said them: it knows
+  // what it refused and why. Nothing was assessed, so there is no result to show.
   const wrap = document.createElement('div');
-  wrap.className = 'agt-fail';
-  const head = document.createElement('div');
-  head.className = 'agt-fail-h';
-  head.textContent = bad.code === -1 ? 'The run timed out on the agent'
-                   : bad.code === -2 ? 'The run was cancelled'
-                   : 'The agent did not run this';
-  wrap.appendChild(head);
-  const why = document.createElement('div');
-  why.textContent = bad.reason;
-  wrap.appendChild(why);
-  const hint = document.createElement('div');
-  hint.className = 'agt-fail-hint';
-  hint.textContent = 'Nothing was assessed, so there is no result to show. Fix the cause and run '
-                   + 'it again. The agent also writes this to its own log on that machine.';
-  wrap.appendChild(hint);
-  return wrap;
+  wrap.innerHTML = dqWhyHtml(dqWhy(bad.reason, dqWhyCtx(key, { stage: 'agent', code: bad.code })), { fromWhom: 'What the agent said' });
+  return wrap.firstElementChild;
 }
 
 async function pollInto(resultPrefix, bodyEl, opts) {
@@ -34033,10 +34398,11 @@ async function pollInto(resultPrefix, bodyEl, opts) {
     // otherwise sits on a spinner for ever.
     const bad = await agentJobFailure(opts && opts.agentJob);
     if (bad) {
-      if (bodyEl) { bodyEl.textContent = ''; bodyEl.appendChild(agentFailureNote(bad)); }
+      if (bodyEl) { bodyEl.textContent = ''; bodyEl.appendChild(agentFailureNote(bad, stage)); }
       if (opts && opts.statusEl) {
+        const w = dqWhy(bad.reason, dqWhyCtx(stage, { stage: 'agent', code: bad.code }));
         opts.statusEl.className = 'src-status err';
-        opts.statusEl.textContent = bad.reason;
+        opts.statusEl.textContent = `${w.title}: ${bad.reason}`;
       }
       if (stage) srcRunDone(stage, null, bad);
       return;
