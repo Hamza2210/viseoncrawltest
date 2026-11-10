@@ -1002,6 +1002,16 @@
   .cmp-set-grid input { padding: 7px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--card); color: var(--text); font: inherit; font-size: 13px; }
   .cmp-set-grid input:focus { outline: none; border-color: var(--accent); }
   .cmp-set-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  /* How long failed records are kept (the Record detail popover): days, with the usual lengths one press away. */
+  .cmp-set-grid.rec-row { margin: 4px 0 8px; }
+  .rec-days { display: flex; align-items: center; gap: 8px; color: var(--text); font-size: 13px; }
+  .rec-days input { width: 96px; }
+  .rec-days input[aria-invalid="true"] { border-color: var(--err); }
+  .rec-picks { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; }
+  .rec-pick { padding: 3px 11px; border: 1px solid var(--border); border-radius: 999px; background: var(--card);
+    color: var(--muted); font: inherit; font-size: 12px; cursor: pointer; }
+  .rec-pick:hover, .rec-pick:focus-visible { color: var(--text); border-color: var(--accent); }
+  .rec-pick.on { color: var(--text); border-color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, transparent); }
   .cmp-exempt { display: flex; align-items: center; gap: 8px; font-size: 13px; margin: 0 0 12px; cursor: pointer; }
   .cmp-fwsel { display: flex; flex-direction: column; align-items: center; gap: 6px; margin: 4px 0 16px; text-align: center; }
   .cmp-fwsel-lab { font-size: 12px; color: var(--muted); font-weight: 600; display: inline-flex; align-items: center; gap: 5px; }
@@ -16348,6 +16358,21 @@ function frPolicyNote(pol) {
   return `<p class="dash-muted" style="margin:6px 0 8px;">🔒 ${body}</p>`;
 }
 
+/** How long this run's failed records are kept, as the organisation keeps them (data.retention from the API): until
+ *  when, or that they are past it and gone. Every count is kept either way. */
+function frRetentionNote(data) {
+  const r = data && data.retention;
+  if (!r || !r.days) return '';
+  const span = r.days === 365 ? 'a year' : `${numInt(r.days)} day${r.days === 1 ? '' : 's'}`;
+  if (r.expired) {
+    return `<p class="dash-muted fr-kept-note expired">🗓 This run's failed records were kept for ${span}, as your organisation keeps them, ` +
+      `and are no longer available. The failing checks and their counts are shown above. Run the dataset again to see its failed records.</p>`;
+  }
+  if (!r.expiresAt) return '';
+  const until = new Date(r.expiresAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+  return `<p class="dash-muted fr-kept-note">🗓 Kept until ${esc(until)} (${span} from the run, your organisation's setting), then removed for good.</p>`;
+}
+
 function renderFailedRecords(data) {
   const recs = (data.records || []).slice();
   const pol = data.records_policy || {};
@@ -16356,6 +16381,7 @@ function renderFailedRecords(data) {
     // the artefact expired. Saying "passed every check" in that case would be plainly false.
     const failing = (data.check_summary || []).reduce((n, c) => n + (c.failed || 0), 0);
     if (!failing) return '<p class="dash-muted">No failed records - this run passed every check. 🎉</p>';
+    if (data.retention && data.retention.expired) return renderFailuresViz(data) + frRetentionNote(data);
     return renderFailuresViz(data) + (frPolicyNote(pol) ||
       `<p class="dash-muted" style="margin:6px 0 8px;">Record-level detail is not available for this run. The failing checks and their counts are shown above.</p>`);
   }
@@ -16406,14 +16432,16 @@ function renderFailedRecords(data) {
   const dlTip = all.available
     ? `Every failing row, each with the dimension it failed and why. Personal data stays redacted.${all.complete === false ? ` This run had more than ${numInt(all.rowsMax)}, so each check is cut back to its share.` : ''}`
     : 'The records this run kept, a sample of each failing check, with the dimension each failed and why. Personal data stays redacted.';
-  const dl = all.available && data.resultPrefix
+  // A role that may not download every failed record (admins and members may) sees the records here, and no button.
+  const dl = all.canDownload === false ? ''
+    : all.available && data.resultPrefix
     ? `<button type="button" class="btn-sm fr-dl-btn" data-frdl="${esc(data.resultPrefix)}" data-tip="${esc(dlTip)}">⬇ Download all ${pl(all.rows)} (CSV)</button>`
     : `<button type="button" class="btn-sm fr-dl-btn" data-frkept data-tip="${esc(dlTip)}">⬇ Download the ${pl(kept)} kept (CSV)</button>`;
   const cut = all.available && all.complete === false
     ? `<p class="hint fr-dl-none">This run had more than ${numInt(all.rowsMax)} failed records, so the download holds each check's share of them.</p>` : '';
   const old = !all.available && data.resultPrefix
     ? `<p class="hint fr-dl-none">This run kept only the records shown here, so the download holds those. Run the dataset again to download every failed record.</p>` : '';
-  return `<div class="fr-head">${head || '<span></span>'}${dl}</div>` + renderFailuresViz(data) + frPolicyNote(pol) + cut + old + frDimFilter(data) +
+  return `<div class="fr-head">${head || '<span></span>'}${dl}</div>` + renderFailuresViz(data) + frPolicyNote(pol) + frRetentionNote(data) + cut + old + frDimFilter(data) +
     `<p class="dash-muted fr-filter-note" style="margin:0 0 6px;"></p>` + rowNote +
     `<div class="fr-scroll"><table class="dash-table">` +
     `<tr><th title="${esc(rowTip)}">${rowLabel}</th><th>Dimension</th><th class="fr-check">Check</th><th>Severity</th><th>Offending record</th></tr>${rows}</table></div>${note}` +
@@ -17031,24 +17059,63 @@ function _cmpRecPolToggle(show) {
   const who = cur.updated_by
     ? `Set by ${esc(cur.updated_by)}${cur.updated_at ? ' on ' + esc(String(cur.updated_at).slice(0, 10)) : ''}.`
     : 'Never changed, so the safe default applies.';
+  // How long a run's failed records are kept, in days (a year at most, and by default): past it they are no longer
+  // shown or downloadable, and the daily sweep removes them for good. Scores and counts are always kept.
+  const days = Number(cur.days) || 365, dmax = Number(cur.days_max) || 365;
+  const daysWho = cur.days_updated_by                    // said as text (textContent), so not escaped
+    ? `Set by ${cur.days_updated_by}${cur.days_updated_at ? ' on ' + String(cur.days_updated_at).slice(0, 10) : ''}.`
+    : 'Never changed: a year, the most.';
+  let savedPol = p, savedDays = days;                    // what is saved, as Save goes on changing it
+  const pick = n => `<button type="button" class="rec-pick" data-days="${n}">${n === 365 ? '1 year' : n + ' days'}</button>`;
   pop.innerHTML = `<div class="cmp-settings" id="recPolBox">
     <h4>🔒 Failing-record detail (organisation-wide)</h4>
-    <p class="hint" style="margin:0 0 12px;">When a check fails, the rows that failed are kept so they can be fixed. This decides how much of each row, for every dataset in your organisation. ${who}</p>
-    <div class="cmp-set-grid">
+    <p class="hint" style="margin:0 0 12px;">When a check fails, the rows that failed are kept so they can be fixed. This decides how much of each row, and for how long, for every dataset in your organisation. ${who}</p>
+    <div class="cmp-set-grid rec-row">
       <label>Detail kept<select id="recPolSel">${opt('none')}${opt('minimal')}${opt('full')}</select></label>
     </div>
-    <p class="hint" id="recPolDesc" style="margin:8px 0 0;">${esc(_RECPOL_TEXT[p] || '')}</p>
+    <p class="hint" id="recPolDesc" style="margin:0 0 16px;">${esc(_RECPOL_TEXT[p] || '')}</p>
+    <div class="cmp-set-grid rec-row">
+      <label>Keep failed records for<span class="rec-days"><input type="number" id="recDaysIn" min="1" max="${dmax}" step="1" inputmode="numeric" value="${days}"> days</span></label>
+    </div>
+    <div class="rec-picks" role="group" aria-label="Common lengths">${[7, 30, 90, 180, 365].map(pick).join('')}</div>
+    <p class="hint" id="recDaysDesc" style="margin:8px 0 14px;"></p>
     <div class="cmp-set-actions"><button type="button" class="btn-sm" id="recPolSave">Save policy</button>
       <span class="hint" id="recPolMsg"></span></div>
   </div>`;
   const sel = pop.querySelector('#recPolSel'), desc = pop.querySelector('#recPolDesc'), msg = pop.querySelector('#recPolMsg');
+  const din = pop.querySelector('#recDaysIn'), ddesc = pop.querySelector('#recDaysDesc');
+  const want = () => { const n = Number(din.value); return Number.isInteger(n) && n >= 1 && n <= dmax ? n : null; };
+  const sayDays = () => {
+    const n = want();
+    pop.querySelectorAll('.rec-pick').forEach(b => b.classList.toggle('on', Number(b.dataset.days) === n));
+    ddesc.textContent = n == null ? `A whole number of days, from 1 to ${dmax}.`
+      : `A run's failed records are removed ${n === 1 ? 'a day' : n + ' days'} after it ran. Its scores and counts are always kept. ${daysWho}`;
+    din.setAttribute('aria-invalid', n == null ? 'true' : 'false');
+  };
   sel.addEventListener('change', () => { desc.textContent = _RECPOL_TEXT[sel.value] || ''; });
+  din.addEventListener('input', sayDays);
+  pop.querySelectorAll('.rec-pick').forEach(b => b.addEventListener('click', () => { din.value = b.dataset.days; sayDays(); }));
+  sayDays();
   pop.querySelector('#recPolSave').addEventListener('click', async (ev) => {
-    const b = ev.currentTarget; b.disabled = true; msg.style.color = 'var(--muted)';
+    const b = ev.currentTarget, n = want();
+    msg.style.color = 'var(--err)';
+    if (n == null) { msg.textContent = `Keep them for 1 to ${dmax} days.`; din.focus(); return; }
+    // Fewer days than now takes older runs' failed records away for good: said before, not after.
+    if (n < savedDays && !await dqConfirm(`Keep failed records for ${n} day${n === 1 ? '' : 's'} instead of ${savedDays}?\n\nFailed records of runs older than that stop showing straight away, and are removed for good in the next daily sweep. Scores and counts are kept.`,
+      { title: 'Keep failed records for less time', okLabel: 'Change it', cancelLabel: 'Keep ' + savedDays + ' days' })) return;
+    b.disabled = true; msg.style.color = 'var(--muted)';
     msg.textContent = 'Saving…';
     try {
-      await postJSON(`${API_BASE}/data-quality/records-policy`, HEADERS, { action: 'set', policy: sel.value });
-      cmpRecPol = Object.assign({}, cmpRecPol, { policy: sel.value, updated_by: EMAIL || cmpRecPol.updated_by, updated_at: new Date().toISOString() });
+      const body = { action: 'set' };
+      if (sel.value !== savedPol) body.policy = sel.value;
+      if (n !== savedDays) body.days = n;
+      if (!body.policy && !body.days) body.policy = sel.value;      // nothing changed: saved as it is
+      await postJSON(`${API_BASE}/data-quality/records-policy`, HEADERS, body);
+      const at = new Date().toISOString(), by = EMAIL || '';
+      cmpRecPol = Object.assign({}, cmpRecPol, { policy: sel.value, days: n },
+        body.policy ? { updated_by: by || cmpRecPol.updated_by, updated_at: at } : {},
+        body.days ? { days_updated_by: by || cmpRecPol.days_updated_by, days_updated_at: at, days_is_default: false } : {});
+      savedPol = sel.value; savedDays = n;
       msg.style.color = 'var(--ok)'; msg.textContent = 'Saved.';
     } catch (e) { msg.style.color = 'var(--err)'; msg.textContent = e.message; }
     b.disabled = false;
@@ -18024,7 +18091,8 @@ function _cmtColCard(vis, c, pinned) {
   });
   document.addEventListener('click', e => {
     if (!e.target || !e.target.closest || !e.target.closest('.cmpx-menu-wrap')) _cmpCloseMenus();
-    if (!e.target.closest || (!e.target.closest('#cmpRecPop') && !e.target.closest('#cmpRecBtn'))) _cmpRecPolToggle(false);
+    // A dialog the popover opened (Save asks before keeping failed records for less time) is not outside it.
+    if (!e.target.closest || (!e.target.closest('#cmpRecPop') && !e.target.closest('#cmpRecBtn') && !e.target.closest('.modal-overlay, .dq-dialog'))) _cmpRecPolToggle(false);
   });
 
   // The header's search jumps to any dataset, whatever the board is filtered to (and in the Qlik extension in either
@@ -18071,7 +18139,7 @@ function _cmtColCard(vis, c, pinned) {
     e.preventDefault(); pick(hits[+it.dataset.i]);
   });
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') { _cmpCloseMenus(); _cmpRecPolToggle(false); }
+    if (e.key === 'Escape' && !document.querySelector('.dq-dialog')) { _cmpCloseMenus(); _cmpRecPolToggle(false); }
     if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && (e.key === 'k' || e.key === 'K')) {
       const tab = $('#complianceTab'); if (!tab || tab.style.display === 'none') return;
       e.preventDefault(); inp.focus(); inp.select();
@@ -28316,7 +28384,7 @@ const GD_SHOTS = {
   "pii-start": [1600, 1022, "4d96b9665c"],
   "profile": [1600, 526, "104f28f43a"],
   "quality-space": [1600, 812, "ed30dbccf3"],
-  "records-policy": [1600, 567, "1210442695"],
+  "records-policy": [1600, 833, "6888ab5c94"],
   "rules-describe": [1424, 1078, "9b6de757eb"],
   "rules-tab": [1424, 2290, "46c8f79ccb"],
   "run-result": [1600, 1381, "27d7222b2c"],
@@ -30012,9 +30080,15 @@ ${HDRS}
           p(`Declare your own internal standard with its own attestations and data rules. Unlike the built-in packs, its data rules are scored: each one becomes a control in Exposure & findings.`) },
       { h: 'How much of a failing row is kept', body:
           (ADMIN ? p(`An organisation-wide setting at the top of the Compliance tab, for admins only: ${ui('Flagged columns only (default)')}, ${ui('Whole row')} (detected personal data is still redacted), or ${ui('No record detail')} (failing checks and their counts are still reported). ${showme('records-policy')}`) +
-                   shot('records-policy', `${n(1)} How much of a failing row is kept for every dataset in the organisation, and ${n(2)} ${ui('Save policy')}.`)
+                   shot('records-policy', `${n(1)} How much of a failing row is kept for every dataset in the organisation, ${n(2)} for how many days, and ${n(3)} ${ui('Save policy')}.`)
                  : p(`Your organisation's policy decides this, and the safe default keeps only the columns each check flagged, plus the key that locates the row.`)) +
           p(`A single dataset can be made stricter than the organisation's policy in its compliance policy, but never looser.`) },
+      { h: 'How long failed records are kept', body:
+          (ADMIN ? p(`Beside the detail kept, ${ui('Keep failed records for')} sets how many days a run's failed records are kept, from 1 to 365. A year is the most, and the default. Pick one of the usual lengths or type a number, then ${ui('Save policy')}.`) +
+                   note(`Shortening it asks first: the failed records of runs older than the new length stop showing straight away.`)
+                 : p(`Your organisation decides how many days a run's failed records are kept: a year, unless an admin shortens it.`)) +
+          p(`The Failed records section says until when a run's records are kept. After that they are no longer shown or downloadable, and a daily sweep removes them for good, including the sample kept in the run's report. The run's scores and the count of failures for every check are always kept, and running the dataset again brings fresh failed records.`) +
+          p(`Every download of a run's failed records is recorded in the organisation's activity log: who downloaded them, which run, and how many rows.`) },
       { h: 'Compliance incidents', body:
           p(`High and critical exposures open incidents by default, one per finding, and each closes on its own when the exposure is gone. ${see('incidents', 'Track incidents')}`) },
     ],

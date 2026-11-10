@@ -863,6 +863,12 @@
       case 'org.created': return d.org_id ? 'ID: ' + d.org_id : '';
       case 'apikey.created': return (d.id ? 'Key ' + d.id : '') + (d.expires_in_days ? ' · expires in ' + d.expires_in_days + ' days' : '');
       case 'apikey.revoked': return (d.id ? 'Key ' + d.id : '') + (d.owner ? ' · owner ' + d.owner : '');
+      case 'records.policy': {
+        const say = v => ({ minimal: 'Flagged columns only', full: 'Whole row', none: 'No record detail' }[v] || v || '?');
+        return say(d.from) + ' → ' + say(d.to);
+      }
+      case 'records.retention': return (d.from || '?') + ' days → ' + (d.to || '?') + ' days';
+      case 'records.downloaded': return (d.run ? 'Run ' + d.run : '') + (d.rows != null ? ' · ' + Number(d.rows).toLocaleString() + ' rows' : '');
       default: return d.id ? 'ID: ' + d.id : '';
     }
   }
