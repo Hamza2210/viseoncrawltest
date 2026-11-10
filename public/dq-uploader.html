@@ -1154,7 +1154,9 @@
   .cmb-tbtn:hover { border-color: color-mix(in srgb, var(--accent) 55%, var(--border)); }
   .cmb-tbtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
   #cmpRefresh { width: 34px; padding: 0; justify-content: center; }
-  #cmpRefresh.spin svg { animation: dqspin .8s linear infinite; }
+  /* Only the icon turns while the grades are read again. Not the page-wide .spin, which makes the element itself a
+     spinning ring: on the button it turned the whole button. */
+  #cmpRefresh.busy svg { animation: dqspin .8s linear infinite; }
   .cmb-pop { position: absolute; right: 0; top: calc(100% + 8px); z-index: 60; width: min(460px, 86vw); padding: 14px 16px;
     border-radius: 14px; background: var(--card); border: 1px solid var(--border); box-shadow: var(--shadow-md); }
   .cmb-pop h4 { margin: 0 0 8px; font-size: 14px; }
@@ -17965,7 +17967,16 @@ function _cmtColCard(vis, c, pinned) {
       return;
     }
     const rb = t.closest('#cmpRefresh');
-    if (rb) { rb.disabled = true; rb.classList.add('spin'); await refreshComplianceData(); return; }
+    // The summary keeps its tools (this button among them) when it is drawn again, so the button is put back here,
+    // however the reading ended: left to the redraw, it spun, disabled, for ever.
+    if (rb) {
+      if (rb.classList.contains('busy')) return;
+      rb.disabled = true; rb.classList.add('busy'); rb.setAttribute('aria-busy', 'true');
+      try { await refreshComplianceData(); }
+      catch (err) { /* the board says what it could not read */ }
+      finally { rb.disabled = false; rb.classList.remove('busy'); rb.removeAttribute('aria-busy'); }
+      return;
+    }
     if (t.closest('#cmpRecBtn')) { _cmpRecPolToggle(); return; }
     if (t.closest('#cmpRecPop')) return;
     const f = t.closest('[data-cmpf]');
