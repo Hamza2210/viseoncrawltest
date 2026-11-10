@@ -5114,6 +5114,22 @@
   .dq-run-note:empty { display: none; }
   .dq-run-cancel { display: block; margin: 12px auto 0; font-size: 12.5px; }
   .dq-run-cancel[hidden] { display: none; }
+  /* The rows the run has got through, as its worker last said (dqRunRows): counted up every poll, with a
+     dot that breathes while the worker keeps in touch and how long ago it last did. */
+  .dq-run-rows { display: inline-flex; align-items: center; gap: 8px; margin: 14px 0 0; padding: 5px 12px 5px 10px;
+    border: 1px solid var(--border); border-radius: 999px; background: var(--idle-bg);
+    font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .dq-run-rows[hidden] { display: none; }
+  .dq-run-rows b { color: var(--text); font-weight: 650; }
+  .dq-rr-dot { flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--accent);
+    animation: dqRrBreathe 1.8s ease-in-out infinite; }
+  .dq-run-rows.quiet .dq-rr-dot { background: var(--muted); animation: none; }
+  .dq-rr-age::before { content: '\00b7'; margin: 0 6px 0 2px; }
+  .dq-rr-age:empty { display: none; }
+  @keyframes dqRrBreathe { 50% { opacity: .35; transform: scale(.75); } }
+  @media (prefers-reduced-motion: reduce) {
+    .dq-rr-dot { animation: none; }
+  }
   @media (prefers-reduced-motion: reduce) {
     .dq-face-out, .dq-face-in, .src-pop.opening, .src-faces.fresh [data-face-to="result"] { animation: none !important; }
     .dq-run-bar span { transition: none !important; }
@@ -11350,6 +11366,7 @@ function dqRunFill(f, o) {
     `<span class="dq-run-dot" aria-hidden="true"></span><span>${esc(t)}</span></li>`).join('');
   f.innerHTML = dqLoader(o.msg, o.sub || '') +
     `<div class="dq-run-bar${o.pct == null ? ' indet' : ''}" aria-hidden="true"><span></span></div>` +
+    `<p class="dq-run-rows" hidden><span class="dq-rr-dot" aria-hidden="true"></span><span class="dq-rr-t"></span><span class="dq-rr-age"></span></p>` +
     (steps ? `<ol class="dq-run-steps">${steps}</ol>` : '') +
     `<div class="dq-run-meta"></div><p class="dq-run-note" role="status"></p>` +
     `<button type="button" class="linkbtn lngb dq-run-cancel" hidden>Cancel this run</button>`;
@@ -11361,6 +11378,7 @@ function dqRunFill(f, o) {
   f._runId = '';
   f._t0 = Date.now();
   f._sweep = ''; f._assessSub = '';
+  f._rows = null;                                        // what the worker last said of its rows (dqRunRows)
   f._noSweep = !!o.noSweep;                              // the form's Sweep PII box was unticked
   dqRunClock(f, o.clock !== false);
 }
@@ -11378,6 +11396,7 @@ function _dqRunMeta(f) {
   if (f._runId) parts.push(`Run <code>${esc(f._runId)}</code>`);
   if (f._clockOn) parts.push(`running for ${dqDur((Date.now() - f._t0) / 1000)}`);
   m.innerHTML = parts.join(' &middot; ');
+  _dqRunRowsAge(f);
 }
 function dqRunClock(f, on) {
   if (!f) return;
@@ -11432,6 +11451,85 @@ function dqRunMoved(f, r) {
   if (!f || f._moved || !st.moved_at) return;
   f._moved = true;
   dqRunNote(f, st.detail || 'Moved to a full worker, which carries on from where it got to.');
+}
+
+/**
+ * The rows a run's progress says it has got through, in words: { n, pre, post } (n the count, said between
+ * pre and post), or null when there is nothing to count yet. `p` is the result's `progress` while the run
+ * goes (the worker's _progress.json): its phase, rows so far, rows in all, and whether the count moves
+ * live (DuckDB says how far its query has got; a warehouse runs the checks as one query and only says at
+ * the end). The PII sweep counts the rows it reads on the line under the loader, so it is not said here.
+ */
+const DQ_ROWS_NOW = { representation: 'comparing how values are written', duplicates: 'looking for duplicate records',
+  references: 'matching rows against the reference data', scoring: 'working out the scores', records: 'collecting the failed records' };
+function dqRowsWords(p) {
+  if (!p || !p.phase) return null;
+  const rows = Number(p.rows) || 0, total = Number(p.total) || 0, all = n => Number(n).toLocaleString();
+  const about = p.live ? 'all' : 'about';            // a database's own estimate, unless DuckDB counted them
+  if (p.phase === 'sample') return total ? { n: total, pre: 'Sampling ', post: ' rows to learn the rules' } : null;
+  if (p.phase === 'rules') {
+    if (rows && total) return { n: rows, pre: '', post: ` of ${all(total)} rows read to settle the rules` };
+    return { pre: total ? `Settling the rules against ${about} ${all(total)} rows` : 'Settling the rules against every row' };
+  }
+  if (p.phase === 'checks') {
+    if (rows) return { n: rows, pre: '', post: total && rows < total ? ` of ${all(total)} rows checked` : ' rows checked' };
+    return { pre: total ? `Checking ${about} ${all(total)} rows` : 'Checking every row' };
+  }
+  return DQ_ROWS_NOW[p.phase] && rows ? { n: rows, pre: '', post: ` rows checked, now ${DQ_ROWS_NOW[p.phase]}` } : null;
+}
+/** A number eased from what it said to what it says now (immediately under reduced motion). */
+function dqRowsTween(el, to) {
+  if (el._v === to) return;                              // said again: an easing under way carries on
+  const from = Number(el._v) || 0;
+  el._v = to;
+  cancelAnimationFrame(el._raf);
+  if (dqReduced() || !from || from >= to) { el.textContent = to.toLocaleString(); return; }
+  const t0 = performance.now(), dur = 700;
+  const step = now => {
+    const p = Math.max(0, Math.min(1, (now - t0) / dur));   // a frame's time can be a touch before t0
+    el.textContent = Math.round(from + (to - from) * (1 - Math.pow(1 - p, 3))).toLocaleString();
+    if (p < 1) el._raf = requestAnimationFrame(step);
+  };
+  el._raf = requestAnimationFrame(step);
+}
+/**
+ * Count a run's rows on its run face, every round of the wait: what its worker last said, counted up, with
+ * how long ago it said it (ticked on by the run's clock). A run that says nothing of its rows (not started
+ * yet, its PII sweep under way, or an agent that does not write them) leaves the line as it was.
+ */
+function dqRunRows(f, r) {
+  const box = f && f.querySelector('.dq-run-rows');
+  const p = r && r.state === 'RUNNING' && r.progress;
+  if (!box || !p) return;
+  f._rows = { ageS: p.ageS == null ? null : Number(p.ageS), at: Date.now() };
+  const w = p.phase === 'sweep' ? null : dqRowsWords(p);
+  if (!w) { box.hidden = true; return; }
+  const t = box.querySelector('.dq-rr-t');
+  if (w.n == null) { t.textContent = w.pre; }
+  else {
+    let b = t.querySelector('b');
+    // Eased from the count before only while it counts the same thing: a new phase says its own at once.
+    if (!b || t.dataset.shape !== w.pre + '|' + w.post) {
+      t.innerHTML = `${esc(w.pre)}<b></b>${esc(w.post)}`;
+      t.dataset.shape = w.pre + '|' + w.post;
+      b = t.querySelector('b');
+    }
+    dqRowsTween(b, w.n);
+  }
+  box.hidden = false;
+  _dqRunRowsAge(f);
+}
+/** How long ago the worker last said how far it had got, from the API's clock plus the time since that poll. */
+function _dqRunRowsAge(f) {
+  const box = f && f._rows && f.querySelector('.dq-run-rows');
+  if (!box || box.hidden || f._rows.ageS == null) return;
+  const age = Math.round(f._rows.ageS + (Date.now() - f._rows.at) / 1000);
+  const el = box.querySelector('.dq-rr-age');
+  // A worker keeps in touch every 15s or so, however long a query runs. Two minutes of quiet (it moved to a full
+  // worker, which is starting) is said plainly rather than with a dot that suggests it is still going.
+  const quiet = age > 120;
+  box.classList.toggle('quiet', quiet);
+  el.textContent = quiet ? `last word from the worker ${dqDur(age)} ago` : age < 3 ? 'updated just now' : `updated ${dqDur(age)} ago`;
 }
 /** Change the loader's message and/or its line underneath; null leaves either as it is. */
 function dqRunSay(f, msg, sub) {
@@ -11535,6 +11633,7 @@ async function pollResults(resultPrefix, onRulesReady) {
     }
     await dqRunSweep(srcFace('file', 'run'), resultPrefix);
     dqRunMoved(srcFace('file', 'run'), r);
+    dqRunRows(srcFace('file', 'run'), r);
     if (!nudged && Date.now() - start > NUDGE_MS) {
       nudged = true;
       dqRunNote(srcFace('file', 'run'), 'This is taking longer than usual - still working…');
@@ -34408,6 +34507,7 @@ async function pollInto(resultPrefix, bodyEl, opts) {
     }
     if (stage) await dqRunSweep(srcFace(stage, 'run'), resultPrefix);
     if (stage) dqRunMoved(srcFace(stage, 'run'), r);
+    if (stage) dqRunRows(srcFace(stage, 'run'), r);
     if (!nudged && Date.now() - start > NUDGE_MS) {
       nudged = true;
       if (stage) dqRunNote(srcFace(stage, 'run'), 'Still working. A large table can take a while, and the result is saved to History either way.');
