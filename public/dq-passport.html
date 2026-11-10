@@ -100,7 +100,9 @@
 (function () {
   'use strict';
   const q = new URLSearchParams(location.search);
-  const API = (q.get('api') || 'https://i1jwcc4bx4.execute-api.eu-west-1.amazonaws.com/dev').replace(/\/+$/, '');
+  // Prod (vda.viseon.io) has its own API, and its passports are checked against prod's key; elsewhere, UAT's.
+  const API = (q.get('api') || (location.hostname === 'vda.viseon.io' ? 'https://api.vda.viseon.io'
+                                           : 'https://i1jwcc4bx4.execute-api.eu-west-1.amazonaws.com/dev')).replace(/\/+$/, '');
   const ID = (q.get('id') || '').trim();
   const box = document.getElementById('pp');
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));

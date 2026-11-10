@@ -8695,7 +8695,9 @@ function scopeCtxLabel() {
   if (PORTAL) return PORTAL_WS_NAME ? ('Workspace: ' + PORTAL_WS_NAME) : 'Workspace';
   return APP_ID ? ('App: ' + APP_ID) : '';
 }
-const API_BASE = (q.get('api') || 'https://i1jwcc4bx4.execute-api.eu-west-1.amazonaws.com/dev').replace(/\/+$/, '');
+// Prod (vda.viseon.io) has its own API; every other place this page is opened from is UAT's.
+const API_BASE = (q.get('api') || (location.hostname === 'vda.viseon.io' ? 'https://api.vda.viseon.io'
+                                           : 'https://i1jwcc4bx4.execute-api.eu-west-1.amazonaws.com/dev')).replace(/\/+$/, '');
 // MCP servers live on a Lambda FUNCTION URL, not on API_BASE. Two reasons: API Gateway's
 // '/dev' stage prefix makes the RFC 9728 discovery path (/.well-known/oauth-protected-resource
 // /mcp/<surface>) unreachable at the host root, and API Gateway rewrites the WWW-Authenticate
