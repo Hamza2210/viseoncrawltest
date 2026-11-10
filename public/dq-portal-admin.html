@@ -310,6 +310,15 @@
     .fgrid { grid-template-columns: 1fr; }
     .kv { grid-template-columns: 1fr; }
   }
+  /* Back from a sign-in with no session (see signinStopped): a whole-page note instead of another round trip. */
+  .signin-stop { position: fixed; inset: 0; z-index: 99990; display: grid; place-items: center; padding: 24px;
+    background: var(--bg); }
+  .signin-stop .ss-card { max-width: 520px; padding: 28px 30px; border-radius: 14px; border: 1px solid var(--line2);
+    background: var(--panel); box-shadow: 0 10px 30px rgba(0,0,0,.35); }
+  .signin-stop h1 { margin: 0 0 10px; font-size: 19px; color: var(--ink); }
+  .signin-stop p { margin: 0 0 18px; color: var(--muted); line-height: 1.55; }
+  .signin-stop .ss-btn { display: inline-block; padding: 9px 16px; border-radius: 10px; font-weight: 700;
+    text-decoration: none; color: #fff; background: var(--accent); }
 </style>
 </head>
 <body>
@@ -548,8 +557,11 @@
 
 <script>
   /* ===================== EDIT IF THE API HOST CHANGES ===================== */
-  // Prod (vda.viseon.io) has its own API; everywhere else is UAT's.
-  const API_BASE = location.hostname === 'vda.viseon.io' ? 'https://api.vda.viseon.io' : 'https://i1jwcc4bx4.execute-api.eu-west-1.amazonaws.com/dev';
+  // Prod (vda.viseon.io) has its own API. On viseoncrawltest.uk UAT's API is reached through the site's own /dq-api,
+  // so the sign-in cookie is the site's (Firefox and Safari keep another site's apart); elsewhere, UAT's own address.
+  const API_BASE = location.hostname === 'vda.viseon.io' ? 'https://api.vda.viseon.io'
+    : location.hostname === 'viseoncrawltest.uk' ? location.origin + '/dq-api'
+    : 'https://i1jwcc4bx4.execute-api.eu-west-1.amazonaws.com/dev';
   /* ======================================================================= */
 
   const $ = s => document.querySelector(s);
@@ -1665,10 +1677,35 @@
     $('#agentsSub').textContent = 'Machines registered to ' + n + '. Each is a small Windows service inside the network: it polls for work, runs the assessment there, and keeps the database password on that machine.';
   }
 
+  /** Back from Auth0 with no session: never send the reader straight round again, which only loops (Auth0 soon
+   *  refuses, and the reader sees its error). 'denied': signed in, but not someone the portal knows. 'success': signed
+   *  in, but the browser kept no sign-in cookie. Either way the reader is told, and chooses what to do. */
+  function signinStopped(auth, apiBase) {
+    if (auth !== 'denied' && auth !== 'success') return false;
+    const denied = auth === 'denied', host = location.hostname;
+    const box = document.createElement('div'), card = document.createElement('div');
+    box.className = 'signin-stop'; box.setAttribute('role', 'alert'); card.className = 'ss-card';
+    const h = document.createElement('h1'), p = document.createElement('p'), a = document.createElement('a');
+    h.textContent = denied ? 'No access yet' : 'Your browser didn\u2019t keep the sign-in';
+    p.textContent = denied
+      ? 'You signed in, but this account has not been added to VISEON Data Assurance. Ask an administrator in your organisation to add you, then sign in again.'
+      : 'You signed in, but this browser is not keeping the cookie that holds the sign-in on ' + host +
+        '. Allow cookies for ' + host + ' in the browser\u2019s settings, then try again.';
+    a.className = 'ss-btn';
+    a.href = denied ? apiBase + '/portal/auth/logout' : location.pathname;
+    a.textContent = denied ? 'Sign in with another account' : 'Try again';
+    card.append(h, p, a); box.appendChild(card); document.body.appendChild(box);
+    const splash = document.getElementById('bootSplash'); if (splash) splash.remove();
+    return true;
+  }
+
   (async function init() {
     let me = null;
     try { me = await api('/portal/auth/me'); } catch { me = null; }
-    if (!me || !me.ok || !me.user) { location.href = API_BASE + '/portal/auth/login'; return; }
+    if (!me || !me.ok || !me.user) {
+      if (signinStopped(new URLSearchParams(location.search).get('auth'), API_BASE)) { $('#loading').hidden = true; return; }
+      location.href = API_BASE + '/portal/auth/login'; return;
+    }
     ME = me.user; IS_SUPER = !!ME.is_super; MY_ORG_ID = activeOrg();
     $('#loading').hidden = true;
     const isAdmin = IS_SUPER || String(ME.role || '').toLowerCase() === 'admin';

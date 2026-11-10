@@ -6242,6 +6242,15 @@
   .agt-get, .agt-row, .mcap, .mskill-box, .ab-bottom, .pis-verdict, .pis-next, .pis-side, .pis-side-h { background-color: var(--surface-up); }
   .idg, .fx-card, .whatchg, .small-mults .sm, .rx-describe, .rx-col, .rx-cross, .rx-refs, .mc-panel, .dpp-card, .cmp-choose-card,
   .agt-get, .agt-row, .mcap, .mskill-box, .ab-bottom, .pis-verdict, .pis-next { box-shadow: var(--lift); }
+  /* Back from a sign-in with no session (see signinStopped): a whole-page note instead of another round trip. */
+  .signin-stop { position: fixed; inset: 0; z-index: 99990; display: grid; place-items: center; padding: 24px;
+    background: var(--bg); }
+  .signin-stop .ss-card { max-width: 520px; padding: 28px 30px; border-radius: 14px; border: 1px solid var(--border);
+    background: var(--card); box-shadow: var(--shadow-md); }
+  .signin-stop h1 { margin: 0 0 10px; font-size: 19px; color: var(--text); }
+  .signin-stop p { margin: 0 0 18px; color: var(--muted); line-height: 1.55; }
+  .signin-stop .ss-btn { display: inline-block; padding: 9px 16px; border-radius: 10px; font-weight: 700;
+    text-decoration: none; color: var(--accent-fg); background: var(--accent); }
 </style>
 <script id="three-inline">
 /**
@@ -8696,9 +8705,13 @@ function scopeCtxLabel() {
   if (PORTAL) return PORTAL_WS_NAME ? ('Workspace: ' + PORTAL_WS_NAME) : 'Workspace';
   return APP_ID ? ('App: ' + APP_ID) : '';
 }
-// Prod (vda.viseon.io) has its own API; every other place this page is opened from is UAT's.
+// Prod (vda.viseon.io) has its own API. UAT's portal on viseoncrawltest.uk reaches UAT's API through the site's own
+// /dq-api (viseoncrawltest/worker.js), so its sign-in cookie is the site's: Firefox and Safari keep another site's
+// cookies apart, and the sign-in never stuck. The Qlik extension signs its calls with a key, not a cookie, so it and
+// anywhere else keep UAT's own address.
 const API_BASE = (q.get('api') || (location.hostname === 'vda.viseon.io' ? 'https://api.vda.viseon.io'
-                                           : 'https://i1jwcc4bx4.execute-api.eu-west-1.amazonaws.com/dev')).replace(/\/+$/, '');
+                                 : (PORTAL && location.hostname === 'viseoncrawltest.uk') ? location.origin + '/dq-api'
+                                 : 'https://i1jwcc4bx4.execute-api.eu-west-1.amazonaws.com/dev')).replace(/\/+$/, '');
 // MCP servers live on a Lambda FUNCTION URL, not on API_BASE. Two reasons: API Gateway's
 // '/dev' stage prefix makes the RFC 9728 discovery path (/.well-known/oauth-protected-resource
 // /mcp/<surface>) unreachable at the host root, and API Gateway rewrites the WWW-Authenticate
@@ -33462,13 +33475,39 @@ function bootOrgSwitcher(activeOrgId, orgs, isSuper) {
   }
 }
 
+/** Back from Auth0 with no session: never send the reader straight round again, which only loops (Auth0 soon
+ *  refuses, and the reader sees its error). 'denied': signed in, but not someone the portal knows. 'success': signed
+ *  in, but the browser kept no sign-in cookie. Either way the reader is told, and chooses what to do. */
+function signinStopped(auth, apiBase) {
+  if (auth !== 'denied' && auth !== 'success') return false;
+  const denied = auth === 'denied', host = location.hostname;
+  const box = document.createElement('div'), card = document.createElement('div');
+  box.className = 'signin-stop'; box.setAttribute('role', 'alert'); card.className = 'ss-card';
+  const h = document.createElement('h1'), p = document.createElement('p'), a = document.createElement('a');
+  h.textContent = denied ? 'No access yet' : 'Your browser didn\u2019t keep the sign-in';
+  p.textContent = denied
+    ? 'You signed in, but this account has not been added to VISEON Data Assurance. Ask an administrator in your organisation to add you, then sign in again.'
+    : 'You signed in, but this browser is not keeping the cookie that holds the sign-in on ' + host +
+      '. Allow cookies for ' + host + ' in the browser\u2019s settings, then try again.';
+  a.className = 'ss-btn';
+  a.href = denied ? apiBase + '/portal/auth/logout' : location.pathname;
+  a.textContent = denied ? 'Sign in with another account' : 'Try again';
+  card.append(h, p, a); box.appendChild(card); document.body.appendChild(box);
+  const splash = document.getElementById('bootSplash'); if (splash) splash.remove();
+  return true;
+}
+
 // Portal: resolve the session first (server holds the key + tenant), then boot; no
-// session -> Auth0 login. Qlik mode boots synchronously, exactly as before.
+// session -> Auth0 login, unless the reader has just come back from it (signinStopped). Qlik mode boots
+// synchronously, exactly as before.
 async function bootPortal() {
   let me = null;
   try { me = await (await fetch(`${API_BASE}/portal/auth/me`, { credentials: 'include' })).json(); }
   catch (e) { me = null; }
-  if (!me || !me.ok || !me.user) { location.href = `${API_BASE}/portal/auth/login`; return; }
+  if (!me || !me.ok || !me.user) {
+    if (signinStopped(q.get('auth'), API_BASE)) return;
+    location.href = `${API_BASE}/portal/auth/login`; return;
+  }
   EMAIL  = me.user.email || '';
   APP_ID = me.user.workspace_id || '';
   applyMode();
