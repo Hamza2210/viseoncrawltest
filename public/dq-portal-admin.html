@@ -284,6 +284,41 @@
   .atoken code { display: block; margin: 6px 0 6px 16px; padding: 8px 10px; border-radius: 7px; background: rgba(3,8,20,.6);
     font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; word-break: break-all; color: #c9fff4; }
 
+  /* ---------------------------------------------------------------- extension keys */
+  /* One of a few, chosen by pressing it: the environment a key is for, and the list's filter. */
+  .seg { display: inline-flex; gap: 3px; height: 40px; padding: 3px; border-radius: 10px; border: 1px solid var(--line2); background: rgba(9,16,34,.65); }
+  .seg button { display: inline-flex; align-items: center; gap: 7px; padding: 0 15px; border: 0; border-radius: 7px; background: none; color: var(--muted);
+    font-weight: 600; font-size: 13px; cursor: pointer; white-space: nowrap; }
+  .seg button:hover:not(:disabled) { color: var(--ink); }
+  .seg button[aria-checked="true"] { color: #fff; background: rgba(79,140,255,.26); box-shadow: inset 0 0 0 1px rgba(79,140,255,.6); }
+  .seg button:disabled { opacity: .45; cursor: not-allowed; }
+  .seg button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .seg.sm { height: 34px; }
+  .seg.sm button { padding: 0 12px; font-size: 12.5px; }
+  .seg .n { font-weight: 500; color: var(--dim); font-variant-numeric: tabular-nums; }
+  .seg button[aria-checked="true"] .n { color: #c7d7ff; }
+  .xk-form { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1.25fr) auto auto; gap: 14px; align-items: end; }
+  .xk-form .btn { white-space: nowrap; }
+  .xk-hint { margin: 10px 0 0; font-size: 12px; color: var(--muted); }
+  .xk-note { display: flex; align-items: flex-start; gap: 9px; margin: 0 0 12px; padding: 9px 12px; border-radius: 9px; font-size: 12.5px; line-height: 1.5;
+    border: 1px solid rgba(251,191,36,.4); background: rgba(251,191,36,.08); color: #fde9a8; }
+  .xk-note svg { width: 16px; height: 16px; margin-top: 1px; }
+  .xk-key { display: flex; align-items: center; gap: 8px; margin: 8px 0 4px; }
+  .xk-key code { flex: 1; min-width: 0; margin: 0; user-select: all; }
+  .toolbar .xk-q { flex: 1 1 240px; max-width: 360px; }
+  .toolbar .xk-q input { height: 34px; }
+  .xk-live { display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--muted); cursor: pointer; white-space: nowrap; }
+  .xk-live input { accent-color: var(--accent); cursor: pointer; }
+  table.t tr.xk-g td { padding: 9px 14px; background: rgba(9,17,36,.7); }
+  .xk-gh { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .xk-gh b { font-size: 13px; margin-right: 2px; }
+  .xk-gh .btn-ghost { margin-left: auto; height: 28px; }
+  table.t tr.xk-off td { color: var(--dim); }
+  .xk-kid { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; color: var(--muted); }
+  .xk-sub { display: block; margin-top: 1px; color: var(--dim); font-size: 11.5px; }
+  @media (max-width: 1180px) { .xk-form { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 700px) { .xk-form { grid-template-columns: 1fr; } }
+
   .kv { display: grid; grid-template-columns: 180px minmax(0, 1fr); gap: 0; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
   .kv > div { padding: 11px 14px; border-bottom: 1px solid var(--line); }
   .kv > div:nth-last-child(-n+2) { border-bottom: 0; }
@@ -302,7 +337,7 @@
     .ov .rail > .card + .card { margin-top: 0; } }
   @media (max-width: 1080px) { .forms { grid-template-columns: 1fr; } .trow { grid-template-columns: 1fr 1fr; } .fgrid.wide { grid-template-columns: 1fr; } }
   @media (max-width: 860px) {
-    .shell { grid-template-columns: 1fr; }
+    .shell { grid-template-columns: minmax(0, 1fr); }   /* not 1fr: a wide table must scroll in its own box, not widen the page */
     .sb { position: fixed; z-index: 50; left: 0; width: 260px; transform: translateX(-100%); transition: transform .2s; }
     .shell.open .sb { transform: none; box-shadow: 20px 0 40px rgba(0,0,0,.5); }
     .iconbtn.menu-btn { display: grid; }
@@ -345,6 +380,8 @@
         <button type="button" data-view="users"><svg class="i" data-i="users"></svg>Users</button>
         <button type="button" data-view="tags"><svg class="i" data-i="tag"></svg>Tag Management</button>
         <button type="button" data-view="agents"><svg class="i" data-i="cloud"></svg>On-premises Agents</button>
+        <!-- A platform super-admin's alone, and only where this environment manages them: hidden until both are known. -->
+        <button type="button" data-view="extkeys" id="navExtKeys" hidden><svg class="i" data-i="key"></svg>Extension Keys</button>
         <button type="button" data-view="activity"><svg class="i" data-i="clock"></svg>Activity</button>
       </nav>
       <a class="sb-back" id="backToApp" href="/dq-portal"><svg class="i" data-i="back"></svg>Back to VISEON Data Assurance</a>
@@ -539,6 +576,39 @@
           </div>
         </section>
 
+        <!-- ======================================================== EXTENSION KEYS -->
+        <!-- The key a Qlik extension is given. Only a platform super-admin has this section, and only
+             where the environment manages them (UAT's admin portal). The API checks both on every call. -->
+        <section class="view" data-view="extkeys" hidden>
+          <div class="banner"><span class="bico"><svg class="i" data-i="key"></svg></span>
+            <div><h2>Extension Keys</h2><p>The API key a Qlik Cloud extension is given. Each one belongs to a single Qlik tenant and a single environment, and reaches that tenant's data and nothing else.</p></div></div>
+          <div class="card">
+            <div class="card-h"><span class="cico"><svg class="i" data-i="plus"></svg></span>
+              <div><h2>Issue a key</h2><p>The key is shown once, here, when it is issued. Only its hash is kept, so it cannot be shown again. A tenant can hold more than one, so a new key can go in before the old one is revoked.</p></div></div>
+            <div class="xk-form">
+              <div class="f"><label for="xkTenant">Qlik tenant <em>*</em></label><input id="xkTenant" placeholder="e.g. acme.eu.qlikcloud.com" autocomplete="off" spellcheck="false" maxlength="300"></div>
+              <div class="f"><label for="xkLabel">Who it is for <em>*</em></label><input id="xkLabel" placeholder="e.g. Acme Ltd, finance apps" autocomplete="off" maxlength="80"></div>
+              <div class="f"><label id="xkEnvLabel">Environment</label><div class="seg" id="xkEnv" role="radiogroup" aria-labelledby="xkEnvLabel"></div></div>
+              <button type="button" class="btn" id="xkIssue"><svg class="i" data-i="key"></svg>Issue key</button>
+            </div>
+            <p class="xk-hint" id="xkEnvHint"></p>
+            <div id="xkIssued"></div>
+            <div class="msg" id="xkMsg"></div>
+          </div>
+          <div class="card">
+            <div class="card-h"><span class="cico"><svg class="i" data-i="shield"></svg></span>
+              <div><h2>Keys by tenant</h2><p>Every key issued, under the tenant it belongs to, with the environment it works in. Revoking one stops it within a minute, and cannot be undone.</p></div></div>
+            <div id="xkNotes"></div>
+            <div class="toolbar">
+              <div class="seg sm" id="xkFilter" role="radiogroup" aria-label="Show the keys of"></div>
+              <div class="f inbox xk-q"><svg class="i" data-i="search"></svg><input id="xkQ" type="text" placeholder="Filter by tenant or who it is for" autocomplete="off" aria-label="Filter keys"></div>
+              <label class="xk-live"><input type="checkbox" id="xkLive">Live only</label>
+            </div>
+            <div id="xkList"></div>
+            <div class="msg" id="xkListMsg"></div>
+          </div>
+        </section>
+
         <!-- ======================================================== ACTIVITY -->
         <section class="view" data-view="activity" hidden>
           <div class="banner"><span class="bico"><svg class="i" data-i="clock"></svg></span>
@@ -641,6 +711,8 @@
   let AGENTS = [], AGENTS_CONFIGURED = true;
   let ACTIVITY = [], ACT_RECORDING = true;
   let KEYS = null;                  // the organisation's API keys, for the attention list
+  let XK = null;                    // extension keys: {environments, keys}, or null where this page has no such section
+  let XK_ENV = '', XK_SHOW = '';    // the environment the next key is for, and the one the list is showing ('' = all)
   const FAILED = new Map();         // what could not load, and why: the health line says so
 
   const orgName = id => { const o = ORGS.find(x => x.org_id === id); return o ? (o.name || o.org_id) : id; };
@@ -662,10 +734,11 @@
   }
 
   // ------------------------------------------------------------------ views
-  const VIEWS = ['overview', 'orgs', 'users', 'tags', 'agents', 'activity'];
+  const VIEWS = ['overview', 'orgs', 'users', 'tags', 'agents', 'extkeys', 'activity'];
   function go(view, opts) {
     opts = opts || {};
     if (!VIEWS.includes(view)) view = 'overview';
+    if (view === 'extkeys' && !XK) view = 'overview';   // not this reader's, or not this environment's
     $$('.view').forEach(v => { v.hidden = v.dataset.view !== view; });
     $$('.nav [data-view]').forEach(b => { if (b.dataset.view === view) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
     if (location.hash.slice(1) !== view) history.replaceState(null, '', '#' + view);
@@ -738,6 +811,18 @@
     const r = await api('/portal/api-keys');
     KEYS = Array.isArray(r.org) ? r.org : (r.keys || []);
   }
+  // Extension keys are a platform super-admin's, and only where the environment manages them. A 403
+  // or a 404 is "no such section here", not a fault: the section simply is not shown.
+  async function loadExtKeys() {
+    if (!IS_SUPER) { XK = null; return; }
+    let r;
+    try { r = await api('/portal/admin/tenant-keys'); }
+    catch (e) {
+      if (e.status === 403 || e.status === 404) { XK = null; return; }
+      throw e;
+    }
+    XK = r && Array.isArray(r.environments) && r.environments.length ? { environments: r.environments, keys: r.keys || [] } : null;
+  }
   // One load, its failure remembered by name for the health line, and never fatal to the rest.
   async function attempt(name, fn) {
     try { await fn(); FAILED.delete(name); return true; }
@@ -747,7 +832,7 @@
   // ------------------------------------------------------------------ rendering: overview
   function renderAll() {
     renderStats(); renderHealth(); renderOverviewTags(); renderOverviewActivity(); renderOverviewAgents();
-    renderUserOrgField(); renderOrgs(); renderUsers(); renderTagEditor(); renderAgents(); renderActivity(); renderBell();
+    renderUserOrgField(); renderOrgs(); renderUsers(); renderTagEditor(); renderAgents(); renderExtKeys(); renderActivity(); renderBell();
   }
 
   function statTile(icon, label, value, view, cls) {
@@ -766,6 +851,7 @@
     box.appendChild(statTile('user', 'Users', FAILED.has('users') ? '-' : String(us.length), 'users'));
     if (!IS_SUPER) box.appendChild(statTile('tag', 'Tags', String(CAT.length), 'tags'));
     box.appendChild(statTile('cloud', 'On-premises Agents', FAILED.has('agents') ? '-' : String(AGENTS.filter(a => !a.revoked).length), 'agents'));
+    if (XK) box.appendChild(statTile('key', 'Live extension keys', String(XK.keys.filter(k => !k.revoked).length), 'extkeys'));
     box.appendChild(statTile('mail', 'Pending invites', FAILED.has('users') ? '-' : String(pending), 'users'));
     // A reading, not a link: a plain tile, with no arrow and nothing to click.
     const ok = !FAILED.size;
@@ -863,6 +949,8 @@
       case 'org.created': return d.org_id ? 'ID: ' + d.org_id : '';
       case 'apikey.created': return (d.id ? 'Key ' + d.id : '') + (d.expires_in_days ? ' · expires in ' + d.expires_in_days + ' days' : '');
       case 'apikey.revoked': return (d.id ? 'Key ' + d.id : '') + (d.owner ? ' · owner ' + d.owner : '');
+      case 'tenantkey.issued':
+      case 'tenantkey.revoked': return [({ uat: 'UAT', prod: 'Prod' })[d.env] || d.env, d.id ? 'Key ' + d.id : '', d.label].filter(Boolean).join(' · ');
       case 'records.policy': {
         const say = v => ({ minimal: 'Flagged columns only', full: 'Whole row', none: 'No record detail' }[v] || v || '?');
         return say(d.from) + ' → ' + say(d.to);
@@ -1455,6 +1543,191 @@
     renderAgents(); renderOverviewAgents(); renderStats(); renderHealth(); renderBell();
   }
 
+  // ------------------------------------------------------------------ extension keys
+  /* The key a Qlik extension is given: one tenant, one environment. Issuing one hands out a way into
+     that tenant's data, so only a platform super-admin has this section, the API checks that again
+     on every call, and the key itself is on screen once and kept nowhere: not by this page either. */
+  const xkEnv = id => XK.environments.find(e => e.env === id);
+  const xkEnvName = id => { const e = XK && xkEnv(id); return e ? e.label : String(id || '').toUpperCase(); };
+  const xkWhy = e => e.why || (e.label + '\'s keys cannot be reached from here.');
+  const xkLive = (tenant, env) => XK.keys.filter(k => !k.revoked && (!tenant || k.tenant === tenant) && (!env || k.env === env)).length;
+  function xkEnvPill(id) { return el('span', 'pill ' + (id === 'prod' ? 'lock' : 'accent'), xkEnvName(id)); }
+  function segButton(label, on, count) {
+    const b = el('button', null, label); b.type = 'button';
+    b.setAttribute('role', 'radio'); b.setAttribute('aria-checked', on ? 'true' : 'false');
+    if (count != null) b.appendChild(el('span', 'n', String(count)));
+    return b;
+  }
+  function renderExtKeys() {
+    $('#navExtKeys').hidden = !XK;
+    if (!XK) { if (!$('.view[data-view="extkeys"]').hidden) go('overview'); return; }
+    const envs = XK.environments, open = envs.filter(e => e.reachable);
+    if (!open.some(e => e.env === XK_ENV)) XK_ENV = open.length ? open[0].env : '';
+    // Which environment the next key is for. One that cannot be reached is there, and says why.
+    const pick = $('#xkEnv'); pick.textContent = '';
+    envs.forEach(e => {
+      const b = segButton(e.label, e.env === XK_ENV);
+      b.dataset.env = e.env; b.disabled = !e.reachable;
+      if (!e.reachable) b.title = xkWhy(e);
+      b.addEventListener('click', () => { XK_ENV = e.env; renderExtKeys(); });
+      pick.appendChild(b);
+    });
+    $('#xkIssue').disabled = !XK_ENV;
+    $('#xkEnvHint').textContent = !XK_ENV ? 'No environment can be reached just now, so no key can be issued.'
+      : 'A ' + xkEnvName(XK_ENV) + ' key is accepted by ' + xkEnvName(XK_ENV) + ' only'
+        + (envs.length > 1 ? ', so a tenant that uses both environments needs one key for each.' : '.');
+    const notes = $('#xkNotes'); notes.textContent = '';
+    envs.filter(e => !e.reachable).forEach(e => {
+      const n = el('div', 'xk-note'); n.dataset.env = e.env; n.appendChild(ico('alert'));
+      n.appendChild(el('span', null, xkWhy(e) + ' Its keys are not listed here, and none can be issued for it from this page.'));
+      notes.appendChild(n);
+    });
+    renderExtKeyList();
+  }
+  function renderExtKeyList() {
+    if (!XK) return;
+    const envs = XK.environments, open = envs.filter(e => e.reachable);
+    if (XK_SHOW && !open.some(e => e.env === XK_SHOW)) XK_SHOW = '';
+    const filt = $('#xkFilter'); filt.textContent = ''; filt.hidden = open.length < 2;
+    [{ env: '', label: 'All' }].concat(open).forEach(e => {
+      const b = segButton(e.label, e.env === XK_SHOW, xkLive('', e.env));
+      b.dataset.env = e.env; b.title = 'Live keys: ' + xkLive('', e.env);
+      b.addEventListener('click', () => { XK_SHOW = e.env; renderExtKeyList(); });
+      filt.appendChild(b);
+    });
+    const q = $('#xkQ').value.trim().toLowerCase(), liveOnly = $('#xkLive').checked;
+    const rows = XK.keys.filter(k => (!XK_SHOW || k.env === XK_SHOW) && (!liveOnly || !k.revoked)
+      && (!q || (k.tenant + ' ' + k.label + ' ' + k.key_id + ' ' + k.created_by).toLowerCase().includes(q)));
+    const box = $('#xkList'); box.textContent = '';
+    if (!rows.length) {
+      box.appendChild(el('div', 'empty', XK.keys.length ? 'No key matches.' : 'No extension key has been issued yet.'));
+      return;
+    }
+    const wrap = el('div', 'tbl-wrap'), t = el('table', 't'); wrap.appendChild(t);
+    const hr = el('tr');
+    ['Environment', 'Who it is for', 'Key ID', 'Issued', 'Last used', 'Status', ''].forEach(h => hr.appendChild(el('th', null, h)));
+    const th = el('thead'); th.appendChild(hr); t.appendChild(th);
+    const tb = el('tbody'); t.appendChild(tb);
+    const cell = (cls, main, sub) => { const td = el('td', cls, main); if (sub) td.appendChild(el('span', 'xk-sub', sub)); return td; };
+    let tenant = null;
+    rows.forEach(k => {
+      if (k.tenant !== tenant) {
+        // The tenant, and where it stands in each environment, whatever the list is filtered to.
+        tenant = k.tenant;
+        const g = el('tr', 'xk-g'); g.dataset.tenant = tenant;
+        const td = el('td'); td.colSpan = 7;
+        const h = el('div', 'xk-gh'); h.appendChild(el('b', null, tenant));
+        open.forEach(e => {
+          const all = XK.keys.filter(x => x.tenant === tenant && x.env === e.env).length, live = xkLive(tenant, e.env);
+          const p = el('span', 'pill' + (live ? ' ok' : all ? ' warn' : ''),
+            live ? e.label + ': ' + live + ' live' : all ? e.label + ': all revoked' : 'No ' + e.label + ' key');
+          p.dataset.env = e.env; h.appendChild(p);
+        });
+        const add = el('button', 'btn-ghost', 'New key'); add.type = 'button'; add.insertBefore(ico('plus'), add.firstChild);
+        add.title = 'Fill in the form above for this tenant.';
+        const mine = tenant;
+        add.addEventListener('click', () => newKeyFor(mine));
+        h.appendChild(add); td.appendChild(h); g.appendChild(td); tb.appendChild(g);
+      }
+      const tr = el('tr', k.revoked ? 'xk-off' : null); tr.dataset.key = k.env + ':' + k.key_id;
+      const env = el('td'); env.appendChild(xkEnvPill(k.env)); tr.appendChild(env);
+      tr.appendChild(el('td', k.label ? null : 'mut', k.label || 'No label'));
+      const kid = el('td'); kid.appendChild(el('span', 'xk-kid', k.key_id)); tr.appendChild(kid);
+      tr.appendChild(cell('num', when(k.created_at) || 'Not recorded', k.created_by ? 'by ' + k.created_by : ''));
+      const used = cell('num' + (k.last_used_at ? '' : ' mut'), k.last_used_at ? ago(k.last_used_at) : 'No use recorded');
+      if (k.last_used_at) used.title = when(k.last_used_at);
+      tr.appendChild(used);
+      const st = el('td');
+      const pill = el('span', 'pill' + (k.revoked ? '' : ' ok')); if (!k.revoked) pill.appendChild(el('span', 'dot ok'));
+      pill.appendChild(document.createTextNode(k.revoked ? 'Revoked' : 'Live')); st.appendChild(pill);
+      if (k.revoked && (k.revoked_at || k.revoked_by))
+        st.appendChild(el('span', 'xk-sub', [when(k.revoked_at), k.revoked_by ? 'by ' + k.revoked_by : ''].filter(Boolean).join(' ')));
+      tr.appendChild(st);
+      const acts = el('td', 'acts');
+      if (!k.revoked) {
+        const rev = el('button', 'btn-ghost btn-x', 'Revoke'); rev.type = 'button';
+        rev.title = 'Stop this key working, within a minute. It cannot be undone.';
+        rev.addEventListener('click', () => revokeExtKey(k, rev));
+        acts.appendChild(rev);
+      }
+      tr.appendChild(acts); tb.appendChild(tr);
+    });
+    box.appendChild(wrap);
+  }
+  // A tenant's row leads back to the form: its host filled in, and the environment it has no live key in chosen.
+  function newKeyFor(tenant) {
+    const gap = XK.environments.find(e => e.reachable && !xkLive(tenant, e.env));
+    if (gap) XK_ENV = gap.env;
+    $('#xkTenant').value = tenant;
+    renderExtKeys();
+    go('extkeys', { focus: '#xkLabel' });
+  }
+  function showIssuedKey(r) {
+    const box = $('#xkIssued'); box.textContent = '';
+    const card = el('div', 'atoken'); card.setAttribute('role', 'status');
+    card.appendChild(el('div', 'ah', xkEnvName(r.env) + ' key for ' + r.tenant));
+    card.appendChild(el('div', null, 'Copy it now. It is kept nowhere and cannot be shown again: if it is lost, issue another and revoke this one.'));
+    const line = el('div', 'xk-key');
+    const code = el('code', null, r.key); code.id = 'xkKeyText'; line.appendChild(code);
+    const copy = el('button', 'btn-ghost', 'Copy'); copy.type = 'button'; copy.id = 'xkCopy';
+    copy.addEventListener('click', async () => {
+      try { await navigator.clipboard.writeText(r.key); copy.textContent = 'Copied'; }
+      catch {
+        // No clipboard here (an old browser, or permission refused): select it, so Ctrl C takes it.
+        const sel = getSelection(), range = document.createRange();
+        range.selectNodeContents(code); sel.removeAllRanges(); sel.addRange(range);
+        copy.textContent = 'Selected: press Ctrl C';
+      }
+      setTimeout(() => { copy.textContent = 'Copy'; }, 2500);
+    });
+    line.appendChild(copy); card.appendChild(line);
+    if (r.live_before) card.appendChild(el('div', 'afine', r.tenant + ' already had ' + r.live_before + ' live ' + xkEnvName(r.env)
+      + (r.live_before === 1 ? ' key. It keeps' : ' keys. They keep') + ' working until revoked in the list below.'));
+    card.appendChild(el('div', 'ah', 'Getting it there'));
+    card.appendChild(el('div', null, 'Treat it like a password: send it by encrypted mail, a password manager or a secure file drop, not in a ticket or a chat. '
+      + 'It goes in the extension\'s API key setting, in the apps on ' + r.tenant + ', and works against ' + xkEnvName(r.env) + ' only.'));
+    const close = el('button', 'ax', '\u00d7'); close.type = 'button'; close.title = 'Dismiss';
+    close.setAttribute('aria-label', 'Dismiss the key');
+    close.addEventListener('click', () => { box.textContent = ''; });
+    card.appendChild(close);
+    box.appendChild(card);
+    box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+  async function issueExtKey() {
+    const tenant = $('#xkTenant').value.trim(), label = $('#xkLabel').value.trim(), msg = $('#xkMsg');
+    msg.className = 'msg';
+    if (!XK || !XK_ENV) return;
+    if (!tenant) { show(msg, 'err', 'Give the Qlik tenant the key is for, for example acme.eu.qlikcloud.com.'); $('#xkTenant').focus(); return; }
+    if (!label) { show(msg, 'err', 'Say who the key is for, so it can be told apart later.'); $('#xkLabel').focus(); return; }
+    $('#xkIssue').disabled = true;
+    try {
+      const r = await api('/portal/admin/tenant-keys', { method: 'POST', body: JSON.stringify({ env: XK_ENV, tenant: tenant, label: label }) });
+      $('#xkTenant').value = ''; $('#xkLabel').value = '';
+      showIssuedKey(r);
+      // The new key is in the list whatever it was filtered to, and is the row that lights up.
+      XK_SHOW = ''; $('#xkQ').value = ''; $('#xkLive').checked = false;
+      await refreshExtKeys();
+      const row = $('#xkList [data-key="' + CSS.escape(r.env + ':' + r.key_id) + '"]');
+      if (row) { row.classList.add('flash'); setTimeout(() => row.classList.remove('flash'), 1800); }
+    } catch (e) { show(msg, 'err', e.message); }
+    finally { $('#xkIssue').disabled = !XK_ENV; }
+  }
+  async function revokeExtKey(k, btn) {
+    if (!confirm('Revoke the ' + xkEnvName(k.env) + ' key ' + k.key_id + (k.label ? ' (' + k.label + ')' : '') + ' for ' + k.tenant + '?\n\n'
+        + 'Extensions using it stop working within a minute. It cannot be undone: a tenant that still needs access is issued a new key.')) return;
+    btn.disabled = true;
+    try {
+      await api('/portal/admin/tenant-keys/revoke', { method: 'POST', body: JSON.stringify({ env: k.env, key_id: k.key_id }) });
+      $('#xkListMsg').className = 'msg';
+      await refreshExtKeys();
+    } catch (e) { btn.disabled = false; show($('#xkListMsg'), 'err', e.message); }
+  }
+  async function refreshExtKeys() {
+    await attempt('extension keys', loadExtKeys);
+    await refreshActivity();
+    renderExtKeys(); renderStats(); renderHealth();
+  }
+
   // ------------------------------------------------------------------ activity
   async function refreshActivity() {
     const want = IS_SUPER ? ($('#actOrgSel').value || '') : '';
@@ -1566,6 +1839,13 @@
     AGENTS.forEach(a => out.push({ kind: 'Agent', icon: 'cloud', label: a.name || a.id, sub: agentState(a),
       go: () => { go('agents'); flash($('#agList [data-agent="' + CSS.escape(a.id) + '"]')); } }));
     if (IS_SUPER) ORGS.forEach(o => out.push({ kind: 'Organisation', icon: 'building', label: o.name || o.org_id, sub: o.org_id, go: () => go('orgs') }));
+    if (XK) {
+      out.push({ kind: 'Section', icon: 'right', label: 'Extension Keys', go: () => go('extkeys') });
+      XK.keys.forEach(k => out.push({ kind: 'Extension key', icon: 'key', label: k.tenant,
+        sub: xkEnvName(k.env) + ' · ' + (k.label || k.key_id) + (k.revoked ? ' · revoked' : ''),
+        go: () => { XK_SHOW = ''; $('#xkQ').value = ''; $('#xkLive').checked = false; go('extkeys'); renderExtKeyList();
+                    flash($('#xkList [data-key="' + CSS.escape(k.env + ':' + k.key_id) + '"]')); } }));
+    }
     return out;
   }
   let QSEL = 0, QHITS = [];
@@ -1639,6 +1919,10 @@
     $('#agAdd').addEventListener('click', registerAgent);
     $('#agName').addEventListener('keydown', e => { if (e.key === 'Enter') registerAgent(); });
     $('#ovAgentAdd').addEventListener('click', () => go('agents', { focus: '#agName' }));
+    $('#xkIssue').addEventListener('click', issueExtKey);
+    ['#xkTenant', '#xkLabel'].forEach(sel => $(sel).addEventListener('keydown', e => { if (e.key === 'Enter') issueExtKey(); }));
+    $('#xkQ').addEventListener('input', renderExtKeyList);
+    $('#xkLive').addEventListener('change', renderExtKeyList);
     // Unsaved tag edits are the one thing on this page a click can lose.
     window.addEventListener('beforeunload', e => { if (TAG_DIRTY) { e.preventDefault(); e.returnValue = ''; } });
     window.addEventListener('hashchange', () => go(location.hash.slice(1)));
@@ -1761,12 +2045,15 @@
       $('#sbSub').textContent = 'Manage organisations, users and platform access.';
     }
     $('#app').hidden = false;
-    go(location.hash.slice(1) || 'overview');
+    const asked = location.hash.slice(1);
+    go(asked || 'overview');
     await attempt('organisations', loadOrgs);
     await Promise.all([attempt('users', loadAllUsers), attempt('tags', loadTags), attempt('agents', loadAgents),
-                       attempt('activity', () => loadActivity('')), attempt('keys', loadKeys)]);
+                       attempt('activity', () => loadActivity('')), attempt('keys', loadKeys),
+                       attempt('extension keys', loadExtKeys)]);
     await attempt('tag counts', loadCounts);
     renderAll();
+    if (asked === 'extkeys' && XK) go('extkeys');   // a link straight to it: only once it is known to be this reader's
   })();
 </script>
 </body>
