@@ -7214,10 +7214,242 @@ td, th, .h-score { font-variant-numeric: tabular-nums; }
 }
 .tag { text-transform: capitalize; }
 </style>
+<style id="akStyles">
+/* ---- Accountability (a preview: a platform super-admin's, where the API says it is on). Tokens only, so every theme carries it. ---- */
+#accountNav { display: none; }
+body.ak-on #accountNav { display: flex; }
+.ak { display: grid; gap: 16px; font-size: 14px; color: var(--text); }
+.ak svg, .ak-modal svg { width: 16px; height: 16px; flex: none; }
+.ak button, .ak-modal button { font: inherit; cursor: pointer; }
+.ak-head { display: flex; align-items: flex-start; gap: 28px; }
+.ak-head h2 { font-size: 22px; font-weight: 650; letter-spacing: -.01em; margin: 0 0 4px; }
+.ak-head p { margin: 0; color: var(--muted); font-size: 14px; max-width: 74ch; line-height: 1.5; }
+.ak-head-r { margin-left: auto; display: flex; align-items: center; gap: 10px; flex: none; padding-top: 2px; flex-wrap: wrap; justify-content: flex-end; }
+.ak-in { display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--card-2);
+  color: var(--muted); font-size: 13px; white-space: nowrap; }
+.ak-in input { border: 0; outline: 0; background: none; color: var(--text); font: inherit; width: 200px; }
+.ak-in:focus-within { border-color: var(--accent); }
+.ak-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 38px; padding: 0 16px; border: 0; border-radius: 6px; background: var(--btn);
+  color: #fff; font-weight: 650; font-size: 14px; white-space: nowrap; }
+.ak-btn:hover:not(:disabled) { filter: brightness(1.1); }
+.ak-btn:disabled { opacity: .5; cursor: default; }
+.ak-btn.ghost { background: none; border: 1px solid var(--border); color: var(--text); font-weight: 600; }
+.ak-btn.ghost:hover:not(:disabled) { border-color: var(--accent); filter: none; }
+.ak-btn.sm { height: 30px; padding: 0 11px; font-size: 12.5px; }
+.ak-btn.danger { background: none; border: 1px solid color-mix(in srgb, var(--err) 55%, var(--border)); color: var(--err); font-weight: 600; }
+.ak-btn:focus-visible, .ak-lk:focus-visible, .ak-t:focus-visible, .ak-node:focus-visible, .ak-cl:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.ak-card { border: 1px solid var(--border); border-radius: 10px; background: var(--card); padding: 18px 20px; min-width: 0; }
+.ak-card h3 { margin: 0; font-size: 15px; font-weight: 650; }
+.ak-hd { display: flex; align-items: center; gap: 10px 14px; margin-bottom: 14px; flex-wrap: wrap; }
+.ak-hd p { margin: 2px 0 0; font-size: 12.5px; color: var(--muted); }
+.ak-hd-r { margin-left: auto; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end; min-width: 0; max-width: 100%; }
+.ak-av { width: 24px; height: 24px; border-radius: 50%; display: inline-grid; place-items: center; flex: none; font-size: 10px; font-weight: 700; letter-spacing: .02em;
+  background: var(--idle-bg); border: 1px solid var(--border); color: var(--text); }
+.ak-av.lg { width: 46px; height: 46px; font-size: 16px; }
+.ak-av.none { border-style: dashed; color: var(--muted); background: none; }
+.ak-chip { display: inline-flex; align-items: center; gap: 6px; min-height: 26px; padding: 2px 9px; border: 1px solid var(--border); border-radius: 6px; background: var(--card-2);
+  font-size: 12.5px; color: var(--text); text-decoration: none; max-width: 100%; }
+.ak-chip svg { width: 13px; height: 13px; color: var(--muted); }
+.ak-chip.q { color: var(--muted); border-style: dashed; background: none; }
+a.ak-chip:hover { border-color: var(--accent); }
+.ak-lk { color: var(--accent); font-weight: 600; font-size: 13px; white-space: nowrap; background: none; border: 0; padding: 0; }
+.ak-lk:hover { text-decoration: underline; }
+.ak-mut { color: var(--muted); }
+.ak-empty { padding: 26px 20px; text-align: center; color: var(--muted); border: 1px dashed var(--border); border-radius: 8px; display: grid; gap: 12px; justify-items: center; }
+.ak-empty b { color: var(--text); font-size: 15px; font-weight: 650; }
+.ak-empty p { margin: 0; max-width: 62ch; line-height: 1.5; font-size: 13px; }
+.ak-msg { padding: 10px 12px; border-radius: 8px; font-size: 13px; border: 1px solid color-mix(in srgb, var(--err) 55%, var(--border)); background: var(--err-bg); color: var(--text); }
+svg.ak-mk { width: 18px; height: 18px; fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+svg.ak-mk.met { stroke: var(--ok); } svg.ak-mk.met circle { fill: var(--ok-bg); }
+svg.ak-mk.not { stroke: var(--err); } svg.ak-mk.not rect { fill: var(--err-bg); }
+svg.ak-mk.due { stroke: var(--run); } svg.ak-mk.due path:first-child { fill: var(--run-bg); }
+svg.ak-mk.unk { stroke: var(--muted); } svg.ak-mk.unk path:first-child { fill: var(--idle-bg); }
+
+/* who answers for the dataset, and where its sign-off stands */
+.ak-keep { display: flex; align-items: center; gap: 22px; padding: 16px 20px; flex-wrap: wrap; }
+.ak-who { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.ak-who b { display: block; font-size: 17px; font-weight: 650; }
+.ak-who small { display: block; font-size: 12.5px; color: var(--muted); margin-top: 1px; }
+.ak-sep { width: 1px; align-self: stretch; background: var(--border); }
+.ak-fact { font-size: 12.5px; color: var(--muted); line-height: 1.45; }
+.ak-fact b { display: block; font-size: 14px; font-weight: 650; color: var(--text); }
+.ak-fact b.due { color: var(--run); font-size: 12.5px; font-weight: 600; } .ak-fact b.late { color: var(--err); font-size: 12.5px; font-weight: 600; }
+.ak-ds { display: flex; align-items: center; gap: 10px; }
+.ak-ds-ic { width: 32px; height: 32px; border-radius: 6px; background: var(--idle-bg); display: grid; place-items: center; font-size: 16px; }
+.ak-ds-ic svg { width: 18px; height: 18px; }
+.ak-grow { flex: 1; }
+.ak-seal { display: flex; align-items: center; gap: 12px; }
+.ak-seal svg.ak-seal-svg { width: 44px; height: 44px; }
+
+/* the path the data takes */
+.ak-cover { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 12px; margin-bottom: 16px; border-radius: 8px; background: var(--card-2);
+  border: 1px dashed var(--border); font-size: 12.5px; color: var(--muted); }
+.ak-cover-gap { width: 14px; }
+.ak-chain { display: grid; grid-template-columns: repeat(var(--ak-cols, 5), minmax(0, 1fr)); gap: 14px 0; align-items: stretch; }
+.ak-step { position: relative; padding-right: 62px; }
+.ak-step.last { padding-right: 0; }
+.ak-node { height: 100%; width: 100%; text-align: left; border: 1px solid var(--border); border-radius: 8px; background: var(--card-2); padding: 13px 14px 12px; display: grid; gap: 9px;
+  align-content: start; color: var(--text); }
+.ak-node-t { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.ak-node-ic { width: 30px; height: 30px; border-radius: 6px; background: var(--idle-bg); display: grid; place-items: center; flex: none; }
+.ak-node-t b { font-size: 14px; font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ak-node-c { font-size: 13px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ak-node-p { display: flex; align-items: center; gap: 8px; font-size: 13px; min-width: 0; }
+.ak-node-p span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ak-runs { display: flex; align-items: center; gap: 3px; height: 9px; }
+.ak-runs i { width: 9px; height: 9px; border-radius: 2px; background: var(--ok); opacity: .55; }
+.ak-runs i.f { background: var(--err); opacity: 1; }
+.ak-runs i.n { background: none; border: 1px solid var(--border); opacity: 1; }
+.ak-node-w { font-size: 12.5px; font-weight: 600; color: var(--muted); }
+.ak-node.held .ak-node-w { color: var(--ok); } .ak-node.failed .ak-node-w { color: var(--err); } .ak-node.gap .ak-node-w { color: var(--run); }
+.ak-node.failed { border-color: var(--err); background: linear-gradient(var(--err-bg), var(--err-bg)), var(--card-2); }
+.ak-node.gap { border-style: dashed; background: none; }
+.ak-node.sel { box-shadow: 0 0 0 2px var(--accent); }
+.ak-join { position: absolute; right: 0; top: 0; bottom: 0; width: 62px; }
+.ak-join::before { content: ''; position: absolute; left: 4px; right: 9px; top: 50%; border-top: 2px solid var(--border); }
+.ak-join::after { content: ''; position: absolute; right: 4px; top: 50%; width: 7px; height: 7px; margin-top: -4px; border-top: 2px solid var(--border); border-right: 2px solid var(--border); transform: rotate(45deg); }
+.ak-join.bad::before { border-top: 2px dashed var(--err); } .ak-join.bad::after { border-color: var(--err); }
+.ak-pass { position: absolute; right: 0; width: 62px; top: calc(50% + 10px); text-align: center; font-size: 10.5px; line-height: 1.2; color: var(--err); font-weight: 600; }
+.ak-dock { margin-top: 16px; border: 1px solid var(--accent); border-radius: 8px; background: var(--card-2); padding: 16px 18px; display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 16px 26px; }
+.ak-dock h4 { margin: 0 0 3px; font-size: 15px; font-weight: 650; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.ak-pill { display: inline-flex; align-items: center; gap: 6px; height: 22px; padding: 0 9px; border-radius: 999px; font-size: 12px; font-weight: 600; background: var(--idle-bg); color: var(--muted); }
+.ak-pill.failed { background: var(--err-bg); color: var(--err); } .ak-pill.held { background: var(--ok-bg); color: var(--ok); } .ak-pill.gap { background: var(--run-bg); color: var(--run); }
+.ak-kv { display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: 9px 14px; margin-top: 12px; font-size: 13px; align-items: start; }
+.ak-kv > span { color: var(--muted); padding-top: 3px; }
+.ak-rule { display: flex; align-items: center; gap: 9px; padding: 3px 0; }
+.ak-rule small { color: var(--muted); font-size: 12.5px; margin-left: auto; white-space: nowrap; padding-left: 12px; }
+.ak-rule.failed small { color: var(--err); font-weight: 600; }
+.ak-evs { display: flex; flex-wrap: wrap; gap: 6px; }
+.ak-ppl { display: grid; gap: 10px; }
+.ak-pp { display: flex; align-items: center; gap: 11px; }
+.ak-pp b { display: block; font-size: 13.5px; font-weight: 650; } .ak-pp small { display: block; font-size: 12.5px; color: var(--muted); }
+.ak-resp { margin-top: 12px; padding: 10px 12px; border-radius: 8px; border: 1px dashed var(--border); display: flex; align-items: flex-start; gap: 12px; font-size: 13px; color: var(--muted); }
+.ak-resp b { color: var(--text); font-weight: 600; }
+.ak-resp q { quotes: none; display: block; color: var(--text); margin-top: 3px; line-height: 1.45; }
+.ak-resp .ak-lk { margin-left: auto; }
+.ak-dock-acts { grid-column: 1 / -1; display: flex; gap: 8px; flex-wrap: wrap; padding-top: 12px; border-top: 1px solid var(--border); }
+
+/* the policy, clause by clause */
+.ak-wall { display: grid; grid-template-columns: repeat(auto-fill, minmax(196px, 1fr)); gap: 8px; }
+.ak-cl { display: flex; gap: 10px; align-items: flex-start; padding: 11px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--card-2); min-width: 0; text-align: left; color: var(--text); }
+.ak-cl b { display: block; font-size: 13px; font-weight: 600; line-height: 1.3; }
+.ak-cl span { display: block; font-size: 12px; color: var(--muted); margin-top: 3px; }
+.ak-cl.not { border-color: color-mix(in srgb, var(--err) 55%, var(--border)); } .ak-cl.not span { color: var(--err); }
+.ak-cl.due span { color: var(--run); }
+button.ak-cl:hover { border-color: var(--accent); }
+.ak-cl em { font-style: normal; color: var(--accent); font-weight: 600; font-size: 12px; display: block; margin-top: 4px; }
+.ak-tally { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); flex-wrap: wrap; }
+.ak-tally b { color: var(--text); font-weight: 650; } .ak-tally svg.ak-mk { width: 15px; height: 15px; margin-left: 10px; } .ak-tally svg.ak-mk:first-child { margin-left: 0; }
+
+/* twelve months on one line */
+.ak svg.ak-tape { width: 100%; height: auto; display: block; overflow: visible; cursor: crosshair; }
+.ak-tape text { font-family: inherit; fill: var(--muted); font-size: 12px; }
+.ak-tape .ak-nm { fill: var(--text); font-size: 13px; font-weight: 650; }
+.ak-tape .ak-ev { fill: var(--text); font-size: 12px; font-weight: 600; }
+.ak-tape [data-akday], .ak-tape [data-aksign] { cursor: pointer; }
+.ak-key { display: flex; align-items: center; gap: 18px; font-size: 12.5px; color: var(--muted); flex-wrap: wrap; }
+.ak-key span { display: inline-flex; align-items: center; gap: 6px; } .ak-key svg.ak-mk { width: 14px; height: 14px; }
+.ak-key i { width: 11px; height: 11px; display: inline-block; }
+.ak-moment { display: grid; grid-template-columns: 150px repeat(3, minmax(0, 1fr)); gap: 0; padding: 0; overflow: hidden; }
+.ak-moment > div { padding: 16px 18px; border-left: 1px solid var(--border); min-width: 0; }
+.ak-moment > div:first-child { border-left: 0; background: var(--card-2); display: grid; align-content: center; gap: 2px; }
+.ak-day { font-size: 26px; font-weight: 650; letter-spacing: -.02em; line-height: 1.05; }
+.ak-lab { font-size: 12.5px; color: var(--muted); margin-bottom: 8px; }
+.ak-big { font-size: 15px; font-weight: 650; display: flex; align-items: center; gap: 10px; }
+.ak-fine { font-size: 12.5px; color: var(--muted); margin-top: 6px; line-height: 1.45; }
+.ak-fine b { color: var(--text); font-weight: 600; }
+.ak-ledger { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; align-items: center; font-size: 12.5px; color: var(--muted); }
+
+/* the roster */
+.ak-sum { display: flex; align-items: center; gap: 30px; padding: 14px 20px; flex-wrap: wrap; }
+.ak-n { display: inline-flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--muted); white-space: nowrap; }
+.ak-n b { font-size: 21px; font-weight: 650; color: var(--text); font-variant-numeric: tabular-nums; }
+.ak-roster { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; align-items: start; }
+.ak-col { border: 1px solid var(--border); border-radius: 10px; background: var(--card); overflow: hidden; }
+.ak-col.none { border-style: dashed; background: none; }
+.ak-ph { padding: 16px 16px 14px; display: grid; gap: 10px; border-bottom: 1px solid var(--border); }
+.ak-ph-w { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.ak-ph-w b { display: block; font-size: 15px; font-weight: 650; } .ak-ph-w small { display: block; font-size: 12.5px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; }
+.ak-ph-s { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--muted); }
+.ak-ph-s b { color: var(--text); font-weight: 600; }
+.ak-ph-s.not b { color: var(--err); } .ak-ph-s.due b { color: var(--run); }
+.ak-tiles { padding: 12px; display: flex; flex-wrap: wrap; gap: 7px; }
+.ak-t { display: flex; align-items: center; gap: 7px; height: 34px; padding: 0 9px; border: 1px solid var(--border); border-radius: 6px; background: var(--card-2); font-size: 12.5px;
+  min-width: 0; max-width: 100%; color: var(--text); text-align: left; }
+.ak-t span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ak-t svg.ak-mk { width: 14px; height: 14px; }
+.ak-t:hover { border-color: var(--accent); }
+.ak-t.not { border-color: color-mix(in srgb, var(--err) 55%, var(--border)); }
+.ak-t.unk { border-style: dashed; background: none; color: var(--muted); }
+
+/* dialogs */
+.ak-veil { position: fixed; inset: 0; background: rgba(8,10,14,.62); z-index: 1150; display: grid; place-items: center; padding: 20px; overflow: auto; }
+.ak-modal { width: min(720px, 100%); border: 1px solid var(--border); border-radius: 12px; background: var(--card); box-shadow: 0 30px 80px rgba(0,0,0,.5); font-size: 14px; color: var(--text); margin: auto; }
+.ak-modal.wide { width: min(1060px, 100%); }
+.ak-mh { display: flex; align-items: center; gap: 14px; padding: 18px 24px; border-bottom: 1px solid var(--border); }
+.ak-mh h3 { margin: 0; font-size: 18px; font-weight: 650; } .ak-mh p { margin: 2px 0 0; font-size: 13px; color: var(--muted); }
+.ak-x { margin-left: auto; width: 32px; height: 32px; border-radius: 6px; border: 1px solid var(--border); background: none; display: grid; place-items: center; color: var(--muted); font-size: 18px; flex: none; }
+.ak-x:hover { color: var(--text); border-color: var(--accent); }
+.ak-mb { padding: 20px 24px; display: grid; gap: 14px; }
+.ak-mb.split { grid-template-columns: minmax(0, 1fr) 350px; padding: 0; gap: 0; }
+.ak-ml { padding: 20px 24px; display: grid; gap: 12px; align-content: start; }
+.ak-mr { padding: 20px 22px; background: var(--card-2); border-left: 1px solid var(--border); display: grid; gap: 10px; align-content: start; }
+.ak-mr h4 { margin: 0 0 2px; font-size: 13.5px; font-weight: 650; } .ak-mr > p { margin: 0 0 4px; font-size: 12.5px; color: var(--muted); }
+.ak-say { font-size: 15px; line-height: 1.5; margin: 0 0 4px; }
+.ak-row { border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 4px 14px; align-items: start; background: var(--card-2); }
+.ak-row-k { font-weight: 650; font-size: 14px; display: flex; align-items: center; gap: 8px; }
+.ak-row-k svg { width: 17px; height: 17px; color: var(--muted); }
+.ak-row-v { font-size: 13px; color: var(--muted); line-height: 1.45; }
+.ak-row-v b { color: var(--text); font-weight: 600; }
+.ak-opts { grid-column: 2; display: flex; gap: 16px; flex-wrap: wrap; margin-top: 6px; }
+.ak-rad { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; color: var(--text); cursor: pointer; }
+.ak-rad input { accent-color: var(--btn); margin: 0; width: 15px; height: 15px; cursor: pointer; }
+.ak-row textarea { grid-column: 2; margin-top: 6px; }
+.ak-f { display: grid; gap: 6px; min-width: 0; }
+.ak-f > label, .ak-f > span.ak-flab { font-size: 12.5px; color: var(--muted); }
+.ak-f input[type=text], .ak-f input[type=email], .ak-f input[type=date], .ak-f input[type=url], .ak-f input[type=number], .ak-f select, .ak-f textarea, .ak-row textarea {
+  width: 100%; min-height: 36px; padding: 7px 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--card-2); color: var(--text); font: inherit; font-size: 13.5px; }
+.ak-f textarea, .ak-row textarea { min-height: 62px; resize: vertical; line-height: 1.45; }
+.ak-f input:focus, .ak-f select:focus, .ak-f textarea:focus, .ak-row textarea:focus { outline: 0; border-color: var(--accent); }
+.ak-f small { font-size: 12px; color: var(--muted); }
+.ak-g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; } .ak-g3 { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 12px; }
+.ak-checkrow { display: flex; align-items: center; gap: 9px; font-size: 13.5px; cursor: pointer; }
+.ak-checkrow input { accent-color: var(--btn); width: 15px; height: 15px; margin: 0; }
+.ak-pick { border: 1px solid var(--border); border-radius: 8px; max-height: 230px; overflow: auto; background: var(--card-2); }
+.ak-pick-g { padding: 7px 12px 3px; font-size: 12px; color: var(--muted); font-weight: 600; position: sticky; top: 0; background: var(--card-2); }
+.ak-pick label { display: flex; align-items: center; gap: 9px; padding: 6px 12px; font-size: 13px; cursor: pointer; }
+.ak-pick label:hover { background: var(--idle-bg); }
+.ak-pick input { accent-color: var(--btn); margin: 0; }
+.ak-pick small { margin-left: auto; color: var(--muted); white-space: nowrap; padding-left: 10px; }
+.ak-pick small.bad { color: var(--err); font-weight: 600; }
+.ak-evrow { display: grid; grid-template-columns: 1fr 1.4fr; gap: 8px; }
+.ak-clrow { display: grid; grid-template-columns: auto minmax(0, 1fr) 86px; gap: 10px; align-items: center; padding: 6px 0; font-size: 13.5px; }
+.ak-clrow input[type=checkbox] { accent-color: var(--btn); width: 15px; height: 15px; margin: 0; }
+.ak-clrow input[type=number] { min-height: 30px; padding: 3px 8px; }
+.ak-clrow small { color: var(--muted); font-size: 12px; }
+.ak-sf { display: flex; align-items: center; gap: 11px; padding: 9px 11px; border: 1px solid var(--border); border-radius: 8px; background: var(--card); font-size: 13px; }
+.ak-sf b { font-weight: 650; display: block; } .ak-sf small { display: block; font-size: 12px; color: var(--muted); }
+.ak-sf > svg:not(.ak-mk) { width: 18px; height: 18px; color: var(--muted); }
+.ak-mf { display: flex; align-items: center; gap: 12px; padding: 16px 24px; border-top: 1px solid var(--border); flex-wrap: wrap; }
+.ak-mf small { font-size: 12.5px; color: var(--muted); max-width: 46ch; line-height: 1.4; }
+.ak-err { color: var(--err); font-size: 13px; flex-basis: 100%; }
+.ak-err:empty { display: none; }
+.ak-list { display: grid; gap: 8px; }
+.ak-li { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--card-2); font-size: 13.5px; }
+.ak-li b { font-weight: 650; } .ak-li small { color: var(--muted); font-size: 12.5px; display: block; }
+.ak-li .ak-grow { min-width: 0; }
+.ak-li.on { border-color: var(--accent); }
+@media (max-width: 1100px) { .ak-dock { grid-template-columns: 1fr; } .ak-moment { grid-template-columns: 1fr 1fr; } .ak-moment > div { border-top: 1px solid var(--border); }
+  .ak-mb.split { grid-template-columns: 1fr; } .ak-mr { border-left: 0; border-top: 1px solid var(--border); } .ak-chain { --ak-cols: 3 !important; } }
+@media (max-width: 760px) { .ak-head { flex-direction: column; gap: 12px; } .ak-head-r { margin-left: 0; justify-content: flex-start; } .ak-chain { --ak-cols: 1 !important; }
+  .ak-step { padding-right: 0; } .ak-join, .ak-pass { display: none; } .ak-row, .ak-kv { grid-template-columns: 1fr; } .ak-opts, .ak-row textarea { grid-column: 1; }
+  .ak-g2, .ak-g3, .ak-evrow { grid-template-columns: 1fr; } .ak-moment { grid-template-columns: 1fr; } .ak-in input { width: 130px; } }
+</style>
 </head>
 <body>
 <!-- Shell v2: one icon set, drawn once here and used by name. -->
-<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><symbol id="i-overview" viewBox="0 0 24 24"><path d="M5.5 20v-8M12 20V5M18.5 20v-5M3 20h18"/></symbol><symbol id="i-incidents" viewBox="0 0 24 24"><path d="M12 4 3 19.5h18L12 4z"/><path d="M12 10v4.2M12 16.9v.1"/></symbol><symbol id="i-pulse" viewBox="0 0 24 24"><path d="M2.5 12h4l2.5-6 4 12 2.5-6h6"/></symbol><symbol id="i-database" viewBox="0 0 24 24"><ellipse cx="12" cy="6" rx="7.5" ry="2.8"/><path d="M4.5 6v12c0 1.5 3.4 2.8 7.5 2.8s7.5-1.3 7.5-2.8V6M4.5 12c0 1.5 3.4 2.8 7.5 2.8s7.5-1.3 7.5-2.8"/></symbol><symbol id="i-app" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></symbol><symbol id="i-tag" viewBox="0 0 24 24"><path d="M3.5 12.2V4.5h7.7l9.3 9.3-7.7 7.7-9.3-9.3z"/><path d="M8 8.5v.1"/></symbol><symbol id="i-reconcile" viewBox="0 0 24 24"><path d="M7 8h13M17 5l3 3-3 3M17 16H4M7 13l-3 3 3 3"/></symbol><symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></symbol><symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3.5 5 6v5.5c0 4.3 2.9 7.6 7 9 4.1-1.400 7-4.700 7-9V6l-7-2.500z"/><path d="m9 12 2.200 2.200L15.200 10"/></symbol><symbol id="i-pii" viewBox="0 0 24 24"><path d="M4 8V5.500A1.500 1.500 0 0 1 5.500 4H8M16 4h2.500A1.500 1.500 0 0 1 20 5.500V8M20 16v2.500a1.500 1.500 0 0 1-1.500 1.500H16M8 20H5.500A1.500 1.500 0 0 1 4 18.500V16"/><circle cx="12" cy="10" r="2.300"/><path d="M8 16.500c.700-1.900 2.200-2.800 4-2.800s3.300.900 4 2.800"/></symbol><symbol id="i-lineage" viewBox="0 0 24 24"><circle cx="5.500" cy="6" r="2"/><circle cx="5.500" cy="18" r="2"/><circle cx="18.500" cy="12" r="2"/><path d="M7.500 6h3a4 4 0 0 1 4 4 2 2 0 0 0 2 2M7.500 18h3a4 4 0 0 0 4-4"/></symbol><symbol id="i-model" viewBox="0 0 24 24"><rect x="3.500" y="4" width="7" height="5" rx="1"/><rect x="13.500" y="15" width="7" height="5" rx="1"/><rect x="3.500" y="15" width="7" height="5" rx="1"/><path d="M7 9v6M10.500 17.500h3"/></symbol><symbol id="i-history" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.600-5.900"/><path d="M4 4.500v4h4M12 8v4.200l2.800 1.700"/></symbol><symbol id="i-approve" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.500"/><path d="m8.500 12.300 2.400 2.400 4.600-4.900"/></symbol><symbol id="i-server" viewBox="0 0 24 24"><rect x="4" y="4.500" width="16" height="6" rx="1.500"/><rect x="4" y="13.500" width="16" height="6" rx="1.500"/><path d="M7.500 7.500v.1M7.500 16.500v.1"/></symbol><symbol id="i-spark" viewBox="0 0 24 24"><path d="M11 4l1.700 4.800 4.800 1.700-4.800 1.700L11 17l-1.700-4.800-4.800-1.700 4.800-1.700L11 4z"/><path d="M18.500 15.500l.600 1.900 1.900.600-1.900.600-.600 1.900-.600-1.900-1.900-.600 1.900-.600.600-1.900z"/></symbol><symbol id="i-key" viewBox="0 0 24 24"><circle cx="8" cy="15.500" r="3.500"/><path d="M10.600 13 19 4.500M15.500 8l2.500 2.500"/></symbol><symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8.500" r="3.500"/><path d="M5 19.500c1-3.200 3.700-5 7-5s6 1.800 7 5"/></symbol><symbol id="i-book" viewBox="0 0 24 24"><path d="M5 4.500h12.500A1.500 1.500 0 0 1 19 6v13.500H7a2 2 0 0 1-2-2V4.500z"/><path d="M5 17.500a2 2 0 0 1 2-2h12"/></symbol><symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.500"/><path d="M12 11v5M12 8v.1"/></symbol><symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.500"/><path d="M9.600 9.600a2.500 2.500 0 1 1 3.600 2.300c-.800.400-1.200 1-1.200 1.800M12 16.600v.1"/></symbol><symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></symbol><symbol id="i-contrast" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.500"/><path d="M12 3.500v17a8.500 8.500 0 0 0 0-17z" fill="currentColor" stroke="none"/></symbol><symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.500"/><path d="m16 16 4 4"/></symbol><symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol><symbol id="i-ext" viewBox="0 0 24 24"><path d="M14 5h5v5M19 5l-8 8M11 6H6.500A1.500 1.500 0 0 0 5 7.500v10A1.500 1.500 0 0 0 6.500 19h10a1.500 1.500 0 0 0 1.500-1.500V13"/></symbol><symbol id="i-out" viewBox="0 0 24 24"><path d="M10 5H6.500A1.500 1.500 0 0 0 5 6.500v11A1.500 1.500 0 0 0 6.500 19H10M14 8l4 4-4 4M18 12H9.500"/></symbol></svg>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><symbol id="i-overview" viewBox="0 0 24 24"><path d="M5.5 20v-8M12 20V5M18.5 20v-5M3 20h18"/></symbol><symbol id="i-incidents" viewBox="0 0 24 24"><path d="M12 4 3 19.5h18L12 4z"/><path d="M12 10v4.2M12 16.9v.1"/></symbol><symbol id="i-pulse" viewBox="0 0 24 24"><path d="M2.5 12h4l2.5-6 4 12 2.5-6h6"/></symbol><symbol id="i-database" viewBox="0 0 24 24"><ellipse cx="12" cy="6" rx="7.5" ry="2.8"/><path d="M4.5 6v12c0 1.5 3.4 2.8 7.5 2.8s7.5-1.3 7.5-2.8V6M4.5 12c0 1.5 3.4 2.8 7.5 2.8s7.5-1.3 7.5-2.8"/></symbol><symbol id="i-app" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></symbol><symbol id="i-tag" viewBox="0 0 24 24"><path d="M3.5 12.2V4.5h7.7l9.3 9.3-7.7 7.7-9.3-9.3z"/><path d="M8 8.5v.1"/></symbol><symbol id="i-reconcile" viewBox="0 0 24 24"><path d="M7 8h13M17 5l3 3-3 3M17 16H4M7 13l-3 3 3 3"/></symbol><symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></symbol><symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3.5 5 6v5.5c0 4.3 2.9 7.6 7 9 4.1-1.400 7-4.700 7-9V6l-7-2.500z"/><path d="m9 12 2.200 2.200L15.200 10"/></symbol><symbol id="i-pii" viewBox="0 0 24 24"><path d="M4 8V5.500A1.500 1.500 0 0 1 5.500 4H8M16 4h2.500A1.500 1.500 0 0 1 20 5.500V8M20 16v2.500a1.500 1.500 0 0 1-1.500 1.500H16M8 20H5.500A1.500 1.500 0 0 1 4 18.500V16"/><circle cx="12" cy="10" r="2.300"/><path d="M8 16.500c.700-1.900 2.200-2.800 4-2.800s3.300.900 4 2.800"/></symbol><symbol id="i-lineage" viewBox="0 0 24 24"><circle cx="5.500" cy="6" r="2"/><circle cx="5.500" cy="18" r="2"/><circle cx="18.500" cy="12" r="2"/><path d="M7.500 6h3a4 4 0 0 1 4 4 2 2 0 0 0 2 2M7.500 18h3a4 4 0 0 0 4-4"/></symbol><symbol id="i-model" viewBox="0 0 24 24"><rect x="3.500" y="4" width="7" height="5" rx="1"/><rect x="13.500" y="15" width="7" height="5" rx="1"/><rect x="3.500" y="15" width="7" height="5" rx="1"/><path d="M7 9v6M10.500 17.500h3"/></symbol><symbol id="i-history" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.600-5.900"/><path d="M4 4.500v4h4M12 8v4.200l2.800 1.700"/></symbol><symbol id="i-approve" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.500"/><path d="m8.500 12.300 2.400 2.400 4.600-4.900"/></symbol><symbol id="i-answer" viewBox="0 0 24 24"><circle cx="10" cy="8" r="3.4"/><path d="M3.6 19.6c.7-3.5 3.2-5.4 6.4-5.4 1.5 0 2.9.4 4 1.3"/><path d="m15.2 17.4 2.1 2.1 3.7-4"/></symbol><symbol id="i-server" viewBox="0 0 24 24"><rect x="4" y="4.500" width="16" height="6" rx="1.500"/><rect x="4" y="13.500" width="16" height="6" rx="1.500"/><path d="M7.500 7.500v.1M7.500 16.500v.1"/></symbol><symbol id="i-spark" viewBox="0 0 24 24"><path d="M11 4l1.700 4.800 4.800 1.700-4.800 1.700L11 17l-1.700-4.800-4.800-1.700 4.800-1.700L11 4z"/><path d="M18.500 15.500l.600 1.900 1.900.600-1.900.600-.600 1.900-.600-1.900-1.900-.600 1.900-.600.600-1.900z"/></symbol><symbol id="i-key" viewBox="0 0 24 24"><circle cx="8" cy="15.500" r="3.500"/><path d="M10.600 13 19 4.500M15.500 8l2.500 2.500"/></symbol><symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8.500" r="3.500"/><path d="M5 19.500c1-3.200 3.700-5 7-5s6 1.800 7 5"/></symbol><symbol id="i-book" viewBox="0 0 24 24"><path d="M5 4.500h12.500A1.500 1.500 0 0 1 19 6v13.500H7a2 2 0 0 1-2-2V4.500z"/><path d="M5 17.500a2 2 0 0 1 2-2h12"/></symbol><symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.500"/><path d="M12 11v5M12 8v.1"/></symbol><symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.500"/><path d="M9.600 9.600a2.500 2.500 0 1 1 3.600 2.300c-.800.400-1.200 1-1.200 1.800M12 16.600v.1"/></symbol><symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></symbol><symbol id="i-contrast" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.500"/><path d="M12 3.500v17a8.500 8.500 0 0 0 0-17z" fill="currentColor" stroke="none"/></symbol><symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.500"/><path d="m16 16 4 4"/></symbol><symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol><symbol id="i-ext" viewBox="0 0 24 24"><path d="M14 5h5v5M19 5l-8 8M11 6H6.500A1.500 1.500 0 0 0 5 7.500v10A1.500 1.500 0 0 0 6.500 19h10a1.500 1.500 0 0 0 1.500-1.500V13"/></symbol><symbol id="i-out" viewBox="0 0 24 24"><path d="M10 5H6.500A1.500 1.500 0 0 0 5 6.500v11A1.500 1.500 0 0 0 6.500 19H10M14 8l4 4-4 4M18 12H9.500"/></symbol></svg>
 
   <!-- The AI sparkle's gradient, defined once where every icon can reach it (an icon inside a hidden
        panel cannot lend its own gradient to the others). -->
@@ -7250,6 +7482,7 @@ td, th, .h-score { font-variant-numeric: tabular-nums; }
     <button class="side-item" data-tab="schedules" data-label="Schedules" data-group="Assess"><svg class="ic" aria-hidden="true"><use href="#i-clock"/></svg><span>Schedules</span></button>
     <div class="side-group">Govern</div>
     <button class="side-item" data-tab="compliance" data-label="Compliance" data-group="Govern"><svg class="ic" aria-hidden="true"><use href="#i-shield"/></svg><span>Compliance</span><span class="tab-badge" id="cmpBadge" style="display:none;"></span></button>
+    <button class="side-item" data-tab="accountability" data-label="Accountability" data-group="Govern" id="accountNav"><svg class="ic" aria-hidden="true"><use href="#i-answer"/></svg><span>Accountability</span></button>
     <button class="side-item" data-tab="piisweep" data-label="PII sweep" data-group="Govern"><svg class="ic" aria-hidden="true"><use href="#i-pii"/></svg><span>PII sweep</span><span class="tab-badge" id="piiBadge" style="display:none;"></span></button>
     <button class="side-item" data-tab="lineage" data-label="Lineage" data-group="Govern"><svg class="ic" aria-hidden="true"><use href="#i-lineage"/></svg><span>Lineage</span></button>
     <button class="side-item" data-tab="model" data-label="Data model" data-group="Govern"><svg class="ic" aria-hidden="true"><use href="#i-model"/></svg><span>Data model</span></button>
@@ -8539,6 +8772,9 @@ td, th, .h-score { font-variant-numeric: tabular-nums; }
   </div>
 
   <!-- ============ PII SWEEP ============ -->
+  <!-- Accountability: a preview for platform super-admins, where the API says it is on. Drawn by the ak* code. -->
+  <div id="accountabilityPanel" style="display:none;"></div>
+
   <div id="piiSweepPanel" style="display:none;">
     <div class="tab-intro">
       <span class="tab-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="7"/><path d="m15.6 15.6 5.2 5.2"/><circle cx="10.5" cy="8.6" r="2"/><path d="M6.9 14.1c.8-1.6 2.1-2.4 3.6-2.4s2.8.8 3.6 2.4"/></svg></span>
@@ -34200,6 +34436,670 @@ function pisScheduleRun(key) {
   }
 }
 
+// AK-BEGIN (Accountability)
+// =====================================================================================================================
+// Accountability: who answers for each dataset, what they say is in place, and whether it held.
+//
+// A PREVIEW. The tab exists only for a platform super-admin, and only where the API says it is switched on (UAT): the
+// page asks once at sign-in (akProbe) and shows the tab on a yes. The API checks both again on every call
+// (/data-quality/accountability, accountability.py), so the hidden tab is a courtesy, never the control.
+//
+// Two views in one panel: the ROSTER (the estate by who answers for it) and one dataset's RECORD (who answers, the path
+// its data takes with a person on each system, its policy clause by clause, and its twelve months on one line). The
+// server works out every verdict; nothing here judges anything, it only draws what it is told.
+// =====================================================================================================================
+const AK = { on: false, meta: null, view: 'roster', roster: null, rec: null, key: null, sel: null, day: null, q: '' };
+const akCall = body => postJSON(`${API_BASE}/data-quality/accountability`, HEADERS, Object.assign({ app_id: APP_ID }, body));
+const akSvg = (d, w) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${w || 1.8}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+const AKI = {
+  form: akSvg('<rect x="4" y="3.5" width="16" height="17" rx="2.2"/><path d="M8 8.5h8M8 12.5h8M8 16.5h4.5"/>'),
+  crm: akSvg('<circle cx="9" cy="8.5" r="3.2"/><path d="M3.2 19.2c.6-3.2 2.9-5 5.8-5s5.2 1.8 5.8 5"/><path d="M16.2 5.6a3 3 0 0 1 0 5.8M18.2 14.6c1.5.7 2.4 2.3 2.8 4.6"/>'),
+  load: akSvg('<path d="M4 7.5h10.5a4 4 0 0 1 4 4V17"/><path d="M15.5 14l3 3 3-3"/><path d="M4 12.5h6M4 17.5h9"/>'),
+  store: akSvg('<ellipse cx="12" cy="6" rx="7.5" ry="2.8"/><path d="M4.5 6v12c0 1.5 3.4 2.8 7.5 2.8s7.5-1.3 7.5-2.8V6"/><path d="M4.5 12c0 1.5 3.4 2.8 7.5 2.8s7.5-1.3 7.5-2.8"/>'),
+  report: akSvg('<path d="M4.5 19.5V5M4.5 19.5h15"/><path d="M8.5 16v-4.5M12.5 16V8M16.5 16v-6.5"/>'),
+  retention: akSvg('<path d="M4.5 7h15M9.5 7V4.8h5V7M6.5 7l.9 12.2h9.2L17.5 7"/><path d="M10 11v5M14 11v5"/>'),
+  other: akSvg('<rect x="4.5" y="4.5" width="15" height="15" rx="3"/><path d="M9 12h6"/>'),
+  book: akSvg('<path d="M5 4.5h10.5a3 3 0 0 1 3 3V20H8a3 3 0 0 1-3-3z"/><path d="M5 17a3 3 0 0 1 3-3h10.5"/>'),
+  cap: akSvg('<path d="M2.5 9.5 12 5l9.5 4.5L12 14z"/><path d="M6.5 11.800v4.400c1.400 1.400 3.300 2.100 5.500 2.100s4.100-.700 5.500-2.100v-4.400"/><path d="M21.500 9.500v5"/>'),
+  clip: akSvg('<path d="M19.5 11.5 12 19a4.6 4.6 0 0 1-6.5-6.5l8-8a3.1 3.1 0 0 1 4.4 4.4l-7.8 7.8a1.6 1.6 0 0 1-2.3-2.3l7-7"/>'),
+  plus: akSvg('<path d="M12 5v14M5 12h14"/>', 2),
+  search: akSvg('<circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6"/>', 2),
+  file: akSvg('<path d="M6.5 3.5h7.2l4.8 4.8V20.5h-12z"/><path d="M13.5 3.5v5h5"/>'),
+  pen: akSvg('<path d="M4 20l1.2-4.6L16.5 4.1a2 2 0 0 1 2.8 0l.6.6a2 2 0 0 1 0 2.8L8.6 18.8z"/><path d="M14.5 6.1l3.4 3.4"/>'),
+  back: akSvg('<path d="M14.5 6.5 9 12l5.500 5.500"/>', 2),
+  bell: akSvg('<path d="M6.2 16.5V11a5.800 5.800 0 0 1 11.600 0v5.500l1.700 1.800H4.500z"/><path d="M10 20.500a2.200 2.200 0 0 0 4 0"/>'),
+};
+const AKM = {
+  met: '<svg class="ak-mk met" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="9"/><path d="M5.8 10.3l2.8 2.8 5.600-6"/></svg>',
+  not: '<svg class="ak-mk not" viewBox="0 0 20 20" aria-hidden="true"><rect x="1.5" y="1.5" width="17" height="17" rx="3.5"/><path d="M6.5 6.5l7 7M13.500 6.500l-7 7"/></svg>',
+  unk: '<svg class="ak-mk unk" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 1.2 18.800 10 10 18.800 1.200 10z"/><path d="M8 8a2 2 0 1 1 3 1.700c-.700.400-1 .900-1 1.600M10 13.900v.100"/></svg>',
+  due: '<svg class="ak-mk due" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 1.800 19 17.500H1z"/><path d="M10 7.500v4.500M10 14.600v.100"/></svg>',
+};
+const AK_KIND = { form: 'A form or app people type into', crm: 'A system of record', load: 'A load or pipeline', store: 'A database or warehouse',
+                  report: 'A report or dashboard', retention: 'Retention and deletion', other: 'Something else' };
+const AK_STATE = { held: 'Held', failed: 'Failed', untested: 'Not tested', gap: 'No control in place' };
+const AK_CL = { met: 'met', not: 'not met', due: 'due', unk: 'cannot tell' };
+const AK_ANS = { in_place: 'In place', exception: 'In place, with an exception', not_in_place: 'Not in place' };
+const AK_AREA = { policy: ['Policy', 'book'], controls: ['Controls', 'form'], training: ['Training', 'cap'], systems: ['Systems', 'store'] };
+
+const akWhen = v => {
+  const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2})-(\d{2})-(\d{2})Z/.exec(String(v || ''));
+  const t = m ? Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6]) : Date.parse(String(v || ''));
+  return isNaN(t) ? null : t;
+};
+const akDay = (v, short) => {
+  const t = akWhen(v);
+  return t == null ? '' : new Date(t).toLocaleDateString('en-GB', Object.assign({ day: 'numeric', month: 'short', timeZone: 'UTC' }, short ? {} : { year: 'numeric' }));
+};
+const akN = n => Number(n || 0).toLocaleString('en-GB');
+const akS = (n, one, many) => `${akN(n)} ${n === 1 ? one : (many || one + 's')}`;
+const akIni = name => String(name || '?').trim().split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase() || '?';
+const akAv = (p, cls) => `<span class="ak-av ${cls || ''}${p ? '' : ' none'}" aria-hidden="true">${p ? esc(akIni(p.name || p.email)) : '?'}</span>`;
+const akSrc = fmt => { const f = String(fmt || '').toLowerCase(); return (typeof SOURCE_FMT_SVG === 'object' && SOURCE_FMT_SVG[f]) || AKI.store; };
+const akP = () => document.getElementById('accountabilityPanel');
+
+// Asked once, at sign-in, for a platform super-admin: is this environment showing Accountability? Anything but a
+// yes (a 403, a 404, an older API with no such route) leaves the tab hidden, and is no fault.
+function akProbe() {
+  if (!PORTAL) return;
+  akCall({ action: 'available' }).then(r => {
+    if (!r || !r.available) return;
+    AK.on = true; AK.meta = r;
+    document.body.classList.add('ak-on');
+  }).catch(() => {});
+}
+
+function akHead(right) {
+  return `<div class="ak-head"><div><h2>Accountability</h2><p>Who answers for each dataset, what they say is in place, and whether it held.</p></div>
+    <div class="ak-head-r">${right || ''}</div></div>`;
+}
+function akBusy(what) { akP().innerHTML = `<div class="ak">${akHead('')}<div class="ak-card ak-mut">${esc(what)}</div></div>`; }
+function akFail(e, again) {
+  akP().innerHTML = `<div class="ak">${akHead('')}<div class="ak-msg">${esc((e && e.message) || 'That could not be read.')}</div>
+    <div><button type="button" class="ak-btn ghost" data-ak="${again}">Try again</button></div></div>`;
+}
+
+async function akLoad() {
+  if (!AK.on) return;
+  if (AK.view === 'record' && AK.key) return akOpen(AK.key);
+  AK.view = 'roster';
+  if (!AK.roster) akBusy('Reading who answers for what…');
+  try { AK.roster = await akCall({ action: 'roster' }); akPaintRoster(); }
+  catch (e) { akFail(e, 'reload'); }
+}
+async function akOpen(key) {
+  AK.view = 'record'; AK.key = key;
+  if (!AK.rec || AK.rec.dataset.key !== key) { AK.rec = null; AK.sel = null; AK.day = null; akBusy('Reading its record…'); }
+  try { AK.rec = await akCall({ action: 'record', dataset_key: key }); akPaintRecord(); }
+  catch (e) { akFail(e, 'reopen'); }
+}
+function akBack() { AK.view = 'roster'; AK.rec = null; AK.key = null; AK.roster = null; akLoad(); }
+
+// ---------------------------------------------------------------------------------------------------- the roster
+function akPaintRoster() {
+  const R = AK.roster.roster, c = R.counts;
+  akP().innerHTML = `<div class="ak">${akHead(`<label class="ak-in">${AKI.search}<input id="akFind" type="text" placeholder="Find a dataset or a person" aria-label="Find a dataset or a person" value="${esc(AK.q)}" autocomplete="off"></label>
+      <button type="button" class="ak-btn ghost" data-ak="policies">${AKI.book}Policies</button><button type="button" class="ak-btn ghost" data-ak="report">${AKI.file}Report</button>`)}
+    <div class="ak-card ak-sum" id="akSum">
+      <span class="ak-n"><b>${akN(c.datasets)}</b> ${c.datasets === 1 ? 'dataset' : 'datasets'}</span><span class="ak-n">${AKM.met}<b>${akN(c.met)}</b> signed and current</span>
+      <span class="ak-n">${AKM.due}<b>${akN(c.due)}</b> with a sign-off due</span><span class="ak-n">${AKM.not}<b>${akN(c.not)}</b> overdue, or a control failing</span>
+      <span class="ak-n">${AKM.unk}<b>${akN(c.unk)}</b> with no one named</span></div>
+    <div id="akRosterBody"></div>
+    <div class="ak-key"><span>${AKM.met}Signed and current</span><span>${AKM.due}Sign-off due</span><span>${AKM.not}Overdue, or a control failing</span><span>${AKM.unk}No one named</span>
+      <span style="margin-left:auto">Press a dataset to open its record.</span></div></div>`;
+  akPaintRosterBody();
+}
+function akPaintRosterBody() {
+  const R = AK.roster.roster, q = AK.q.trim().toLowerCase();
+  const hit = (d, who) => !q || d.name.toLowerCase().includes(q) || (who && ((who.name || '') + ' ' + (who.email || '')).toLowerCase().includes(q));
+  const tile = d => `<button type="button" class="ak-t ${d.mark}" data-ak="open" data-key="${esc(d.key)}" title="${esc(akTileTip(d))}">${AKM[d.mark]}<span>${esc(d.name)}</span></button>`;
+  const cols = R.people.map(p => ({ p, ds: p.datasets.filter(d => hit(d, p.person)) })).filter(x => x.ds.length);
+  const none = R.unnamed.filter(d => hit(d, null));
+  const body = document.getElementById('akRosterBody');
+  if (!R.counts.datasets) {
+    body.innerHTML = `<div class="ak-empty"><b>No datasets yet</b><p>Assess a dataset first. Each one can then be given someone who answers for it.</p></div>`;
+    return;
+  }
+  if (!cols.length && !none.length) { body.innerHTML = `<div class="ak-empty"><b>Nothing matches</b><p>No dataset or person is called that.</p></div>`; return; }
+  body.innerHTML = `<div class="ak-roster">${cols.map(({ p, ds }) => `<div class="ak-col" data-person="${esc(p.person.name || '')}">
+      <div class="ak-ph"><div class="ak-ph-w">${akAv(p.person, 'lg')}<div><b>${esc(p.person.name || p.person.email)}</b><small>${esc(akS(p.datasets.length, 'dataset'))}</small></div></div>
+        <div class="ak-ph-s ${p.line.mark}">${AKM[p.line.mark]}<span><b>${esc(p.line.text)}</b>${p.line.rest ? ' ' + esc(p.line.rest) : ''}</span></div></div>
+      <div class="ak-tiles">${ds.map(tile).join('')}</div></div>`).join('')}
+    ${none.length ? `<div class="ak-col none" data-person=""><div class="ak-ph"><div class="ak-ph-w">${akAv(null, 'lg')}<div><b>No one named</b><small>Nobody answers for these yet</small></div></div>
+        <div class="ak-ph-s"><span>Open one to name someone</span></div></div><div class="ak-tiles">${none.map(tile).join('')}</div></div>` : ''}</div>`;
+}
+function akTileTip(d) {
+  if (!d.manager) return 'No one answers for it yet';
+  const s = d.signoff, bits = [];
+  if (d.failing) bits.push(akS(d.failing, 'control') + ' failing');
+  bits.push(s.state === 'never' ? 'Never signed off' : s.state === 'overdue' ? `Sign-off overdue by ${akS(s.days, 'day')}`
+    : s.state === 'due' ? (s.days ? `Sign-off due in ${akS(s.days, 'day')}` : 'Sign-off due today') : `Signed ${akDay(s.signed_at)}`);
+  return bits.join('. ');
+}
+
+// ---------------------------------------------------------------------------------------------------- one dataset
+function akSeal(state) {
+  const col = state === 'current' ? 'var(--ok)' : state === 'overdue' ? 'var(--err)' : state === 'never' ? 'var(--muted)' : 'var(--run)';
+  const bg = state === 'current' ? 'var(--ok-bg)' : state === 'overdue' ? 'var(--err-bg)' : state === 'never' ? 'var(--idle-bg)' : 'var(--run-bg)';
+  return `<svg class="ak-seal-svg" viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="21" fill="none" stroke="${col}" stroke-width="1.6" stroke-dasharray="2.6 2.6"/>
+    <circle cx="24" cy="24" r="16" fill="${bg}" stroke="${col}" stroke-width="1.6"/>
+    ${state === 'never' ? `<path d="M18 24h12" fill="none" stroke="${col}" stroke-width="2.4" stroke-linecap="round"/>`
+      : `<path d="M17 24.5l4.8 4.8 9.400-10" fill="none" stroke="${col}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>`}</svg>`;
+}
+function akSignWords(s) {
+  if (s.state === 'never') return ['Never signed off', '', ''];
+  const first = `Signed ${akDay(s.signed_at)}`;
+  if (s.state === 'overdue') return [first, `Overdue by ${akS(s.days, 'day')}`, 'late'];
+  if (s.state === 'due') return [first, s.days ? `Next sign-off due in ${akS(s.days, 'day')}` : 'Next sign-off due today', 'due'];
+  return [first, `Next due ${akDay(s.due_at)}`, ''];
+}
+function akNodeWord(s) {
+  const v = s.verdict.state;
+  if (v === 'gap') return `Declared a gap on ${akDay(s.none_since, true)}`;
+  if (v === 'failed') return `Failing since ${akDay(s.failing_since, true)}`;
+  if (v === 'held') return 'Held';
+  return (s.checks || []).length ? 'Not tested on the last run' : 'Nothing proves it yet';
+}
+
+function akPaintRecord() {
+  const r = AK.rec, m = r.manager, so = r.signoff, sys = r.systems, before = (r.managers || []).filter(x => x.to).slice(-1)[0];
+  if (!AK.sel || !sys.some(s => s.id === AK.sel)) AK.sel = (sys.find(s => s.verdict.state === 'failed') || sys[0] || {}).id || null;
+  const [w1, w2, wcls] = akSignWords(so);
+  const keeper = `<div class="ak-card ak-keep" id="akKeep">
+      <div class="ak-ds"><span class="ak-ds-ic">${akSrc(r.dataset.format)}</span><div class="ak-fact"><b>${esc(r.dataset.name)}</b>${esc(sourceLabel(r.dataset.format))}</div></div>
+      <span class="ak-sep"></span>
+      ${m ? `<div class="ak-who">${akAv(m, 'lg')}<div><b>${esc(m.name)}</b><small>Answers for it since ${esc(akDay(m.from))}${before ? ', after ' + esc(before.name) : ''} <button type="button" class="ak-lk" data-ak="name">Change</button></small></div></div>`
+          : `<div class="ak-who">${akAv(null, 'lg')}<div><b>No one answers for it yet</b><small>Name the person who is accountable for this dataset.</small></div></div>`}
+      <span class="ak-grow"></span>
+      ${m ? `<div class="ak-seal">${akSeal(so.state)}<div class="ak-fact"><b>${esc(w1)}</b>${w2 ? `<b class="${wcls}">${esc(w2)}</b>` : ''}</div></div>
+             <button type="button" class="ak-btn" data-ak="sign">${AKI.pen}Sign off</button>`
+          : `<button type="button" class="ak-btn" data-ak="name">${AKI.plus}Name someone</button>`}
+    </div>`;
+
+  const pol = r.policy, tr = r.training;
+  const cover = `<div class="ak-cover" id="akCover"><span>Covering the whole path</span>
+      ${pol ? `<span class="ak-chip">${AKI.book}${esc(pol.name)}${pol.version ? ' ' + esc(pol.version) : ''}</span>${pol.approved ? `<span class="ak-chip">${AKI.clip}approved ${esc(akDay(pol.approved))}</span>` : ''}`
+            : `<span class="ak-chip q">${AKI.book}No policy chosen</span>`}
+      <button type="button" class="ak-lk" data-ak="choosepol">${pol ? 'Change' : 'Choose a policy'}</button><span class="ak-cover-gap"></span>
+      ${tr ? (tr.answer === 'in_place' ? `<span class="ak-chip">${AKI.cap}Training in place</span>${tr.detail || tr.valid_to ? `<span class="ak-chip">${AKI.clip}${esc([tr.detail, tr.valid_to ? 'to ' + akDay(tr.valid_to) : ''].filter(Boolean).join(', '))}</span>` : ''}`
+                                       : `<span class="ak-chip q">${AKI.cap}Training declared not in place</span>`)
+           : `<span class="ak-chip q">${AKI.cap}Nothing said about training</span>`}
+      <button type="button" class="ak-lk" data-ak="training">${tr ? 'Change' : 'Say'}</button></div>`;
+  const cols = Math.max(1, Math.min(5, sys.length));
+  const node = (s, i) => {
+    const v = s.verdict, last = i === sys.length - 1 || (i + 1) % cols === 0;
+    return `<div class="ak-step${last ? ' last' : ''}"><button type="button" class="ak-node ${v.state}${s.id === AK.sel ? ' sel' : ''}" data-ak="sel" data-sys="${esc(s.id)}" aria-pressed="${s.id === AK.sel}">
+        <span class="ak-node-t"><span class="ak-node-ic">${AKI[s.kind] || AKI.other}</span><b>${esc(s.name)}</b></span>
+        <span class="ak-node-c">${esc(s.none ? 'No control in place' : s.control)}</span>
+        <span class="ak-node-p">${akAv(s.person)}<span>${s.person ? esc(s.person.name) : 'No one named'}</span></span>
+        <span class="ak-runs" title="One square for each run, newest on the right">${(s.none ? [] : s.squares).map(q => `<i class="${q.s === 'h' ? '' : q.s}"></i>`).join('')}</span>
+        <span class="ak-node-w">${esc(akNodeWord(s))}</span></button>
+      ${last ? '' : `<span class="ak-join${v.state === 'failed' ? ' bad' : ''}"></span>${v.state === 'failed' && v.failed ? `<span class="ak-pass">${esc(akN(v.failed))}<br>passed on</span>` : ''}`}</div>`;
+  };
+  const chain = sys.length ? `<div class="ak-chain" id="akChain" style="--ak-cols:${cols}">${sys.map(node).join('')}</div>${akDock(sys.find(s => s.id === AK.sel))}`
+    : `<div class="ak-empty" id="akChain"><b>Nothing on its path yet</b><p>Add each system this data passes through, from where it is first typed in to where it is read: the control that system is meant to apply, who answers for it, and which of this dataset's checks prove it. A system with no control is worth adding too, as a gap.</p>
+        <button type="button" class="ak-btn" data-ak="addsys">${AKI.plus}Add the first system</button></div>`;
+  const t = r.tally;
+  const tally = `<span class="ak-tally">${AKM.met}<b>${t.met}</b> met ${AKM.not}<b>${t.not}</b> not met ${AKM.due}<b>${t.due}</b> due ${AKM.unk}<b>${t.unk}</b> cannot tell</span>`;
+  const clause = c => c.kind === 'declared'
+    ? `<button type="button" class="ak-cl ${c.status}" data-ak="declare" data-clause="${esc(c.id)}" title="Only a person can answer this one">${AKM[c.status]}<span style="margin:0"><b>${esc(c.label)}</b><span>${esc(c.fact)}</span><em>${c.status === 'unk' ? 'Answer it' : 'Change the answer'}</em></span></button>`
+    : `<div class="ak-cl ${c.status}">${AKM[c.status]}<div><b>${esc(c.label)}</b><span>${esc(c.fact)}</span></div></div>`;
+  const policy = `<div class="ak-card" id="akPolicy"><div class="ak-hd"><div><h3>Policy check</h3><p>${pol ? `${esc(pol.name)}${pol.version ? ' ' + esc(pol.version) : ''}, clause by clause, as the dataset stands.` : 'The policy this dataset is held to, clause by clause.'}</p></div>
+      <div class="ak-hd-r">${pol ? tally + `<button type="button" class="ak-btn ghost sm" data-ak="editpol">Edit the policy</button>` : ''}</div></div>
+      ${pol ? `<div class="ak-wall">${r.clauses.map(clause).join('')}</div>`
+            : `<div class="ak-empty"><b>Not held to a policy yet</b><p>A policy is a list of clauses. The data answers most of them at every run: the score, the gate, how old the last sweep is, whether every control held. People answer the rest.</p>
+                <button type="button" class="ak-btn" data-ak="choosepol">Choose a policy</button></div>`}</div>`;
+  akP().innerHTML = `<div class="ak">${akHead(`<button type="button" class="ak-btn ghost" data-ak="back">${AKI.back}All datasets</button>`)}
+    ${keeper}
+    <div class="ak-card" id="akPath"><div class="ak-hd"><div><h3>The path this data takes</h3><p>Each system it passes through, who answers for it, and whether it did its job. A square is one run.</p></div>
+      <div class="ak-hd-r">${sys.length ? `<button type="button" class="ak-btn ghost sm" data-ak="addsys">${AKI.plus}Add a system</button>` : ''}</div></div>${cover}${chain}</div>
+    ${policy}
+    <div class="ak-card" id="akTapeCard"><div class="ak-hd"><div><h3>On whose watch</h3><p>Who answered for this dataset, when they signed, and what happened. Pick a day to see how things stood.</p></div>
+      <div class="ak-hd-r"><span class="ak-key"><span>${AKM.met}Signed off</span><span><i style="border-radius:2.5px;background:var(--err)"></i>A control failed</span>
+        <span><i style="border-radius:50%;background:var(--run)"></i>Something changed</span></span></div></div>
+      <div id="akTape">${akTapeSvg()}</div>${akLedger()}</div>
+    <div class="ak-card ak-moment" id="akMoment">${akMoment()}</div></div>`;
+}
+
+function akDock(s) {
+  if (!s) return '';
+  const v = s.verdict, r = AK.rec, i = r.systems.indexOf(s), said = (s.responses || []).slice(-1)[0];
+  const rule = c => `<div class="ak-rule ${c.state}">${AKM[c.state === 'failed' ? 'not' : c.state === 'held' ? 'met' : 'unk']}<span>${esc(c.label)}</span>
+      <small>${c.state === 'failed' ? `${akN(c.failed)} of ${akN(c.evaluated)} records failed` : c.state === 'held' ? (c.failed ? `held, ${akN(c.failed)} inside its pass line` : 'held') : 'not in the last run'}</small></div>`;
+  const ev = (s.evidence || []).map(e => e.url ? `<a class="ak-chip" href="${esc(e.url)}" target="_blank" rel="noopener noreferrer" title="Added ${esc(akDay(e.at))} by ${esc(e.by)}">${AKI.clip}${esc(e.label)}</a>`
+                                               : `<span class="ak-chip" title="Added ${esc(akDay(e.at))} by ${esc(e.by)}">${AKI.clip}${esc(e.label)}</span>`).join('');
+  const left = s.none
+    ? `<div><h4>${esc(s.name)} <span class="ak-pill gap">No control in place</span></h4><div class="ak-mut" style="font-size:13px">${esc(AK_KIND[s.kind] || '')}</div>
+        <div class="ak-kv"><span>Declared</span><div>${esc(akDay(s.none_since))}</div><span>What is said</span><div>${s.gap_note ? esc(s.gap_note) : '<span class="ak-mut">Nothing yet</span>'}</div></div></div>`
+    : `<div><h4>${esc(s.control)} <span class="ak-pill ${v.state}">${esc(v.state === 'failed' ? `Failing since ${akDay(s.failing_since, true)}` : AK_STATE[v.state])}</span></h4>
+        <div class="ak-mut" style="font-size:13px">${esc(s.name)}</div>
+        <div class="ak-kv">${s.should ? `<span>Should make sure</span><div>${esc(s.should)}</div>` : ''}
+          <span>Proved by</span><div>${v.checks.length ? v.checks.map(rule).join('') : '<span class="ak-mut">Nothing yet. Edit it to choose the checks that prove it.</span>'}</div>
+          <span>Evidence</span><div class="ak-evs">${ev || '<span class="ak-mut">None given</span>'}</div></div></div>`;
+  const mgr = r.manager;
+  const resp = v.state === 'failed' || said ? `<div class="ak-resp">${AKI.bell}<div>${v.state === 'failed' ? `<b>Failing for ${esc(akS(Math.max(1, s.failing_days || 0), 'day'))}</b>` : '<b>What was said</b>'}
+        ${said ? `<q>${esc(said.text)}</q><span>${esc(said.by)}, ${esc(akDay(said.at))}</span>` : '<br>No response recorded yet'}</div>
+        <button type="button" class="ak-lk" data-ak="respond" data-sys="${esc(s.id)}">Add a response</button></div>` : '';
+  return `<div class="ak-dock" id="akDock" data-sys="${esc(s.id)}">${left}
+    <div><div class="ak-ppl">
+        <div class="ak-pp">${akAv(s.person, 'lg')}<div><b>${s.person ? esc(s.person.name) : 'No one named'}</b><small>${s.person ? `Answers for this system since ${esc(akDay(s.since))}` : 'Nobody answers for this system yet'}</small></div></div>
+        <div class="ak-pp">${akAv(mgr, 'lg')}<div><b>${mgr ? esc(mgr.name) : 'No one named'}</b><small>Accountable for the dataset</small></div></div></div>${resp}</div>
+    <div class="ak-dock-acts"><button type="button" class="ak-btn ghost sm" data-ak="editsys" data-sys="${esc(s.id)}">Edit</button>
+      <button type="button" class="ak-btn ghost sm" data-ak="move" data-sys="${esc(s.id)}" data-to="${i - 1}"${i === 0 ? ' disabled' : ''}>Move earlier</button>
+      <button type="button" class="ak-btn ghost sm" data-ak="move" data-sys="${esc(s.id)}" data-to="${i + 1}"${i === r.systems.length - 1 ? ' disabled' : ''}>Move later</button>
+      <span class="ak-grow"></span><button type="button" class="ak-btn danger sm" data-ak="rmsys" data-sys="${esc(s.id)}">Take off the path</button></div></div>`;
+}
+
+// Twelve months on one line: who held the dataset (the band), when they signed (stamps above it), what happened (pins below).
+function akTapeSvg() {
+  const tp = AK.rec.tape, t0 = akWhen(tp.from), tN = akWhen(tp.to), span = (tN - t0) * 12.9 / 12, W = 1260, L = 20, R = W - 20, band = 86, bh = 46;
+  const x = t => L + (R - L) * Math.max(0, Math.min(1, (t - t0) / span));
+  let out = `<defs><pattern id="akHatch" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><path d="M0 0V8" stroke="var(--border)" stroke-width="2"/></pattern></defs>`;
+  // the band: a segment for each person, hatched where no one held it
+  let at = t0;
+  const hatch = (a, b) => { if (x(b) - x(a) > 3) out += `<rect x="${x(a)}" y="${band}" width="${x(b) - x(a)}" height="${bh}" rx="6" fill="url(#akHatch)" stroke="var(--border)" stroke-dasharray="4 3"/>${x(b) - x(a) > 104 ? `<text x="${x(a) + 12}" y="${band + 28}">No one named</text>` : ''}`; };
+  tp.holders.forEach(h => {
+    const a = Math.max(t0, akWhen(h.from)), b = h.to ? akWhen(h.to) : tN;
+    if (a > at) hatch(at, a);
+    const w = x(b) - x(a);
+    out += `<rect x="${x(a) + 1}" y="${band}" width="${Math.max(2, w - 2)}" height="${bh}" rx="6" fill="var(--idle-bg)" stroke="var(--border)"/>`;
+    if (w > 34) out += `<circle cx="${x(a) + 24}" cy="${band + bh / 2}" r="13" fill="var(--card)" stroke="var(--border)"/><text x="${x(a) + 24}" y="${band + bh / 2 + 4}" text-anchor="middle" style="font-size:10px;font-weight:700;fill:var(--text)">${esc(akIni(h.name))}</text>`;
+    if (w > 70 + String(h.name || '').length * 7.4) out += `<text class="ak-nm" x="${x(a) + 46}" y="${band + bh / 2 + 5}">${esc(h.name)}</text>`;
+    at = Math.max(at, b);
+  });
+  if (at < tN) hatch(at, tN);
+  // sign-offs: a stamp on the day; a statement someone declined to sign is drawn as that
+  let lastLabel = -99;
+  tp.signoffs.slice().sort((a, b) => akWhen(a.at) - akWhen(b.at)).forEach(s => {
+    const sx = x(akWhen(s.at)), col = s.outcome === 'declined' ? 'var(--muted)' : s.outcome === 'exceptions' ? 'var(--run)' : 'var(--ok)';
+    const bg = s.outcome === 'declined' ? 'var(--idle-bg)' : s.outcome === 'exceptions' ? 'var(--run-bg)' : 'var(--ok-bg)';
+    const words = s.outcome === 'declined' ? 'Declined to sign' : s.outcome === 'exceptions' ? 'Signed with exceptions' : 'Signed off';
+    out += `<g transform="translate(${sx},${band - 26})" data-aksign="${esc(s.id)}" tabindex="0" role="button" aria-label="${words} on ${esc(akDay(s.at))}"><title>${words} on ${esc(akDay(s.at))}. Press to read it.</title>
+      <circle r="11" fill="${bg}" stroke="${col}" stroke-width="1.5"/>${s.outcome === 'declined' ? `<path d="M-4 -4l8 8M4 -4l-8 8" fill="none" stroke="${col}" stroke-width="2" stroke-linecap="round"/>`
+        : `<path d="M-4.5 .5l3 3 6-6.5" fill="none" stroke="${col}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`}
+      ${sx - lastLabel > 58 ? `<text y="-18" text-anchor="middle">${esc(akDay(s.at, true))}</text>` : ''}<path d="M0 11V26" stroke="${col}" stroke-width="1.5"/></g>`;
+    if (sx - lastLabel > 58) lastLabel = sx;
+  });
+  if (tp.due && akWhen(tp.due) <= t0 + span && akWhen(tp.due) > tN) {
+    const dx = x(akWhen(tp.due)), near = dx - lastLabel < 74;      // beside its stamp when the last sign-off's date is written close by
+    out += `<g transform="translate(${dx},${band - 26})"><circle r="11" fill="none" stroke="var(--run)" stroke-width="1.5" stroke-dasharray="3 3"/><path d="M0 11V26" stroke="var(--run)" stroke-width="1.5" stroke-dasharray="3 3"/>
+      <text x="${near ? 17 : 0}" y="${near ? 4 : -18}" text-anchor="${near ? 'start' : (dx > R - 36 ? 'end' : 'middle')}" style="fill:var(--run);font-weight:600">Due ${esc(akDay(tp.due, true))}</text></g>`;
+  }
+  // what happened: a pin for each, set on the first row that has room for its words (a new row when none has)
+  const rows = [];
+  tp.events.forEach(e => {
+    const ex = x(akWhen(e.at)), w = Math.max(e.title.length, (e.sub || '').length) * 6.9 + 24, end = ex + w > x(tN) - 4;
+    const a = end ? ex - w : ex - 10, b = end ? ex + 10 : ex + w;
+    let k = rows.findIndex(r => r.every(([p, q]) => b < p || a > q));
+    if (k < 0) { rows.push([]); k = rows.length - 1; }
+    rows[k].push([a, b]);
+    const col = e.kind === 'failed' ? 'var(--err)' : 'var(--run)', y = band + bh + 30 + 34 * k;
+    out += `<g data-akday="${esc(e.at)}"><title>${esc(e.title)}, ${esc(akDay(e.at))}</title><path d="M${ex} ${band + bh}V${y}" stroke="${col}" stroke-width="1.5"/>
+      <rect x="${ex - 6}" y="${y - 6}" width="12" height="12" rx="${e.kind === 'failed' ? 2.5 : 6}" fill="${col}"/>
+      <text class="ak-ev" x="${ex + (end ? -13 : 13)}" y="${y + 1}" text-anchor="${end ? 'end' : 'start'}">${esc(e.title)}</text>
+      ${e.sub ? `<text x="${ex + (end ? -13 : 13)}" y="${y + 17}" text-anchor="${end ? 'end' : 'start'}">${esc(e.sub)}</text>` : ''}</g>`;
+  });
+  // the months and today, drawn to the height the pins took
+  const axis = band + bh + 30 + 34 * Math.max(1, rows.length) + 14, H = axis + 24, d0 = new Date(t0);
+  let grid = `<path d="M${L} ${axis}H${R}" stroke="var(--border)"/><path d="M${x(tN)} 44V${axis}" stroke="var(--muted)" stroke-dasharray="2 4"/><text x="${x(tN) + 7}" y="${axis - 8}">Today</text>`;
+  for (let m = new Date(Date.UTC(d0.getUTCFullYear(), d0.getUTCMonth() + 1, 1)); m.getTime() < t0 + span; m = new Date(Date.UTC(m.getUTCFullYear(), m.getUTCMonth() + 1, 1))) {
+    const mx = x(m.getTime());
+    grid += `<path d="M${mx} ${band - 4}V${band + bh + 4}" stroke="var(--border)" opacity=".5"/><text x="${mx + 5}" y="${axis + 18}">${m.toLocaleDateString('en-GB', { month: 'short', timeZone: 'UTC' })}${m.getUTCMonth() === 0 ? " '" + String(m.getUTCFullYear()).slice(2) : ''}</text>`;
+  }
+  out = grid + out;
+  if (AK.day != null) {
+    const px = x(Math.min(tN, Math.max(t0, AK.day)));
+    out += `<path d="M${px} 28V${band}" stroke="var(--accent)" stroke-width="2"/><rect x="${px - 34}" y="6" width="68" height="22" rx="5" fill="var(--btn)"/>
+      <text x="${px}" y="21" text-anchor="middle" style="fill:#fff;font-weight:650;font-size:12px">${esc(akDay(new Date(AK.day).toISOString(), true))}</text>`;
+  }
+  return `<svg class="ak-tape" viewBox="0 0 ${W} ${H}" role="img" aria-label="Twelve months: who answered for this dataset, when they signed, and what happened"
+    data-t0="${t0}" data-span="${span}" data-l="${L}" data-r="${R}" data-w="${W}" data-tn="${tN}">${out}</svg>`;
+}
+function akLedger() {
+  const s = AK.rec.signoffs || [];
+  if (!s.length) return '';
+  const word = o => o === 'declined' ? 'declined to sign' : o === 'exceptions' ? 'signed with exceptions' : 'signed off';
+  return `<div class="ak-ledger"><span>Statements</span>${s.slice(0, 8).map(x => `<button type="button" class="ak-chip" data-ak="viewsign" data-id="${esc(x.id)}">${esc(akDay(x.signed_at))}, ${word(x.outcome)}</button>`).join('')}</div>`;
+}
+// How things stood on the day picked: read from what the page already holds (who held it, the last statement signed by
+// then, which controls were inside a failing stretch, the last run by then). Nothing is judged here.
+function akMoment() {
+  const r = AK.rec, t = AK.day == null ? akWhen(r.now) : AK.day, end = t + 86399000;
+  const who = (r.managers || []).filter(m => akWhen(m.from) <= end && (!m.to || akWhen(m.to) > t)).slice(-1)[0];
+  const signed = (r.signoffs || []).filter(s => s.outcome !== 'declined' && akWhen(s.signed_at) <= end).sort((a, b) => akWhen(b.signed_at) - akWhen(a.signed_at))[0];
+  const failing = [];
+  r.systems.forEach(s => (s.episodes || []).forEach(e => { if (akWhen(e.from) <= end && (!e.to || akWhen(e.to) > t)) failing.push({ s, e }); }));
+  const run = (r.runs || []).filter(x => akWhen(x.id) <= end).slice(-1)[0];
+  const ago = signed ? Math.max(0, Math.floor((t - akWhen(signed.signed_at)) / 86400000)) : null;
+  return `<div><span class="ak-mut" style="font-size:12.5px">How things stood on</span><span class="ak-day">${esc(akDay(new Date(t).toISOString()))}</span></div>
+    <div><div class="ak-lab">Accountable</div><div class="ak-big">${akAv(who, 'lg')}${who ? esc(who.name) : 'No one named'}</div>
+      <div class="ak-fine">${signed ? `Last signed ${ago ? akS(ago, 'day') + ' earlier' : 'that day'}, on ${esc(akDay(signed.signed_at))}${(signed.exceptions || []).length ? `, with ${akS(signed.exceptions.length, 'exception')}` : ''}.` : 'Nothing had been signed off by then.'}</div></div>
+    <div><div class="ak-lab">What was failing</div>${failing.length
+      ? `<div class="ak-big">${AKM.not}${esc(failing[0].s.control || failing[0].s.name)}</div><div class="ak-fine">${esc(failing[0].s.name)}. Up to ${akN(failing[0].e.failed)} of ${akN(failing[0].e.evaluated)} records.<br>Answering for that system: <b>${esc((failing[0].s.person || {}).name || 'no one named')}</b>.${failing.length > 1 ? `<br>And ${akS(failing.length - 1, 'other control')}.` : ''}</div>`
+      : `<div class="ak-big">${AKM.met}No control</div><div class="ak-fine">${r.systems.some(s => (s.checks || []).length) ? 'None of the controls on its path was failing.' : 'Nothing on its path is proved by a check yet.'}</div>`}</div>
+    <div><div class="ak-lab">Its last run by then</div>${run ? `<div class="ak-big">${AKM[run.status === 'green' ? 'met' : run.status === 'red' ? 'not' : 'due']}${run.score == null ? 'No score' : 'Scored ' + esc(String(run.score))}</div><div class="ak-fine">Assessed ${esc(akDay(run.id))}.</div>`
+      : `<div class="ak-big">${AKM.unk}No run</div><div class="ak-fine">It had not been assessed by then.</div>`}</div>`;
+}
+
+// ---------------------------------------------------------------------------------------------------- dialogs
+function akDialog(o) {
+  const veil = document.createElement('div'), last = document.activeElement;
+  veil.className = 'ak-veil';
+  veil.innerHTML = `<div class="ak-modal${o.wide ? ' wide' : ''}" role="dialog" aria-modal="true" aria-label="${esc(o.title)}">
+    <div class="ak-mh">${o.lead || ''}<div><h3>${esc(o.title)}</h3>${o.sub ? `<p>${esc(o.sub)}</p>` : ''}</div><button type="button" class="ak-x" data-akx aria-label="Close">&times;</button></div>
+    ${o.body}<div class="ak-mf">${o.note ? `<small>${esc(o.note)}</small>` : ''}<span class="ak-grow"></span>${o.foot || ''}<div class="ak-err" role="alert"></div></div></div>`;
+  document.body.appendChild(veil);
+  const onKey = e => { if (e.key === 'Escape' && !document.querySelector('.dq-ov')) { e.preventDefault(); e.stopPropagation(); d.close(); } };
+  const d = {
+    el: veil, q: s => veil.querySelector(s), qa: s => [...veil.querySelectorAll(s)],
+    close() { veil.remove(); document.removeEventListener('keydown', onKey, true); if (last && last.focus) try { last.focus(); } catch (e) {} },
+    err(m) { veil.querySelector('.ak-err').textContent = m || ''; },
+    busy(b) { veil.querySelectorAll('.ak-mf button').forEach(x => { x.disabled = !!b; }); },
+  };
+  document.addEventListener('keydown', onKey, true);
+  veil.addEventListener('click', e => { if (e.target.closest('[data-akx]')) d.close(); });
+  setTimeout(() => { const f = veil.querySelector('.ak-mb input:not([type=radio]):not([type=checkbox]), .ak-mb textarea, .ak-mb select, .ak-mb input'); (f || veil.querySelector('.ak-x')).focus(); }, 30);
+  return d;
+}
+// Save a change to the open dataset's record: the API answers with the dataset as it now stands, which is drawn.
+async function akSave(d, body) {
+  d.err(''); d.busy(true);
+  try { AK.rec = await akCall(Object.assign({ dataset_key: AK.key }, body)); d.close(); akPaintRecord(); return true; }
+  catch (e) { d.err(e.message || 'That did not save.'); d.busy(false); return false; }
+}
+const akEvRows = (list, n) => `<div class="ak-f"><span class="ak-flab">Evidence: what it is called and, if it is kept somewhere, the link</span>
+  ${Array.from({ length: Math.max(n || 2, (list || []).length + 1) }, (_, i) => { const e = (list || [])[i] || {};
+    return `<div class="ak-evrow"><input type="text" class="ak-ev-l" maxlength="120" placeholder="e.g. Sign-up form spec v7" value="${esc(e.label || '')}" aria-label="Evidence ${i + 1}, its name"><input type="url" class="ak-ev-u" maxlength="500" placeholder="https://" value="${esc(e.url || '')}" aria-label="Evidence ${i + 1}, its link"></div>`; }).join('')}</div>`;
+const akEvRead = d => d.qa('.ak-evrow').filter(r => r.querySelector('.ak-ev-l')).map(r => ({ label: r.querySelector('.ak-ev-l').value.trim(), url: r.querySelector('.ak-ev-u').value.trim() })).filter(e => e.label || e.url);
+const akCancel = '<button type="button" class="ak-btn ghost" data-akx>Cancel</button>';
+
+function akNameDialog() {
+  const r = AK.rec, m = r.manager, today = new Date().toISOString().slice(0, 10);
+  const d = akDialog({ title: `Who answers for ${r.dataset.name}`, sub: m ? `${m.name} has answered for it since ${akDay(m.from)}. Naming someone else hands it over, and keeps the record of who held it when.` : 'The person accountable for this dataset: its quality, and the personal data in it.',
+    body: `<div class="ak-mb"><div class="ak-g2"><div class="ak-f"><label for="akNmName">Their name</label><input id="akNmName" type="text" maxlength="80" value="${esc(m ? m.name : '')}" autocomplete="off"></div>
+        <div class="ak-f"><label for="akNmEmail">Their email</label><input id="akNmEmail" type="email" maxlength="254" value="${esc(m ? m.email : '')}" autocomplete="off"></div></div>
+      <div class="ak-f" style="max-width:260px"><label for="akNmFrom">Since (leave empty for today)</label><input id="akNmFrom" type="date" max="${today}"><small>The day they took it on, if they have held it a while.</small></div></div>`,
+    foot: `${m ? '<button type="button" class="ak-btn danger" id="akNmNone">Hand back to no one</button>' : ''}${akCancel}<button type="button" class="ak-btn" id="akNmSave">Save</button>` });
+  d.q('#akNmSave').addEventListener('click', () => {
+    const name = d.q('#akNmName').value.trim(), email = d.q('#akNmEmail').value.trim();
+    if (!name && !email) { d.err('Give their name or their email.'); return; }
+    akSave(d, { action: 'set-manager', person: { name, email, from: d.q('#akNmFrom').value || undefined } });
+  });
+  if (m) d.q('#akNmNone').addEventListener('click', async () => {
+    if (await dqConfirm(`Hand ${r.dataset.name} back to no one? ${m.name} stays on its record as having answered for it until today.`, { title: 'No one will answer for it', okLabel: 'Hand it back', danger: true }))
+      akSave(d, { action: 'set-manager', person: null });
+  });
+}
+
+function akSystemDialog(s) {
+  const r = AK.rec, old = s || { kind: 'form', checks: [] }, picked = new Set(old.checks || []);
+  const byDim = {};
+  r.checks.forEach(c => { (byDim[c.dimension] = byDim[c.dimension] || []).push(c); });
+  (old.checks || []).filter(id => !r.checks.some(c => c.id === id)).forEach(id => { (byDim['not in the newest run'] = byDim['not in the newest run'] || []).push({ id, label: id, gone: true }); });
+  const pick = Object.keys(byDim).length ? `<div class="ak-pick" id="akSysPick">${Object.entries(byDim).map(([dim, cs]) => `<div class="ak-pick-g">${esc(dim.charAt(0).toUpperCase() + dim.slice(1))}</div>${cs.map(c =>
+      `<label><input type="checkbox" value="${esc(c.id)}"${picked.has(c.id) ? ' checked' : ''}><span>${esc(c.label)}</span>${c.gone ? '' : `<small class="${c.status === 'green' ? '' : 'bad'}">${c.status === 'green' ? (c.failed ? akN(c.failed) + ' failing, inside its pass line' : 'passing') : akN(c.failed) + ' failing'}</small>`}</label>`).join('')}`).join('')}</div>`
+    : '<div class="ak-mut" style="font-size:13px">This dataset has no run yet, so there are no checks to choose from. Assess it, then come back to choose them.</div>';
+  const d = akDialog({ title: s ? `Edit ${s.name}` : 'Add a system', sub: 'A system this data passes through, the control it is meant to apply, and who answers for it.',
+    body: `<div class="ak-mb"><div class="ak-g2"><div class="ak-f"><label for="akSyName">The system</label><input id="akSyName" type="text" maxlength="60" placeholder="e.g. Web sign-up form" value="${esc(old.name || '')}" autocomplete="off"></div>
+        <div class="ak-f"><label for="akSyKind">What it is</label><select id="akSyKind">${Object.entries(AK_KIND).map(([k, v]) => `<option value="${k}"${k === old.kind ? ' selected' : ''}>${esc(v)}</option>`).join('')}</select></div></div>
+      <div class="ak-g2"><div class="ak-f"><label for="akSyWho">Who answers for it</label><input id="akSyWho" type="text" maxlength="80" placeholder="Their name" value="${esc((old.person || {}).name || '')}" autocomplete="off"></div>
+        <div class="ak-f"><label for="akSyMail">Their email</label><input id="akSyMail" type="email" maxlength="254" value="${esc((old.person || {}).email || '')}" autocomplete="off"></div></div>
+      <label class="ak-checkrow"><input type="checkbox" id="akSyNone"${old.none ? ' checked' : ''}>There is no control in place for this</label>
+      <div id="akSyHas" style="display:grid;gap:14px"><div class="ak-f"><label for="akSyCtl">Its control</label><input id="akSyCtl" type="text" maxlength="80" placeholder="e.g. Input validation" value="${esc(old.control || '')}" autocomplete="off"></div>
+        <div class="ak-f"><label for="akSyShould">What it should make sure of</label><textarea id="akSyShould" maxlength="240" placeholder="e.g. Every email and phone number is well formed before it is saved.">${esc(old.should || '')}</textarea></div>
+        <div class="ak-f"><span class="ak-flab">Which of this dataset's checks prove it. When one of them fails, the control failed.</span>${pick}</div>${akEvRows(old.evidence)}</div>
+      <div id="akSyGap" class="ak-f"><label for="akSyNote">What is being done about it, and by when</label><textarea id="akSyNote" maxlength="240" placeholder="e.g. Retention job requested from IT, expected January.">${esc(old.gap_note || '')}</textarea></div></div>`,
+    foot: `${akCancel}<button type="button" class="ak-btn" id="akSySave">${s ? 'Save' : 'Add it'}</button>` });
+  const flip = () => { const none = d.q('#akSyNone').checked; d.q('#akSyHas').style.display = none ? 'none' : 'grid'; d.q('#akSyGap').style.display = none ? 'grid' : 'none'; };
+  d.q('#akSyNone').addEventListener('change', flip); flip();
+  d.q('#akSySave').addEventListener('click', () => {
+    const name = d.q('#akSyName').value.trim(), none = d.q('#akSyNone').checked, who = d.q('#akSyWho').value.trim(), mail = d.q('#akSyMail').value.trim();
+    if (!name) { d.err('Name the system.'); return; }
+    if (!none && !d.q('#akSyCtl').value.trim()) { d.err('Say what its control is, or tick that there is none.'); return; }
+    akSave(d, { action: 'put-system', system: { id: s ? s.id : undefined, name, kind: d.q('#akSyKind').value, none, person: who || mail ? { name: who, email: mail } : null,
+      control: d.q('#akSyCtl').value.trim(), should: d.q('#akSyShould').value.trim(), gap_note: d.q('#akSyNote').value.trim(),
+      checks: d.qa('#akSysPick input:checked').map(i => i.value), evidence: akEvRead(d) } }).then(ok => { if (ok && !s) { AK.sel = AK.rec.systems[AK.rec.systems.length - 1].id; akPaintRecord(); } });
+  });
+}
+
+function akRespondDialog(s) {
+  const d = akDialog({ title: `Respond: ${s.control || s.name}`, sub: 'What happened, or what is being done about it. It is kept beside the system with your name and today, and cannot be changed afterwards.',
+    body: `<div class="ak-mb"><div class="ak-f"><label for="akRsText">Your response</label><textarea id="akRsText" maxlength="600" style="min-height:110px"></textarea></div></div>`,
+    foot: `${akCancel}<button type="button" class="ak-btn" id="akRsSave">Record it</button>` });
+  d.q('#akRsSave').addEventListener('click', () => {
+    const text = d.q('#akRsText').value.trim();
+    if (text.length < 3) { d.err('Say what happened, or what is being done about it.'); return; }
+    akSave(d, { action: 'respond', system_id: s.id, text });
+  });
+}
+
+function akTrainingDialog() {
+  const t = AK.rec.training || {};
+  const d = akDialog({ title: 'Training', sub: 'Whether the people who handle this data are trained to, and until when.',
+    body: `<div class="ak-mb"><div class="ak-opts" style="grid-column:1;margin:0"><label class="ak-rad"><input type="radio" name="akTr" value="in_place"${t.answer === 'in_place' ? ' checked' : ''}>In place</label>
+        <label class="ak-rad"><input type="radio" name="akTr" value="not_in_place"${t.answer === 'not_in_place' ? ' checked' : ''}>Not in place</label></div>
+      <div id="akTrHas" style="display:grid;gap:14px"><div class="ak-g2"><div class="ak-f"><label for="akTrDetail">Who and what</label><input id="akTrDetail" type="text" maxlength="160" placeholder="e.g. Data protection training, 14 of 14 people" value="${esc(t.detail || '')}"></div>
+        <div class="ak-f"><label for="akTrTo">Valid to</label><input id="akTrTo" type="date" value="${esc(t.valid_to || '')}"></div></div>${akEvRows(t.evidence)}</div></div>`,
+    foot: `${akCancel}<button type="button" class="ak-btn" id="akTrSave">Save</button>` });
+  const flip = () => { const v = (d.q('input[name=akTr]:checked') || {}).value; d.q('#akTrHas').style.display = v === 'not_in_place' ? 'none' : 'grid'; };
+  d.qa('input[name=akTr]').forEach(i => i.addEventListener('change', flip)); flip();
+  d.q('#akTrSave').addEventListener('click', () => {
+    const v = (d.q('input[name=akTr]:checked') || {}).value;
+    if (!v) { d.err('Say whether it is in place.'); return; }
+    akSave(d, { action: 'set-training', training: { answer: v, detail: d.q('#akTrDetail').value.trim(), valid_to: d.q('#akTrTo').value, evidence: akEvRead(d) } });
+  });
+}
+
+function akDeclareDialog(c) {
+  const dec = c.declared || {};
+  const d = akDialog({ title: c.label, sub: 'Only a person can answer this clause. Your answer is kept with your name and today.',
+    body: `<div class="ak-mb"><div class="ak-opts" style="grid-column:1;margin:0"><label class="ak-rad"><input type="radio" name="akDc" value="yes"${dec.answer === 'yes' ? ' checked' : ''}>In place</label>
+        <label class="ak-rad"><input type="radio" name="akDc" value="no"${dec.answer === 'no' ? ' checked' : ''}>Not in place</label></div>
+      <div class="ak-f"><label for="akDcNote">A note</label><input id="akDcNote" type="text" maxlength="240" value="${esc(dec.note || '')}"></div>${akEvRows(dec.evidence)}</div>`,
+    foot: `${akCancel}<button type="button" class="ak-btn" id="akDcSave">Save</button>` });
+  d.q('#akDcSave').addEventListener('click', () => {
+    const v = (d.q('input[name=akDc]:checked') || {}).value;
+    if (!v) { d.err('Say whether it is in place.'); return; }
+    akSave(d, { action: 'declare', clause_id: c.id, declared: { answer: v, note: d.q('#akDcNote').value.trim(), evidence: akEvRead(d) } });
+  });
+}
+
+// The workspace's policies: pick the one a dataset is held to (from a record), or just keep them (from the roster).
+function akPolicyChoose() {
+  const r = AK.rec, has = r ? (r.policy || {}).id : null, list = (r ? r.policies : AK.roster.policies) || [];
+  const d = akDialog({ title: r ? `The policy ${r.dataset.name} is held to` : 'Policies', sub: 'A policy belongs to the workspace, so one can cover many datasets.',
+    body: `<div class="ak-mb"><div class="ak-list">${list.map(p => `<div class="ak-li${p.id === has ? ' on' : ''}"><span>${AKI.book}</span><div class="ak-grow"><b>${esc(p.name)}${p.version ? ' ' + esc(p.version) : ''}</b><small>${akS(p.clauses, 'clause')}</small></div>
+        <button type="button" class="ak-btn ghost sm" data-akpol-edit="${esc(p.id)}">Edit</button>${r ? (p.id === has ? '<span class="ak-pill held">Held to this</span>' : `<button type="button" class="ak-btn sm" data-akpol-use="${esc(p.id)}">Hold it to this</button>`) : ''}</div>`).join('')
+      || '<div class="ak-empty"><b>No policy yet</b><p>Write the first one: its name, and the clauses a dataset must meet.</p></div>'}</div></div>`,
+    foot: `${r && has ? '<button type="button" class="ak-btn danger" id="akPolNone">Hold it to no policy</button>' : ''}<button type="button" class="ak-btn ghost" data-akx>Close</button><button type="button" class="ak-btn" id="akPolNew">${AKI.plus}New policy</button>` });
+  d.el.addEventListener('click', e => {
+    const u = e.target.closest('[data-akpol-use]'), ed = e.target.closest('[data-akpol-edit]');
+    if (u) akSave(d, { action: 'choose-policy', policy_id: u.dataset.akpolUse });
+    else if (ed) { d.close(); akPolicyEdit(ed.dataset.akpolEdit); }
+  });
+  d.q('#akPolNew').addEventListener('click', () => { d.close(); akPolicyEdit(null); });
+  if (r && has) d.q('#akPolNone').addEventListener('click', () => akSave(d, { action: 'choose-policy', policy_id: '' }));
+}
+async function akPolicyEdit(id) {
+  let pol = null;
+  if (id) {
+    try { pol = ((await akCall({ action: 'policies' })).policies || []).find(p => p.id === id) || null; }
+    catch (e) { dqAlert(e.message || 'That policy could not be read.'); return; }
+  }
+  const cat = (AK.meta.clauses || []).filter(c => c.kind !== 'declared'), had = {};
+  ((pol || {}).clauses || []).forEach(c => { had[c.kind] = c; });
+  const own = ((pol || {}).clauses || []).filter(c => c.kind === 'declared');
+  const row = c => { const on = pol ? !!had[c.kind] : c.kind !== 'retention' && c.kind !== 'consent' && c.kind !== 'erasure', n = (had[c.kind] || {}).n != null ? had[c.kind].n : c.n;
+    return `<label class="ak-clrow"><input type="checkbox" data-kind="${c.kind}"${on ? ' checked' : ''}><span>${esc(c.label.replace('{n}', 'N'))} <small>${c.by === 'data' ? 'the data answers' : 'the record answers'}</small></span>
+      ${c.n != null ? `<input type="number" min="1" max="3650" step="any" value="${esc(String(n))}" data-n="${c.kind}" aria-label="N for: ${esc(c.label.replace('{n}', 'N'))}">` : '<span></span>'}</label>`; };
+  const ownRow = c => `<div><input type="text" class="ak-own" maxlength="120" placeholder="e.g. Impact assessment on file" value="${esc((c || {}).text || '')}" data-id="${esc((c || {}).id || '')}" aria-label="A clause people answer"></div>`;
+  const d = akDialog({ title: pol ? `Edit ${pol.name}` : 'New policy', wide: true, sub: 'Its name, and the clauses a dataset held to it must meet. Changing it changes the check for every dataset held to it.',
+    body: `<div class="ak-mb"><div class="ak-g3"><div class="ak-f"><label for="akPlName">Its name</label><input id="akPlName" type="text" maxlength="80" placeholder="e.g. Customer Data Policy" value="${esc((pol || {}).name || '')}" autocomplete="off"></div>
+        <div class="ak-f"><label for="akPlVer">Version</label><input id="akPlVer" type="text" maxlength="20" placeholder="e.g. v3.2" value="${esc((pol || {}).version || '')}" autocomplete="off"></div>
+        <div class="ak-f"><label for="akPlDay">Approved on</label><input id="akPlDay" type="date" value="${esc((pol || {}).approved || '')}"></div></div>
+      ${akEvRows((pol || {}).evidence, 1)}
+      <div class="ak-g2" style="align-items:start"><div class="ak-f"><span class="ak-flab">Clauses that are checked for you</span><div>${cat.map(row).join('')}</div></div>
+        <div class="ak-f"><span class="ak-flab">Clauses only a person can answer, in your own words</span><div id="akPlOwn" style="display:grid;gap:8px">${own.map(ownRow).join('')}${ownRow(null)}</div>
+          <div><button type="button" class="ak-lk" id="akPlMore">Add another</button></div>
+          <small>Someone declares each of these for a dataset, with their evidence. Until they do, the clause cannot be told.</small></div></div></div>`,
+    foot: `${akCancel}<button type="button" class="ak-btn" id="akPlSave">Save the policy</button>` });
+  d.q('#akPlMore').addEventListener('click', () => { d.q('#akPlOwn').insertAdjacentHTML('beforeend', ownRow(null)); const all = d.qa('.ak-own'); all[all.length - 1].focus(); });
+  d.q('#akPlSave').addEventListener('click', async () => {
+    const clauses = d.qa('.ak-clrow input[type=checkbox]:checked').map(i => { const n = d.q(`[data-n="${i.dataset.kind}"]`); return n ? { kind: i.dataset.kind, n: n.value } : { kind: i.dataset.kind }; })
+      .concat(d.qa('.ak-own').filter(i => i.value.trim()).map(i => ({ kind: 'declared', text: i.value.trim(), id: i.dataset.id || undefined })));
+    if (!d.q('#akPlName').value.trim()) { d.err('Give the policy a name.'); return; }
+    if (!clauses.length) { d.err('A policy needs at least one clause.'); return; }
+    d.err(''); d.busy(true);
+    try {
+      const out = await akCall({ action: 'put-policy', policy: { id: pol ? pol.id : undefined, name: d.q('#akPlName').value.trim(), version: d.q('#akPlVer').value.trim(), approved: d.q('#akPlDay').value, evidence: akEvRead(d), clauses } });
+      d.close();
+      if (AK.view === 'record') {
+        // a policy just written from a dataset that has none is the one it is held to; either way, read the dataset again
+        AK.rec = await akCall(!pol && !AK.rec.policy ? { action: 'choose-policy', dataset_key: AK.key, policy_id: out.policy.id } : { action: 'record', dataset_key: AK.key });
+        akPaintRecord();
+      } else { AK.roster.policies = (out.policies || []).map(p => ({ id: p.id, name: p.name, version: p.version, clauses: (p.clauses || []).length })); akPolicyChoose(); }
+    } catch (e) { d.err(e.message || 'That did not save.'); d.busy(false); }
+  });
+}
+
+// The sign-off: four answers, each of which must be given; anything short of "in place" says what is being done. The
+// facts of the period are the server's, shown beside the answers, never typed.
+function akSignDialog() {
+  const r = AK.rec, m = r.manager, f = r.facts || {}, pol = r.policy, tr = r.training, sys = r.systems;
+  const failing = sys.filter(s => s.verdict.state === 'failed'), gaps = sys.filter(s => s.none), named = sys.filter(s => !s.none);
+  const says = {
+    policy: pol ? `<b>${esc(pol.name)}${pol.version ? ' ' + esc(pol.version) : ''}</b>${pol.approved ? ', approved ' + esc(akDay(pol.approved)) : ''}.` : '<b>No policy chosen</b> for this dataset.',
+    controls: named.length ? `<b>${akS(named.length, 'control')} named${failing.length ? ', ' + failing.length + ' failing' : ''}.</b>${failing.length ? ' ' + esc(failing[0].control) + ' has been failing since ' + esc(akDay(failing[0].failing_since, true)) + '.' : ''}` : '<b>No control named</b> on its path.',
+    training: tr ? (tr.answer === 'in_place' ? `<b>${esc(tr.detail || 'Declared in place')}</b>${tr.valid_to ? ', valid to ' + esc(akDay(tr.valid_to)) : ''}.` : '<b>Declared not in place.</b>') : '<b>Nothing said</b> about training.',
+    systems: sys.length ? `<b>${sys.length - gaps.length} of ${akS(sys.length, 'system')} covered.</b>${gaps.length ? ' None for ' + esc(gaps.map(g => g.name).join(', ')) + '.' : ''}${f.unnamed ? ' ' + akS(f.unnamed, 'system') + ' with no one named.' : ''}` : '<b>No system</b> on its path yet.',
+  };
+  const area = a => `<div class="ak-row" data-area="${a}"><div class="ak-row-k">${AKI[AK_AREA[a][1]]}${AK_AREA[a][0]}</div><div class="ak-row-v">${says[a]}</div>
+      <div class="ak-opts" role="radiogroup" aria-label="${AK_AREA[a][0]}">${Object.entries(AK_ANS).map(([k, v]) => `<label class="ak-rad"><input type="radio" name="akSg_${a}" value="${k}">${v}</label>`).join('')}</div>
+      <textarea maxlength="400" placeholder="What is being done, and by when" aria-label="${AK_AREA[a][0]}: what is being done, and by when" hidden></textarea></div>`;
+  const eps = f.episodes || [], open = eps.filter(e => e.open).length;
+  const fact = (mk, b, s) => `<div class="ak-sf">${mk}<div><b>${b}</b><small>${s}</small></div></div>`;
+  const facts = [
+    f.runs ? fact(AKM.met, `Score ${esc(String(f.score_min))}${f.score_max !== f.score_min ? ' to ' + esc(String(f.score_max)) : ''}`, `${akS(f.runs, 'run')} in the period`) : fact(AKM.unk, 'No run in the period', 'Nothing was assessed'),
+    eps.length ? fact(AKM.not, `${akS(f.failed_controls, 'control')} failed`, open ? `${open} still failing` : 'All holding again') : fact(AKM.met, 'No control failed', named.length ? 'Each held, or was not tested' : 'None is named yet'),
+    f.pii_new ? fact(AKM.due, `${akS(f.pii_new, 'new personal-data finding')}`, 'From its newest sweep') : '',
+    pol ? fact(AKM[f.counts.not ? 'not' : f.counts.due ? 'due' : f.counts.unk ? 'unk' : 'met'], `${f.counts.met} of ${f.counts.met + f.counts.not + f.counts.due + f.counts.unk} policy clauses met`,
+      [f.counts.not ? f.counts.not + ' not met' : '', f.counts.due ? f.counts.due + ' due' : '', f.counts.unk ? f.counts.unk + ' cannot be told' : ''].filter(Boolean).join(', ') || 'Every clause met') : fact(AKM.unk, 'No policy to check', 'None is chosen'),
+    fact(AKI.clip, akS(f.evidence || 0, 'piece') + ' of evidence', f.evidence_new ? `${f.evidence_new} added in the period` : 'None added in the period'),
+  ].join('');
+  const d = akDialog({ title: `Sign off ${r.dataset.name}`, wide: true, lead: akAv(m, 'lg'),
+    sub: `For ${akDay(r.period.from)} to ${akDay(r.period.to)}. ${m.name} answers for it; you are signed in as ${r.me}.`,
+    body: `<div class="ak-mb split"><div class="ak-ml"><p class="ak-say">I answer for this dataset. For this period I confirm what is in place, and what is not.</p>${['policy', 'controls', 'training', 'systems'].map(area).join('')}</div>
+      <div class="ak-mr"><h4>What the record shows</h4><p>Filled in from every run in the period. It cannot be edited.</p>${facts}</div></div>`,
+    note: r.signing ? 'Signed and time-stamped with the platform’s key. A signed statement cannot be changed.' : 'Signing is not set up on this server yet.',
+    foot: `<button type="button" class="ak-btn ghost" id="akSgNo">Decline to sign</button><button type="button" class="ak-btn" id="akSgYes" disabled>${AKI.pen}<span>Sign off</span></button>` });
+  const read = () => { const out = {}; ['policy', 'controls', 'training', 'systems'].forEach(a => { const v = (d.q(`input[name=akSg_${a}]:checked`) || {}).value; if (v) out[a] = { answer: v, note: d.q(`[data-area=${a}] textarea`).value.trim() }; }); return out; };
+  const paint = () => {
+    const a = read(), n = Object.keys(a).length, exc = Object.values(a).filter(x => x.answer !== 'in_place').length;
+    ['policy', 'controls', 'training', 'systems'].forEach(k => { const ta = d.q(`[data-area=${k}] textarea`); ta.hidden = !(a[k] && a[k].answer !== 'in_place'); });
+    d.q('#akSgYes').disabled = n < 4 || !r.signing;
+    d.q('#akSgYes span').textContent = n === 4 && exc ? `Sign with ${akS(exc, 'exception')}` : 'Sign off';
+  };
+  d.qa('.ak-row input[type=radio]').forEach(i => i.addEventListener('change', paint));
+  d.q('#akSgYes').addEventListener('click', () => {
+    const a = read(), short = Object.keys(a).find(k => a[k].answer !== 'in_place' && a[k].note.length < 3);
+    if (short) { d.err(`${AK_AREA[short][0]}: say what is being done, and by when.`); d.q(`[data-area=${short}] textarea`).focus(); return; }
+    akSave(d, { action: 'sign', answers: a });
+  });
+  d.q('#akSgNo').addEventListener('click', async () => {
+    const why = await dqPrompt('Why are you not signing? It is recorded as a statement you declined to sign, with this reason.', '', { title: 'Decline to sign', okLabel: 'Record it', placeholder: 'e.g. The retention gap has no date yet' });
+    if (why == null) return;
+    if (why.trim().length < 3) { d.err('Say why you are not signing.'); return; }
+    akSave(d, { action: 'sign', decline: true, reason: why.trim() });
+  });
+}
+
+async function akStatementDialog(id) {
+  let got;
+  try { got = await akCall({ action: 'signoff', dataset_key: AK.key, signoff_id: id }); }
+  catch (e) { dqAlert(e.message || 'That statement could not be read.'); return; }
+  const s = got.signoff, f = s.facts || {}, c = f.counts || {};
+  const row = a => { const x = (s.answers || {})[a] || {}; return `<div class="ak-row"><div class="ak-row-k">${AKI[AK_AREA[a][1]]}${AK_AREA[a][0]}</div><div class="ak-row-v"><b>${esc(AK_ANS[x.answer] || '')}</b>${x.note ? '<br>' + esc(x.note) : ''}</div></div>`; };
+  akDialog({ title: s.outcome === 'declined' ? 'A statement that was not signed' : s.outcome === 'exceptions' ? 'Signed, with exceptions' : 'Signed off', wide: true, lead: akAv(s.manager, 'lg'),
+    sub: `${s.dataset_name}, ${akDay(s.period.from)} to ${akDay(s.period.to)}. ${(s.manager || {}).name || ''} answers for it; signed in as ${s.signed_by} on ${akDay(s.signed_at)}.`,
+    body: `<div class="ak-mb split"><div class="ak-ml"><p class="ak-say">${esc(s.statement || '')}</p>
+        ${s.outcome === 'declined' ? `<div class="ak-row"><div class="ak-row-k">Declined</div><div class="ak-row-v"><b>The reason given</b><br>${esc(s.reason || '')}</div></div>` : ['policy', 'controls', 'training', 'systems'].map(row).join('')}</div>
+      <div class="ak-mr"><h4>What the record showed</h4><p>As it stood when this was signed.</p>
+        <div class="ak-sf">${AKM[f.runs ? 'met' : 'unk']}<div><b>${f.runs ? `Score ${esc(String(f.score_min))}${f.score_max !== f.score_min ? ' to ' + esc(String(f.score_max)) : ''}` : 'No run in the period'}</b><small>${akS(f.runs || 0, 'run')}</small></div></div>
+        <div class="ak-sf">${AKM[(f.episodes || []).length ? 'not' : 'met']}<div><b>${(f.episodes || []).length ? akS(f.failed_controls, 'control') + ' failed' : 'No control failed'}</b><small>${akS(f.systems || 0, 'system')} on its path</small></div></div>
+        <div class="ak-sf">${AKM[c.not ? 'not' : 'met']}<div><b>${f.policy ? `${c.met || 0} of ${(c.met || 0) + (c.not || 0) + (c.due || 0) + (c.unk || 0)} policy clauses met` : 'No policy chosen'}</b><small>${f.policy ? esc(f.policy.name + (f.policy.version ? ' ' + f.policy.version : '')) : ''}</small></div></div>
+        <div class="ak-sf">${AKM[got.valid ? 'met' : 'not']}<div><b>${got.valid ? 'Checks as signed' : 'Does not check'}</b><small>${got.valid ? 'Nothing in it has changed, and the signature is the platform’s' : got.fingerprintMatches ? 'The signature could not be confirmed' : 'It has been changed since it was signed'}</small></div></div></div></div>`,
+    note: `Fingerprint ${String(s.fingerprint || '').slice(0, 24)}`, foot: '<button type="button" class="ak-btn ghost" data-akx>Close</button>' });
+}
+
+function akReportDialog() {
+  const d = akDialog({ title: 'Accountability report', sub: 'A PDF: the estate by who answers for it, then each dataset with a record. For the period you choose, up to today.',
+    body: `<div class="ak-mb"><div class="ak-opts" style="grid-column:1;margin:0">${[[30, 'The last 30 days'], [90, 'The last 90 days'], [180, 'The last 6 months'], [365, 'The last year']].map(([n, w]) =>
+      `<label class="ak-rad"><input type="radio" name="akRp" value="${n}"${n === 90 ? ' checked' : ''}>${w}</label>`).join('')}</div></div>`,
+    foot: `${akCancel}<button type="button" class="ak-btn" id="akRpGo">${AKI.file}Make the report</button>` });
+  d.q('#akRpGo').addEventListener('click', async () => {
+    d.err(''); d.busy(true);
+    try {
+      const r = await akCall({ action: 'report', days: +d.q('input[name=akRp]:checked').value });
+      const bin = atob(r.base64), bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      const url = URL.createObjectURL(new Blob([bytes], { type: r.contentType || 'application/pdf' }));
+      const a = document.createElement('a'); a.href = url; a.download = r.filename || 'accountability-report.pdf';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
+      d.close();
+    } catch (e) { d.err(e.message || 'The report could not be made.'); d.busy(false); }
+  });
+}
+
+// ---------------------------------------------------------------------------------------------------- wiring
+async function akAct(el) {
+  const act = el.dataset.ak, r = AK.rec, sys = r && el.dataset.sys ? r.systems.find(s => s.id === el.dataset.sys) : null;
+  if (act === 'open') return akOpen(el.dataset.key);
+  if (act === 'back') return akBack();
+  if (act === 'reload') return akLoad();
+  if (act === 'reopen') return akOpen(AK.key);
+  if (act === 'report') return akReportDialog();
+  if (act === 'policies' || act === 'choosepol') return akPolicyChoose();
+  if (act === 'editpol') return akPolicyEdit(r.policy.id);
+  if (act === 'name') return akNameDialog();
+  if (act === 'sign') return akSignDialog();
+  if (act === 'training') return akTrainingDialog();
+  if (act === 'addsys') return akSystemDialog(null);
+  if (act === 'editsys') return akSystemDialog(sys);
+  if (act === 'respond') return akRespondDialog(sys);
+  if (act === 'declare') return akDeclareDialog(r.clauses.find(c => c.id === el.dataset.clause));
+  if (act === 'viewsign') return akStatementDialog(el.dataset.id);
+  if (act === 'sel') { AK.sel = el.dataset.sys; return akPaintRecord(); }
+  if (act === 'move' || act === 'rmsys') {
+    if (act === 'rmsys' && !(await dqConfirm(`Take ${sys.name} off this dataset's path? What was said about it goes with it. Statements already signed keep what they recorded.`, { title: 'Take it off the path', okLabel: 'Take it off', danger: true }))) return;
+    el.disabled = true;
+    try { AK.rec = await akCall(act === 'move' ? { action: 'move-system', dataset_key: AK.key, system_id: sys.id, to: +el.dataset.to } : { action: 'remove-system', dataset_key: AK.key, system_id: sys.id }); akPaintRecord(); }
+    catch (e) { el.disabled = false; dqAlert(e.message || 'That did not save.'); }
+  }
+}
+function akWire() {
+  const P = akP();
+  if (!P || P._akWired) return;
+  P._akWired = true;
+  P.addEventListener('click', e => {
+    const b = e.target.closest('[data-ak]');
+    if (b) { e.preventDefault(); akAct(b); return; }
+    const sg = e.target.closest('[data-aksign]');
+    if (sg) { akStatementDialog(sg.getAttribute('data-aksign')); return; }
+    const svg = e.target.closest('svg.ak-tape');
+    if (!svg) return;
+    // a day on the line: the pin pressed, or wherever on the tape the press landed
+    const ev = e.target.closest('[data-akday]'), box = svg.getBoundingClientRect(), D = svg.dataset;
+    const px = (e.clientX - box.left) * (+D.w / box.width), t = ev ? akWhen(ev.getAttribute('data-akday')) : +D.t0 + (+D.span) * (px - +D.l) / (+D.r - +D.l);
+    AK.day = Math.floor(Math.min(+D.tn, Math.max(+D.t0, t)) / 86400000) * 86400000;
+    document.getElementById('akTape').innerHTML = akTapeSvg();
+    document.getElementById('akMoment').innerHTML = akMoment();
+  });
+  P.addEventListener('keydown', e => { const sg = e.target.closest && e.target.closest('[data-aksign]'); if (sg && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); akStatementDialog(sg.getAttribute('data-aksign')); } });
+  P.addEventListener('input', e => { if (e.target.id === 'akFind') { AK.q = e.target.value; akPaintRosterBody(); } });
+}
+// AK-END
+
 function switchTab(name) {
   gdSpotClose();
   // Portal mode: the Qlik-only tabs don't exist here - redirect any programmatic
@@ -34211,6 +35111,8 @@ function switchTab(name) {
   if (PORTAL && name === 'agents' && !IS_PORTAL_ADMIN) name = 'dashboard';
   // API keys are personal keys to the portal's API: the extension has no account to tie one to.
   if (!PORTAL && name === 'apikeys') name = 'dashboard';
+  // Accountability is a preview: only where the API said yes at sign-in (a platform super-admin, an environment with it on).
+  if (name === 'accountability' && !AK.on) name = 'dashboard';
   document.querySelectorAll('.side-item').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
   $('#uploadPanel').style.display = name === 'upload' ? 'block' : 'none';
   $('#historyPanel').style.display = name === 'history' ? 'block' : 'none';
@@ -34229,6 +35131,7 @@ function switchTab(name) {
   $('#sourceWatchPanel').style.display = name === 'sourcewatch' ? 'block' : 'none';
   $('#complianceTab').style.display = name === 'compliance' ? 'block' : 'none';
   $('#piiSweepPanel').style.display = name === 'piisweep' ? 'block' : 'none';
+  $('#accountabilityPanel').style.display = name === 'accountability' ? 'block' : 'none';
   $('#lineagePanel').style.display = name === 'lineage' ? 'block' : 'none';
   $('#profilePanel').style.display = name === 'profile' ? 'block' : 'none';
   $('#agentsPanel').style.display = name === 'agents' ? 'block' : 'none';
@@ -34259,6 +35162,7 @@ function switchTab(name) {
   if (name === 'sourcewatch') loadSourceWatch();
   if (name === 'compliance') loadComplianceEstate();
   if (name === 'piisweep') loadPiiSweep();
+  if (name === 'accountability') { akWire(); akLoad(); }
   if (name === 'lineage') loadLineageTab();
   if (name === 'model') loadModel();
   if (name === 'history') setHistorySub(PORTAL ? 'dataset' : 'app');   // portal has no Qlik full-app view
@@ -34428,6 +35332,7 @@ async function bootPortal() {
   APP_ID = me.user.workspace_id || '';
   applyMode();
   IS_PORTAL_ADMIN = (me.user.role || '').toLowerCase() === 'admin' || !!me.user.is_super;
+  if (me.user.is_super) akProbe();   // Accountability, a preview: shown only if the API says this environment has it
   PORTAL_ORG_NAME = me.user.home_org_name || me.user.org_name || '';
   PORTAL_WS_NAME = me.user.org_name || me.user.home_org_name || '';   // the org being VIEWED
   if (IS_PORTAL_ADMIN) {   // admins + super-admins: admin button, trust UI + approvals queue

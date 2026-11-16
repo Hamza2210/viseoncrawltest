@@ -951,6 +951,9 @@
       case 'apikey.revoked': return (d.id ? 'Key ' + d.id : '') + (d.owner ? ' · owner ' + d.owner : '');
       case 'tenantkey.issued':
       case 'tenantkey.revoked': return [({ uat: 'UAT', prod: 'Prod' })[d.env] || d.env, d.id ? 'Key ' + d.id : '', d.label].filter(Boolean).join(' · ');
+      case 'accountability.manager': return (d.from || 'no one') + ' → ' + (d.to || 'no one');
+      case 'accountability.signed':
+      case 'accountability.declined': return [d.for ? 'For ' + d.for : '', d.outcome === 'exceptions' ? 'with exceptions' : ''].filter(Boolean).join(' · ');
       case 'records.policy': {
         const say = v => ({ minimal: 'Flagged columns only', full: 'Whole row', none: 'No record detail' }[v] || v || '?');
         return say(d.from) + ' → ' + say(d.to);
