@@ -7367,7 +7367,6 @@ button.ak-cl:hover { border-color: var(--accent); }
 .ak-n b { font-size: 21px; font-weight: 650; color: var(--text); font-variant-numeric: tabular-nums; }
 .ak-roster { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; align-items: start; }
 .ak-col { border: 1px solid var(--border); border-radius: 10px; background: var(--card); overflow: hidden; }
-.ak-col.none { border-style: dashed; background: none; }
 .ak-ph { padding: 16px 16px 14px; display: grid; gap: 10px; border-bottom: 1px solid var(--border); }
 .ak-ph-w { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .ak-ph-w b { display: block; font-size: 15px; font-weight: 650; } .ak-ph-w small { display: block; font-size: 12.5px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; }
@@ -7383,7 +7382,40 @@ button.ak-cl:hover { border-color: var(--accent); }
 .ak-t svg.ak-mk { width: 14px; height: 14px; }
 .ak-t:hover { border-color: var(--accent); }
 .ak-t.not { border-color: color-mix(in srgb, var(--err) 55%, var(--border)); }
-.ak-t.unk { border-style: dashed; background: none; color: var(--muted); }
+/* the datasets no one holds: a row of their own under the people, a card each with an empty seat to fill. While no one
+   is named at all it is the whole board (.solo), with its heading in the middle. Its cards scroll inside it. */
+.ak-pool { grid-column: 1 / -1; border: 1px dashed var(--border); border-radius: 10px; min-width: 0; }
+.ak-pool-h { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-bottom: 1px dashed var(--border); }
+.ak-pool-h b { display: block; font-size: 15px; font-weight: 650; } .ak-pool-h small { display: block; font-size: 12.5px; color: var(--muted); }
+.ak-pool-hint { margin-left: auto; font-size: 12.5px; color: var(--muted); }
+.ak-pool.solo .ak-pool-h { flex-direction: column; text-align: center; gap: 12px; padding: 30px 20px 20px; border-bottom: 0; }
+.ak-pool.solo .ak-pool-h b { font-size: 19px; letter-spacing: -.01em; }
+.ak-pool.solo .ak-pool-h small { font-size: 13.5px; line-height: 1.5; margin-top: 4px; }
+.ak-seats { display: flex; align-items: center; justify-content: center; }
+.ak-seats span { width: 44px; height: 44px; border-radius: 50%; border: 1.5px dashed var(--border); background: var(--bg); display: grid; place-items: center; color: var(--muted); }
+.ak-seats span + span { margin-left: -10px; }
+.ak-seats span.mid { width: 60px; height: 60px; z-index: 1; border-color: var(--accent); color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--bg)); }
+.ak-seats svg { width: 20px; height: 20px; } .ak-seats .mid svg { width: 27px; height: 27px; }
+.ak-pool-g { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 300px)); justify-content: center; align-content: start; gap: 10px; padding: 16px;
+  max-height: max(310px, calc(100vh - var(--ak-under, 664px))); overflow-y: auto; }
+.ak-pool.solo .ak-pool-g { padding: 6px 20px 24px; --ak-under: 464px; }
+.ak-pc { display: grid; grid-template-columns: 40px minmax(0, 1fr) 28px; align-items: center; gap: 11px; min-height: 64px; padding: 10px 12px; border: 1px solid var(--border);
+  border-radius: 10px; background: var(--card); color: var(--text); text-align: left; }
+.ak-pc-ic { width: 40px; height: 40px; border-radius: 8px; background: var(--idle-bg); display: grid; place-items: center; font-size: 18px; color: var(--muted); }
+.ak-pc-ic svg { width: 22px; height: 22px; }
+.ak-pc-n { min-width: 0; display: grid; gap: 2px; }
+.ak-pc-n b { font-size: 14px; font-weight: 650; line-height: 1.3; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.ak-pc-n small { font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ak-seat { width: 28px; height: 28px; border-radius: 50%; border: 1.5px dashed var(--border); display: grid; place-items: center; color: var(--muted); }
+.ak-seat svg { width: 14px; height: 14px; }
+.ak-pc:hover, .ak-pc:focus-visible { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 6%, var(--card)); }
+.ak-pc:hover .ak-seat, .ak-pc:focus-visible .ak-seat { border-style: solid; border-color: var(--accent); color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.ak-pc:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media (prefers-reduced-motion: no-preference) {
+  .ak-pool.in .ak-pc { animation: akPcIn .3s var(--dq-ease, ease-out) both; animation-delay: calc(min(var(--i, 0), 14) * 20ms); }
+  @keyframes akPcIn { from { opacity: 0; transform: translateY(6px); } }
+}
+@media (max-width: 760px) { .ak-pool-g { grid-template-columns: minmax(0, 1fr); } .ak-pool-hint { display: none; } }
 
 /* dialogs */
 .ak-veil { position: fixed; inset: 0; background: rgba(8,10,14,.62); z-index: 1150; display: grid; place-items: center; padding: 20px; overflow: auto; }
@@ -34470,6 +34502,8 @@ const AKI = {
   pen: akSvg('<path d="M4 20l1.2-4.6L16.5 4.1a2 2 0 0 1 2.8 0l.6.6a2 2 0 0 1 0 2.8L8.6 18.8z"/><path d="M14.5 6.1l3.4 3.4"/>'),
   back: akSvg('<path d="M14.5 6.5 9 12l5.500 5.500"/>', 2),
   bell: akSvg('<path d="M6.2 16.5V11a5.800 5.800 0 0 1 11.600 0v5.500l1.700 1.800H4.500z"/><path d="M10 20.500a2.200 2.200 0 0 0 4 0"/>'),
+  person: akSvg('<circle cx="12" cy="8.5" r="3.6"/><path d="M5 19.5c.7-3.600 3.400-5.600 7-5.600s6.300 2 7 5.600"/>'),
+  seat: akSvg('<circle cx="10" cy="8.500" r="3.400"/><path d="M3.500 19.300c.600-3.400 3.100-5.300 6.500-5.300 1.400 0 2.700.3 3.700 1"/><path d="M18 13.500v6M15 16.500h6"/>'),
 };
 const AKM = {
   met: '<svg class="ak-mk met" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="9"/><path d="M5.8 10.3l2.8 2.8 5.600-6"/></svg>',
@@ -34547,11 +34581,12 @@ function akPaintRoster() {
       <span class="ak-n">${AKM.due}<b>${akN(c.due)}</b> with a sign-off due</span><span class="ak-n">${AKM.not}<b>${akN(c.not)}</b> overdue, or a control failing</span>
       <span class="ak-n">${AKM.unk}<b>${akN(c.unk)}</b> with no one named</span></div>
     <div id="akRosterBody"></div>
-    <div class="ak-key"><span>${AKM.met}Signed and current</span><span>${AKM.due}Sign-off due</span><span>${AKM.not}Overdue, or a control failing</span><span>${AKM.unk}No one named</span>
-      <span style="margin-left:auto">Press a dataset to open its record.</span></div></div>`;
-  akPaintRosterBody();
+    ${R.people.length ? `<div class="ak-key"><span>${AKM.met}Signed and current</span><span>${AKM.due}Sign-off due</span><span>${AKM.not}Overdue, or a control failing</span>
+      <span style="margin-left:auto">Press a dataset to open its record.</span></div>` : ''}</div>`;
+  akPaintRosterBody(true);
 }
-function akPaintRosterBody() {
+// first: the roster has just been opened (not narrowed by typing), so the cards of the datasets no one holds may arrive.
+function akPaintRosterBody(first) {
   const R = AK.roster.roster, q = AK.q.trim().toLowerCase();
   const hit = (d, who) => !q || d.name.toLowerCase().includes(q) || (who && ((who.name || '') + ' ' + (who.email || '')).toLowerCase().includes(q));
   const tile = d => `<button type="button" class="ak-t ${d.mark}" data-ak="open" data-key="${esc(d.key)}" title="${esc(akTileTip(d))}">${AKM[d.mark]}<span>${esc(d.name)}</span></button>`;
@@ -34563,12 +34598,22 @@ function akPaintRosterBody() {
     return;
   }
   if (!cols.length && !none.length) { body.innerHTML = `<div class="ak-empty"><b>Nothing matches</b><p>No dataset or person is called that.</p></div>`; return; }
+  // A dataset no one holds: where it comes from, its name, and an empty seat. The card opens its record; the seat
+  // opens it with the question of who answers for it already asked.
+  const card = (d, i) => `<button type="button" class="ak-pc" data-ak="open" data-key="${esc(d.key)}" style="--i:${i}">
+      <span class="ak-pc-ic" aria-hidden="true">${akSrc(d.format)}</span>
+      <span class="ak-pc-n"><b>${esc(d.name).replace(/[._\/]/g, '$&<wbr>')}</b><small>${esc([sourceLabel(d.format), d.systems ? akS(d.systems, 'system') : ''].filter(Boolean).join(' · '))}</small></span>
+      <span class="ak-seat" data-ak="openname" data-key="${esc(d.key)}" title="Name who answers for it">${AKI.plus}</span></button>`;
+  const solo = !R.people.length;   // no one is named anywhere yet: the datasets are the whole board
+  const pool = !none.length ? '' : `<section class="ak-pool${solo ? ' solo' : ''}${first ? ' in' : ''}" aria-label="Datasets no one answers for">
+      ${solo ? `<div class="ak-pool-h"><div class="ak-seats" aria-hidden="true"><span>${AKI.person}</span><span class="mid">${AKI.seat}</span><span>${AKI.person}</span></div>
+            <div><b>No one answers for these yet</b><small>Press a dataset to name the person who answers for it. Each person named gets a column here.</small></div></div>`
+          : `<div class="ak-pool-h">${akAv(null, 'lg')}<div><b>No one named</b><small>${esc(akS(R.unnamed.length, 'dataset'))}</small></div><span class="ak-pool-hint">Press one to name who answers for it</span></div>`}
+      <div class="ak-pool-g">${none.map(card).join('')}</div></section>`;
   body.innerHTML = `<div class="ak-roster">${cols.map(({ p, ds }) => `<div class="ak-col" data-person="${esc(p.person.name || '')}">
       <div class="ak-ph"><div class="ak-ph-w">${akAv(p.person, 'lg')}<div><b>${esc(p.person.name || p.person.email)}</b><small>${esc(akS(p.datasets.length, 'dataset'))}</small></div></div>
         <div class="ak-ph-s ${p.line.mark}">${AKM[p.line.mark]}<span><b>${esc(p.line.text)}</b>${p.line.rest ? ' ' + esc(p.line.rest) : ''}</span></div></div>
-      <div class="ak-tiles">${ds.map(tile).join('')}</div></div>`).join('')}
-    ${none.length ? `<div class="ak-col none" data-person=""><div class="ak-ph"><div class="ak-ph-w">${akAv(null, 'lg')}<div><b>No one named</b><small>Nobody answers for these yet</small></div></div>
-        <div class="ak-ph-s"><span>Open one to name someone</span></div></div><div class="ak-tiles">${none.map(tile).join('')}</div></div>` : ''}</div>`;
+      <div class="ak-tiles">${ds.map(tile).join('')}</div></div>`).join('')}${pool}</div>`;
 }
 function akTileTip(d) {
   if (!d.manager) return 'No one answers for it yet';
@@ -35057,6 +35102,12 @@ function akReportDialog() {
 async function akAct(el) {
   const act = el.dataset.ak, r = AK.rec, sys = r && el.dataset.sys ? r.systems.find(s => s.id === el.dataset.sys) : null;
   if (act === 'open') return akOpen(el.dataset.key);
+  if (act === 'openname') {   // the empty seat on a dataset no one holds: its record, then who answers for it
+    const key = el.dataset.key;
+    await akOpen(key);
+    if (AK.view === 'record' && AK.key === key && AK.rec && !AK.rec.manager && !document.querySelector('.ak-modal')) akNameDialog();
+    return;
+  }
   if (act === 'back') return akBack();
   if (act === 'reload') return akLoad();
   if (act === 'reopen') return akOpen(AK.key);
