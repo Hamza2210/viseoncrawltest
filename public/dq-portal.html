@@ -20523,7 +20523,7 @@ function initAssistantTab() {
 // get_run_report), so the card count is not the skill count. MCP_SKILLS is the real total from
 // mcp/tools.py, and mcp/test_parity.py asserts the two agree - so this number cannot rot the way
 // the deck's "17 skills" chip did. Add a tool there, bump this, and add it to a card below.
-const MCP_SKILLS = 29;
+const MCP_SKILLS = 32;
 // The full registry, in registration order: [tool name, title, read|acts, surface scope].
 // mcp/test_parity.py asserts these names AND their read/acts flags against mcp/tools.py, so this
 // list cannot drift from what an assistant can actually call. A blank scope means every
@@ -20552,6 +20552,9 @@ const MCP_SKILL_LIST = [
   ['list_qlik_tables', 'List the Qlik app’s tables', 'read', 'qlik'],
   ['get_qlik_data_model', 'Qlik data model', 'read', 'qlik'],
   ['get_lineage', 'Qlik load-script lineage', 'read', 'qlik'],
+  ['pick_dataset_to_rerun', 'Choose a dataset to re-run', 'read', ''],
+  ['can_rerun_dataset', 'Can this dataset be re-run?', 'read', ''],
+  ['get_run_status', 'How far has a run got?', 'read', ''],
   ['rerun_dataset', 'Re-run a dataset', 'acts', ''],
   ['run_datasets_by_tag', 'Re-run every dataset with a tag', 'acts', ''],
   ['submit_run_for_approval', 'Submit my run for approval', 'acts', 'portal'],
@@ -20640,7 +20643,7 @@ function mcpCapsHtml() {
     ['↻', 'Re-run a dataset',
       (PORTAL ? 'Re-assess a source dataset that has a saved credential profile.'
               : 'Re-assess one of this app’s tables, or a saved-credential source.')
-        + ' You get an email with the result when it finishes.',
+        + ' You get an email with the result when it finishes. An assistant that draws interactive views lets you pick it from your datasets and watch it run.',
       '&ldquo;re-run the orders dataset&rdquo;'],
     ['🏷️', 'Re-run a tag',
       'Re-assess every dataset carrying a tag, in one task. One email summarises them all '
