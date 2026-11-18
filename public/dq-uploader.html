@@ -20571,7 +20571,7 @@ function initAssistantTab() {
 // get_run_report), so the card count is not the skill count. MCP_SKILLS is the real total from
 // mcp/tools.py, and mcp/test_parity.py asserts the two agree - so this number cannot rot the way
 // the deck's "17 skills" chip did. Add a tool there, bump this, and add it to a card below.
-const MCP_SKILLS = 35;
+const MCP_SKILLS = 37;
 // The full registry, in registration order: [tool name, title, read|acts, surface scope].
 // mcp/test_parity.py asserts these names AND their read/acts flags against mcp/tools.py, so this
 // list cannot drift from what an assistant can actually call. A blank scope means every
@@ -20608,6 +20608,8 @@ const MCP_SKILL_LIST = [
   ['pick_tag_to_rerun', 'Choose a tag to re-run', 'read', ''],
   ['can_rerun_tag', 'What would a tag run start?', 'read', ''],
   ['run_datasets_by_tag', 'Re-run every dataset with a tag', 'acts', ''],
+  ['set_schedule_state', 'Pause or resume a schedule', 'acts', ''],
+  ['can_submit_run', 'Can this run go for approval?', 'read', 'portal'],
   ['submit_run_for_approval', 'Submit my run for approval', 'acts', 'portal'],
   ['list_pending_approvals', 'Pending approvals queue', 'read', 'admin'],
   ['decide_run_approval', 'Approve / caution / deprecate a run', 'acts', 'admin'],
@@ -20700,10 +20702,14 @@ function mcpCapsHtml() {
       'Re-assess every dataset carrying a tag, in one task. One email summarises them all '
         + 'when the batch finishes.',
       '&ldquo;re-run everything tagged finance&rdquo;'],
+    ['⏸️', 'Pause or resume a schedule',
+      'Pause a schedule so it stops running, or resume a paused one. Nothing else about it changes: '
+        + 'making, editing and deleting schedules stay in the Schedules tab.',
+      '&ldquo;pause the nightly orders schedule&rdquo;'],
   ];
   if (PORTAL) {
     write.push(['✅', 'Submit for approval',
-      'Put your latest run into the admin approvals queue.',
+      'Put your latest run into the admin approvals queue. An assistant that draws interactive views shows you the run and asks before it is sent.',
       '&ldquo;submit my latest orders run for approval&rdquo;']);
   }
   if (PORTAL && IS_PORTAL_ADMIN) {
