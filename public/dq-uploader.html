@@ -867,8 +867,9 @@
   @keyframes aiSheen { to { transform: translateX(110%); } }
   @keyframes aiTwinkle { 50% { transform: rotate(20deg) scale(.8); opacity: .7; } }
   @keyframes aiRipple { to { transform: scale(1); opacity: 0; } }
-  /* The panel an answer opens in. A formatting root, so its height is its own while it eases. */
-  .ai-out { display: flow-root; }
+  /* The panel an answer opens in. A formatting root, so its height is its own while it eases; and a
+     container, so an answer is set out for the room it is given, not for the page's. */
+  .ai-out { display: flow-root; container: aiout / inline-size; }
   .ai-out[hidden] { display: none !important; }
   .ai-panel { position: relative; margin-top: 12px; padding: 14px 18px 12px; border: 1px solid transparent; border-radius: 10px;
     background: linear-gradient(var(--card), var(--card)) padding-box,
@@ -888,11 +889,50 @@
   .ai-body { position: relative; margin-top: 10px; font-size: 13.5px; line-height: 1.6; color: var(--text); }
   .ai-sec + .ai-sec { margin-top: 12px; }
   .ai-sec h4 { margin: 0 0 3px; font-size: 12.5px; font-weight: 700; color: color-mix(in srgb, var(--accent) 55%, var(--text)); }
-  .ai-sec p { margin: 0 0 6px; }
-  .ai-sec p:last-child { margin-bottom: 0; }
+  /* Said with the body's weight: the card an answer opens in styles its own paragraphs (a compliance finding's
+     are muted and spaced from above), and those are not the answer's. */
+  .ai-body .ai-sec p { margin: 0 0 6px; color: inherit; line-height: inherit; }
+  .ai-body .ai-sec p:last-child { margin-bottom: 0; }
   .ai-sec ul { margin: 2px 0 0; padding-left: 20px; }
   .ai-sec li { margin: 3px 0; }
   .ai-sec li::marker { color: var(--accent2); }
+  .ai-flow { overflow-wrap: break-word; }
+  /* A step inside a section ("How to fix it", then "Confirm the affected field"): its own small heading, and a
+     number when there are several, so a run of steps reads as steps and not as more sections. */
+  .ai-step { margin-top: 9px; }
+  .ai-step h5 { display: inline; margin: 0; font: inherit; font-weight: 700; color: var(--text); }
+  .ai-body .ai-step > h5 + p { display: inline; }             /* the heading runs into its first sentence */
+  .ai-body .ai-step > h5 + p ~ p, .ai-body .ai-step > h5 + p ~ ul { margin-top: 5px; }
+  .ai-steps { counter-reset: aistep; }
+  .ai-steps > .ai-step { position: relative; padding-left: 30px; counter-increment: aistep; }
+  .ai-steps > .ai-step::before { content: counter(aistep); position: absolute; left: 0; top: 0; display: grid; place-items: center;
+    width: 20px; height: 20px; border-radius: 50%; font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums;
+    color: color-mix(in srgb, var(--accent2) 70%, var(--text)); background: color-mix(in srgb, var(--accent2) 14%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent2) 38%, transparent); }
+  /* Given room, an answer is set out across it: a long one in one column ran down the page. A short opening
+     section heads it; sections of much the same length sit side by side, with a rule between; anything else
+     that is long flows in columns, like a page of print. */
+  @container aiout (min-width: 620px) {
+    .ai-flow.ai-long { columns: 2; column-gap: 39px; column-rule: 1px solid var(--border); }
+    .ai-flow.ai-long > .ai-lead { column-span: all; margin-bottom: 12px; }
+    .ai-flow.ai-long > .ai-lead + .ai-sec { margin-top: 0; }
+    .ai-flow.ai-long h4, .ai-flow.ai-long h5 { break-after: avoid; }
+    .ai-flow.ai-long li, .ai-flow.ai-long .ai-step { break-inside: avoid; }
+    .ai-flow.ai-long p { orphans: 2; widows: 2; }
+    .ai-flow.ai-n2 { display: grid; grid-template-columns: minmax(0, var(--c1, 1fr)) minmax(0, var(--c2, 1fr)); gap: 12px 39px; columns: auto; }
+    .ai-flow.ai-n2 > .ai-sec { margin-top: 0; }
+    .ai-flow.ai-n2 > .ai-lead { grid-column: 1 / -1; margin-bottom: 0; }
+    .ai-flow.ai-n2 > .ai-next { margin-left: -20px; padding-left: 19px; border-left: 1px solid var(--border); }
+  }
+  @container aiout (min-width: 1060px) {
+    .ai-flow.ai-long { columns: 3; }
+    .ai-flow.ai-n2 { columns: auto; }
+    .ai-flow.ai-n3 { display: grid; grid-template-columns: minmax(0, var(--c1, 1fr)) minmax(0, var(--c2, 1fr)) minmax(0, var(--c3, 1fr));
+      gap: 12px 39px; columns: auto; }
+    .ai-flow.ai-n3 > .ai-sec { margin-top: 0; }
+    .ai-flow.ai-n3 > .ai-lead { grid-column: 1 / -1; margin-bottom: 0; }
+    .ai-flow.ai-n3 > .ai-next { margin-left: -20px; padding-left: 19px; border-left: 1px solid var(--border); }
+  }
   .ai-foot { position: relative; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border); font-size: 12px; color: var(--muted); }
   .ai-foot a { color: var(--accent); }
   .ai-err .ai-body { color: var(--err); }
@@ -1316,6 +1356,9 @@
   .cmd-empty > svg { width: 26px; height: 26px; flex: none; color: var(--accent); }
   .cmd-empty p { flex: 1; margin: 0; }
   .cmd-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 10px; }
+  /* A finding being explained takes the row: its answer is read across the pane, not down one card's width. */
+  .cmd-card:has(> .cmd-explain-out:not([hidden])) { grid-column: 1 / -1; }
+  .cmd-card:has(> .cmd-explain-out:not([hidden])) > p { max-width: 110ch; }
   .cmd-card { padding: 13px 14px; border-radius: 8px; font-size: 12.5px; background: var(--card-2) !important; color: var(--text) !important;
     box-shadow: inset 3px 0 0 var(--cmd-c, var(--border)), inset 0 0 0 1px var(--border) !important; }
   .cmd-card.c-critical { --cmd-c: var(--cmp-crit); } .cmd-card.c-high { --cmd-c: var(--cmp-high); }
@@ -21996,12 +22039,25 @@ const AI_HEADINGS = /^(summary|likely causes|suggested next steps?|main score dr
  * it**"), then sentences or "- " bullets. Each section becomes a block with its own heading and
  * list, so an answer can rise in a section at a time and reads as a note rather than line breaks.
  * Everything is escaped first; only **bold** and `code` come back as markup.
+ *
+ * Once one of the sections a prompt asks for is open, any other heading is a step inside it ("How to
+ * fix it", then "Confirm the affected field"), not one more section beside it. And the answer says
+ * how it would best be set out, for the styles to do where there is room: `ai-lead` on a short
+ * opening section, which heads the rest; `ai-n2` or `ai-n3` when the two or three sections after it
+ * are of much the same length, to sit side by side (`--c1`.. give the one with more to say more of
+ * the width, so they end near together); `ai-long` when it is long enough to flow in columns.
  */
 function aiMd(text) {
   const inline = t => esc(t).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>').replace(/`([^`]+)`/g, '<code>$1</code>');
   const secs = [];
-  let cur = null;
-  const open = h => { cur = { h, parts: [] }; secs.push(cur); };
+  let cur = null, named = false;
+  const open = raw => {
+    const h = String(raw).replace(/^\d+[.)]\s+/, '');           // "**1. Which rule**" and "1. **Which rule**" read alike
+    const known = AI_HEADINGS.test(h.replace(/[.:]$/, '').trim());
+    if (named && cur && !known) { cur.parts.push({ h }); return; }
+    named = named || known;
+    cur = { h, parts: [] }; secs.push(cur);
+  };
   String(text || '').replace(/\r/g, '').split('\n').forEach(raw => {
     const line = raw.trim();
     if (!line) return;
@@ -22018,13 +22074,27 @@ function aiMd(text) {
     if ((m = /^(?:[-\u2022*]|\d+[.)])\s+(.+)$/.exec(line))) cur.parts.push({ li: m[1] });
     else cur.parts.push({ p: line });
   });
-  return secs.map((sec, i) => {
-    let html = '', list = [];
+  // How much room a section takes: its letters, and a little for each paragraph, bullet and step it breaks into.
+  const len = secs.map(sec => sec.parts.reduce((n, pt) => n + String(pt.h != null ? pt.h : pt.li != null ? pt.li : pt.p).length + 40, (sec.h || '').length));
+  const mean = a => a.reduce((x, y) => x + y, 0) / (a.length || 1);
+  const lead = secs.length >= 3 && len[0] <= mean(len.slice(1)) * .6;
+  const rest = lead ? len.slice(1) : len;
+  const even = rest.length >= 2 && rest.length <= 3 && Math.max(...rest) <= mean(rest) * 1.6;
+  const flow = 'ai-flow' + (even ? ' ai-n' + rest.length : '') + (len.reduce((x, y) => x + y, 0) >= 1000 ? ' ai-long' : '');
+  const share = even ? rest.map((v, j) => `--c${j + 1}:${Math.min(1.3, Math.max(.85, v / mean(rest))).toFixed(2)}fr`).join(';') : '';
+  return `<div class="${flow}"${share ? ` style="${share}"` : ''}>` + secs.map((sec, i) => {
+    let html = '', list = [], step = false, steps = 0;
     const flush = () => { if (list.length) { html += `<ul>${list.map(t => `<li>${inline(t)}</li>`).join('')}</ul>`; list = []; } };
-    sec.parts.forEach(pt => { if (pt.li != null) list.push(pt.li); else { flush(); html += `<p>${inline(pt.p)}</p>`; } });
-    flush();
-    return `<section class="ai-sec ai-rise" style="--i:${Math.min(i, 8)}">${sec.h ? `<h4>${inline(sec.h)}</h4>` : ''}${html}</section>`;
-  }).join('');
+    const shut = () => { flush(); if (step) { html += '</div>'; step = false; } };
+    sec.parts.forEach(pt => {
+      if (pt.h != null) { shut(); html += `<div class="ai-step"><h5>${inline(pt.h)}</h5> `; step = true; steps++; }
+      else if (pt.li != null) list.push(pt.li);
+      else { flush(); html += `<p>${inline(pt.p)}</p>`; }
+    });
+    shut();
+    const cls = (lead && !i ? ' ai-lead' : '') + (even && i > (lead ? 1 : 0) ? ' ai-next' : '') + (steps > 1 ? ' ai-steps' : '');
+    return `<section class="ai-sec ai-rise${cls}" style="--i:${Math.min(i, 8)}">${sec.h ? `<h4>${inline(sec.h)}</h4>` : ''}${html}</section>`;
+  }).join('') + `</div>`;
 }
 // A ripple from wherever the button was pressed (its middle, from the keyboard), and the close
 // button on a panel that has one. In the capture phase, so it runs before the press is handled.
