@@ -10293,9 +10293,17 @@ function _gateSee(body, check, failed) {
   if (!tab) fr.scrollIntoView({ behavior: dqReduced() ? 'auto' : 'smooth', block: 'start' });
 }
 
-/** How many rows a run read, in a sentence: all of them, a sample, or only those added since the last run. */
+/** A run that found nothing changed since an earlier one and kept that one's result (dq/unchanged.py), in a sentence. */
+function unchangedTxt(un) {
+  const rows = un.rows != null ? `the same ${Number(un.rows).toLocaleString()} rows` : 'the same rows';
+  return `<b>No change has been made since the last run.</b> The table holds ${rows} it did on ${esc(fmtWhen(un.since_run))}: ` +
+    `nothing was added, changed or deleted${un.column ? ` (told by ${esc(un.column)} and the count of rows)` : ''}, ` +
+    `so it was not assessed again and that run's scores stand.`;
+}
+/** How many rows a run read, in a sentence: all of them, a sample, only those added since the last run, or none because nothing had changed. */
 function assessRowsTxt(st) {
   const nrw = st.new_rows || null;
+  if (st.unchanged && st.unchanged.since_run) return unchangedTxt(st.unchanged);
   return st.rows_assessed == null ? '' : (nrw && nrw.only)
     ? (Number(st.rows_assessed) === 0
       ? `No rows were added or changed since the last run (by ${esc(nrw.column)}), so no rows were assessed. Where it has a time limit, how recent its newest record is was still checked.`
@@ -12369,6 +12377,7 @@ function histTilesHtml(tiles) {
 function rowsDesc(r) {
   if (r.rowsAssessed == null) return '';
   const a = Number(r.rowsAssessed).toLocaleString();
+  if (r.unchangedSince) return 'no change since the last run';
   if (r.newRowsOnly && r.rowsInSource != null) return `${a} new of ${Number(r.rowsInSource).toLocaleString()} rows`;
   return (r.sampled && r.rowsInSource != null)
     ? `sampled ${a} of ${Number(r.rowsInSource).toLocaleString()} rows`
@@ -15729,7 +15738,7 @@ function dsxSummaryHtml(key, d, r) {
   const n = g.check_failures || g.failing_rows || 0, by = g.check_failures_by_severity || g.failing_rows_by_severity || {};
   const sevTxt = _DSX_SEV.filter(k => by[k]).map(k => `${Number(by[k]).toLocaleString()} ${k}`).join(' · ');
   const ra = Number(st.rows_assessed), nrw = st.new_rows || null;
-  const rowsSub = st.rows_assessed == null ? '' : (nrw && nrw.only) ? (ra === 0 ? 'none added or changed since the last run' : `new or changed since the last run, of ${numInt(Number(st.rows_in_source))}`)
+  const rowsSub = st.rows_assessed == null ? '' : st.unchanged ? 'no change since the last run' : (nrw && nrw.only) ? (ra === 0 ? 'none added or changed since the last run' : `new or changed since the last run, of ${numInt(Number(st.rows_in_source))}`)
     : st.sampled ? `a sample of ${numInt(Number(st.rows_in_source))}` : 'every row read';
   const crit = sum.criteria || [];
   const scored = crit.filter(c => typeof c.score === 'number' && isFinite(c.score)).sort((a, b) => a.score - b.score);
@@ -15749,7 +15758,7 @@ function dsxSummaryHtml(key, d, r) {
       `<span class="dsx-k">Runs<small>${rw} in ${dashWindowDays} days</small></span>${dsxRunStrip(d)}</button></div>`;
   // What the run says about itself: a sample, new rows only, custom weights, rules it adjusted, values withheld.
   const wd = weightsDesc(st.dimension_weights), adj = assessAdjTxt(r);
-  const notes = [(nrw || st.sampled) ? assessRowsTxt(st) : '', wd ? `Custom weights: ${wd}.` : '', adj].filter(Boolean).map(t => `<p class="hint">${t}</p>`).join('') +
+  const notes = [(nrw || st.sampled || st.unchanged) ? assessRowsTxt(st) : '', wd ? `Custom weights: ${wd}.` : '', adj].filter(Boolean).map(t => `<p class="hint">${t}</p>`).join('') +
     [r.valuesWithheld, r.complianceError].filter(Boolean).map(t => `<p class="hint ra-warn">${esc(t)}</p>`).join('');
   // The dimensions as tiles: its symbol, its name and score, tinted by how it stands; how far it has moved, and how many checks it rests on.
   const win = esc(dsWindowLabel());
@@ -15931,8 +15940,8 @@ function dsxFullRunPlan(d) {
 }
 function fullRunHtml(name, rows) {
   const n = Number(rows);
-  return `<div class="nr-dlg"><p>A normal run of <b>${esc(name)}</b> already has its database count every row for the score, so rows added, changed and deleted all show in it. What it does not do is read every value again: its PII sweep reads only the rows added or changed since the last run.</p>
-    <p>A full run reads and sweeps every row again${n > 0 ? `, all ${n.toLocaleString()} of them` : ''}. Use one when rows may have changed without their date moving, or to bring the sweep's counts back to exact.</p>
+  return `<div class="nr-dlg"><p>A normal run of <b>${esc(name)}</b> already has its database count every row for the score, so rows added, changed and deleted all show in it. What it does not do is read every value again: its PII sweep reads only the rows added or changed since the last run. When nothing at all was added, changed or deleted, it keeps the last run's scores and says so.</p>
+    <p>A full run reads and sweeps every row again${n > 0 ? `, all ${n.toLocaleString()} of them` : ''}, whether or not anything looks changed. Use one when rows may have changed without their date moving, or to bring the sweep's counts back to exact.</p>
     <div class="fr-warn">${pisIco('alert')}<span><b>A full run takes longer.</b> On a large table it can take many times as long as a normal run.</span></div></div>`;
 }
 async function dsxFullRun(d) {
@@ -20562,7 +20571,7 @@ function initAssistantTab() {
 // get_run_report), so the card count is not the skill count. MCP_SKILLS is the real total from
 // mcp/tools.py, and mcp/test_parity.py asserts the two agree - so this number cannot rot the way
 // the deck's "17 skills" chip did. Add a tool there, bump this, and add it to a card below.
-const MCP_SKILLS = 33;
+const MCP_SKILLS = 35;
 // The full registry, in registration order: [tool name, title, read|acts, surface scope].
 // mcp/test_parity.py asserts these names AND their read/acts flags against mcp/tools.py, so this
 // list cannot drift from what an assistant can actually call. A blank scope means every
@@ -20596,6 +20605,8 @@ const MCP_SKILL_LIST = [
   ['can_rerun_dataset', 'Can this dataset be re-run?', 'read', ''],
   ['get_run_status', 'How far has a run got?', 'read', ''],
   ['rerun_dataset', 'Re-run a dataset', 'acts', ''],
+  ['pick_tag_to_rerun', 'Choose a tag to re-run', 'read', ''],
+  ['can_rerun_tag', 'What would a tag run start?', 'read', ''],
   ['run_datasets_by_tag', 'Re-run every dataset with a tag', 'acts', ''],
   ['submit_run_for_approval', 'Submit my run for approval', 'acts', 'portal'],
   ['list_pending_approvals', 'Pending approvals queue', 'read', 'admin'],
@@ -30484,7 +30495,11 @@ function buildGuides() {
           p(`What is not read again on every run is every value. The PII sweep reads each value itself, so after its first sweep of every row a run sweeps only the rows added or changed since the last, and adds what it finds to that sweep. It tells those rows by a column that says when a row was last changed (when it was last updated, loaded or synced), which it picks itself or you choose on the ${ui('PII sweep')} tab under ${ui('Each run sweeps')}. A table with no such column is swept in full every time.`) +
           list(`A row read again because it changed is counted again, and a deleted row leaves nothing to read, so what was found in it stays counted. The sweep says by how many rows its counts may be over. It can never miss personal data that way.`,
                `A <b>full run</b> reads and sweeps every row again and makes the counts exact. It takes longer, so it comes when you ask (${ui('Actions')}, ${ui('Full run…')}, which says so first) and by itself every 7 days, or the days you set under ${ui('Full run every')}; 0 leaves it to when you ask.`,
-               `A file, an uploaded file and an app's table are swept whole on every run.`) },
+               `A file, an uploaded file and an app's table are swept whole on every run.`) +
+          p(`<b>When nothing has changed</b>, a run does not assess again. It first asks the table three small things: the newest value of that column, how many rows hold it, and how many rows there are. When those, the rules and the dataset's settings are what they were at the last run, it keeps that run's scores and failed records, and says <b>No change has been made since the last run</b>, here and in ${ui('History')}.`) +
+          list(`A change that moves neither that column nor the count of rows is not seen: a value edited without its date moving. So the last scores are never kept for longer than the days under ${ui('Full run every')}, and a <b>full run</b> always assesses.`,
+               `What can turn with the day or with another table is always assessed: a freshness limit about to be passed, dates in the future, a retention limit in the compliance policy, a check against a reference table or master file.`,
+               `A table with no such column, a file not on ${ui('New rows only')} and an app's table are assessed on every run, as before.`) },
       { h: 'Read only the new rows', body:
           p(`A table too large for its database to count on every run can have its runs read only the rows added or changed since the last. Choose ${ui('New rows only')} under the dataset when you make its schedule, or on the dataset open ${ui('Actions')}, choose ${ui('New rows only…')} and pick a column that moves when a row is added or changed, such as when it was last updated or loaded. With an id, or when a row was created, only added rows are read. Each run, however it is started, then reads only the rows past where the last one stopped, and its score is of those rows.`) +
           list(`A key is still checked against <b>every earlier row</b>, so a new row reusing an old key is a duplicate. Row-count limits and the freshness of the newest record are the whole table's.`,
