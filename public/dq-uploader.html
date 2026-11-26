@@ -18,6 +18,13 @@
   d.setAttribute('data-theme', r); d.setAttribute('data-theme-choice', c);
   if (r === 'light' || r === 'paper') d.classList.add('a11y');
   if (lg) d.classList.add('vda-lg');
+  // The sidebar as it was left: an icon rail ('dq.sidebar' = mini, on a wide window only; a narrow one has the
+  // drawer), and the groups folded ('dq.navClosed', their names). #vdaShellJs keeps both in step afterwards.
+  try {
+    if (localStorage.getItem('dq.sidebar') === 'mini' && (!window.matchMedia || matchMedia('(min-width: 861px)').matches)) d.classList.add('vda-sb-mini');
+    var nc = localStorage.getItem('dq.navClosed') || '';
+    if (/^[A-Za-z ]+$/.test(nc) && nc.trim()) d.setAttribute('data-nav-closed', nc.trim());
+  } catch (e) {}
 })();
 </script>
 <style>
@@ -4182,7 +4189,7 @@
     transition: transform .13s ease, box-shadow .16s ease,
       background-color .13s, border-color .13s, color .13s;
   }
-  button:not(.tab):not(.side-item):not(.subtab):not(.linkbtn):not(.dchip):not(.apptab):not(.x-close):not(.banner-x):not(.mzoom):not(.sched-caret):not(.inc-kebab):not(.inc-menu-item):not(.gd-clear):not(.gd-tocb):not(.cmp-choose-card):not(.cmpx-count):not(.cmpx-chip):not(.lngb):not(.lng-tab):not(.lng-li):not(.lng-other-hd):not(.lng-copy):not(.lng-qa-btn):not(.lng-more):not(.lng-assess):not(.schx-b):not(.schd-row):not(.dsx-st):not(.dsx-ni):not(.dsx-osc):not(.dsx-stat):not(.dsx-fix):not(.dsx-ev):not(.a11y-sw):not(:disabled):hover,
+  button:not(.tab):not(.side-item):not(.side-group):not(.vda-sb-toggle):not(.subtab):not(.linkbtn):not(.dchip):not(.apptab):not(.x-close):not(.banner-x):not(.mzoom):not(.sched-caret):not(.inc-kebab):not(.inc-menu-item):not(.gd-clear):not(.gd-tocb):not(.cmp-choose-card):not(.cmpx-count):not(.cmpx-chip):not(.lngb):not(.lng-tab):not(.lng-li):not(.lng-other-hd):not(.lng-copy):not(.lng-qa-btn):not(.lng-more):not(.lng-assess):not(.schx-b):not(.schd-row):not(.dsx-st):not(.dsx-ni):not(.dsx-osc):not(.dsx-stat):not(.dsx-fix):not(.dsx-ev):not(.a11y-sw):not(:disabled):hover,
   .btn-sm:not(:disabled):hover { filter: brightness(1.08); }
   button:not(:disabled):active, .btn-sm:not(:disabled):active { transform: translateY(0) scale(.98); box-shadow: none; }
   .linkbtn:hover { text-decoration: underline; }
@@ -7255,6 +7262,51 @@ h1 { background: none; -webkit-background-clip: border-box; background-clip: bor
 .side-item.active::before { content: none; }
 .side-item .tab-badge { margin-left: auto; }
 
+/* ---- Sidebar: groups that fold, and the icon rail (#vdaShellJs: the groups' buttons and applyRail) ----
+   A group's heading is a button: pressed, its pages fold away, but never the one open (it stays, under its
+   heading), and a folded group with a count under it shows a dot. The rail is the sidebar a size down, an icon per
+   page and its name in a tip, on a wide window only; a narrow one keeps the drawer. Both are kept, in
+   'dq.navClosed' and 'dq.sidebar', and set before first paint (#vdaTheme). */
+.side-group { display: flex; align-items: center; gap: 7px; width: 100%; box-sizing: border-box; margin: 0; border: 0; border-radius: 6px;
+  background: none; font: inherit; font-size: 12px; font-weight: 600; color: var(--muted); text-align: left; cursor: pointer; }
+.side-group:hover { color: var(--text); }
+.side-group .chev { width: 14px; height: 14px; margin-left: auto; transition: transform .15s ease; }
+.side-group[aria-expanded="false"] .chev { transform: rotate(-90deg); }
+.side-group .gdot { display: none; width: 7px; height: 7px; border-radius: 50%; background: var(--err); }
+html:not(.vda-sb-mini)[data-nav-closed~="Assess"] .side-nav .side-item[data-group="Assess"]:not(.active),
+html:not(.vda-sb-mini)[data-nav-closed~="Govern"] .side-nav .side-item[data-group="Govern"]:not(.active),
+html:not(.vda-sb-mini)[data-nav-closed~="Audit"] .side-nav .side-item[data-group="Audit"]:not(.active) { display: none !important; }
+html:not(.vda-sb-mini)[data-nav-closed~="Assess"] .side-group[data-group-key="Assess"]:has(~ .side-item[data-group="Assess"]:not(.active) .tab-badge:not([style*="none"])) .gdot,
+html:not(.vda-sb-mini)[data-nav-closed~="Govern"] .side-group[data-group-key="Govern"]:has(~ .side-item[data-group="Govern"]:not(.active) .tab-badge:not([style*="none"])) .gdot,
+html:not(.vda-sb-mini)[data-nav-closed~="Audit"] .side-group[data-group-key="Audit"]:has(~ .side-item[data-group="Audit"]:not(.active) .tab-badge:not([style*="none"])) .gdot { display: block; }
+.vda-sb-toggle { display: flex; align-items: center; gap: 10px; width: 100%; height: 34px; box-sizing: border-box; margin: 18px 0 0; padding: 0 10px;
+  border: 0; border-radius: 6px; background: none; color: var(--muted); font: inherit; font-size: 13px; font-weight: 500; cursor: pointer; }
+.vda-sb-toggle:hover { background: color-mix(in srgb, var(--text) 6%, transparent); color: var(--text); }
+.side-group, .vda-sb-toggle { box-shadow: none; }
+.sidebar .side-group:active, .sidebar .vda-sb-toggle:active { transform: none; }
+@media (min-width: 861px) {
+  .sidebar { display: flex; flex-direction: column; transition: width .18s ease; }
+  .vda-sb-toggle { margin-top: auto; }
+  body { transition: padding-left .18s ease; }
+}
+@media (max-width: 860px) { .vda-sb-toggle { display: none; } }
+html.vda-sb-mini { --sb-w: 64px; }
+html.vda-sb-mini .sidebar { padding: 0 10px 14px; overflow-x: hidden; }
+html.vda-sb-mini .vda-brand { align-items: center; padding: 20px 0 16px; }
+html.vda-sb-mini .vda-brand .viseon-logo { width: 26px; height: 14px; aspect-ratio: auto; background-size: 102px auto; background-position: 50% 0; }
+html.vda-sb-mini .vda-brand-name { display: none; }
+html.vda-sb-mini .side-nav { align-items: center; }
+html.vda-sb-mini .side-group { height: 1px; padding: 0; margin: 12px 0; background: var(--border); overflow: hidden; pointer-events: none; }
+html.vda-sb-mini .side-group > * { display: none; }
+html.vda-sb-mini .side-nav .side-item { width: 44px; height: 40px; padding: 0; justify-content: center; }
+html.vda-sb-mini .side-nav .side-item .ic { width: 20px; height: 20px; }
+html.vda-sb-mini .side-nav .side-item > span:not(.tab-badge), html.vda-sb-mini .vda-sb-toggle span {
+  position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+html.vda-sb-mini .side-nav .side-item .tab-badge { position: absolute; top: 2px; right: 0; margin: 0; }
+html.vda-sb-mini .vda-sb-toggle { width: 44px; padding: 0; justify-content: center; align-self: center; }
+html.vda-sb-mini .vda-sb-toggle .ic { transform: scaleX(-1); }
+@media (prefers-reduced-motion: reduce) { .sidebar, body, .side-group .chev { transition: none !important; } }
+
 /* ---- Top bar ---- */
 .vda-top { position: sticky; top: 0; z-index: 60; height: var(--tb-h); box-sizing: border-box; margin: 0 -24px 24px -28px; padding: 0 24px 0 28px;
   display: flex; align-items: center; gap: 10px; background: var(--bg); border-bottom: 1px solid var(--border); }
@@ -7730,22 +7782,24 @@ button.ak-cl:hover { border-color: var(--accent); }
     <button class="side-item active" data-tab="dashboard" data-label="Overview" data-group=""><svg class="ic" aria-hidden="true"><use href="#i-overview"/></svg><span>Overview</span></button>
     <button class="side-item" data-tab="incidents" data-label="Incidents" data-group=""><svg class="ic" aria-hidden="true"><use href="#i-incidents"/></svg><span>Incidents</span><span class="tab-badge" id="incBadge" style="display:none;"></span></button>
     <button class="side-item" data-tab="sourcewatch" data-label="Source monitoring" data-group=""><svg class="ic" aria-hidden="true"><use href="#i-pulse"/></svg><span>Source monitoring</span><span class="tab-badge" id="watchBadge" style="display:none;"></span></button>
-    <div class="side-group">Assess</div>
+    <button type="button" class="side-group" data-group-key="Assess" aria-expanded="true"><span>Assess</span><span class="gdot" aria-hidden="true"></span><svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg></button>
     <button class="side-item" data-tab="upload" data-label="Assess a data source" data-group="Assess"><svg class="ic" aria-hidden="true"><use href="#i-database"/></svg><span>Data source</span></button>
     <button class="side-item" data-tab="appdata" data-label="Assess this app's data" data-group="Assess"><svg class="ic" aria-hidden="true"><use href="#i-app"/></svg><span>This app</span></button>
     <button class="side-item" data-tab="tagrun" data-label="Assess by tag" data-group="Assess"><svg class="ic" aria-hidden="true"><use href="#i-tag"/></svg><span>By tag</span></button>
     <button class="side-item" data-tab="medallion" data-label="Reconcile" data-group="Assess"><svg class="ic" aria-hidden="true"><use href="#i-reconcile"/></svg><span>Reconcile</span></button>
     <button class="side-item" data-tab="schedules" data-label="Schedules" data-group="Assess"><svg class="ic" aria-hidden="true"><use href="#i-clock"/></svg><span>Schedules</span></button>
-    <div class="side-group">Govern</div>
+    <button type="button" class="side-group" data-group-key="Govern" aria-expanded="true"><span>Govern</span><span class="gdot" aria-hidden="true"></span><svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg></button>
     <button class="side-item" data-tab="compliance" data-label="Compliance" data-group="Govern"><svg class="ic" aria-hidden="true"><use href="#i-shield"/></svg><span>Compliance</span><span class="tab-badge" id="cmpBadge" style="display:none;"></span></button>
     <button class="side-item" data-tab="accountability" data-label="Accountability" data-group="Govern" id="accountNav"><svg class="ic" aria-hidden="true"><use href="#i-answer"/></svg><span>Accountability</span></button>
     <button class="side-item" data-tab="piisweep" data-label="PII sweep" data-group="Govern"><svg class="ic" aria-hidden="true"><use href="#i-pii"/></svg><span>PII sweep</span><span class="tab-badge" id="piiBadge" style="display:none;"></span></button>
     <button class="side-item" data-tab="lineage" data-label="Lineage" data-group="Govern"><svg class="ic" aria-hidden="true"><use href="#i-lineage"/></svg><span>Lineage</span></button>
     <button class="side-item" data-tab="model" data-label="Data model" data-group="Govern"><svg class="ic" aria-hidden="true"><use href="#i-model"/></svg><span>Data model</span></button>
-    <div class="side-group">Audit</div>
+    <button type="button" class="side-group" data-group-key="Audit" aria-expanded="true"><span>Audit</span><span class="gdot" aria-hidden="true"></span><svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg></button>
     <button class="side-item" data-tab="history" data-label="Run history" data-group="Audit"><svg class="ic" aria-hidden="true"><use href="#i-history"/></svg><span>Run history</span></button>
     <button class="side-item" data-tab="approvals" data-label="Approvals" data-group="Audit" id="approvalsNav"><svg class="ic" aria-hidden="true"><use href="#i-approve"/></svg><span>Approvals</span><span class="tab-badge" id="approvalsBadge" style="display:none;"></span></button>
   </nav>
+  <!-- The sidebar as an icon rail, on a wide window (#vdaShellJs applyRail; kept as 'dq.sidebar'). -->
+  <button type="button" class="vda-sb-toggle" id="vdaSbToggle" aria-pressed="false" aria-label="Collapse the sidebar to icons"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m11.5 7-5 5 5 5M18 7l-5 5 5 5"/></svg><span>Collapse</span></button>
 </aside>
 <header class="vda-top">
   <button type="button" class="vda-ib vda-navbtn" id="vdaNavBtn" aria-label="Open navigation" aria-controls="vdaSidebar" aria-expanded="false"><svg class="ic" aria-hidden="true"><use href="#i-menu"/></svg></button>
@@ -40252,6 +40306,60 @@ document.addEventListener('mouseup', modelDragUp);
   if (scrim) scrim.addEventListener('click', function () { nav(false); });
   document.querySelectorAll('.sidebar .side-item').forEach(function (b) { b.addEventListener('click', function () { nav(false); }); });
 
+  // ---- The sidebar's groups fold, and the sidebar becomes an icon rail (both set before first paint by #vdaTheme) ----
+  var WIDE = window.matchMedia ? window.matchMedia('(min-width: 861px)') : null;
+  var railPref = null;                                 // the choice made on this visit, where localStorage cannot keep it
+  function closedGroups() { return (root.getAttribute('data-nav-closed') || '').split(/\s+/).filter(Boolean); }
+  function syncGroups() {
+    var closed = closedGroups(), mini = root.classList.contains('vda-sb-mini');
+    document.querySelectorAll('.side-nav .side-group[data-group-key]').forEach(function (g) {
+      g.setAttribute('aria-expanded', String(closed.indexOf(g.getAttribute('data-group-key')) < 0));
+      // On the rail a heading is only a line between groups: not something to press or to hear.
+      if (mini) { g.setAttribute('tabindex', '-1'); g.setAttribute('aria-hidden', 'true'); }
+      else { g.removeAttribute('tabindex'); g.removeAttribute('aria-hidden'); }
+    });
+  }
+  document.querySelectorAll('.side-nav .side-group[data-group-key]').forEach(function (g) {
+    g.addEventListener('click', function () {
+      var k = g.getAttribute('data-group-key'), closed = closedGroups(), i = closed.indexOf(k);
+      if (i >= 0) closed.splice(i, 1); else closed.push(k);
+      if (closed.length) root.setAttribute('data-nav-closed', closed.join(' ')); else root.removeAttribute('data-nav-closed');
+      try { localStorage.setItem('dq.navClosed', closed.join(' ')); } catch (e) {}
+      syncGroups();
+    });
+  });
+  function wantRail() {
+    if (railPref !== null) return railPref;
+    try { return localStorage.getItem('dq.sidebar') === 'mini'; } catch (e) { return false; }
+  }
+  function applyRail() {
+    var mini = wantRail() && (!WIDE || WIDE.matches), t = byId('vdaSbToggle');
+    root.classList.toggle('vda-sb-mini', mini);
+    if (t) {
+      t.setAttribute('aria-pressed', String(mini));
+      t.setAttribute('aria-label', mini ? 'Expand the sidebar' : 'Collapse the sidebar to icons');
+      var w = t.querySelector('span'); if (w) w.textContent = mini ? 'Expand' : 'Collapse';
+      if (mini) t.setAttribute('data-tip', 'Expand the sidebar'); else t.removeAttribute('data-tip');
+    }
+    // On the rail each page's name is in its tip (and still read out: its words are hidden, not removed).
+    document.querySelectorAll('.side-nav .side-item').forEach(function (b) {
+      var w = b.querySelector('span');
+      if (mini && w) b.setAttribute('data-tip', w.textContent.trim()); else b.removeAttribute('data-tip');
+    });
+    syncGroups();
+  }
+  var sbt = byId('vdaSbToggle');
+  if (sbt) sbt.addEventListener('click', function () {
+    railPref = !root.classList.contains('vda-sb-mini');
+    try { localStorage.setItem('dq.sidebar', railPref ? 'mini' : 'full'); } catch (e) {}
+    applyRail();
+    // The page is wider or narrower now, though the window is not: drawings that size themselves on a resize redraw.
+    setTimeout(function () { window.dispatchEvent(new Event('resize')); }, 220);
+  });
+  if (WIDE) { var onWide = function () { applyRail(); };
+    if (WIDE.addEventListener) WIDE.addEventListener('change', onWide); else if (WIDE.addListener) WIDE.addListener(onWide); }
+  applyRail();
+
   // ---- Account: initials from the address the page fills in; sign-out is the Profile page's own button ----
   var em = byId('portalUserEmail'), av = byId('vdaAvatar');
   function paintAvatar() {
@@ -40294,12 +40402,16 @@ document.addEventListener('mouseup', modelDragUp);
   var pal = byId('vdaPal'), pin = byId('vdaPalInput'), plist = byId('vdaPalList'), items = [], sel = 0, lastFocus = null;
   function pages() {
     var out = [];
+    // A page folded away in the sidebar is still a page: the groups are opened for this look, and folded again.
+    var folded = root.getAttribute('data-nav-closed');
+    if (folded) root.removeAttribute('data-nav-closed');
     document.querySelectorAll('.side-item[data-tab]').forEach(function (b) {
       if (window.getComputedStyle(b).display === 'none') return;            // not offered to this reader
       var use = b.querySelector('use');
       out.push({ kind: 'page', label: b.getAttribute('data-label') || b.textContent.trim(), hint: b.getAttribute('data-group') || '',
         icon: use ? use.getAttribute('href') : '', tab: b.getAttribute('data-tab') });
     });
+    if (folded) root.setAttribute('data-nav-closed', folded);
     return out;
   }
   function datasets() {
