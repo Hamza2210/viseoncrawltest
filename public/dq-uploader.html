@@ -333,6 +333,9 @@
   .wrow input[type=number] { width: 90px; flex: 0 0 auto; }
   .wlabel { flex: 1; min-width: 0; }
   .wdesc { color: var(--muted); font-size: 11px; margin-top: 2px; line-height: 1.35; }
+  /* Every form has the weights (#srcWeights moves to the open one): on a wide card they sit in columns, each
+     weight's box beside its name, rather than a name at one edge and its box at the other. */
+  #weightsGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); column-gap: 32px; }
   input[type=text], input[type=email] { width: 100%; padding: 9px 11px; border: 1px solid var(--border);
     border-radius: 6px; background: var(--bg); color: var(--text); font: inherit; }
   .subhead2 { font-size: 12px; font-weight: 700; margin: 14px 0 4px; }
@@ -7891,7 +7894,8 @@ button.ak-cl:hover { border-color: var(--accent); }
       <label for="sampleRows">Sample size <span class="hint">(optional)</span></label>
       <input type="number" id="sampleRows" min="1" step="1" placeholder="Leave empty to assess the whole file" />
       <div class="hint" style="margin: 6px 0 14px;">Randomly samples this many rows. Empty - or larger than the file - assesses everything.</div>
-      <details class="weights" style="margin-bottom: 14px;">
+      <!-- One set of weights for every data source: moved into whichever form is open (selectSource), as #srcRefs is. -->
+      <details class="weights" id="srcWeights" style="margin-bottom: 14px;">
         <summary class="hint">Dimension weights (optional)</summary>
         <p class="hint" style="margin: 8px 0;">Higher weight = the dimension counts more toward the overall score; 0 excludes it. Range 0–5; defaults shown.</p>
         <div id="weightsGrid"></div>
@@ -24787,9 +24791,12 @@ async function srcLaunch(key, statusEl, endpoint, body, words, extra) {
     : { msg: target ? `Assessing ${target}` : 'Assessing the dataset', sub: words.launch + '…', steps: words.steps, noSweep: !sweep });
   if (!begun) return;
   const { seq, infer } = begun;
+  // The form's dimension weights, when changed from the engine's (the API adds the worker's --dimension-weights).
+  const weights = collectWeights();
+  const hdrs = Object.assign({}, srcRunHeaders(sweep, infer, srcBodyOf(key)), weights ? { 'X-DQ-Weights': JSON.stringify(weights) } : {});
   let res;
   try {
-    res = await postJSON(`${API_BASE}/data-quality/${endpoint}`, srcRunHeaders(sweep, infer, srcBodyOf(key)), body);
+    res = await postJSON(`${API_BASE}/data-quality/${endpoint}`, hdrs, body);
   } catch (e) {
     if (srcRunCurrent(key, seq)) srcRunFailWhy(key, e);
     return;
@@ -25870,6 +25877,14 @@ function selectSource(key) {
     const at = srcAboveRun(runBtn || (bodyKey === 'file' ? document.getElementById('go') : null));
     if (at) { at.parentNode.insertBefore(refs, at); refs.style.display = ''; srcRefsState.warehouse = _WAREHOUSE_SRC.has(key); renderSrcRefs(); }
     else refs.style.display = 'none';
+  }
+  // The dimension weights go with them: one set, for whichever form is open, just above the refs. A
+  // connector's run sends them in a header (srcLaunch), the upload in its body.
+  const wts = document.getElementById('srcWeights');
+  if (wts) {
+    const before = refs && refs.style.display !== 'none' && refs.parentNode ? refs
+      : srcAboveRun(runBtn || (bodyKey === 'file' ? document.getElementById('go') : null));
+    if (before) before.parentNode.insertBefore(wts, before);
   }
   // The "Save these credentials" checkbox stays just above the Run button (below the refs).
   const saveWrap = document.getElementById('srcSaveWrap');
@@ -29337,11 +29352,11 @@ function gdSvg(name) {
 // guides/ beside this page, and none of them loads until a guide that uses it is opened.
 /* GD_SHOTS:BEGIN (written by scripts/guide_shots/capture.py; do not edit by hand) */
 const GD_SHOTS = {
-  "admin-create-user": [1412, 538, "5744433d6c"],
-  "admin-grants": [1600, 878, "4c7eb66de6"],
-  "admin-overview": [1600, 1251, "6e29e784e1"],
-  "admin-tags": [1600, 1095, "775178d493"],
-  "admin-users": [1600, 792, "7251355412"],
+  "admin-create-user": [1412, 538, "413cdef8ff"],
+  "admin-grants": [1600, 878, "8e816373d3"],
+  "admin-overview": [1600, 1251, "e115db4329"],
+  "admin-tags": [1600, 1095, "6e914d6f45"],
+  "admin-users": [1600, 792, "473cdb2332"],
   "agents": [1600, 848, "e5120c180b"],
   "ai-review": [1312, 1996, "ae4926296c"],
   "alert-channels": [1600, 728, "97ad480cbf"],
@@ -29374,7 +29389,7 @@ const GD_SHOTS = {
   "incidents-q": [1600, 1169, "9865c0c40e"],
   "lineage-app": [1600, 1239, "53f16c6fca"],
   "lineage-source": [1600, 1139, "c0b80998ab"],
-  "onprem-file": [1600, 1185, "881d76ce1a"],
+  "onprem-file": [1600, 1185, "1cbf3107d5"],
   "overview-top-p": [1600, 493, "fae4a1a9c3"],
   "overview-top-q": [1600, 493, "d96aa5602d"],
   "passport": [1600, 4635, "6ea03a069f"],
@@ -29394,12 +29409,12 @@ const GD_SHOTS = {
   "rules-describe": [1388, 1078, "1c9e2cdcab"],
   "rules-tab": [1388, 2404, "70dd35ffbf"],
   "run-result": [1600, 1404, "9726a6c499"],
-  "runs-on-agent": [1600, 1185, "37614a332e"],
+  "runs-on-agent": [1600, 1185, "2072bd3fc4"],
   "schedule-form-p": [1600, 1504, "a31ee4765d"],
   "schedule-form-q": [1600, 1551, "b190a99f7a"],
   "schedule-river": [1600, 1027, "5c6d35b2f8"],
   "schedule-watch": [1348, 678, "237d5c8684"],
-  "source-form": [1600, 1104, "3f3fea2111"],
+  "source-form": [1600, 1157, "89e8bdb9f3"],
   "source-menu": [1600, 1015, "179176b511"],
   "source-picker": [1600, 912, "ce6ca4ca03"],
   "sourcewatch": [1600, 908, "bf8f8ea36e"],
@@ -30235,7 +30250,7 @@ function buildGuides() {
       { h: 'Optional settings', body: list(
           `<b>Sample rows</b> takes a random sample. Empty assesses every row.`,
           `<b>Accuracy and referential integrity</b> adds rules for this run on top of the inferred ones: a column whose values must exist in a master list, a list of correct values, or a system of record to agree with. Each says where its master data is: a table in the same database, a file in your <b>reference library</b> (upload it once, and any rule can use it), or a file in your own S3, read with one of your saved S3 connections. A list of correct values can be typed too. They light up the Accuracy and Integrity dimensions, and a dataset's Rules tab sets them for every run.`,
-          `<b>Dimension weights</b>, on an uploaded file, decide how much each dimension counts toward the overall score, from 0 to 5. 0 leaves a dimension out.`,
+          `<b>Dimension weights</b> decide how much each dimension counts toward the run's overall score, from 0 to 5. 0 leaves a dimension out. Every data source has them, and one set follows you from form to form.`,
           `<b>Worksheet</b>, for Excel, names the sheet or its position. Blank assesses the first one.`) },
       { h: 'Where credentials go', body:
           p(`Passwords, keys and secrets are applied on our side and never sent back to the browser. Save a connection once as a credential profile and reuse it. See ${see('credential-profiles', 'Save and reuse credential profiles')}.`) },
