@@ -7755,10 +7755,179 @@ button.ak-cl:hover { border-color: var(--accent); }
   .ak-step { padding-right: 0; } .ak-join, .ak-pass { display: none; } .ak-row, .ak-kv { grid-template-columns: 1fr; } .ak-opts, .ak-row textarea { grid-column: 1; }
   .ak-g2, .ak-g3, .ak-evrow { grid-template-columns: 1fr; } .ak-moment { grid-template-columns: 1fr; } .ak-in input { width: 130px; } }
 </style>
+<style id="whStyles">
+/* ==========================================================================================
+   Webhooks (#webhooksPanel, #whJs): a link a tool calls when a dataset's data changes, so it is assessed straight
+   away. Hamza's pick of the mockups (26 Nov 2026, "H1"): what calls what as a patch board on the left (tools,
+   datasets, a cable per webhook), and the picked webhook's conversation on the right (each burst of calls, and what
+   VISEON did with it). Colours are the theme's tokens; each tool's own tone is a custom property, deeper on a light page.
+   ========================================================================================== */
+#webhooksPanel, .wh-ov { --wt-violet: #a78bfa; --wt-blue: var(--accent); --wt-teal: #2dd4bf; --wt-orange: #fb923c; --wt-grey: var(--muted); }
+html.a11y #webhooksPanel, html.a11y .wh-ov { --wt-violet: #6d28d9; --wt-teal: #0f766e; --wt-orange: #b4480d; }
+#whCard[hidden], #whNone[hidden] { display: none; }
+.wh-intro { display: flex; align-items: flex-end; gap: 24px; margin: 4px 0 18px; }
+.wh-txt { flex: 1; min-width: 0; }
+.wh-txt h2 { margin: 0 0 6px; font-size: 22px; }
+.wh-txt p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.55; max-width: 900px; }
+.wh-btn { display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 14px; border: 0; border-radius: 6px; background: var(--btn); color: #fff;
+  font: 600 13.5px var(--ui-font); cursor: pointer; white-space: nowrap; }
+.wh-btn .ic, .wh-gh .ic { width: 16px; height: 16px; }
+.wh-gh { display: inline-flex; align-items: center; gap: 7px; height: 32px; padding: 0 11px; border-radius: 6px; border: 1px solid var(--border); background: var(--card);
+  color: var(--text); font: 600 12.5px var(--ui-font); cursor: pointer; white-space: nowrap; box-shadow: none; }
+.wh-gh:hover { border-color: var(--border-strong); }
+.wh-gh.danger { color: var(--err); }
+.wh-msg { margin: -6px 0 14px; font-size: 13px; }
+.wh-msg:empty { display: none; }
+.wh-msg.err { color: var(--err); } .wh-msg.ok { color: var(--ok); }
+.wt { display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 8px; flex: none; font: 800 10px var(--ui-font); letter-spacing: .02em;
+  color: color-mix(in srgb, var(--c) 55%, var(--text)); background: color-mix(in srgb, var(--c) 15%, transparent); border: 1px solid color-mix(in srgb, var(--c) 38%, transparent); }
+.wt.t-violet { --c: var(--wt-violet); } .wt.t-blue { --c: var(--wt-blue); } .wt.t-teal { --c: var(--wt-teal); } .wt.t-orange { --c: var(--wt-orange); } .wt.t-grey { --c: var(--wt-grey); }
+.wt.sm { width: 24px; height: 24px; border-radius: 6px; font-size: 8.5px; }
+.wsc { display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border-radius: 5px; font: 700 12px var(--ui-font); font-variant-numeric: tabular-nums; white-space: nowrap; }
+/* each status's colour leant a little toward the text, so it reads on its own tint in every theme */
+.wsc.green { color: color-mix(in srgb, var(--ok) 78%, var(--text)); background: var(--ok-bg); } .wsc.amber { color: color-mix(in srgb, var(--run) 78%, var(--text)); background: var(--run-bg); }
+.wsc.red { color: color-mix(in srgb, var(--err) 78%, var(--text)); background: var(--err-bg); }
+.wsc.none { color: var(--muted); background: var(--idle-bg); font-weight: 600; }
+.wds { font-family: ui-monospace, Consolas, monospace; }
+
+/* ---- the board and its conversation, side by side ---- */
+.wh1 { display: grid; grid-template-columns: minmax(0, 1.18fr) minmax(400px, .82fr); padding: 0; overflow: hidden; }
+.wh1-l { padding: 16px 18px 14px; border-right: 1px solid var(--border); min-width: 0; }
+.wpb-h { display: flex; align-items: center; gap: 8px 18px; flex-wrap: wrap; margin-bottom: 8px; }
+.wpb-h h3 { margin: 0; font-size: 15px; }
+.wpb-key { display: flex; gap: 6px 14px; flex-wrap: wrap; width: 100%; font-size: 12px; color: var(--muted); }
+.wpb-key span { display: inline-flex; align-items: center; gap: 7px; }
+.wpb-key i { display: inline-block; width: 24px; height: 0; border-top: 3px solid var(--border-strong); border-radius: 2px; }
+.wpb-key i.live { border-color: var(--accent); } .wpb-key i.wait { border-color: var(--run); } .wpb-key i.off { border-top-style: dashed; }
+.wxb { --row: 64px; display: grid; grid-template-columns: 196px minmax(110px, 1fr) 256px; position: relative; }
+.wxb-col { display: flex; flex-direction: column; justify-content: center; }
+.wxb-row { height: var(--row); display: flex; align-items: center; }
+.wxb-box { flex: 1; min-width: 0; height: calc(var(--row) - 14px); display: flex; align-items: center; gap: 10px; padding: 0 12px; border: 1px solid var(--border);
+  background: var(--card-2); position: relative; cursor: pointer; text-align: left; color: var(--text); font: inherit; box-shadow: none; }
+.wxb-tool { border-radius: 10px 4px 4px 10px; }
+.wxb-ds { border-radius: 4px 10px 10px 4px; }
+.wxb-tool::after, .wxb-ds::before { content: ''; position: absolute; top: 50%; width: 10px; height: 16px; margin-top: -8px; border-radius: 3px; background: var(--border-strong); }
+.wxb-tool::after { right: -6px; } .wxb-ds::before { left: -6px; }
+.wxb-box b { display: block; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wxb-box small { display: block; font-size: 11.5px; color: var(--muted); }
+.wxb-box > div { flex: 1; min-width: 0; }
+.wxb-ds .wds { display: block; font-size: 12px; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wxb-ds > .ic { width: 16px; height: 16px; color: var(--muted); }
+.wxb-box.on { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); background: var(--accent-soft); }
+.wxb-box.on::before, .wxb-box.on::after { background: var(--accent); }
+.wxb-ds.on .wh-notch { position: absolute; right: -27px; top: 50%; width: 14px; height: 14px; margin-top: -7px; transform: rotate(45deg);
+  background: var(--card); border-left: 1px solid var(--border); border-bottom: 1px solid var(--border); z-index: 2; }
+.wxb-mid { position: relative; }
+.wxb svg.wires { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.wires path { fill: none; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.wires .w { stroke: var(--border-strong); pointer-events: none; }
+.wires .w.live { stroke: var(--accent); filter: drop-shadow(0 0 4px color-mix(in srgb, var(--accent) 70%, transparent)); }
+.wires .w.wait { stroke: var(--run); }
+.wires .w.off { stroke-dasharray: 2 7; stroke: var(--muted); }
+.wires .w.pick { stroke: var(--accent); filter: drop-shadow(0 0 6px color-mix(in srgb, var(--accent) 80%, transparent)); }
+.wires .w.dim { opacity: .55; }
+.wires .hit { stroke: transparent; stroke-width: 14px; cursor: pointer; pointer-events: stroke; }
+.wxb-hd { position: absolute; width: 16px; height: 16px; margin: -8px 0 0 -8px; padding: 0; border-radius: 50%; border: 2px solid var(--border-strong); background: var(--card);
+  cursor: pointer; z-index: 2; box-shadow: none; }
+.wxb-hd:hover, .wxb-hd:focus-visible, .wxb-hd[aria-pressed="true"] { border-color: var(--accent); background: var(--accent); }
+.wpb-tag { position: absolute; transform: translate(-50%, -50%); padding: 4px 9px; border-radius: 99px; font: 600 12px var(--ui-font); white-space: nowrap;
+  background: var(--card); border: 1px solid var(--border); color: var(--muted); z-index: 1; pointer-events: none; }
+.wpb-tag.wait { color: var(--run); border-color: color-mix(in srgb, var(--run) 55%, transparent); }
+.wpb-tag.no { color: var(--err); border-color: color-mix(in srgb, var(--err) 50%, transparent); }
+.wpb-tag.pick { color: var(--text); border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.wh1-r { display: flex; flex-direction: column; min-width: 0; min-height: 480px; background: var(--card); }
+.wch-top { display: flex; align-items: flex-start; gap: 11px; padding: 14px 16px; border-bottom: 1px solid var(--border); }
+.wch-top > div { flex: 1; min-width: 0; }
+.wch-top b { display: block; font-size: 14px; } .wch-top small { display: block; color: var(--muted); font-size: 12px; margin-top: 3px; line-height: 1.45; }
+.wch-acts { display: flex; gap: 6px; flex: none; }
+.wch-ib { width: 32px; height: 32px; display: inline-grid; place-items: center; padding: 0; border-radius: 6px; border: 1px solid var(--border); background: var(--card);
+  color: var(--muted); cursor: pointer; box-shadow: none; }
+.wch-ib:hover { color: var(--text); border-color: var(--border-strong); }
+.wch-ib .ic { width: 16px; height: 16px; } .wch-ib.danger { color: var(--err); }
+.wch-th { flex: 1; padding: 14px 16px 8px; display: flex; flex-direction: column; gap: 12px; overflow-y: auto; max-height: 640px; }
+.wcv-day { align-self: center; font-size: 12px; color: var(--muted); padding: 3px 10px; border-radius: 99px; background: var(--idle-bg); }
+.wcv-in, .wcv-out { display: flex; gap: 10px; align-items: flex-end; max-width: 88%; }
+.wcv-out { align-self: flex-end; flex-direction: row-reverse; }
+.wcv-b { position: relative; padding: 9px 12px; border-radius: 14px; font-size: 13px; line-height: 1.5; }
+.wcv-in .wcv-b { background: var(--card-2); border: 1px solid var(--border); border-bottom-left-radius: 4px; }
+.wcv-in .wcv-b.pile { box-shadow: 4px -4px 0 -1px var(--card-2), 4px -4px 0 0 var(--border), 8px -8px 0 -1px var(--card-2), 8px -8px 0 0 var(--border); margin: 8px 8px 0 0; }
+.wcv-out .wcv-b { background: var(--accent-soft); border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent); border-bottom-right-radius: 4px; }
+.wcv-out .wcv-b.fail { background: var(--err-bg); border-color: color-mix(in srgb, var(--err) 40%, transparent); }
+.wcv-out .wcv-b.waiting { border-style: dashed; }
+.wcv-b .n { display: inline-grid; place-items: center; min-width: 22px; height: 20px; padding: 0 6px; margin-left: 8px; border-radius: 99px; background: var(--border);
+  font: 700 11.5px var(--ui-font); color: var(--text); vertical-align: 1px; }
+.wcv-b small { display: block; font-size: 11.5px; color: var(--muted); margin-top: 3px; }
+.wcv-b .res { display: flex; align-items: center; gap: 10px; margin-top: 7px; flex-wrap: wrap; }
+.wcv-b .res button { padding: 0; border: 0; background: none; color: var(--accent); font: 600 12.5px var(--ui-font); cursor: pointer; box-shadow: none; }
+.wcv-me { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: var(--btn); color: #fff; font: 800 11px var(--ui-font); flex: none; }
+.wcv-bar { height: 5px; border-radius: 3px; background: var(--idle-bg); margin-top: 8px; overflow: hidden; }
+.wcv-bar i { display: block; height: 100%; background: var(--run); }
+.wcv-note { align-self: center; max-width: 92%; text-align: center; font-size: 12px; color: var(--muted); line-height: 1.5; }
+.wcv-note.no { color: var(--err); }
+.wch-sum { display: flex; gap: 10px; align-items: center; padding: 9px 12px; border-radius: 10px; background: var(--idle-bg); font-size: 12.5px; color: var(--muted); }
+.wch-sum b { color: var(--text); }
+.wch-sum button { margin-left: auto; padding: 0; border: 0; background: none; color: var(--accent); font: 600 12.5px var(--ui-font); cursor: pointer; box-shadow: none; white-space: nowrap; }
+.wch-empty { margin: auto; max-width: 340px; text-align: center; font-size: 13px; color: var(--muted); line-height: 1.6; }
+.wch-foot { display: flex; gap: 8px; align-items: center; padding: 11px 16px; border-top: 1px solid var(--border); background: var(--card-2); }
+.wch-foot code { flex: 1; min-width: 0; font-size: 12px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wh-none { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 28px; align-items: center; padding: 28px; }
+.wh-none h3 { margin: 0 0 8px; font-size: 17px; } .wh-none p { margin: 0 0 16px; color: var(--muted); font-size: 13.5px; line-height: 1.6; }
+.wh-eg { display: grid; gap: 10px; }
+.wh-eg div { display: flex; gap: 12px; align-items: center; padding: 12px 14px; border-radius: 10px; border: 1px solid var(--border); background: var(--card-2); font-size: 13px; }
+.wh-eg b { display: block; } .wh-eg small { color: var(--muted); }
+@media (max-width: 1180px) { .wh1 { grid-template-columns: minmax(0, 1fr); } .wh1-l { border-right: 0; border-bottom: 1px solid var(--border); } .wxb-ds.on .wh-notch { display: none; } }
+@media (max-width: 760px) { .wxb { grid-template-columns: 140px minmax(60px, 1fr) 160px; } .wh-none { grid-template-columns: minmax(0, 1fr); } }
+
+/* ---- the windows: a new webhook (one sentence), a change, a new secret ---- */
+.wh-ov .modal.wnw { width: min(1080px, 100%); max-height: calc(100vh - 40px); overflow: auto; }
+.wh-ov .modal.wnw.sm { width: min(620px, 100%); }
+.wnw-h { display: flex; align-items: center; gap: 12px; padding: 18px 24px; border-bottom: 1px solid var(--border); }
+.wnw-h h3 { margin: 0; font-size: 18px; }
+.wnw-h > .ic { width: 20px; height: 20px; color: var(--accent); }
+.wnw-h .x-close { margin-left: auto; }
+.wnw-sent { padding: 24px 28px 18px; font-size: 20px; line-height: 2.2; color: var(--muted); }
+.wnw-sent .pick { display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 10px; margin: 0 2px; border-radius: 8px; vertical-align: middle;
+  border: 1px solid var(--border-strong); background: var(--card-2); color: var(--text); position: relative; }
+.wnw-sent .pick select { appearance: none; -webkit-appearance: none; border: 0; background: transparent; color: var(--text); font: 600 17px var(--ui-font);
+  padding: 0 20px 0 0; height: 38px; cursor: pointer; max-width: 340px; }
+.wnw-sent .pick.ds select { font-family: ui-monospace, Consolas, monospace; font-size: 16px; }
+.wnw-sent .pick > .ic { width: 16px; height: 16px; color: var(--muted); position: absolute; right: 8px; pointer-events: none; }
+.wnw-sent .pick select:focus-visible { outline: none; }
+.wnw-sent .pick:focus-within { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.wnw-note { margin: -6px 28px 20px; font-size: 13px; color: var(--muted); line-height: 1.55; max-width: 880px; }
+.wnw-note.err { color: var(--err); }
+.wnw-con { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); gap: 26px; padding: 22px 28px 26px; border-top: 1px solid var(--border); background: var(--card-2); }
+.wnw-con.one { grid-template-columns: minmax(0, 1fr); }
+.wnw-con h4 { margin: 0 0 14px; font-size: 14.5px; }
+.wnw-steps { display: grid; gap: 14px; margin: 0; padding: 0; list-style: none; }
+.wnw-steps li { display: flex; gap: 12px; font-size: 13.5px; line-height: 1.55; }
+.wnw-steps .n { flex: none; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font: 800 12.5px var(--ui-font); background: var(--btn); color: #fff; }
+.wnw-act { border-radius: 8px; border: 1px solid var(--border-strong); background: var(--card); overflow: hidden; }
+.wnw-act-h { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: var(--surface-up); border-bottom: 1px solid var(--border); font-weight: 700; font-size: 13.5px; }
+.wnw-act-h small { font-weight: 500; color: var(--muted); margin-left: auto; font-size: 12px; }
+.wnw-f { display: grid; grid-template-columns: 96px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--border); }
+.wnw-f:last-child { border-bottom: 0; }
+.wnw-f > span { font-size: 12.5px; font-weight: 600; color: var(--muted); }
+.wnw-f code { display: block; padding: 7px 10px; border-radius: 6px; background: var(--code-bg); color: var(--code-fg); font-size: 12.5px; overflow-wrap: anywhere; }
+.wnw-f .hk { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 8px; }
+.wnw-f .mut { font-size: 12.5px; color: var(--muted); }
+.wnw-once { display: flex; gap: 9px; align-items: flex-start; margin-top: 12px; font-size: 12.5px; line-height: 1.5; color: var(--run); }
+.wnw-once .ic { width: 16px; height: 16px; flex: none; margin-top: 2px; }
+.wnw-ft { display: flex; align-items: center; gap: 12px; padding: 14px 24px; border-top: 1px solid var(--border); }
+.wnw-ft .say { flex: 1; font-size: 12.5px; color: var(--muted); }
+.wnw-ft .say.ok { color: var(--ok); } .wnw-ft .say.err { color: var(--err); }
+.wnw-seg { display: flex; gap: 6px; flex-wrap: wrap; }
+.wnw-seg button { height: 34px; padding: 0 14px; border-radius: 6px; border: 1px solid var(--border); background: var(--card); color: var(--text);
+  font: 600 13px var(--ui-font); cursor: pointer; box-shadow: none; }
+.wnw-seg button[aria-checked="true"] { background: var(--btn); border-color: var(--btn); color: #fff; }
+.wnw-row { display: grid; grid-template-columns: 130px minmax(0, 1fr); gap: 12px; align-items: center; padding: 10px 24px; }
+.wnw-row > span { font-size: 13px; font-weight: 600; color: var(--muted); }
+@media (max-width: 860px) { .wnw-con { grid-template-columns: minmax(0, 1fr); } .wnw-sent { font-size: 17px; } }
+</style>
 </head>
 <body>
 <!-- Shell v2: one icon set, drawn once here and used by name. -->
-<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><symbol id="i-overview" viewBox="0 0 24 24"><path d="M5.5 20v-8M12 20V5M18.5 20v-5M3 20h18"/></symbol><symbol id="i-incidents" viewBox="0 0 24 24"><path d="M12 4 3 19.5h18L12 4z"/><path d="M12 10v4.2M12 16.9v.1"/></symbol><symbol id="i-pulse" viewBox="0 0 24 24"><path d="M2.5 12h4l2.5-6 4 12 2.5-6h6"/></symbol><symbol id="i-database" viewBox="0 0 24 24"><ellipse cx="12" cy="6" rx="7.5" ry="2.8"/><path d="M4.5 6v12c0 1.5 3.4 2.8 7.5 2.8s7.5-1.3 7.5-2.8V6M4.5 12c0 1.5 3.4 2.8 7.5 2.8s7.5-1.3 7.5-2.8"/></symbol><symbol id="i-app" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></symbol><symbol id="i-tag" viewBox="0 0 24 24"><path d="M3.5 12.2V4.5h7.7l9.3 9.3-7.7 7.7-9.3-9.3z"/><path d="M8 8.5v.1"/></symbol><symbol id="i-reconcile" viewBox="0 0 24 24"><path d="M7 8h13M17 5l3 3-3 3M17 16H4M7 13l-3 3 3 3"/></symbol><symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></symbol><symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3.5 5 6v5.5c0 4.3 2.9 7.6 7 9 4.1-1.400 7-4.700 7-9V6l-7-2.500z"/><path d="m9 12 2.200 2.200L15.200 10"/></symbol><symbol id="i-pii" viewBox="0 0 24 24"><path d="M4 8V5.500A1.500 1.500 0 0 1 5.500 4H8M16 4h2.500A1.500 1.500 0 0 1 20 5.500V8M20 16v2.500a1.500 1.500 0 0 1-1.500 1.500H16M8 20H5.500A1.500 1.500 0 0 1 4 18.500V16"/><circle cx="12" cy="10" r="2.300"/><path d="M8 16.500c.700-1.900 2.200-2.800 4-2.800s3.300.900 4 2.800"/></symbol><symbol id="i-lineage" viewBox="0 0 24 24"><circle cx="5.500" cy="6" r="2"/><circle cx="5.500" cy="18" r="2"/><circle cx="18.500" cy="12" r="2"/><path d="M7.500 6h3a4 4 0 0 1 4 4 2 2 0 0 0 2 2M7.500 18h3a4 4 0 0 0 4-4"/></symbol><symbol id="i-model" viewBox="0 0 24 24"><rect x="3.500" y="4" width="7" height="5" rx="1"/><rect x="13.500" y="15" width="7" height="5" rx="1"/><rect x="3.500" y="15" width="7" height="5" rx="1"/><path d="M7 9v6M10.500 17.500h3"/></symbol><symbol id="i-history" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.600-5.900"/><path d="M4 4.500v4h4M12 8v4.200l2.800 1.700"/></symbol><symbol id="i-approve" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.500"/><path d="m8.500 12.300 2.400 2.400 4.600-4.900"/></symbol><symbol id="i-answer" viewBox="0 0 24 24"><circle cx="10" cy="8" r="3.4"/><path d="M3.6 19.6c.7-3.5 3.2-5.4 6.4-5.4 1.5 0 2.9.4 4 1.3"/><path d="m15.2 17.4 2.1 2.1 3.7-4"/></symbol><symbol id="i-server" viewBox="0 0 24 24"><rect x="4" y="4.500" width="16" height="6" rx="1.500"/><rect x="4" y="13.500" width="16" height="6" rx="1.500"/><path d="M7.500 7.500v.1M7.500 16.500v.1"/></symbol><symbol id="i-spark" viewBox="0 0 24 24"><path d="M11 4l1.700 4.800 4.800 1.700-4.800 1.700L11 17l-1.700-4.800-4.800-1.700 4.800-1.700L11 4z"/><path d="M18.500 15.500l.600 1.900 1.900.600-1.900.600-.600 1.900-.600-1.900-1.900-.600 1.900-.600.600-1.900z"/></symbol><symbol id="i-catalog" viewBox="0 0 24 24"><ellipse cx="11" cy="6.5" rx="7" ry="2.5"/><path d="M4 6.5v11c0 1.4 3.1 2.5 7 2.5M4 12c0 1.4 3.1 2.5 7 2.5M18 6.5V10"/><path d="M18 21v-7.5M15 16.5l3-3 3 3"/></symbol><symbol id="i-key" viewBox="0 0 24 24"><circle cx="8" cy="15.500" r="3.500"/><path d="M10.600 13 19 4.500M15.500 8l2.500 2.500"/></symbol><symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8.500" r="3.500"/><path d="M5 19.500c1-3.200 3.700-5 7-5s6 1.800 7 5"/></symbol><symbol id="i-book" viewBox="0 0 24 24"><path d="M5 4.500h12.500A1.500 1.500 0 0 1 19 6v13.500H7a2 2 0 0 1-2-2V4.500z"/><path d="M5 17.500a2 2 0 0 1 2-2h12"/></symbol><symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.500"/><path d="M12 11v5M12 8v.1"/></symbol><symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.500"/><path d="M9.600 9.600a2.500 2.500 0 1 1 3.600 2.300c-.800.400-1.200 1-1.200 1.800M12 16.600v.1"/></symbol><symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></symbol><symbol id="i-contrast" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.500"/><path d="M12 3.500v17a8.500 8.500 0 0 0 0-17z" fill="currentColor" stroke="none"/></symbol><symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.500"/><path d="m16 16 4 4"/></symbol><symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol><symbol id="i-ext" viewBox="0 0 24 24"><path d="M14 5h5v5M19 5l-8 8M11 6H6.500A1.500 1.500 0 0 0 5 7.500v10A1.500 1.500 0 0 0 6.500 19h10a1.500 1.500 0 0 0 1.500-1.500V13"/></symbol><symbol id="i-out" viewBox="0 0 24 24"><path d="M10 5H6.500A1.500 1.500 0 0 0 5 6.500v11A1.500 1.500 0 0 0 6.500 19H10M14 8l4 4-4 4M18 12H9.500"/></symbol></svg>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><symbol id="i-overview" viewBox="0 0 24 24"><path d="M5.5 20v-8M12 20V5M18.5 20v-5M3 20h18"/></symbol><symbol id="i-incidents" viewBox="0 0 24 24"><path d="M12 4 3 19.5h18L12 4z"/><path d="M12 10v4.2M12 16.9v.1"/></symbol><symbol id="i-pulse" viewBox="0 0 24 24"><path d="M2.5 12h4l2.5-6 4 12 2.5-6h6"/></symbol><symbol id="i-database" viewBox="0 0 24 24"><ellipse cx="12" cy="6" rx="7.5" ry="2.8"/><path d="M4.5 6v12c0 1.5 3.4 2.8 7.5 2.8s7.5-1.3 7.5-2.8V6M4.5 12c0 1.5 3.4 2.8 7.5 2.8s7.5-1.3 7.5-2.8"/></symbol><symbol id="i-app" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></symbol><symbol id="i-tag" viewBox="0 0 24 24"><path d="M3.5 12.2V4.5h7.7l9.3 9.3-7.7 7.7-9.3-9.3z"/><path d="M8 8.5v.1"/></symbol><symbol id="i-reconcile" viewBox="0 0 24 24"><path d="M7 8h13M17 5l3 3-3 3M17 16H4M7 13l-3 3 3 3"/></symbol><symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></symbol><symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 3 5 14h6l-1 7 8-11h-6z"/></symbol><symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3.5 5 6v5.5c0 4.3 2.9 7.6 7 9 4.1-1.400 7-4.700 7-9V6l-7-2.500z"/><path d="m9 12 2.200 2.200L15.200 10"/></symbol><symbol id="i-pii" viewBox="0 0 24 24"><path d="M4 8V5.500A1.500 1.500 0 0 1 5.500 4H8M16 4h2.500A1.500 1.500 0 0 1 20 5.500V8M20 16v2.500a1.500 1.500 0 0 1-1.500 1.500H16M8 20H5.500A1.500 1.500 0 0 1 4 18.500V16"/><circle cx="12" cy="10" r="2.300"/><path d="M8 16.500c.700-1.900 2.200-2.800 4-2.800s3.300.900 4 2.800"/></symbol><symbol id="i-lineage" viewBox="0 0 24 24"><circle cx="5.500" cy="6" r="2"/><circle cx="5.500" cy="18" r="2"/><circle cx="18.500" cy="12" r="2"/><path d="M7.500 6h3a4 4 0 0 1 4 4 2 2 0 0 0 2 2M7.500 18h3a4 4 0 0 0 4-4"/></symbol><symbol id="i-model" viewBox="0 0 24 24"><rect x="3.500" y="4" width="7" height="5" rx="1"/><rect x="13.500" y="15" width="7" height="5" rx="1"/><rect x="3.500" y="15" width="7" height="5" rx="1"/><path d="M7 9v6M10.500 17.500h3"/></symbol><symbol id="i-history" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.600-5.900"/><path d="M4 4.500v4h4M12 8v4.200l2.800 1.700"/></symbol><symbol id="i-approve" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.500"/><path d="m8.500 12.300 2.400 2.400 4.600-4.900"/></symbol><symbol id="i-answer" viewBox="0 0 24 24"><circle cx="10" cy="8" r="3.4"/><path d="M3.6 19.6c.7-3.5 3.2-5.4 6.4-5.4 1.5 0 2.9.4 4 1.3"/><path d="m15.2 17.4 2.1 2.1 3.7-4"/></symbol><symbol id="i-server" viewBox="0 0 24 24"><rect x="4" y="4.500" width="16" height="6" rx="1.500"/><rect x="4" y="13.500" width="16" height="6" rx="1.500"/><path d="M7.500 7.500v.1M7.500 16.500v.1"/></symbol><symbol id="i-spark" viewBox="0 0 24 24"><path d="M11 4l1.700 4.800 4.800 1.700-4.800 1.700L11 17l-1.700-4.800-4.800-1.700 4.800-1.700L11 4z"/><path d="M18.500 15.500l.600 1.900 1.900.600-1.900.600-.600 1.900-.600-1.900-1.900-.600 1.900-.600.600-1.900z"/></symbol><symbol id="i-catalog" viewBox="0 0 24 24"><ellipse cx="11" cy="6.5" rx="7" ry="2.5"/><path d="M4 6.5v11c0 1.4 3.1 2.5 7 2.5M4 12c0 1.4 3.1 2.5 7 2.5M18 6.5V10"/><path d="M18 21v-7.5M15 16.5l3-3 3 3"/></symbol><symbol id="i-key" viewBox="0 0 24 24"><circle cx="8" cy="15.500" r="3.500"/><path d="M10.600 13 19 4.500M15.500 8l2.500 2.500"/></symbol><symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8.500" r="3.500"/><path d="M5 19.500c1-3.200 3.700-5 7-5s6 1.800 7 5"/></symbol><symbol id="i-book" viewBox="0 0 24 24"><path d="M5 4.500h12.500A1.500 1.500 0 0 1 19 6v13.500H7a2 2 0 0 1-2-2V4.500z"/><path d="M5 17.500a2 2 0 0 1 2-2h12"/></symbol><symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.500"/><path d="M12 11v5M12 8v.1"/></symbol><symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.500"/><path d="M9.600 9.600a2.500 2.500 0 1 1 3.600 2.300c-.800.400-1.200 1-1.200 1.800M12 16.600v.1"/></symbol><symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></symbol><symbol id="i-contrast" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.500"/><path d="M12 3.500v17a8.500 8.500 0 0 0 0-17z" fill="currentColor" stroke="none"/></symbol><symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.500"/><path d="m16 16 4 4"/></symbol><symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol><symbol id="i-ext" viewBox="0 0 24 24"><path d="M14 5h5v5M19 5l-8 8M11 6H6.500A1.500 1.500 0 0 0 5 7.500v10A1.500 1.500 0 0 0 6.500 19h10a1.500 1.500 0 0 0 1.500-1.500V13"/></symbol><symbol id="i-out" viewBox="0 0 24 24"><path d="M10 5H6.500A1.500 1.500 0 0 0 5 6.500v11A1.500 1.500 0 0 0 6.500 19H10M14 8l4 4-4 4M18 12H9.500"/></symbol></svg>
 
   <!-- The AI sparkle's gradient, defined once where every icon can reach it (an icon inside a hidden
        panel cannot lend its own gradient to the others). -->
@@ -7789,6 +7958,7 @@ button.ak-cl:hover { border-color: var(--accent); }
     <button class="side-item" data-tab="tagrun" data-label="Assess by tag" data-group="Assess"><svg class="ic" aria-hidden="true"><use href="#i-tag"/></svg><span>By tag</span></button>
     <button class="side-item" data-tab="medallion" data-label="Reconcile" data-group="Assess"><svg class="ic" aria-hidden="true"><use href="#i-reconcile"/></svg><span>Reconcile</span></button>
     <button class="side-item" data-tab="schedules" data-label="Schedules" data-group="Assess"><svg class="ic" aria-hidden="true"><use href="#i-clock"/></svg><span>Schedules</span></button>
+    <button class="side-item" data-tab="webhooks" data-label="Webhooks" data-group="Assess"><svg class="ic" aria-hidden="true"><use href="#i-bolt"/></svg><span>Webhooks</span></button>
     <button type="button" class="side-group" data-group-key="Govern" aria-expanded="true"><span>Govern</span><span class="gdot" aria-hidden="true"></span><svg class="ic chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg></button>
     <button class="side-item" data-tab="compliance" data-label="Compliance" data-group="Govern"><svg class="ic" aria-hidden="true"><use href="#i-shield"/></svg><span>Compliance</span><span class="tab-badge" id="cmpBadge" style="display:none;"></span></button>
     <button class="side-item" data-tab="accountability" data-label="Accountability" data-group="Govern" id="accountNav"><svg class="ic" aria-hidden="true"><use href="#i-answer"/></svg><span>Accountability</span></button>
@@ -9161,6 +9331,18 @@ button.ak-cl:hover { border-color: var(--accent); }
   </div>
 
   <!-- ============ SCHEDULES ============ -->
+  <!-- Webhooks (#whJs): links other tools call when data changes; the board of what calls what, and the picked one's conversation. -->
+  <div id="webhooksPanel" style="display:none;">
+    <div class="wh-intro"><div class="wh-txt"><h2>Webhooks</h2><p>Links your other tools call when data changes, so its assessment runs straight away: Power Automate when a SharePoint file is saved, a pipeline when its load finishes. Anyone can make one for a dataset they can see.</p></div>
+      <div class="wh-tools"><button type="button" class="wh-btn" data-wh-new><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5.5v13M5.5 12h13"/></svg>New webhook</button></div></div>
+    <div class="wh-msg" id="whMsg" role="status"></div>
+    <div class="card wh1" id="whCard" hidden>
+      <div class="wh1-l"><div class="wpb-h"><h3>What calls what</h3><div class="wpb-key"><span><i class="live"></i>called in the last hour</span><span><i class="wait"></i>a run waiting for quiet</span><span><i class="off"></i>paused</span><span>thicker: more calls today</span></div></div><div id="whBoard"></div></div>
+      <div class="wh1-r" id="whChat"></div>
+    </div>
+    <div class="card wh-none" id="whNone" hidden></div>
+  </div>
+
   <div id="schedulePanel" style="display:none;">
     <div class="banner" id="schBanner"></div>
     <div class="tab-intro">
@@ -12668,7 +12850,7 @@ function weightsDesc(w) {
 // as a new column so the fixed grid layout is untouched. Both fields are absent on runs from
 // before provenance shipped, and triggeredBy is always absent for a Qlik caller (no portal
 // identity), so this returns '' rather than guessing.
-const TRIGGER_LABELS = { manual: 'Manual', mcp: 'MCP', schedule: 'Scheduled' };
+const TRIGGER_LABELS = { manual: 'Manual', mcp: 'MCP', schedule: 'Scheduled', webhook: 'Webhook' };
 function triggerDesc(r) {
   const t = TRIGGER_LABELS[String(r.triggerType || '').toLowerCase()] || '';
   const by = (r.triggeredBy || '').trim();
@@ -36173,6 +36355,7 @@ function switchTab(name) {
   $('#appDataPanel').style.display = name === 'appdata' ? 'block' : 'none';
   $('#tagrunPanel').style.display = name === 'tagrun' ? 'block' : 'none';
   $('#schedulePanel').style.display = name === 'schedules' ? 'block' : 'none';
+  $('#webhooksPanel').style.display = name === 'webhooks' ? 'block' : 'none';
   if (name !== 'schedules' && typeof schFormIsOpen === 'function' && schFormIsOpen()) schForm(false);
   // Painted on every switch rather than once at boot: EMAIL is resolved asynchronously in portal
   // mode (/portal/auth/me), so a note written at boot would name nobody.
@@ -36226,6 +36409,7 @@ function switchTab(name) {
   if (name === 'approvals') loadApprovals();
   if (name === 'dashboard') { loadDashboard(); refreshIncBadge(); }
   if (name === 'medallion') loadReconcile();
+  if (name === 'webhooks' && typeof whLoad === 'function') whLoad();
   if (name === 'schedules') {
     buildTzSelect();              // ~400 zones; built once, and BEFORE the form is reset so the
                                   // reset's timezone assignment has options to match against
@@ -40485,6 +40669,433 @@ document.addEventListener('mouseup', modelDragUp);
       e.preventDefault(); if (pal && pal.hidden) openPal(); else closePal();
     }
   }, true);
+})();
+</script>
+<script id="whJs">
+/* Webhooks (#webhooksPanel; the API is /data-quality/webhooks, the link /hooks/{id}). The board draws what calls
+   what: the tools on the left, the datasets on the right, a cable per webhook (lit if called in the last hour, amber
+   while a run waits for quiet, dashed when paused, thicker the more it was called today). Pressing a cable, its
+   handle, or either end picks it, and its conversation opens beside the board: each burst of calls, and what VISEON
+   did with it. A new webhook is one sentence; its secret is shown once, with how to connect the tool. */
+(function () {
+  'use strict';
+  const WH = { hooks: [], tools: {}, choices: {}, pick: null, items: null, all: false, timer: null, busy: false };
+  const TOOL_ORDER = ['power_automate', 'adf', 'airflow', 'dbt', 'qlik_automate', 'other'];
+  const ROW = 64;
+  const S = p => `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">${p}</svg>`;
+  const I = {
+    bolt: S('<path d="M13 3 5 14h6l-1 7 8-11h-6z"/>'), plus: S('<path d="M12 5.5v13M5.5 12h13"/>'),
+    send: S('<path d="M4.5 11.5 19.5 4.5l-5.5 15-3-6z"/><path d="m11 13.5 3.5-3.5"/>'),
+    copy: S('<rect x="8.5" y="8.5" width="11" height="11" rx="2"/><path d="M15.5 8.5V5.5a1 1 0 0 0-1-1h-9a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h3"/>'),
+    key: S('<circle cx="8" cy="15.6" r="4.4"/><path d="M11.2 12.4 20.4 3.2M17.2 6.4l2.8 2.8M14.8 8.8l2 2"/>'),
+    pause: S('<path d="M9 5.5v13M15 5.5v13"/>'), play: S('<path d="M7 5v14l12-7z"/>'),
+    trash: S('<path d="M5 7h14M10 7V4.5h4V7M7 7l1 13h8l1-13"/>'),
+    gear: S('<circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/>'),
+    file: S('<path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4"/>'),
+    db: S('<ellipse cx="12" cy="5.8" rx="7.5" ry="2.8"/><path d="M4.5 5.8v12.4c0 1.5 3.4 2.8 7.5 2.8s7.5-1.3 7.5-2.8V5.8M4.5 12c0 1.5 3.4 2.8 7.5 2.8s7.5-1.3 7.5-2.8"/>'),
+    down: S('<path d="m7 10 5 5 5-5"/>'), globe: S('<circle cx="12" cy="12" r="8.6"/><path d="M3.4 12h17.2M12 3.4c2.7 3 2.7 14.2 0 17.2M12 3.4c-2.7 3-2.7 14.2 0 17.2"/>'),
+    ext: S('<path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>'),
+  };
+  const $id = id => document.getElementById(id);
+  const e = v => (typeof esc === 'function' ? esc(v) : String(v == null ? '' : v).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])));
+  const hm = s => new Date(s * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const day = s => { const d = new Date(s * 1000), t = new Date(); const y = new Date(); y.setDate(t.getDate() - 1);
+    return d.toDateString() === t.toDateString() ? 'Today' : d.toDateString() === y.toDateString() ? 'Yesterday'
+      : d.toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' }); };
+  const pl = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
+  const tile = (h, cls) => `<span class="wt t-${e(h.tone || 'grey')} ${cls || ''}">${e(h.tile || 'API')}</span>`;
+  const isFile = h => /\.(xlsx?|xlsm|csv|tsv|json|parquet)$/i.test(h.datasetName || '');
+  const api = body => postJSON(`${API_BASE}/data-quality/webhooks`, HEADERS, Object.assign({ app_id: APP_ID || undefined }, body));
+  const say = (msg, kind) => { const m = $id('whMsg'); if (m) { m.textContent = msg || ''; m.className = 'wh-msg ' + (kind || ''); } };
+
+  function verb(h) { return h.tool === 'power_automate' || isFile(h) ? 'changed' : 'was loaded'; }
+  function word(r) {
+    const st = String(r.state || '').toUpperCase();
+    if (st === 'RUNNING') return ['none', 'assessing it now'];
+    if (st === 'GATE_FAILED') return ['red', 'failed its gate'];
+    if (st === 'FAILED' || st === 'ERROR') return ['red', 'the run failed'];
+    if (st === 'CANCELLED') return ['none', 'cancelled'];
+    const s = String(r.status || '').toLowerCase();
+    return [s === 'green' ? 'green' : s === 'amber' ? 'amber' : s === 'red' ? 'red' : 'none', s === 'green' ? 'passed' : s === 'amber' ? 'warning' : s === 'red' ? 'failing' : 'finished'];
+  }
+  function chip(r) {
+    if (!r || r.score == null) return '';
+    const [cls] = word(r);
+    return `<span class="wsc ${cls}">${Number(r.score).toFixed(1)}</span>`;
+  }
+
+  // ------------------------------------------------------------------------------------------------ loading
+  async function load(keepPick) {
+    if (WH.busy) return;
+    WH.busy = true;
+    try {
+      const r = await api({ action: 'list' });
+      WH.hooks = r.hooks || []; WH.tools = r.tools || {}; WH.choices = r.choices || {};
+      if (!keepPick || !WH.hooks.some(h => h.id === WH.pick)) {
+        const first = WH.hooks.find(h => h.waiting) || WH.hooks.find(h => h.calledRecently) || WH.hooks[0];
+        WH.pick = first ? first.id : null; WH.all = false;
+      }
+      paint();
+      if (WH.pick) await thread(WH.pick);
+    } catch (err) {
+      say(err.message, 'err');
+    } finally { WH.busy = false; }
+  }
+  async function thread(id) {
+    try {
+      const r = await api({ action: 'thread', hook_id: id });
+      if (id !== WH.pick) return;
+      WH.items = r.items || [];
+      const i = WH.hooks.findIndex(h => h.id === id);
+      if (i >= 0 && r.hook) WH.hooks[i] = r.hook;
+      paintChat();
+    } catch (err) { WH.items = []; paintChat(err.message); }
+  }
+  function pick(id) {
+    if (!id || id === WH.pick) return;
+    WH.pick = id; WH.items = null; WH.all = false;
+    paint();
+    thread(id);
+  }
+  window.whLoad = function () { load(true); arm(); };
+  function arm() {
+    clearInterval(WH.timer);
+    WH.timer = setInterval(() => {
+      const p = $id('webhooksPanel');
+      if (!p || p.style.display === 'none' || document.visibilityState !== 'visible') return;
+      if (document.querySelector('.wh-ov.open')) return;
+      load(true);
+    }, 30000);
+  }
+
+  // ------------------------------------------------------------------------------------------------ the board
+  function paint() {
+    const card = $id('whCard'), none = $id('whNone');
+    if (!card || !none) return;
+    card.hidden = !WH.hooks.length; none.hidden = !!WH.hooks.length;
+    if (!WH.hooks.length) { paintNone(); return; }
+    const tools = TOOL_ORDER.filter(t => WH.hooks.some(h => h.tool === t));
+    const rank = t => tools.indexOf(t);
+    const ds = [];
+    WH.hooks.slice().sort((a, b) => rank(a.tool) - rank(b.tool) || String(a.datasetName).localeCompare(String(b.datasetName)))
+      .forEach(h => { if (!ds.some(d => d.key === h.datasetKey)) ds.push({ key: h.datasetKey, name: h.datasetName, h }); });
+    const n = Math.max(tools.length, ds.length), H = n * ROW;
+    const ty = t => (tools.indexOf(t) + .5) * ROW + (n - tools.length) * ROW / 2;
+    const dy = k => (ds.findIndex(d => d.key === k) + .5) * ROW + (n - ds.length) * ROW / 2;
+    const cur = WH.hooks.find(h => h.id === WH.pick) || {};
+    const toolBox = t => { const info = WH.tools[t] || {}, cnt = WH.hooks.filter(h => h.tool === t).length;
+      return `<div class="wxb-row"><button type="button" class="wxb-box wxb-tool${cur.tool === t ? ' on' : ''}" data-wh-tool="${e(t)}" tabindex="-1">`
+        + `<span class="wt t-${e(info.tone || 'grey')}">${e(info.tile || 'API')}</span><div><b>${e(info.label || t)}</b><small>${pl(cnt, 'webhook')}</small></div></button></div>`; };
+    const dsBox = d => { const h = d.h, sc = h.datasetScore;
+      const paused = WH.hooks.filter(x => x.datasetKey === d.key).every(x => x.state === 'paused');
+      return `<div class="wxb-row"><button type="button" class="wxb-box wxb-ds${cur.datasetKey === d.key ? ' on' : ''}" data-wh-ds="${e(d.key)}" tabindex="-1">`
+        + `${isFile(h) ? I.file : I.db}<div><span class="wds" title="${e(d.name)}">${e(d.name)}</span><small>${e(h.source || '')}</small></div>`
+        + (paused ? '<span class="wsc none">paused</span>' : sc != null ? `<span class="wsc ${e(h.datasetStatus || 'none')}">${Number(sc).toFixed(1)}</span>` : '')
+        + `<span class="wh-notch" aria-hidden="true"></span></button></div>`; };
+    const paths = [], hits = [], hds = [], tags = [];
+    const order = WH.hooks.slice().sort((a, b) => (a.id === WH.pick) - (b.id === WH.pick));
+    order.forEach(h => {
+      const y1 = ty(h.tool), y2 = dy(h.datasetKey);
+      const cls = 'w' + (h.state === 'paused' ? ' off' : h.id === WH.pick ? ' pick' : h.waiting ? ' wait' : h.calledRecently ? ' live' : ' dim');
+      const w = 2 + Math.min((h.today && h.today.calls) || 0, 18) * .3;
+      const d = `M0 ${y1.toFixed(1)} C 420 ${y1.toFixed(1)}, 580 ${y2.toFixed(1)}, 1000 ${y2.toFixed(1)}`;
+      paths.push(`<path class="${cls}" stroke-width="${w.toFixed(1)}" d="${d}"/>`);
+      hits.push(`<path class="hit" data-wh-hook="${e(h.id)}" d="${d}"/>`);
+      const a = .844, hy = y1 * a + y2 * (1 - a);         // the handle: a quarter along (t .25), clear of the labels further on
+      const st = h.state === 'paused' ? 'paused' : h.waiting ? (h.waiting.held ? `held until ${hm(h.waiting.due)}` : `runs at ${hm(h.waiting.due)}`)
+        : h.lastRun ? `last run ${hm(h.lastRun.at)}` : 'no calls yet';
+      hds.push(`<button type="button" class="wxb-hd" data-wh-hook="${e(h.id)}" style="left:27%;top:${hy.toFixed(1)}px" aria-pressed="${h.id === WH.pick}"`
+        + ` aria-label="${e(`${h.toolLabel} to ${h.datasetName}: ${st}`)}" data-tip="${e(`${h.toolLabel} → ${h.datasetName}`)}"></button>`);
+      const my = y1 * .352 + y2 * .648;                  // the labels: three fifths along (t .6), where x is 59%
+      if (h.state !== 'paused' && h.waiting) {
+        tags.push(`<span class="wpb-tag wait${h.id === WH.pick ? ' pick' : ''}" style="left:59%;top:${my.toFixed(1)}px">`
+          + `${pl(h.waiting.calls, 'call')} · ${h.waiting.held ? 'held until' : 'runs at'} ${hm(h.waiting.due)}</span>`);
+      } else if (h.today && h.today.refused) {
+        tags.push(`<span class="wpb-tag no" style="left:62%;top:${(my + 4).toFixed(1)}px">${h.today.refused} refused today</span>`);
+      }
+    });
+    $id('whBoard').innerHTML = `<div class="wxb"><div class="wxb-col">${tools.map(toolBox).join('')}</div>`
+      + `<div class="wxb-mid" style="height:${H}px"><svg class="wires" viewBox="0 0 1000 ${H}" preserveAspectRatio="none" aria-hidden="true">${paths.join('')}${hits.join('')}</svg>`
+      + `${tags.join('')}${hds.join('')}</div><div class="wxb-col">${ds.map(dsBox).join('')}</div></div>`;
+    paintChat();
+  }
+  function paintNone() {
+    const eg = (t, a, b) => { const i = WH.tools[t] || {}; return `<div><span class="wt t-${e(i.tone || 'grey')}">${e(i.tile || 'API')}</span><span><b>${a}</b><small>${b}</small></span></div>`; };
+    $id('whNone').innerHTML = `<div><h3>No webhooks yet</h3><p>A webhook is a link your other tools call when data changes, and the dataset is assessed `
+      + `straight away instead of on a clock. Calls that come close together make one run, so a workbook that saves itself while it is edited is assessed once, when the editing stops.</p>`
+      + `<button type="button" class="wh-btn" data-wh-new>${I.plus}New webhook</button></div>`
+      + `<div class="wh-eg">${eg('power_automate', 'Power Automate', 'when a file in SharePoint is saved')}${eg('adf', 'Azure Data Factory', 'when a pipeline finishes loading')}`
+      + `${eg('airflow', 'Airflow', 'when a DAG ends')}${eg('other', 'Your own script', 'whenever it likes, with one POST')}</div>`;
+  }
+
+  // ------------------------------------------------------------------------------------------------ the conversation
+  function paintChat(err) {
+    const box = $id('whChat'), h = WH.hooks.find(x => x.id === WH.pick);
+    if (!box) return;
+    if (!h) { box.innerHTML = ''; return; }
+    const reads = h.reads === 'all' ? 'reads every row' : 'reads what changed';
+    const acts = h.canManage
+      ? `<button type="button" class="wch-ib" data-wh-act="edit" aria-label="Change it" data-tip="Change it">${I.gear}</button>`
+        + `<button type="button" class="wch-ib" data-wh-act="secret" aria-label="Give it a new secret" data-tip="Give it a new secret">${I.key}</button>`
+        + (h.state === 'paused' ? `<button type="button" class="wch-ib" data-wh-act="resume" aria-label="Resume it" data-tip="Resume it">${I.play}</button>`
+          : `<button type="button" class="wch-ib" data-wh-act="pause" aria-label="Pause it" data-tip="Pause it">${I.pause}</button>`)
+        + `<button type="button" class="wch-ib danger" data-wh-act="delete" aria-label="Delete it" data-tip="Delete it">${I.trash}</button>`
+      : '';
+    const head = `<div class="wch-top">${tile(h)}<div><b>${e(h.toolLabel)} → <span class="wds">${e(h.datasetName)}</span></b>`
+      + `<small>${h.state === 'paused' ? '<b style="display:inline;color:var(--run)">Paused</b> · ' : ''}waits ${pl(h.quiet, 'quiet minute')} · at most ${h.limit} runs an hour · ${reads}`
+      + `${h.madeBy ? ` · made by ${e(h.madeBy)}` : ''}${h.canManage ? '' : '. Only its maker or an admin can change it.'}</small></div><div class="wch-acts">${acts}</div></div>`;
+    let body;
+    if (err) body = `<p class="wch-empty" style="color:var(--err)">${e(err)}</p>`;
+    else if (WH.items == null) body = `<p class="wch-empty">Loading what it has done…</p>`;
+    else body = convo(h);
+    box.innerHTML = head + `<div class="wch-th" id="whThread">${body}</div>`
+      + `<div class="wch-foot"><code title="${e(h.link)}">${e(h.link)}</code><button type="button" class="wh-gh" data-wh-act="copy">${I.copy}Copy link</button>`
+      + `<button type="button" class="wh-btn" style="height:32px" data-wh-act="test">${I.send}Send a test</button></div>`;
+    const th = $id('whThread'); if (th) th.scrollTop = th.scrollHeight;
+  }
+  function convo(h) {
+    const items = WH.items || [];
+    if (!items.some(i => i.type === 'burst' || i.type === 'refused' || i.type === 'test')) {
+      return `<p class="wch-empty">No calls yet. Connect ${e(h.toolLabel)} with this link and its secret; <b>Send a test</b> here checks that the dataset can be run.</p>`
+        + items.map(i => note(i)).join('');
+    }
+    const bursts = items.filter(i => i.type === 'burst');
+    let shown = items, older = [];
+    if (!WH.all && bursts.length > 3) {
+      const cut = items.indexOf(bursts[bursts.length - 3]);
+      older = items.slice(0, cut).filter(i => i.type === 'burst');
+      shown = items.slice(cut);
+    }
+    const out = [];
+    if (older.length) {
+      const calls = older.reduce((s, b) => s + b.calls.length, 0), runs = older.filter(b => b.reply && b.reply.kind === 'run');
+      out.push(`<div class="wch-sum"><span>Earlier: <b>${pl(calls, 'call')}</b> made <b>${pl(runs.length, 'run')}</b>${runs.length ? ', ' + runs.slice(-3)
+        .map(b => `${b.reply.score != null ? Number(b.reply.score).toFixed(1) + ' at ' : ''}${hm(b.reply.at)}`).join(', ') : ''}.</span>`
+        + `<button type="button" data-wh-act="all">Show them</button></div>`);
+    }
+    let lastDay = '';
+    shown.forEach(i => {
+      const at = i.type === 'burst' ? (i.first || (i.reply && i.reply.at) || 0) : i.at;
+      const d = day(at);
+      if (d !== lastDay) { out.push(`<span class="wcv-day">${d}</span>`); lastDay = d; }
+      out.push(i.type === 'burst' ? burst(h, i) : note(i));
+    });
+    return out.join('');
+  }
+  function burst(h, b) {
+    const out = [];
+    if (b.calls.length) {
+      const many = b.calls.length > 1;
+      out.push(`<div class="wcv-in">${tile(h, 'sm')}<div class="wcv-b${many ? ' pile' : ''}">${e(h.datasetName)} ${verb(h)}`
+        + `${many ? `<span class="n">×${b.calls.length}</span>` : ''}<small>${many ? `${hm(b.first)} to ${hm(b.last)}` : hm(b.first)}</small></div></div>`);
+    }
+    const r = b.reply, me = '<span class="wcv-me" aria-hidden="true">V</span>';
+    if (r && r.kind === 'run') {
+      const [cls, w] = word(r);
+      out.push(`<div class="wcv-out">${me}<div class="wcv-b">Waited ${pl(h.quiet, 'quiet minute')} after the last one, then assessed it${r.full ? ', every row' : ''}.`
+        + `<div class="res">${chip(r)}<span>${w} · ${hm(r.at)}</span>${r.result_prefix ? `<button type="button" data-wh-open="${e(r.result_prefix)}">Open the run ${I.ext.replace('class="ic"', 'class="ic" style="width:13px;height:13px;vertical-align:-2px"')}</button>` : ''}</div></div></div>`);
+    } else if (r && r.kind === 'failed') {
+      out.push(`<div class="wcv-out">${me}<div class="wcv-b fail">The run could not start: ${e(why(r.reason))}.<small>${hm(r.at)}</small></div></div>`);
+    } else if (b.waiting) {
+      const due = b.waiting.due, from = b.last || due, pct = Math.max(4, Math.min(100, 100 * (Date.now() / 1000 - from) / Math.max(60, due - from)));
+      out.push(`<div class="wcv-out">${me}<div class="wcv-b waiting">${b.waiting.held
+        ? `That is ${h.limit} runs this hour, its most. It is assessed at <b>${hm(due)}</b>, when the hour frees.`
+        : `Waiting for ${pl(h.quiet, 'quiet minute')}. If nothing else arrives, it is assessed at <b>${hm(due)}</b>.`}`
+        + `<div class="wcv-bar"><i style="width:${pct.toFixed(0)}%"></i></div></div></div>`);
+    } else if (b.held) {
+      out.push(`<div class="wcv-out">${me}<div class="wcv-b waiting">That was ${h.limit} runs in the hour, its most: it waited until ${hm(b.held.until)}.</div></div>`);
+    }
+    return out.join('');
+  }
+  function why(reason) {
+    return ({ no_saved_credentials: 'the dataset has no saved connection to read it with', no_run: 'the dataset has not been assessed yet',
+      not_a_source: 'the dataset is not a source that can be read again' })[reason] || reason || 'unknown';
+  }
+  function note(i) {
+    if (i.type === 'refused') {
+      const r = { secret: 'it did not carry this webhook\'s secret', no_secret: 'it carried no secret', paused: 'the webhook was paused' }[i.reason] || i.reason;
+      return `<p class="wcv-note no">A call at ${hm(i.at)} was refused: ${e(r)}.</p>`;
+    }
+    if (i.type === 'test') {
+      return `<p class="wcv-note">${i.from === 'page' ? `Tried from this page${i.by ? ' by ' + e(i.by) : ''} at ${hm(i.at)}` : `A test call at ${hm(i.at)}`}: `
+        + `${i.reason ? 'the run could not have started' : 'answered, and nothing was run'}.</p>`;
+    }
+    if (i.type === 'changed') {
+      const w = i.what === 'made' ? `Made${i.by ? ' by ' + e(i.by) : ''}` : i.what === 'paused' ? `Paused${i.by ? ' by ' + e(i.by) : ''}`
+        : i.what === 'resumed' ? `Resumed${i.by ? ' by ' + e(i.by) : ''}` : i.what === 'new secret' ? `Given a new secret${i.by ? ' by ' + e(i.by) : ''}`
+        : `${i.by ? e(i.by) : 'Changed'}${i.by ? ' changed it' : ''}: ${e(i.what)}`;
+      return `<p class="wcv-note">${w} at ${hm(i.at)}.</p>`;
+    }
+    return '';
+  }
+
+  // ------------------------------------------------------------------------------------------------ the windows
+  function ov(id, cls) {
+    let o = $id(id);
+    if (!o) { o = document.createElement('div'); o.id = id; o.className = 'modal-overlay wh-ov'; document.body.appendChild(o); }
+    o.innerHTML = `<div class="modal wnw ${cls || ''}" role="dialog" aria-modal="true" aria-labelledby="${id}T"></div>`;
+    o._from = document.activeElement;
+    o.classList.add('open');
+    o.onclick = ev => { if (ev.target === o) close(o); };
+    return o.firstElementChild;
+  }
+  function close(o) { o.classList.remove('open'); o.innerHTML = ''; if (o._from && o._from.focus) o._from.focus(); }
+  function head(id, title) {
+    return `<div class="wnw-h">${I.bolt}<h3 id="${id}T">${e(title)}</h3><button type="button" class="x-close" data-wh-close aria-label="Close">&times;</button></div>`;
+  }
+  const opts = (vals, cur, lab) => vals.map(v => `<option value="${e(v)}"${v === cur ? ' selected' : ''}>${e(lab(v))}</option>`).join('');
+  const quietW = v => `${v} minute${v === 1 ? '' : 's'}`, limitW = v => `${v} times an hour`;
+  const readsW = v => v === 'all' ? 'every row' : 'what changed since its last run';
+
+  async function newWindow() {
+    const m = ov('whNewOv');
+    const tools = TOOL_ORDER.filter(t => WH.tools[t]);
+    const ch = WH.choices.quiet ? WH.choices : { quiet: [1, 5, 15, 30], limit: [2, 6, 12], reads: ['changed', 'all'] };
+    m.innerHTML = head('whNewOv', 'New webhook')
+      + `<div class="wnw-sent">When <label class="pick"><span class="sr-only">Tool</span><select id="whTool">${opts(tools, 'power_automate', t => WH.tools[t].label)}</select>${I.down}</label> calls, assess `
+      + `<label class="pick ds"><span class="sr-only">Dataset</span><select id="whDs"><option value="">loading the datasets…</option></select>${I.down}</label> once it has been quiet for `
+      + `<label class="pick"><span class="sr-only">Quiet minutes</span><select id="whQuiet">${opts(ch.quiet, 5, quietW)}</select>${I.down}</label>, at most `
+      + `<label class="pick"><span class="sr-only">Runs an hour</span><select id="whLimit">${opts(ch.limit, 6, limitW)}</select>${I.down}</label>. Each run reads `
+      + `<label class="pick"><span class="sr-only">What each run reads</span><select id="whReads">${opts(ch.reads, 'changed', readsW)}</select>${I.down}</label>.</div>`
+      + `<p class="wnw-note" id="whNote">It runs with the connection and rules the dataset was last assessed with: nothing a call sends can change them, or run anything else.</p>`
+      + `<div class="wnw-ft"><span class="say" id="whNewSay">Anyone who can see the dataset sees this webhook and what it has done. You or an admin can pause or delete it.</span>`
+      + `<button type="button" class="wh-gh" data-wh-close style="height:36px">Cancel</button><button type="button" class="wh-btn" id="whMake" disabled>${I.bolt}Make the webhook</button></div>`;
+    const sel = $id('whDs');
+    sel.focus();
+    try {
+      const r = await api({ action: 'datasets' });
+      const ds = r.datasets || [];
+      if (!document.body.contains(sel)) return;
+      sel.innerHTML = ds.length ? ds.map(d => `<option value="${e(d.datasetKey)}"${d.ok ? '' : ' disabled'}>${e(d.name)}${d.ok ? '' : ' (' + e(d.whyNot) + ')'}</option>`).join('')
+        : '<option value="">no assessed datasets yet</option>';
+      const ok = ds.filter(d => d.ok);
+      if (ok.length) sel.value = ok[0].datasetKey;
+      $id('whMake').disabled = !ok.length;
+      if (!ok.length) { const n = $id('whNote'); n.className = 'wnw-note err'; n.textContent = ds.length
+        ? 'None of the datasets you can see can be run again from a webhook: each one needs a saved connection, and a SharePoint file or an upload cannot be read again.'
+        : 'Assess a dataset first: a webhook runs a dataset again, as it was last assessed.'; }
+    } catch (err) { $id('whNewSay').className = 'say err'; $id('whNewSay').textContent = err.message; }
+    $id('whMake').onclick = async () => {
+      const b = $id('whMake'); b.disabled = true;
+      try {
+        const r = await api({ action: 'create', dataset_key: sel.value, tool: $id('whTool').value, quiet: +$id('whQuiet').value,
+          limit: +$id('whLimit').value, reads: $id('whReads').value });
+        WH.pick = r.hook.id; WH.items = null;
+        connect(m, r.hook, r.link, r.secret, true);
+        load(true);
+      } catch (err) { b.disabled = false; $id('whNewSay').className = 'say err'; $id('whNewSay').textContent = err.message; }
+    };
+  }
+  function connect(m, h, link, secret, made) {
+    const info = WH.tools[h.tool] || {}, step = { power_automate: 'HTTP', adf: 'Web activity', airflow: 'HttpOperator', qlik_automate: 'Call URL' }[h.tool] || 'HTTP request';
+    const steps = (info.steps || []).concat(['Save it, then press Send a test here: it is answered as a real call would be, and nothing is run.']);
+    m.innerHTML = head(m.parentNode.id, made ? 'Connect ' + (info.label || 'your tool') : 'A new secret')
+      + (made ? `<p class="wnw-note" style="margin:18px 28px 18px">Made: when ${e(info.label || 'your tool')} calls this link, <span class="wds">${e(h.datasetName)}</span> is assessed `
+        + `once ${pl(h.quiet, 'quiet minute')} have passed.</p>` : `<p class="wnw-note" style="margin:18px 28px 18px">The old secret has stopped working. Put this one in ${e(info.label || 'your tool')} in its place.</p>`)
+      + `<div class="wnw-con${made ? '' : ' one'}">${made ? `<div><h4>Connect ${e(info.label || 'your tool')}</h4><ol class="wnw-steps">${steps.map((s, i) => `<li><span class="n">${i + 1}</span><span>${e(s)}</span></li>`).join('')}</ol></div>` : ''}`
+      + `<div><div class="wnw-act"><div class="wnw-act-h">${I.globe}${e(step)}<small>${made ? 'the step to add' : 'its header'}</small></div>`
+      + (made ? `<div class="wnw-f"><span>Method</span><code>POST</code><span></span></div><div class="wnw-f"><span>URI</span><code>${e(link)}</code>`
+        + `<button type="button" class="wh-gh" data-wh-copy="${e(link)}">${I.copy}Copy</button></div>` : '')
+      + `<div class="wnw-f"><span>Headers</span><div class="hk"><code>Authorization</code><code>Bearer ${e(secret)}</code></div>`
+      + `<button type="button" class="wh-gh" data-wh-copy="${e('Bearer ' + secret)}">${I.copy}Copy</button></div>`
+      + (made ? `<div class="wnw-f"><span>Body</span><span class="mut">Leave it empty</span><span></span></div>` : '') + `</div>`
+      + `<div class="wnw-once">${I.key}<span>The secret is shown this once. Keep it in your tool's secure field. You can give the webhook a new one at any time, and the old one stops working at once.</span></div></div></div>`
+      + `<div class="wnw-ft"><span class="say" id="whConSay">${made ? 'Anyone who can see the dataset sees this webhook and what it has done.' : ''}</span>`
+      + `<button type="button" class="wh-gh" id="whConTest" style="height:36px">${I.send}Send a test</button><button type="button" class="wh-btn" data-wh-close>Done</button></div>`;
+    $id('whConTest').onclick = () => test(h.id, $id('whConSay'));
+    const f = m.querySelector('[data-wh-copy]'); if (f) f.focus();
+  }
+  async function test(id, out) {
+    try {
+      const r = await api({ action: 'test', hook_id: id });
+      if (out) { out.className = 'say ' + (r.ok ? 'ok' : 'err'); out.textContent = r.message; } else say(r.message, r.ok ? 'ok' : 'err');
+      if (id === WH.pick) thread(id);
+    } catch (err) { if (out) { out.className = 'say err'; out.textContent = err.message; } else say(err.message, 'err'); }
+  }
+  function editWindow(h) {
+    const m = ov('whEditOv', 'sm');
+    const ch = WH.choices;
+    const seg = (k, vals, cur, lab) => `<div class="wnw-seg" role="radiogroup" data-wh-seg="${k}">${vals.map(v => `<button type="button" role="radio" aria-checked="${v === cur}" data-v="${e(v)}">${e(lab(v))}</button>`).join('')}</div>`;
+    m.innerHTML = head('whEditOv', 'Change the webhook')
+      + `<p class="wnw-note" style="margin:16px 24px 6px">${e(h.toolLabel)} → <span class="wds">${e(h.datasetName)}</span></p>`
+      + `<div class="wnw-row"><span>Wait for quiet</span>${seg('quiet', ch.quiet || [1, 5, 15, 30], h.quiet, quietW)}</div>`
+      + `<div class="wnw-row"><span>At most</span>${seg('limit', ch.limit || [2, 6, 12], h.limit, limitW)}</div>`
+      + `<div class="wnw-row"><span>Each run reads</span>${seg('reads', ch.reads || ['changed', 'all'], h.reads, v => v === 'all' ? 'Every row' : 'What changed')}</div>`
+      + `<div class="wnw-ft" style="margin-top:10px"><span class="say" id="whEditSay"></span><button type="button" class="wh-gh" data-wh-close style="height:36px">Cancel</button>`
+      + `<button type="button" class="wh-btn" id="whEditSave">Save</button></div>`;
+    const f0 = m.querySelector('[data-wh-seg] [aria-checked="true"]'); if (f0) f0.focus();
+    m.addEventListener('click', ev => {
+      const b = ev.target.closest('[data-wh-seg] button'); if (!b) return;
+      b.parentNode.querySelectorAll('button').forEach(x => x.setAttribute('aria-checked', String(x === b)));
+    });
+    $id('whEditSave').onclick = async () => {
+      const v = k => { const b = m.querySelector(`[data-wh-seg="${k}"] [aria-checked="true"]`); return b ? b.dataset.v : null; };
+      try {
+        await api({ action: 'update', hook_id: h.id, quiet: +v('quiet'), limit: +v('limit'), reads: v('reads') });
+        close(m.parentNode); load(true);
+      } catch (err) { const s = $id('whEditSay'); s.className = 'say err'; s.textContent = err.message; }
+    };
+  }
+  function copy(text, btn) {
+    const done = () => { if (btn) { const t = btn.innerHTML; btn.innerHTML = I.copy + 'Copied'; setTimeout(() => { btn.innerHTML = t; }, 1400); } };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, () => {});
+    else { const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); done(); } catch (er) {} ta.remove(); }
+  }
+
+  // ------------------------------------------------------------------------------------------------ wiring
+  document.addEventListener('click', async ev => {
+    const t = ev.target;
+    if (!t || !t.closest) return;
+    if (t.closest('[data-wh-close]')) { const o = t.closest('.wh-ov'); if (o) close(o); return; }
+    if (t.closest('[data-wh-new]')) { newWindow(); return; }
+    const cp = t.closest('[data-wh-copy]'); if (cp) { copy(cp.getAttribute('data-wh-copy'), cp); return; }
+    if (!t.closest('#webhooksPanel')) return;
+    const hk = t.closest('[data-wh-hook]'); if (hk) { pick(hk.getAttribute('data-wh-hook')); return; }
+    const tb = t.closest('[data-wh-tool]'); if (tb) { const h = WH.hooks.find(x => x.tool === tb.dataset.whTool && x.id !== WH.pick) || WH.hooks.find(x => x.tool === tb.dataset.whTool); if (h) pick(h.id); return; }
+    const db = t.closest('[data-wh-ds]'); if (db) { const h = WH.hooks.find(x => x.datasetKey === db.dataset.whDs && x.id !== WH.pick) || WH.hooks.find(x => x.datasetKey === db.dataset.whDs); if (h) pick(h.id); return; }
+    const op = t.closest('[data-wh-open]'); if (op) { switchTab('history'); openHistoryRun(op.getAttribute('data-wh-open')); return; }
+    const a = t.closest('[data-wh-act]'); if (!a) return;
+    const h = WH.hooks.find(x => x.id === WH.pick); if (!h) return;
+    const act = a.getAttribute('data-wh-act');
+    if (act !== 'copy' && act !== 'all') say('');                 // a message stays until the next thing done
+    if (act === 'all') { WH.all = true; paintChat(); return; }
+    if (act === 'copy') { copy(h.link, a); return; }
+    if (act === 'test') { test(h.id); return; }
+    if (act === 'edit') { editWindow(h); return; }
+    try {
+      if (act === 'pause' || act === 'resume') {
+        await api({ action: 'update', hook_id: h.id, state: act === 'pause' ? 'paused' : 'on' });
+        say(act === 'pause' ? 'Paused: calls are refused until it is resumed, and anything waiting has been dropped.' : 'Resumed.', 'ok');
+      } else if (act === 'secret') {
+        if (!await dqConfirm(`Give this webhook a new secret? The one ${h.toolLabel} has stops working at once, until you put the new one in its place.`,
+          { title: 'A new secret', okLabel: 'Make a new secret', danger: true })) return;
+        const r = await api({ action: 'new-secret', hook_id: h.id });
+        connect(ov('whSecretOv', 'sm'), h, r.link, r.secret, false);
+      } else if (act === 'delete') {
+        if (!await dqConfirm(`Delete the webhook from ${h.toolLabel} to ${h.datasetName}? Its link stops working, and ${h.toolLabel}'s calls are refused from now on.`,
+          { title: 'Delete the webhook', okLabel: 'Delete it', danger: true })) return;
+        await api({ action: 'delete', hook_id: h.id });
+        WH.pick = null; say('Deleted.', 'ok');
+      }
+      load(true);
+    } catch (err) { say(err.message, 'err'); }
+  });
+  // Escape closes the window on top (a confirmation over it closes first, on its own).
+  document.addEventListener('keydown', ev => {
+    if (ev.key !== 'Escape' || document.querySelector('.dq-ov.open')) return;
+    const o = [...document.querySelectorAll('.wh-ov.open')].pop();
+    if (o) { ev.preventDefault(); close(o); }
+  });
+  document.addEventListener('keydown', ev => {
+    const hd = ev.target && ev.target.closest && ev.target.closest('.wxb-hd');
+    if (!hd || !['ArrowDown', 'ArrowUp', 'ArrowRight', 'ArrowLeft'].includes(ev.key)) return;
+    const all = [...document.querySelectorAll('#whBoard .wxb-hd')].sort((x, y) => parseFloat(x.style.top) - parseFloat(y.style.top));
+    const i = all.indexOf(hd), j = (i + (ev.key === 'ArrowDown' || ev.key === 'ArrowRight' ? 1 : -1) + all.length) % all.length;
+    ev.preventDefault();
+    const id = all[j].getAttribute('data-wh-hook');
+    pick(id);
+    const again = document.querySelector(`#whBoard .wxb-hd[data-wh-hook="${CSS.escape(id)}"]`); if (again) again.focus();
+  });
 })();
 </script>
 </body>
