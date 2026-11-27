@@ -14949,6 +14949,7 @@ function tagSkipReason(s) {
     no_prior_run: 'never assessed on its own yet - run it once first so its connection is known',
     qlik_needs_live_bearer: 'a Qlik-app table (needs the live extension, not a saved connection)',
     not_a_rerunnable_source: 'not a re-runnable source',
+    sharepoint_not_rerunnable: 'a SharePoint file last assessed before VISEON kept where it is - assess it once more from the SharePoint form',
     no_saved_credentials: `no saved credentials for its ${(s && s.source) || 'source'} connection`,
     incomplete_credentials: 'its saved credentials are missing required fields',
     runs_on_agent: 'runs on an on-premises agent, which a tag run cannot reach from the cloud - run it from its source or on a schedule',
@@ -30811,7 +30812,7 @@ function buildGuides() {
             `<b>A database or warehouse table</b> with a saved connection: Snowflake, Databricks, Redshift, BigQuery, Postgres, MySQL, SQL Server, Synapse, Fabric, Oracle, Qlik Open Lakehouse. Compared where it lives.`,
             `<b>A file in Amazon S3, Google Cloud Storage or Azure Blob</b> with a saved connection: parquet, csv, json, Excel or QVD. A file has no engine to ask, so it is fetched onto the worker, as its assessment fetched it, and read there.`,
             `<b>A Qlik app table</b>, inside the app: the picker lists the app's own tables with the source datasets. The engine cannot hash the way the databases do, so the table is read out of the app into the worker, as an assessment reads it, and compared from there; a million rows take a few minutes. From the portal the picker leaves app tables out: it holds no key that opens an app.`) +
-          note(`Not a side: an <b>uploaded file</b>, because its file is not kept once it has been assessed (put it in S3 or a database and assess it from there); a <b>SharePoint file</b>, which a run cannot reach again; a file on an <b>on-premises agent</b>. A watch on a pair with an app table keeps the Qlik key you had when you set it; when that key expires, the watch fails and says so.`) },
+          note(`Not a side: an <b>uploaded file</b>, because its file is not kept once it has been assessed (put it in S3 or a database and assess it from there); a <b>SharePoint file</b>, which Reconcile does not read yet; a file on an <b>on-premises agent</b>. A watch on a pair with an app table keeps the Qlik key you had when you set it; when that key expires, the watch fails and says so.`) },
     ],
   });
 
@@ -31002,7 +31003,7 @@ function buildGuides() {
       { h: 'Which datasets can be monitored', body:
           p(`A dataset is monitored when <b>all</b> of these are true:`) +
           list(`It has been assessed at least once, so there is a source to poll.`,
-               `It came from a warehouse, database or cloud-storage connection. Uploaded files, ${Q ? 'Qlik app tables (they need the live extension), ' : ''}and SharePoint files cannot be reconnected from a saved run.`,
+               `It came from a warehouse, database or cloud-storage connection. Uploaded files, ${Q ? 'Qlik app tables (they need the live extension), ' : ''}and SharePoint files are not monitored: uploads cannot be reconnected from a saved run, and SharePoint files are not polled yet.`,
                `Its last run used a <b>saved credential profile</b> that still exists and has every field the source needs.`,
                `It is not reached through an on-premises agent. The monitor runs in our cloud and never connects into your network.`,
                `It has not been excluded on the Source monitoring tab.`) +
@@ -36859,7 +36860,16 @@ async function reRunTable(tableName, sourceFormat, resultPrefix, hdrs, opts) {
             full ? 'Reconnecting with the saved credentials, to read and sweep every row…' : 'Reconnecting with the saved credentials for this connection…');
           return;
         }
-      } catch (e) { /* fall through to the redirect */ }
+      } catch (e) {                                       // fall through to the redirect
+        // A SharePoint file whose last run did not keep where it is (before 27 Nov 2026): its form, once.
+        if (/kept where it is/.test(String((e && e.message) || ''))) {
+          switchTab('upload');
+          if (typeof selectSource === 'function') selectSource(card);
+          srcShowFace(card, 'form');
+          banner('info', `Run “${tableName}” once more from here, with its link. That run keeps where the file is in SharePoint, so it can be re-run and have a webhook from then on.`);
+          return;
+        }
+      }
     }
     switchTab('upload');
     if (typeof selectSource === 'function') selectSource(card);
@@ -37594,8 +37604,9 @@ function collectSchedSource() {
 // ---- A source schedule names a dataset already assessed ----
 // It runs that dataset with the connection it was assessed with (the API rebuilds it, as Re-run does), so the form
 // asks for no connection: a dataset is assessed by hand once, from Data source, and can be scheduled from then on.
-// SharePoint and on-premises files are the exception: what a run records of them cannot be run again, so their
-// schedules still say where the file is and which saved connection reads it.
+// SharePoint and on-premises files are the exception: their schedules still say where the file is and which saved
+// connection reads it (an on-premises file's run records nothing that can be run again; a SharePoint file's run keeps
+// its drive and item ids since 27 Nov 2026, which Re-run and webhooks use, but its schedules have kept their link).
 const SCH_MANUAL_KINDS = new Set(['sharepoint', 'agentfile']);
 const schDs = { kind: '', list: null, err: '', picked: '', missing: '', q: '', seq: 0 };
 let _schDsAgents = {};                                   // agent id -> its name, for "Runs on"
@@ -40971,7 +40982,7 @@ document.addEventListener('mouseup', modelDragUp);
       if (ok.length) sel.value = ok[0].datasetKey;
       $id('whMake').disabled = !ok.length;
       if (!ok.length) { const n = $id('whNote'); n.className = 'wnw-note err'; n.textContent = ds.length
-        ? 'None of the datasets you can see can be run again from a webhook: each one needs a saved connection, and a SharePoint file or an upload cannot be read again.'
+        ? 'None of the datasets you can see can be run again from a webhook: each one needs a saved connection, an upload cannot be read again, and a SharePoint file assessed before VISEON kept where it is needs one more run from its form.'
         : 'Assess a dataset first: a webhook runs a dataset again, as it was last assessed.'; }
     } catch (err) { $id('whNewSay').className = 'say err'; $id('whNewSay').textContent = err.message; }
     $id('whMake').onclick = async () => {
@@ -40980,14 +40991,14 @@ document.addEventListener('mouseup', modelDragUp);
         const r = await api({ action: 'create', dataset_key: sel.value, tool: $id('whTool').value, quiet: +$id('whQuiet').value,
           limit: +$id('whLimit').value, reads: $id('whReads').value });
         WH.pick = r.hook.id; WH.items = null;
-        connect(m, r.hook, r.link, r.secret, true);
+        connect(m, r.hook, r.link, r.secret, true, r.steps);
         load(true);
       } catch (err) { b.disabled = false; $id('whNewSay').className = 'say err'; $id('whNewSay').textContent = err.message; }
     };
   }
-  function connect(m, h, link, secret, made) {
+  function connect(m, h, link, secret, made, own) {
     const info = WH.tools[h.tool] || {}, step = { power_automate: 'HTTP', adf: 'Web activity', airflow: 'HttpOperator', qlik_automate: 'Call URL' }[h.tool] || 'HTTP request';
-    const steps = (info.steps || []).concat(['Save it, then press Send a test here: it is answered as a real call would be, and nothing is run.']);
+    const steps = (own || info.steps || []).concat(['Save it, then press Send a test here: it is answered as a real call would be, and nothing is run.']);
     m.innerHTML = head(m.parentNode.id, made ? 'Connect ' + (info.label || 'your tool') : 'A new secret')
       + (made ? `<p class="wnw-note" style="margin:18px 28px 18px">Made: when ${e(info.label || 'your tool')} calls this link, <span class="wds">${e(h.datasetName)}</span> is assessed `
         + `once ${pl(h.quiet, 'quiet minute')} have passed.</p>` : `<p class="wnw-note" style="margin:18px 28px 18px">The old secret has stopped working. Put this one in ${e(info.label || 'your tool')} in its place.</p>`)
